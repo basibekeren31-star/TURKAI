@@ -17678,11 +17678,7 @@ app.get(
    373 — STATIC FRONTEND
    ============================================================ */
 
-const PUBLIC_DIR =
-  path.join(
-    __dirname,
-    "public"
-  );
+
 
 const ROOT_INDEX =
   path.join(
