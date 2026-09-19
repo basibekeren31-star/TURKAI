@@ -1,2321 +1,2618 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
+    <meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-  >
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
+    >
 
-  <meta name="theme-color" content="#080b12">
-  <meta
-    name="description"
-    content="TürkAI — modern Türkçe yapay zeka platformu"
-  >
+    <meta
+        name="theme-color"
+        content="#070a0f"
+    >
 
-  <title>TürkAI — Yapay Zeka</title>
+    <meta
+        name="description"
+        content="TürkAI — Türkçe odaklı yapay zeka platformu"
+    >
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <meta
+        name="application-name"
+        content="TürkAI"
+    >
 
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet"
-  >
+    <title>TürkAI — Yapay Zeka</title>
 
-  <link rel="stylesheet" href="/style.css">
+    <!-- =====================================================
+         FONT
+         ===================================================== -->
 
-  <script src="/socket.io/socket.io.js"></script>
+    <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com"
+    >
+
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    >
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- =====================================================
+         APP CSS
+         ===================================================== -->
+
+    <link
+        rel="stylesheet"
+        href="/style.css"
+    >
+
+    <!-- =====================================================
+         SOCKET.IO
+         ===================================================== -->
+
+    <script
+        src="/socket.io/socket.io.js"
+        defer>
+    </script>
+
+    <!-- =====================================================
+         GOOGLE IDENTITY
+         ===================================================== -->
+
+    <script
+        src="https://accounts.google.com/gsi/client"
+        async
+        defer>
+    </script>
 </head>
+
 
 <body>
 
-  <!-- =====================================================
-       APP SHELL
-  ====================================================== -->
+<!-- =========================================================
+     APP
+     ========================================================= -->
 
-  <div class="app-shell">
+<div
+    id="app"
+    class="app-shell"
+>
 
-    <!-- ===================================================
+
+    <!-- =====================================================
+         MOBILE SIDEBAR OVERLAY
+         ===================================================== -->
+
+    <div
+        id="mobileSidebarOverlay"
+        class="mobile-sidebar-overlay"
+        hidden>
+    </div>
+
+
+    <!-- =====================================================
          SIDEBAR
-    ==================================================== -->
+         ===================================================== -->
 
-    <aside class="sidebar" id="sidebar">
+    <aside
+        id="sidebar"
+        class="sidebar"
+    >
 
-      <div class="sidebar-top">
+        <!-- BRAND -->
 
-        <div class="brand">
-
-          <div class="brand-logo">
-            <span class="brand-logo-core"></span>
-          </div>
-
-          <div class="brand-text">
-            <strong>TürkAI</strong>
-            <span>Yapay Zeka</span>
-          </div>
-
-        </div>
-
-        <button
-          class="icon-button mobile-only"
-          id="closeSidebar"
-          type="button"
-          aria-label="Menüyü kapat"
-        >
-          <span class="icon">×</span>
-        </button>
-
-      </div>
-
-      <!-- Yeni sohbet -->
-
-      <button
-        class="new-chat-button"
-        id="newChatButton"
-        type="button"
-      >
-        <span class="new-chat-icon">+</span>
-        <span>Yeni sohbet</span>
-      </button>
-
-      <!-- Navigasyon -->
-
-      <nav class="main-navigation">
-
-        <button
-          class="nav-item active"
-          data-page="chat"
-          type="button"
-        >
-          <span class="nav-icon">⌂</span>
-          <span>Sohbet</span>
-        </button>
-
-        <button
-          class="nav-item"
-          data-page="research"
-          type="button"
-        >
-          <span class="nav-icon">⌕</span>
-          <span>Araştır</span>
-        </button>
-
-        <button
-          class="nav-item"
-          data-page="files"
-          type="button"
-        >
-          <span class="nav-icon">□</span>
-          <span>Dosyalar</span>
-        </button>
-
-        <button
-          class="nav-item"
-          data-page="media"
-          type="button"
-        >
-          <span class="nav-icon">◇</span>
-          <span>Medya</span>
-        </button>
-
-        <button
-          class="nav-item"
-          data-page="code"
-          type="button"
-        >
-          <span class="nav-icon">&lt;/&gt;</span>
-          <span>Kod</span>
-        </button>
-
-      </nav>
-
-      <div class="sidebar-divider"></div>
-
-      <!-- Sohbet geçmişi -->
-
-      <div class="history-section">
-
-        <div class="section-label">
-          <span>SOHBETLER</span>
-        </div>
-
-        <div id="conversationList" class="conversation-list">
-
-          <button class="conversation-item" type="button">
-            <span class="conversation-icon">◌</span>
-            <span class="conversation-title">
-              Yeni sohbet
-            </span>
-          </button>
-
-        </div>
-
-      </div>
-
-      <!-- Sidebar alt -->
-
-      <div class="sidebar-bottom">
-
-        <button
-          class="sidebar-action"
-          id="settingsButton"
-          type="button"
-        >
-          <span class="nav-icon">⚙</span>
-          <span>Ayarlar</span>
-        </button>
-
-        <div class="plan-card">
-
-          <div class="plan-card-top">
-
-            <div>
-              <span class="plan-small">PLAN</span>
-              <strong id="sidebarPlanName">Free</strong>
-            </div>
-
-            <span class="plan-status"></span>
-
-          </div>
-
-          <div class="plan-progress">
-            <span id="planProgress"></span>
-          </div>
-
-          <div class="plan-footer">
-            <span id="planUsageText">0 / 50 mesaj</span>
+        <div class="sidebar-header">
 
             <button
-              id="upgradeButton"
-              type="button"
+                id="brandButton"
+                class="brand"
+                type="button"
+                data-page="chat"
+                aria-label="TürkAI ana sayfa"
             >
-              Yükselt
+
+                <span class="brand-mark">
+                    <span class="brand-orbit"></span>
+                    <span class="brand-core"></span>
+                </span>
+
+                <span class="brand-text">
+
+                    <strong>TürkAI</strong>
+
+                    <small>Yapay Zeka</small>
+
+                </span>
+
             </button>
-          </div>
+
+
+            <button
+                id="sidebarToggle"
+                class="icon-button sidebar-close-button"
+                type="button"
+                aria-label="Menüyü kapat"
+                title="Menüyü kapat"
+            >
+                <span class="icon icon-close"></span>
+            </button>
 
         </div>
 
-        <div class="user-mini">
 
-          <div class="user-avatar" id="userAvatar">
-            T
-          </div>
+        <!-- NEW CHAT -->
 
-          <div class="user-info">
+        <div class="sidebar-new-chat">
 
-            <strong id="userName">
-              Misafir
-            </strong>
+            <button
+                id="newChatButton"
+                class="new-chat-button"
+                type="button"
+            >
 
-            <span id="userEmail">
-              TürkAI hesabı
-            </span>
+                <span class="button-icon">
+                    <span class="icon icon-plus"></span>
+                </span>
 
-          </div>
+                <span>Yeni sohbet</span>
 
-          <button
-            class="user-menu-button"
-            id="userMenuButton"
-            type="button"
-          >
-            ⋯
-          </button>
+                <kbd>Ctrl N</kbd>
+
+            </button>
 
         </div>
 
-      </div>
+
+        <!-- NAVIGATION -->
+
+        <nav
+            class="sidebar-nav"
+            aria-label="Ana menü"
+        >
+
+            <div class="nav-section">
+
+                <span class="nav-label">
+                    Çalışma alanı
+                </span>
+
+
+                <button
+                    type="button"
+                    class="nav-item active"
+                    data-page="chat"
+                    data-nav="chat"
+                >
+
+                    <span class="nav-icon">
+                        <span class="icon icon-chat"></span>
+                    </span>
+
+                    <span class="nav-text">
+                        Sohbet
+                    </span>
+
+                    <span class="nav-shortcut">
+                        1
+                    </span>
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="nav-item"
+                    data-page="research"
+                    data-nav="research"
+                >
+
+                    <span class="nav-icon">
+                        <span class="icon icon-search"></span>
+                    </span>
+
+                    <span class="nav-text">
+                        Araştır
+                    </span>
+
+                    <span class="nav-badge">
+                        AI
+                    </span>
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="nav-item"
+                    data-page="files"
+                    data-nav="files"
+                >
+
+                    <span class="nav-icon">
+                        <span class="icon icon-folder"></span>
+                    </span>
+
+                    <span class="nav-text">
+                        Dosyalar
+                    </span>
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="nav-item"
+                    data-page="media"
+                    data-nav="media"
+                >
+
+                    <span class="nav-icon">
+                        <span class="icon icon-image"></span>
+                    </span>
+
+                    <span class="nav-text">
+                        Medya
+                    </span>
+
+                    <span class="nav-dot"></span>
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="nav-item"
+                    data-page="code"
+                    data-nav="code"
+                >
+
+                    <span class="nav-icon">
+                        <span class="icon icon-code"></span>
+                    </span>
+
+                    <span class="nav-text">
+                        Kod
+                    </span>
+
+                </button>
+
+            </div>
+
+
+            <!-- TOOLS -->
+
+            <div class="nav-section">
+
+                <span class="nav-label">
+                    Hızlı araçlar
+                </span>
+
+
+                <button
+                    type="button"
+                    class="nav-item"
+                    data-tool="weather"
+                >
+
+                    <span class="nav-icon">
+                        <span class="icon icon-weather"></span>
+                    </span>
+
+                    <span class="nav-text">
+                        Hava durumu
+                    </span>
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="nav-item"
+                    data-tool="research"
+                >
+
+                    <span class="nav-icon">
+                        <span class="icon icon-globe"></span>
+                    </span>
+
+                    <span class="nav-text">
+                        İnternette ara
+                    </span>
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="nav-item"
+                    data-tool="code"
+                >
+
+                    <span class="nav-icon">
+                        <span class="icon icon-terminal"></span>
+                    </span>
+
+                    <span class="nav-text">
+                        Kod yaz
+                    </span>
+
+                </button>
+
+            </div>
+
+
+            <!-- RECENT -->
+
+            <div class="nav-section history-section">
+
+                <div class="history-heading">
+
+                    <span class="nav-label">
+                        Son sohbetler
+                    </span>
+
+                    <button
+                        type="button"
+                        class="icon-button tiny"
+                        title="Yenile"
+                        id="refreshHistoryButton"
+                    >
+                        <span class="icon icon-refresh"></span>
+                    </button>
+
+                </div>
+
+
+                <div
+                    id="conversationHistory"
+                    class="conversation-history"
+                >
+
+                    <button
+                        type="button"
+                        class="history-item"
+                        data-history-id="demo-1"
+                    >
+
+                        <span class="history-icon">
+                            <span class="icon icon-message"></span>
+                        </span>
+
+                        <span class="history-content">
+
+                            <span class="history-title">
+                                TürkAI geliştirme
+                            </span>
+
+                            <small>
+                                Bugün
+                            </small>
+
+                        </span>
+
+                    </button>
+
+
+                    <button
+                        type="button"
+                        class="history-item"
+                        data-history-id="demo-2"
+                    >
+
+                        <span class="history-icon">
+                            <span class="icon icon-message"></span>
+                        </span>
+
+                        <span class="history-content">
+
+                            <span class="history-title">
+                                Kod yardımcısı
+                            </span>
+
+                            <small>
+                                Dün
+                            </small>
+
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </nav>
+
+
+        <!-- SIDEBAR BOTTOM -->
+
+        <div class="sidebar-bottom">
+
+
+            <!-- PLAN -->
+
+            <button
+                id="upgradeButton"
+                class="plan-card"
+                type="button"
+                data-action="plans"
+            >
+
+                <div class="plan-card-icon">
+                    <span class="icon icon-spark"></span>
+                </div>
+
+                <div class="plan-card-content">
+
+                    <strong>
+                        TürkAI Pro
+                    </strong>
+
+                    <span>
+                        Daha fazla güç aç
+                    </span>
+
+                </div>
+
+                <span class="icon icon-chevron"></span>
+
+            </button>
+
+
+            <!-- SETTINGS -->
+
+            <button
+                id="settingsButton"
+                class="sidebar-action"
+                type="button"
+                data-action="settings"
+            >
+
+                <span class="sidebar-action-icon">
+                    <span class="icon icon-settings"></span>
+                </span>
+
+                <span>
+                    Ayarlar
+                </span>
+
+            </button>
+
+
+            <!-- USER -->
+
+            <button
+                id="userMenuButton"
+                class="user-mini"
+                type="button"
+                data-action="user-menu"
+            >
+
+                <span
+                    class="user-avatar"
+                    data-user-avatar
+                >
+                    <span class="icon icon-user"></span>
+                </span>
+
+                <span class="user-mini-info">
+
+                    <strong
+                        class="user-name"
+                        data-user-name
+                    >
+                        Misafir
+                    </strong>
+
+                    <small
+                        class="user-email"
+                        data-user-email
+                    >
+                        Giriş yapılmadı
+                    </small>
+
+                </span>
+
+                <span class="icon icon-more"></span>
+
+            </button>
+
+        </div>
 
     </aside>
 
 
-    <!-- ===================================================
+    <!-- =====================================================
          MAIN
-    ==================================================== -->
+         ===================================================== -->
 
     <main class="main-area">
 
-      <!-- Üst bar -->
-
-      <header class="topbar">
-
-        <div class="topbar-left">
-
-          <button
-            class="icon-button desktop-hidden"
-            id="openSidebar"
-            type="button"
-            aria-label="Menüyü aç"
-          >
-            ☰
-          </button>
-
-          <div class="page-heading">
-
-            <strong id="pageTitle">
-              TürkAI
-            </strong>
-
-            <span id="pageSubtitle">
-              Yapay zeka asistanın
-            </span>
-
-          </div>
-
-        </div>
-
-
-        <div class="topbar-right">
-
-          <!-- Model -->
-
-          <button
-            class="model-selector"
-            id="modelSelector"
-            type="button"
-          >
-
-            <span class="model-status-dot"></span>
-
-            <span id="selectedModel">
-              Otomatik
-            </span>
-
-            <span class="chevron">⌄</span>
-
-          </button>
-
-
-          <!-- Bağlantı -->
-
-          <div
-            class="connection-status"
-            id="connectionStatus"
-          >
-            <span class="connection-dot"></span>
-            <span class="connection-text">
-              Çevrimiçi
-            </span>
-          </div>
-
-
-          <!-- Bildirim -->
-
-          <button
-            class="icon-button notification-button"
-            id="notificationButton"
-            type="button"
-            aria-label="Bildirimler"
-          >
-            <span class="notification-icon">◉</span>
-            <span
-              class="notification-badge hidden"
-              id="notificationBadge"
-            >
-              0
-            </span>
-          </button>
-
-        </div>
-
-      </header>
-
-
-      <!-- =================================================
-           PAGE CONTAINER
-      ================================================== -->
-
-      <div class="page-container">
-
 
         <!-- =================================================
-             CHAT PAGE
-        ================================================== -->
+             TOPBAR
+             ================================================= -->
 
-        <section
-          class="page active"
-          id="chatPage"
-          data-page="chat"
-        >
+        <header class="topbar">
 
-          <div
-            class="chat-scroll"
-            id="chatScroll"
-          >
 
-            <!-- Welcome -->
+            <div class="topbar-left">
 
-            <div
-              class="welcome-screen"
-              id="welcomeScreen"
-            >
+                <button
+                    id="mobileMenuButton"
+                    class="icon-button mobile-menu-button"
+                    type="button"
+                    aria-label="Menüyü aç"
+                >
 
-              <div class="welcome-orb">
+                    <span class="icon icon-menu"></span>
 
-                <div class="orb-ring ring-one"></div>
-                <div class="orb-ring ring-two"></div>
-                <div class="orb-ring ring-three"></div>
+                </button>
 
-                <div class="orb-core">
-                  <span>T</span>
+
+                <div class="mobile-brand">
+
+                    <span class="brand-mark small">
+                        <span class="brand-orbit"></span>
+                        <span class="brand-core"></span>
+                    </span>
+
+                    <strong>
+                        TürkAI
+                    </strong>
+
                 </div>
 
-              </div>
+
+                <!-- MODEL -->
+
+                <div class="model-selector-wrap">
+
+                    <button
+                        id="modelSelector"
+                        class="model-selector"
+                        type="button"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                    >
+
+                        <span class="model-icon">
+                            <span class="icon icon-ai"></span>
+                        </span>
+
+                        <span class="model-info">
+
+                            <strong id="currentModel">
+                                Otomatik
+                            </strong>
+
+                            <small>
+                                TürkAI Core
+                            </small>
+
+                        </span>
+
+                        <span class="icon icon-chevron-down"></span>
+
+                    </button>
 
 
-              <div class="welcome-content">
+                    <div
+                        id="modelMenu"
+                        class="model-menu"
+                        hidden
+                    >
 
-                <div class="welcome-eyebrow">
-                  TÜRKÇE YAPAY ZEKA
+                        <div class="model-menu-header">
+
+                            <strong>
+                                Model seç
+                            </strong>
+
+                            <span>
+                                İhtiyacına göre
+                            </span>
+
+                        </div>
+
+
+                        <button
+                            type="button"
+                            class="model-option active"
+                            data-model="auto"
+                            data-model-name="Otomatik"
+                        >
+
+                            <span class="model-option-icon">
+                                <span class="icon icon-spark"></span>
+                            </span>
+
+                            <span class="model-option-content">
+
+                                <strong>
+                                    Otomatik
+                                </strong>
+
+                                <small>
+                                    En uygun modeli seç
+                                </small>
+
+                            </span>
+
+                            <span class="model-check">
+                                <span class="icon icon-check"></span>
+                            </span>
+
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="model-option"
+                            data-model="fast"
+                            data-model-name="Hızlı"
+                        >
+
+                            <span class="model-option-icon">
+                                <span class="icon icon-zap"></span>
+                            </span>
+
+                            <span class="model-option-content">
+
+                                <strong>
+                                    Hızlı
+                                </strong>
+
+                                <small>
+                                    Günlük sorular
+                                </small>
+
+                            </span>
+
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="model-option"
+                            data-model="smart"
+                            data-model-name="Akıllı"
+                        >
+
+                            <span class="model-option-icon">
+                                <span class="icon icon-brain"></span>
+                            </span>
+
+                            <span class="model-option-content">
+
+                                <strong>
+                                    Akıllı
+                                </strong>
+
+                                <small>
+                                    Karmaşık görevler
+                                </small>
+
+                            </span>
+
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="model-option"
+                            data-model="code"
+                            data-model-name="Kod"
+                        >
+
+                            <span class="model-option-icon">
+                                <span class="icon icon-code"></span>
+                            </span>
+
+                            <span class="model-option-content">
+
+                                <strong>
+                                    Kod
+                                </strong>
+
+                                <small>
+                                    Yazılım ve hata ayıklama
+                                </small>
+
+                            </span>
+
+                        </button>
+
+                    </div>
+
                 </div>
 
-                <h1>
-                  Merhaba, ben
-                  <span>TürkAI</span>.
-                </h1>
-
-                <p>
-                  Sorularını cevaplayabilir, kod yazabilir,
-                  araştırma yapabilir ve dosyalarını analiz
-                  edebilirim.
-                </p>
-
-              </div>
-
-
-              <!-- Öneri kartları -->
-
-              <div class="suggestion-grid">
-
-                <button
-                  class="suggestion-card"
-                  data-prompt="Bana modern bir JavaScript projesi fikri ver."
-                  type="button"
-                >
-
-                  <span class="suggestion-icon">
-                    ✦
-                  </span>
-
-                  <span>
-                    <strong>Bir proje fikri ver</strong>
-                    <small>
-                      Yeni bir şey geliştirelim
-                    </small>
-                  </span>
-
-                </button>
-
-
-                <button
-                  class="suggestion-card"
-                  data-prompt="JavaScript'i bana basit ve eğlenceli şekilde öğret."
-                  type="button"
-                >
-
-                  <span class="suggestion-icon">
-                    ◇
-                  </span>
-
-                  <span>
-                    <strong>Kod öğren</strong>
-                    <small>
-                      Adım adım birlikte ilerleyelim
-                    </small>
-                  </span>
-
-                </button>
-
-
-                <button
-                  class="suggestion-card"
-                  data-prompt="Bugün teknoloji dünyasında önemli olan gelişmeleri araştır."
-                  type="button"
-                >
-
-                  <span class="suggestion-icon">
-                    ⌕
-                  </span>
-
-                  <span>
-                    <strong>Bir şey araştır</strong>
-                    <small>
-                      Güncel bilgileri bul
-                    </small>
-                  </span>
-
-                </button>
-
-
-                <button
-                  class="suggestion-card"
-                  data-prompt="Bana yaratıcı bir web sitesi tasarımı oluştur."
-                  type="button"
-                >
-
-                  <span class="suggestion-icon">
-                    ◈
-                  </span>
-
-                  <span>
-                    <strong>Tasarım oluştur</strong>
-                    <small>
-                      Fikri gerçek bir arayüze dönüştür
-                    </small>
-                  </span>
-
-                </button>
-
-              </div>
-
             </div>
 
 
-            <!-- Mesajlar -->
-
-            <div
-              class="messages"
-              id="messages"
-            ></div>
+            <div class="topbar-right">
 
 
-            <!-- Typing -->
+                <!-- SERVER STATUS -->
 
-            <div
-              class="typing-indicator hidden"
-              id="typingIndicator"
-            >
+                <div
+                    class="connection-status online"
+                    data-connection-status
+                    data-server-health
+                >
 
-              <div class="typing-avatar">
-                T
-              </div>
+                    <span class="connection-indicator"></span>
 
-              <div class="typing-content">
+                    <span class="connection-text">
+                        Bağlı
+                    </span>
 
-                <span></span>
-                <span></span>
-                <span></span>
+                </div>
 
-              </div>
+
+                <!-- NOTIFICATION -->
+
+                <button
+                    id="notificationButton"
+                    class="icon-button notification-button"
+                    type="button"
+                    data-action="notifications"
+                    aria-label="Bildirimler"
+                >
+
+                    <span class="icon icon-bell"></span>
+
+                    <span
+                        id="notificationBadge"
+                        class="notification-badge"
+                    >
+                        0
+                    </span>
+
+                </button>
 
             </div>
 
-          </div>
-
-
-          <!-- =================================================
-               COMPOSER
-          ================================================== -->
-
-          <div class="composer-area">
-
-            <div
-              class="file-preview hidden"
-              id="filePreview"
-            ></div>
-
-
-            <div class="composer-shell">
-
-              <div class="composer-tools-left">
-
-                <button
-                  class="composer-tool"
-                  id="attachFileButton"
-                  type="button"
-                  title="Dosya ekle"
-                >
-                  +
-                </button>
-
-              </div>
-
-
-              <textarea
-                id="messageInput"
-                class="message-input"
-                rows="1"
-                maxlength="50000"
-                placeholder="TürkAI'ye bir şey sor..."
-                autocomplete="off"
-                spellcheck="true"
-              ></textarea>
-
-
-              <div class="composer-tools-right">
-
-                <button
-                  class="composer-tool"
-                  id="researchButton"
-                  type="button"
-                  title="İnternette araştır"
-                >
-                  ⌕
-                </button>
-
-                <button
-                  class="composer-tool"
-                  id="voiceButton"
-                  type="button"
-                  title="Sesli giriş"
-                >
-                  ◉
-                </button>
-
-                <button
-                  class="send-button"
-                  id="sendButton"
-                  type="button"
-                  title="Gönder"
-                >
-                  <span>↑</span>
-                </button>
-
-              </div>
-
-            </div>
-
-
-            <div class="composer-footer">
-
-              <span>
-                TürkAI yanıtları hata içerebilir. Önemli bilgileri
-                kontrol et.
-              </span>
-
-              <span id="characterCounter">
-                0 / 50000
-              </span>
-
-            </div>
-
-          </div>
-
-        </section>
+        </header>
 
 
         <!-- =================================================
-             RESEARCH PAGE
-        ================================================== -->
+             CONTENT
+             ================================================= -->
 
-        <section
-          class="page"
-          id="researchPage"
-          data-page="research"
-        >
-
-          <div class="tool-page">
-
-            <div class="tool-hero">
-
-              <div class="tool-icon-large">
-                ⌕
-              </div>
-
-              <div>
-
-                <span class="tool-eyebrow">
-                  WEB INTELLIGENCE
-                </span>
-
-                <h2>
-                  Araştırma
-                </h2>
-
-                <p>
-                  Güncel bilgileri internet üzerinden araştır.
-                </p>
-
-              </div>
-
-            </div>
+        <div class="page-container">
 
 
-            <div class="research-box">
+            <!-- =================================================
+                 CHAT PAGE
+                 ================================================= -->
 
-              <textarea
-                id="researchInput"
-                placeholder="Ne araştırmamı istersin?"
-              ></textarea>
-
-              <button
-                id="runResearchButton"
-                type="button"
-              >
-                Araştırmayı başlat
-              </button>
-
-            </div>
-
-
-            <div
-              id="researchResults"
-              class="research-results"
-            ></div>
-
-          </div>
-
-        </section>
-
-
-        <!-- =================================================
-             FILES PAGE
-        ================================================== -->
-
-        <section
-          class="page"
-          id="filesPage"
-          data-page="files"
-        >
-
-          <div class="tool-page">
-
-            <div class="tool-hero">
-
-              <div class="tool-icon-large">
-                □
-              </div>
-
-              <div>
-
-                <span class="tool-eyebrow">
-                  FILE INTELLIGENCE
-                </span>
-
-                <h2>
-                  Dosyalar
-                </h2>
-
-                <p>
-                  Belgelerini yükle, TürkAI ile analiz et.
-                </p>
-
-              </div>
-
-            </div>
-
-
-            <div
-              class="upload-zone"
-              id="uploadZone"
+            <section
+                id="chatPage"
+                class="page active chat-page"
+                data-page-content="chat"
             >
 
-              <div class="upload-icon">
-                ↑
-              </div>
 
-              <strong>
-                Dosyanı buraya bırak
-              </strong>
+                <!-- WELCOME -->
 
-              <span>
-                veya cihazından seç
-              </span>
+                <div
+                    id="welcomeScreen"
+                    class="welcome-screen"
+                >
 
-              <button
-                id="chooseFileButton"
-                type="button"
-              >
-                Dosya seç
-              </button>
+                    <div class="welcome-orb-wrap">
 
-              <input
-                type="file"
-                id="fileInput"
+                        <div class="welcome-orb">
+
+                            <div class="orb-ring ring-one"></div>
+                            <div class="orb-ring ring-two"></div>
+                            <div class="orb-ring ring-three"></div>
+
+                            <div class="orb-core">
+
+                                <span class="icon icon-ai"></span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="welcome-copy">
+
+                        <div class="eyebrow">
+                            TÜRKİYE'NİN YAPAY ZEKA DENEYİMİ
+                        </div>
+
+                        <h1>
+                            Merhaba, ben TürkAI.
+                        </h1>
+
+                        <p>
+                            Sorularını cevaplayabilir,
+                            araştırabilir, kod yazabilir
+                            ve dosyalarınla çalışabilirim.
+                        </p>
+
+                    </div>
+
+
+                    <!-- QUICK PROMPTS -->
+
+                    <div
+                        class="suggestion-grid"
+                        id="suggestionGrid"
+                    >
+
+                        <button
+                            type="button"
+                            class="suggestion-card"
+                            data-prompt="Bana bugün öğrenebileceğim ilginç bir şey öğret."
+                        >
+
+                            <span class="suggestion-icon">
+                                <span class="icon icon-lightbulb"></span>
+                            </span>
+
+                            <span class="suggestion-content">
+
+                                <strong>
+                                    Bir şey öğret
+                                </strong>
+
+                                <small>
+                                    Yeni ve ilginç bir konu
+                                </small>
+
+                            </span>
+
+                            <span class="icon icon-arrow-up-right"></span>
+
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="suggestion-card"
+                            data-prompt="Bir web sitesi fikri geliştir ve bana yol haritası çıkar."
+                        >
+
+                            <span class="suggestion-icon">
+                                <span class="icon icon-layout"></span>
+                            </span>
+
+                            <span class="suggestion-content">
+
+                                <strong>
+                                    Proje geliştir
+                                </strong>
+
+                                <small>
+                                    Fikirden çalışan ürüne
+                                </small>
+
+                            </span>
+
+                            <span class="icon icon-arrow-up-right"></span>
+
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="suggestion-card"
+                            data-prompt="JavaScript öğrenmeye başlamak istiyorum. Bana interaktif bir ders hazırla."
+                        >
+
+                            <span class="suggestion-icon">
+                                <span class="icon icon-code"></span>
+                            </span>
+
+                            <span class="suggestion-content">
+
+                                <strong>
+                                    Kod öğren
+                                </strong>
+
+                                <small>
+                                    Adım adım JavaScript
+                                </small>
+
+                            </span>
+
+                            <span class="icon icon-arrow-up-right"></span>
+
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="suggestion-card"
+                            data-prompt="İnternetten güncel bilgileri araştır ve kaynaklarıyla özetle."
+                        >
+
+                            <span class="suggestion-icon">
+                                <span class="icon icon-globe"></span>
+                            </span>
+
+                            <span class="suggestion-content">
+
+                                <strong>
+                                    Araştır
+                                </strong>
+
+                                <small>
+                                    Güncel kaynakları incele
+                                </small>
+
+                            </span>
+
+                            <span class="icon icon-arrow-up-right"></span>
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- MESSAGES -->
+
+                <div
+                    id="messages"
+                    class="messages"
+                    aria-live="polite"
+                >
+                </div>
+
+
+                <!-- TYPING -->
+
+                <div
+                    id="typingIndicator"
+                    class="typing-indicator"
+                    hidden
+                >
+
+                    <div class="typing-avatar">
+                        <span class="icon icon-ai"></span>
+                    </div>
+
+                    <div class="typing-content">
+
+                        <span></span>
+                        <span></span>
+                        <span></span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- =================================================
+                     COMPOSER
+                     ================================================= -->
+
+                <div class="composer-area">
+
+
+                    <!-- FILE PREVIEW -->
+
+                    <div
+                        id="filePreview"
+                        class="file-preview"
+                        hidden
+                    >
+
+                        <div class="file-preview-icon">
+                            <span class="icon icon-file"></span>
+                        </div>
+
+                        <div class="file-preview-info">
+
+                            <strong
+                                class="file-name"
+                                data-file-name
+                            >
+                                Dosya
+                            </strong>
+
+                            <small
+                                class="file-size"
+                                data-file-size
+                            >
+                                0 B
+                            </small>
+
+                        </div>
+
+
+                        <button
+                            id="removeFileButton"
+                            class="icon-button tiny"
+                            type="button"
+                            data-action="remove-file"
+                            aria-label="Dosyayı kaldır"
+                        >
+
+                            <span class="icon icon-close"></span>
+
+                        </button>
+
+                    </div>
+
+
+                    <!-- COMPOSER -->
+
+                    <div
+                        id="composer"
+                        class="composer-shell"
+                    >
+
+                        <div class="composer-main">
+
+                            <textarea
+                                id="messageInput"
+                                class="message-input"
+                                rows="1"
+                                maxlength="50000"
+                                placeholder="TürkAI'ye bir şey sor..."
+                                autocomplete="off"
+                                spellcheck="true"
+                            ></textarea>
+
+                        </div>
+
+
+                        <div class="composer-bottom">
+
+
+                            <div class="composer-tools-left">
+
+
+                                <button
+                                    id="attachButton"
+                                    class="composer-tool"
+                                    type="button"
+                                    data-action="attach"
+                                    title="Dosya ekle"
+                                >
+
+                                    <span class="icon icon-paperclip"></span>
+
+                                </button>
+
+
+                                <button
+                                    id="composerResearchButton"
+                                    class="composer-tool"
+                                    type="button"
+                                    data-tool="research"
+                                    title="Araştır"
+                                >
+
+                                    <span class="icon icon-globe"></span>
+
+                                </button>
+
+
+                                <button
+                                    id="composerCodeButton"
+                                    class="composer-tool"
+                                    type="button"
+                                    data-tool="code"
+                                    title="Kod"
+                                >
+
+                                    <span class="icon icon-code"></span>
+
+                                </button>
+
+
+                                <button
+                                    id="voiceButton"
+                                    class="composer-tool"
+                                    type="button"
+                                    data-action="voice"
+                                    title="Sesli giriş"
+                                >
+
+                                    <span class="icon icon-mic"></span>
+
+                                </button>
+
+                            </div>
+
+
+                            <div class="composer-tools-right">
+
+
+                                <span
+                                    id="characterCounter"
+                                    class="character-counter"
+                                >
+                                    0 / 50.000
+                                </span>
+
+
+                                <button
+                                    id="sendButton"
+                                    class="send-button"
+                                    type="button"
+                                    aria-label="Gönder"
+                                    title="Gönder"
+                                >
+
+                                    <span class="icon icon-send"></span>
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="composer-footer">
+
+                        <span>
+                            TürkAI yanıtları hata içerebilir.
+                        </span>
+
+                        <span class="footer-divider"></span>
+
+                        <span>
+                            Shift + Enter yeni satır
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- =================================================
+                 RESEARCH PAGE
+                 ================================================= -->
+
+            <section
+                id="researchPage"
+                class="page research-page"
+                data-page-content="research"
                 hidden
-                multiple
-              >
+            >
 
-            </div>
+                <div class="page-header">
 
+                    <div>
 
-            <div
-              id="fileList"
-              class="file-list"
-            ></div>
+                        <span class="eyebrow">
+                            TÜRKAI ARAŞTIRMA
+                        </span>
 
-          </div>
+                        <h2>
+                            İnterneti araştır.
+                        </h2>
 
-        </section>
+                        <p>
+                            Güncel bilgileri kaynaklarıyla birlikte incele.
+                        </p>
 
+                    </div>
 
-        <!-- =================================================
-             MEDIA PAGE
-        ================================================== -->
+                    <div class="page-header-icon">
+                        <span class="icon icon-globe"></span>
+                    </div>
 
-        <section
-          class="page"
-          id="mediaPage"
-          data-page="media"
-        >
-
-          <div class="tool-page">
-
-            <div class="tool-hero">
-
-              <div class="tool-icon-large">
-                ◈
-              </div>
-
-              <div>
-
-                <span class="tool-eyebrow">
-                  CREATIVE STUDIO
-                </span>
-
-                <h2>
-                  Medya
-                </h2>
-
-                <p>
-                  Yapay zeka ile görsel ve video fikirleri oluştur.
-                </p>
-
-              </div>
-
-            </div>
-
-
-            <div class="media-grid">
-
-              <button
-                class="media-card"
-                id="openImageGenerator"
-                type="button"
-              >
-
-                <div class="media-card-icon">
-                  ◇
                 </div>
 
-                <strong>
-                  Görsel oluştur
-                </strong>
 
-                <span>
-                  Metinden yaratıcı görseller üret.
-                </span>
+                <div class="research-workspace">
 
-                <div class="media-card-arrow">
-                  →
+                    <div class="research-search-card">
+
+                        <div class="research-search-icon">
+                            <span class="icon icon-search"></span>
+                        </div>
+
+                        <input
+                            id="researchInput"
+                            type="text"
+                            placeholder="Ne araştırmak istiyorsun?"
+                            autocomplete="off"
+                        >
+
+                        <button
+                            id="startResearchButton"
+                            class="primary-button"
+                            type="button"
+                            data-action="start-research"
+                        >
+
+                            <span class="icon icon-search"></span>
+
+                            Araştır
+
+                        </button>
+
+                    </div>
+
+
+                    <div
+                        id="researchResults"
+                        class="research-results"
+                    >
+
+                        <div class="empty-state">
+
+                            <div class="empty-state-icon">
+                                <span class="icon icon-search"></span>
+                            </div>
+
+                            <h3>
+                                Araştırmaya hazır
+                            </h3>
+
+                            <p>
+                                Bir konu yaz ve TürkAI'nin güncel
+                                kaynakları incelemesine izin ver.
+                            </p>
+
+                        </div>
+
+                    </div>
+
                 </div>
 
-              </button>
+            </section>
 
 
-              <button
-                class="media-card"
-                id="openVideoGenerator"
-                type="button"
-              >
+            <!-- =================================================
+                 FILES PAGE
+                 ================================================= -->
 
-                <div class="media-card-icon">
-                  ▷
+            <section
+                id="filesPage"
+                class="page files-page"
+                data-page-content="files"
+                hidden
+            >
+
+                <div class="page-header">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            DOSYA MERKEZİ
+                        </span>
+
+                        <h2>
+                            Dosyalarınla çalış.
+                        </h2>
+
+                        <p>
+                            Belgelerini yükle, incele ve TürkAI'ye sor.
+                        </p>
+
+                    </div>
+
+                    <div class="page-header-icon">
+                        <span class="icon icon-folder"></span>
+                    </div>
+
                 </div>
 
-                <strong>
-                  Video oluştur
-                </strong>
 
-                <span>
-                  Fikrini kısa videolara dönüştür.
-                </span>
+                <div class="files-workspace">
 
-                <div class="media-card-arrow">
-                  →
+
+                    <div
+                        id="fileDropZone"
+                        class="file-drop-zone"
+                    >
+
+                        <div class="file-drop-icon">
+                            <span class="icon icon-upload"></span>
+                        </div>
+
+                        <h3>
+                            Dosyanı buraya bırak
+                        </h3>
+
+                        <p>
+                            veya cihazından bir dosya seç
+                        </p>
+
+
+                        <button
+                            type="button"
+                            class="primary-button"
+                            data-action="attach"
+                        >
+
+                            <span class="icon icon-folder-open"></span>
+
+                            Dosya seç
+
+                        </button>
+
+
+                        <small>
+                            Maksimum dosya boyutu: 10 MB
+                        </small>
+
+                    </div>
+
+
+                    <div class="file-tools">
+
+                        <div class="file-tool-card">
+
+                            <span class="file-tool-icon">
+                                <span class="icon icon-file-text"></span>
+                            </span>
+
+                            <strong>
+                                Metin dosyaları
+                            </strong>
+
+                            <small>
+                                TXT, MD, CSV, JSON
+                            </small>
+
+                        </div>
+
+
+                        <div class="file-tool-card">
+
+                            <span class="file-tool-icon">
+                                <span class="icon icon-code"></span>
+                            </span>
+
+                            <strong>
+                                Kod dosyaları
+                            </strong>
+
+                            <small>
+                                JS, HTML, CSS, Python
+                            </small>
+
+                        </div>
+
+
+                        <div class="file-tool-card">
+
+                            <span class="file-tool-icon">
+                                <span class="icon icon-file"></span>
+                            </span>
+
+                            <strong>
+                                Belgeler
+                            </strong>
+
+                            <small>
+                                PDF ve desteklenen belgeler
+                            </small>
+
+                        </div>
+
+                    </div>
+
                 </div>
 
-              </button>
+            </section>
+<!-- =========================================================
+     TÜRKAI — INDEX.HTML
+     PART 2 / 2
+     Media + Code Studio + Settings + Plans + Auth + Panels
+     ========================================================= -->
 
-            </div>
+            <!-- =====================================================
+                 MEDIA PAGE
+                 ===================================================== -->
+            <section id="mediaPage" class="page-section" data-page="media">
 
+                <div class="page-header">
+                    <div>
+                        <div class="eyebrow">MEDIA STUDIO</div>
+                        <h1>Medya Stüdyosu</h1>
+                        <p>TürkAI ile görsel ve video üretim araçlarını tek merkezden yönet.</p>
+                    </div>
 
-            <div
-              id="mediaHistory"
-              class="media-history"
-            ></div>
+                    <div class="page-header-actions">
+                        <button
+                            class="icon-button"
+                            type="button"
+                            data-action="refresh"
+                            aria-label="Yenile"
+                            title="Yenile">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M20 11a8.1 8.1 0 0 0-14.9-4M4 4v5h5"/>
+                                <path d="M4 13a8.1 8.1 0 0 0 14.9 4M20 20v-5h-5"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
 
-          </div>
+                <div class="media-dashboard">
 
-        </section>
+                    <article class="media-card media-card-large">
+                        <div class="media-card-glow"></div>
 
+                        <div class="media-card-header">
+                            <div class="media-icon media-icon-image">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <rect x="3" y="3" width="18" height="18" rx="3"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <path d="m21 15-5-5L5 21"/>
+                                </svg>
+                            </div>
 
-        <!-- =================================================
-             CODE PAGE
-        ================================================== -->
+                            <div>
+                                <h2>Görsel Oluştur</h2>
+                                <p>Metnini görsel fikrine dönüştür.</p>
+                            </div>
 
-        <section
-          class="page"
-          id="codePage"
-          data-page="code"
-        >
+                            <span class="status-badge">AI</span>
+                        </div>
 
-          <div class="tool-page code-page">
+                        <div class="media-prompt-box">
+                            <label for="imagePrompt">Görsel açıklaması</label>
 
-            <div class="tool-hero">
+                            <textarea
+                                id="imagePrompt"
+                                rows="5"
+                                maxlength="2000"
+                                placeholder="Örneğin: Gece İstanbul Boğazı üzerinde modern bir TürkAI teknoloji merkezi, sinematik ışıklandırma..."></textarea>
 
-              <div class="tool-icon-large">
-                &lt;/&gt;
-              </div>
+                            <div class="media-prompt-footer">
+                                <span>Detaylı açıklama daha iyi sonuç verebilir.</span>
 
-              <div>
+                                <button
+                                    id="generateImageButton"
+                                    class="primary-button"
+                                    type="button">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M12 3v18"/>
+                                        <path d="M3 12h18"/>
+                                        <path d="m5 5 14 14"/>
+                                        <path d="m19 5-14 14"/>
+                                    </svg>
+                                    Görsel oluştur
+                                </button>
+                            </div>
+                        </div>
 
-                <span class="tool-eyebrow">
-                  CODE INTELLIGENCE
-                </span>
-
-                <h2>
-                  Kod
-                </h2>
-
-                <p>
-                  Kod yaz, incele, düzelt ve geliştir.
-                </p>
-
-              </div>
-
-            </div>
-
-
-            <div class="code-workspace">
-
-              <div class="code-toolbar">
-
-                <select id="codeLanguage">
-
-                  <option value="javascript">
-                    JavaScript
-                  </option>
-
-                  <option value="html">
-                    HTML
-                  </option>
-
-                  <option value="css">
-                    CSS
-                  </option>
-
-                  <option value="python">
-                    Python
-                  </option>
-
-                  <option value="java">
-                    Java
-                  </option>
-
-                  <option value="csharp">
-                    C#
-                  </option>
-
-                  <option value="cpp">
-                    C++
-                  </option>
-
-                </select>
-
-                <button
-                  id="analyzeCodeButton"
-                  type="button"
-                >
-                  Kodu analiz et
-                </button>
-
-              </div>
-
-
-              <textarea
-                id="codeInput"
-                class="code-editor"
-                spellcheck="false"
-                placeholder="// Kodunu buraya yaz..."
-              ></textarea>
+                        <div id="imageGenerationResult" class="generation-result">
+                            <div class="generation-empty">
+                                <div class="generation-empty-icon">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <rect x="3" y="3" width="18" height="18" rx="3"/>
+                                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                                        <path d="m21 15-5-5L5 21"/>
+                                    </svg>
+                                </div>
+                                <strong>Henüz görsel oluşturulmadı</strong>
+                                <span>Bir açıklama yaz ve üretimi başlat.</span>
+                            </div>
+                        </div>
+                    </article>
 
 
-              <div
-                id="codeOutput"
-                class="code-output"
-              >
-                <span>
-                  Analiz sonucu burada görünecek.
-                </span>
-              </div>
+                    <article class="media-card media-card-large">
+                        <div class="media-card-glow media-card-glow-video"></div>
 
-            </div>
+                        <div class="media-card-header">
+                            <div class="media-icon media-icon-video">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <rect x="3" y="5" width="13" height="14" rx="3"/>
+                                    <path d="m16 10 5-3v10l-5-3z"/>
+                                </svg>
+                            </div>
 
-          </div>
+                            <div>
+                                <h2>Video Oluştur</h2>
+                                <p>Kısa video fikirlerini üretime hazırla.</p>
+                            </div>
 
-        </section>
+                            <span class="status-badge status-badge-purple">PLUS</span>
+                        </div>
 
-      </div>
+                        <div class="media-prompt-box">
+                            <label for="videoPrompt">Video açıklaması</label>
 
+                            <textarea
+                                id="videoPrompt"
+                                rows="5"
+                                maxlength="2000"
+                                placeholder="Örneğin: Gece şehir ışıkları arasında ilerleyen futuristik bir araç, sinematik kamera hareketi..."></textarea>
+
+                            <div class="media-prompt-footer">
+                                <span>Video üretimi planına göre kullanılabilir.</span>
+
+                                <button
+                                    id="generateVideoButton"
+                                    class="primary-button primary-button-purple"
+                                    type="button">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="m8 5 11 7-11 7z"/>
+                                    </svg>
+                                    Video oluştur
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="videoGenerationResult" class="generation-result">
+                            <div class="generation-empty">
+                                <div class="generation-empty-icon">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <rect x="3" y="5" width="13" height="14" rx="3"/>
+                                        <path d="m16 10 5-3v10l-5-3z"/>
+                                    </svg>
+                                </div>
+                                <strong>Henüz video oluşturulmadı</strong>
+                                <span>Video açıklamanı yaz ve üretimi başlat.</span>
+                            </div>
+                        </div>
+                    </article>
+
+                </div>
+
+                <div class="section-heading">
+                    <div>
+                        <h2>Medya araçları</h2>
+                        <p>Üretim sürecinde kullanabileceğin yardımcı araçlar.</p>
+                    </div>
+                </div>
+
+                <div class="tool-grid">
+
+                    <button class="tool-card" type="button" data-action="open-image">
+                        <span class="tool-card-icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 3v18"/>
+                                <path d="M3 12h18"/>
+                                <path d="M5 5l14 14"/>
+                                <path d="M19 5 5 19"/>
+                            </svg>
+                        </span>
+                        <span>
+                            <strong>Yeni görsel</strong>
+                            <small>Hızlı üretim panelini aç</small>
+                        </span>
+                    </button>
+
+                    <button class="tool-card" type="button" data-action="open-video">
+                        <span class="tool-card-icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="m8 5 11 7-11 7z"/>
+                            </svg>
+                        </span>
+                        <span>
+                            <strong>Yeni video</strong>
+                            <small>Video üretim panelini aç</small>
+                        </span>
+                    </button>
+
+                    <button class="tool-card" type="button" data-action="open-files">
+                        <span class="tool-card-icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>
+                            </svg>
+                        </span>
+                        <span>
+                            <strong>Dosyalar</strong>
+                            <small>Yüklediğin dosyaları görüntüle</small>
+                        </span>
+                    </button>
+
+                </div>
+
+            </section>
+
+
+            <!-- =====================================================
+                 CODE PAGE
+                 ===================================================== -->
+            <section id="codePage" class="page-section" data-page="code">
+
+                <div class="page-header">
+                    <div>
+                        <div class="eyebrow">CODE STUDIO</div>
+                        <h1>Kod Stüdyosu</h1>
+                        <p>TürkAI ile kod yaz, düzenle ve sohbet üzerinden geliştirmeye devam et.</p>
+                    </div>
+
+                    <div class="page-header-actions">
+                        <button
+                            id="clearCodeButton"
+                            class="secondary-button"
+                            type="button">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 7h16"/>
+                                <path d="M10 11v6M14 11v6"/>
+                                <path d="M6 7l1 14h10l1-14"/>
+                                <path d="M9 7V4h6v3"/>
+                            </svg>
+                            Temizle
+                        </button>
+                    </div>
+                </div>
+
+                <div class="code-studio">
+
+                    <div class="code-toolbar">
+
+                        <div class="code-toolbar-left">
+                            <div class="code-file-tab active">
+                                <span class="code-file-dot"></span>
+                                main.js
+                            </div>
+
+                            <span class="code-language">
+                                JavaScript
+                            </span>
+                        </div>
+
+                        <div class="code-toolbar-right">
+
+                            <button
+                                id="codeAskButton"
+                                class="code-toolbar-button"
+                                type="button">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-4-.9L3 21l1.8-4.2A8.4 8.4 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/>
+                                </svg>
+                                AI'ya sor
+                            </button>
+
+                            <button
+                                id="copyCodeButton"
+                                class="code-toolbar-button"
+                                type="button">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <rect x="9" y="9" width="11" height="11" rx="2"/>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                </svg>
+                                Kopyala
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <div class="code-editor-shell">
+
+                        <div class="code-line-numbers" id="codeLineNumbers">
+                            <span>1</span>
+                            <span>2</span>
+                            <span>3</span>
+                            <span>4</span>
+                            <span>5</span>
+                            <span>6</span>
+                            <span>7</span>
+                            <span>8</span>
+                            <span>9</span>
+                            <span>10</span>
+                            <span>11</span>
+                            <span>12</span>
+                        </div>
+
+                        <textarea
+                            id="codeEditor"
+                            class="code-editor"
+                            spellcheck="false"
+                            autocapitalize="off"
+                            autocomplete="off"
+                            autocorrect="off"
+                            placeholder="// TürkAI Kod Stüdyosu
+// Buraya kodunu yazabilirsin.
+
+function merhaba(isim) {
+    console.log(`Merhaba ${isim}!`);
+}
+
+merhaba('TürkAI');"></textarea>
+
+                    </div>
+
+                    <div class="code-statusbar">
+                        <span>
+                            <span class="online-dot"></span>
+                            Editör hazır
+                        </span>
+
+                        <span>UTF-8</span>
+                        <span>JavaScript</span>
+                        <span id="codeCharacterCount">0 karakter</span>
+                    </div>
+
+                </div>
+
+
+                <div class="section-heading code-examples-heading">
+                    <div>
+                        <h2>Hızlı başlangıç</h2>
+                        <p>Bir başlangıç şablonu seç.</p>
+                    </div>
+                </div>
+
+                <div class="code-template-grid">
+
+                    <button
+                        class="code-template-card"
+                        type="button"
+                        data-code-template="javascript">
+                        <span class="code-template-icon">
+                            JS
+                        </span>
+                        <span>
+                            <strong>JavaScript</strong>
+                            <small>Değişkenler, fonksiyonlar ve uygulamalar</small>
+                        </span>
+                    </button>
+
+                    <button
+                        class="code-template-card"
+                        type="button"
+                        data-code-template="html">
+                        <span class="code-template-icon">
+                            &lt;/&gt;
+                        </span>
+                        <span>
+                            <strong>HTML</strong>
+                            <small>Web sayfası başlangıç şablonu</small>
+                        </span>
+                    </button>
+
+                    <button
+                        class="code-template-card"
+                        type="button"
+                        data-code-template="python">
+                        <span class="code-template-icon">
+                            PY
+                        </span>
+                        <span>
+                            <strong>Python</strong>
+                            <small>Basit Python başlangıç kodu</small>
+                        </span>
+                    </button>
+
+                    <button
+                        class="code-template-card"
+                        type="button"
+                        data-code-template="css">
+                        <span class="code-template-icon">
+                            #
+                        </span>
+                        <span>
+                            <strong>CSS</strong>
+                            <small>Modern arayüz stilleri</small>
+                        </span>
+                    </button>
+
+                </div>
+
+            </section>
+
+        </div>
     </main>
-
-  </div>
-
-
-  <!-- =====================================================
-       MODEL MENU
-  ====================================================== -->
-
-  <div
-    class="floating-menu hidden"
-    id="modelMenu"
-  >
-
-    <div class="floating-menu-title">
-      Model seç
-    </div>
-
-    <button
-      class="model-option active"
-      data-model="auto"
-      type="button"
-    >
-      <span class="model-option-dot"></span>
-      <span>
-        <strong>Otomatik</strong>
-        <small>En uygun modeli seç</small>
-      </span>
-    </button>
-
-    <button
-      class="model-option"
-      data-model="fast"
-      type="button"
-    >
-      <span class="model-option-dot"></span>
-      <span>
-        <strong>Hızlı</strong>
-        <small>Günlük sorular</small>
-      </span>
-    </button>
-
-    <button
-      class="model-option"
-      data-model="smart"
-      type="button"
-    >
-      <span class="model-option-dot"></span>
-      <span>
-        <strong>Akıllı</strong>
-        <small>Detaylı düşünme</small>
-      </span>
-    </button>
-
-    <button
-      class="model-option"
-      data-model="code"
-      type="button"
-    >
-      <span class="model-option-dot"></span>
-      <span>
-        <strong>Kod</strong>
-        <small>Yazılım görevleri</small>
-      </span>
-    </button>
-
-  </div>
+</div>
 
 
-  <!-- =====================================================
-       NOTIFICATION PANEL
-  ====================================================== -->
+<!-- ============================================================
+     HIDDEN FILE INPUT
+     ============================================================ -->
+<input
+    id="fileInput"
+    type="file"
+    hidden
+    multiple
+    accept=".txt,.md,.json,.csv,.pdf,.js,.ts,.html,.css,.py,.java,.c,.cpp,.cs,.jsx,.tsx,.xml,.yml,.yaml,.log">
 
-  <aside
-    class="notification-panel hidden"
-    id="notificationPanel"
-  >
 
-    <div class="panel-header">
-
-      <strong>
-        Bildirimler
-      </strong>
-
-      <button
-        id="closeNotificationPanel"
-        type="button"
-      >
-        ×
-      </button>
-
-    </div>
+<!-- ============================================================
+     SETTINGS MODAL
+     ============================================================ -->
+<div
+    id="settingsModal"
+    class="modal-overlay"
+    aria-hidden="true">
 
     <div
-      id="notificationList"
-      class="notification-list"
-    >
+        class="modal-panel settings-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settingsTitle">
 
-      <div class="empty-state">
-        <span>◉</span>
-        <strong>Bildirim yok</strong>
-        <small>Yeni bildirimler burada görünecek.</small>
-      </div>
+        <div class="modal-header">
+            <div>
+                <div class="eyebrow">SETTINGS</div>
+                <h2 id="settingsTitle">Ayarlar</h2>
+                <p>TürkAI deneyimini kendine göre düzenle.</p>
+            </div>
+
+            <button
+                class="modal-close"
+                type="button"
+                data-close-modal="settingsModal"
+                aria-label="Kapat">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6 6 18"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="settings-layout">
+
+            <aside class="settings-sidebar">
+
+                <button class="settings-tab active" type="button" data-settings-tab="general">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2h-2.6v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1A1.7 1.7 0 0 0 8 15a1.7 1.7 0 0 0-1.5-1H6v-2.6h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V5h2.6v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.2V14h-.2a1.7 1.7 0 0 0-1.5 1z"/>
+                    </svg>
+                    Genel
+                </button>
+
+                <button class="settings-tab" type="button" data-settings-tab="appearance">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4"/>
+                        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+                    </svg>
+                    Görünüm
+                </button>
+
+                <button class="settings-tab" type="button" data-settings-tab="account">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="8" r="4"/>
+                        <path d="M4 21a8 8 0 0 1 16 0"/>
+                    </svg>
+                    Hesap
+                </button>
+
+            </aside>
+
+
+            <div class="settings-content">
+
+                <div class="settings-section active" data-settings-section="general">
+
+                    <div class="setting-item">
+                        <div>
+                            <strong>Enter ile gönder</strong>
+                            <span>Enter tuşuyla mesajı gönder.</span>
+                        </div>
+
+                        <label class="switch">
+                            <input id="enterToSendToggle" type="checkbox" checked>
+                            <span></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div>
+                            <strong>Otomatik araştırma</strong>
+                            <span>Güncel sorularda araştırmayı etkinleştir.</span>
+                        </div>
+
+                        <label class="switch">
+                            <input id="autoResearchToggle" type="checkbox" checked>
+                            <span></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div>
+                            <strong>Sesli giriş</strong>
+                            <span>Desteklenen cihazlarda mikrofonu kullan.</span>
+                        </div>
+
+                        <label class="switch">
+                            <input id="voiceToggle" type="checkbox" checked>
+                            <span></span>
+                        </label>
+                    </div>
+
+                </div>
+
+
+                <div class="settings-section" data-settings-section="appearance">
+
+                    <div class="setting-item">
+                        <div>
+                            <strong>Tema</strong>
+                            <span>TürkAI arayüzünün görünümünü seç.</span>
+                        </div>
+
+                        <select id="themeSelect" class="settings-select">
+                            <option value="dark">Koyu</option>
+                            <option value="system">Sistem</option>
+                            <option value="light">Açık</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-item">
+                        <div>
+                            <strong>Animasyonlar</strong>
+                            <span>Arayüz geçişlerini ve hareketleri kontrol et.</span>
+                        </div>
+
+                        <label class="switch">
+                            <input id="animationsToggle" type="checkbox" checked>
+                            <span></span>
+                        </label>
+                    </div>
+
+                </div>
+
+
+                <div class="settings-section" data-settings-section="account">
+
+                    <div class="account-settings-card">
+
+                        <div class="account-avatar" id="settingsAvatar">
+                            T
+                        </div>
+
+                        <div>
+                            <strong id="settingsUserName">TürkAI Kullanıcısı</strong>
+                            <span id="settingsUserEmail">Hesap bağlantısı bekleniyor</span>
+                        </div>
+
+                    </div>
+
+                    <button
+                        id="logoutButton"
+                        class="danger-button"
+                        type="button">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M10 17l5-5-5-5"/>
+                            <path d="M15 12H3"/>
+                            <path d="M21 3v18"/>
+                        </svg>
+                        Çıkış yap
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
 
     </div>
+</div>
 
-  </aside>
 
-
-  <!-- =====================================================
-       MOBILE OVERLAY
-  ====================================================== -->
-
-  <div
-    class="sidebar-overlay hidden"
-    id="sidebarOverlay"
-  ></div>
-  <!-- =====================================================
-       SETTINGS PANEL
-  ====================================================== -->
-
-  <aside
-    class="settings-panel hidden"
-    id="settingsPanel"
-  >
-
-    <div class="panel-header">
-
-      <div>
-        <span class="panel-eyebrow">KİŞİSELLEŞTİRME</span>
-        <strong>Ayarlar</strong>
-      </div>
-
-      <button
-        class="panel-close"
-        id="closeSettingsPanel"
-        type="button"
-      >
-        ×
-      </button>
-
-    </div>
-
-
-    <div class="settings-content">
-
-      <!-- Hesap -->
-
-      <section class="settings-section">
-
-        <div class="settings-section-title">
-          <span>Hesap</span>
-        </div>
-
-        <div class="account-card">
-
-          <div
-            class="account-avatar"
-            id="settingsAvatar"
-          >
-            T
-          </div>
-
-          <div class="account-details">
-
-            <strong id="settingsUserName">
-              Misafir
-            </strong>
-
-            <span id="settingsUserEmail">
-              Henüz giriş yapılmadı
-            </span>
-
-          </div>
-
-          <button
-            id="loginFromSettings"
-            class="small-action"
-            type="button"
-          >
-            Giriş
-          </button>
-
-        </div>
-
-      </section>
-
-
-      <!-- Görünüm -->
-
-      <section class="settings-section">
-
-        <div class="settings-section-title">
-          <span>Görünüm</span>
-        </div>
-
-
-        <div class="setting-row">
-
-          <div class="setting-row-info">
-
-            <strong>Koyu tema</strong>
-
-            <small>
-              TürkAI'nin koyu görünümünü kullan
-            </small>
-
-          </div>
-
-          <label class="switch">
-
-            <input
-              type="checkbox"
-              id="darkModeToggle"
-              checked
-            >
-
-            <span class="switch-slider"></span>
-
-          </label>
-
-        </div>
-
-
-        <div class="setting-row">
-
-          <div class="setting-row-info">
-
-            <strong>Sohbet geçmişi</strong>
-
-            <small>
-              Konuşmalarını bu cihazda göster
-            </small>
-
-          </div>
-
-          <label class="switch">
-
-            <input
-              type="checkbox"
-              id="historyToggle"
-              checked
-            >
-
-            <span class="switch-slider"></span>
-
-          </label>
-
-        </div>
-
-
-        <div class="setting-row">
-
-          <div class="setting-row-info">
-
-            <strong>Animasyonlar</strong>
-
-            <small>
-              Arayüz hareketlerini etkinleştir
-            </small>
-
-          </div>
-
-          <label class="switch">
-
-            <input
-              type="checkbox"
-              id="animationsToggle"
-              checked
-            >
-
-            <span class="switch-slider"></span>
-
-          </label>
-
-        </div>
-
-      </section>
-
-
-      <!-- AI -->
-
-      <section class="settings-section">
-
-        <div class="settings-section-title">
-          <span>Yapay zeka</span>
-        </div>
-
-
-        <div class="setting-row">
-
-          <div class="setting-row-info">
-
-            <strong>Otomatik araştırma</strong>
-
-            <small>
-              Güncel sorularda araştırma yap
-            </small>
-
-          </div>
-
-          <label class="switch">
-
-            <input
-              type="checkbox"
-              id="autoResearchToggle"
-              checked
-            >
-
-            <span class="switch-slider"></span>
-
-          </label>
-
-        </div>
-
-
-        <div class="setting-row">
-
-          <div class="setting-row-info">
-
-            <strong>Yanıt sesleri</strong>
-
-            <small>
-              Sesli özellikleri etkinleştir
-            </small>
-
-          </div>
-
-          <label class="switch">
-
-            <input
-              type="checkbox"
-              id="voiceToggle"
-            >
-
-            <span class="switch-slider"></span>
-
-          </label>
-
-        </div>
-
-      </section>
-
-
-      <!-- Dil -->
-
-      <section class="settings-section">
-
-        <div class="settings-section-title">
-          <span>Dil</span>
-        </div>
-
-        <select
-          id="languageSelect"
-          class="settings-select"
-        >
-
-          <option value="tr-TR">
-            Türkçe
-          </option>
-
-          <option value="en-US">
-            English
-          </option>
-
-        </select>
-
-      </section>
-
-
-      <!-- Sistem -->
-
-      <section class="settings-section">
-
-        <div class="settings-section-title">
-          <span>Sistem</span>
-        </div>
-
-        <button
-          class="settings-action-row"
-          id="clearLocalDataButton"
-          type="button"
-        >
-
-          <span class="action-row-icon">
-            ⌫
-          </span>
-
-          <span>
-            <strong>Yerel verileri temizle</strong>
-            <small>
-              Bu cihazdaki sohbet verilerini temizler
-            </small>
-          </span>
-
-          <span class="action-row-arrow">
-            →
-          </span>
-
-        </button>
-
-      </section>
-
-    </div>
-
-  </aside>
-
-
-  <!-- =====================================================
-       PLAN MODAL
-  ====================================================== -->
-
-  <div
-    class="modal-backdrop hidden"
+<!-- ============================================================
+     PLANS MODAL
+     ============================================================ -->
+<div
     id="plansModal"
-  >
+    class="modal-overlay"
+    aria-hidden="true">
 
-    <div class="modal plans-modal">
+    <div
+        class="modal-panel plans-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="plansTitle">
 
-      <div class="modal-header">
+        <div class="modal-header">
+            <div>
+                <div class="eyebrow">TÜRKAI PLANS</div>
+                <h2 id="plansTitle">Planını seç</h2>
+                <p>İhtiyacına uygun TürkAI planını incele.</p>
+            </div>
 
-        <div>
-
-          <span class="modal-eyebrow">
-            TÜRKAI PLANS
-          </span>
-
-          <h2>
-            Planını seç
-          </h2>
-
-          <p>
-            TürkAI'yi kullanım ihtiyacına göre özelleştir.
-          </p>
-
+            <button
+                class="modal-close"
+                type="button"
+                data-close-modal="plansModal"
+                aria-label="Kapat">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6 6 18"/>
+                </svg>
+            </button>
         </div>
 
-        <button
-          class="modal-close"
-          data-close-modal="plansModal"
-          type="button"
-        >
-          ×
-        </button>
 
-      </div>
+        <div class="plans-grid">
 
+            <article class="plan-card plan-free">
 
-      <div class="plans-grid">
+                <div class="plan-card-top">
+                    <span class="plan-label">FREE</span>
+                    <span class="plan-price">₺0<span>/ay</span></span>
+                </div>
 
-        <!-- FREE -->
+                <h3>Başlangıç</h3>
+                <p>TürkAI'yi temel özellikleriyle kullan.</p>
 
-        <article class="plan-option">
+                <ul>
+                    <li>Temel AI sohbeti</li>
+                    <li>Dosya desteği</li>
+                    <li>Temel araştırma</li>
+                    <li>Günlük kullanım limiti</li>
+                </ul>
 
-          <div class="plan-option-top">
+                <button
+                    class="plan-button secondary-button"
+                    type="button"
+                    data-plan="free">
+                    Mevcut plan
+                </button>
 
-            <span class="plan-option-label">
-              FREE
-            </span>
-
-            <span class="plan-option-icon">
-              ○
-            </span>
-
-          </div>
-
-          <h3>
-            Ücretsiz
-          </h3>
-
-          <div class="plan-price">
-            <strong>₺0</strong>
-            <span>/ ay</span>
-          </div>
-
-          <ul>
-
-            <li>50 günlük mesaj</li>
-            <li>10 araştırma</li>
-            <li>Dosya analizi</li>
-            <li>Kod desteği</li>
-
-          </ul>
-
-          <button
-            class="plan-select-button"
-            data-plan="free"
-            type="button"
-          >
-            Mevcut plan
-          </button>
-
-        </article>
+            </article>
 
 
-        <!-- PRO -->
+            <article class="plan-card plan-pro featured">
 
-        <article class="plan-option featured">
+                <div class="plan-popular">ÖNE ÇIKAN</div>
 
-          <div class="plan-badge">
-            POPÜLER
-          </div>
+                <div class="plan-card-top">
+                    <span class="plan-label">PRO</span>
+                    <span class="plan-price">₺250<span>/ay</span></span>
+                </div>
 
-          <div class="plan-option-top">
+                <h3>Pro</h3>
+                <p>Daha geniş kullanım ve gelişmiş araçlar.</p>
 
-            <span class="plan-option-label">
-              PRO
-            </span>
+                <ul>
+                    <li>Daha yüksek AI kullanım limiti</li>
+                    <li>Gelişmiş araştırma</li>
+                    <li>Görsel üretimi</li>
+                    <li>Gelişmiş kod desteği</li>
+                </ul>
 
-            <span class="plan-option-icon">
-              ◆
-            </span>
+                <button
+                    class="plan-button primary-button"
+                    type="button"
+                    data-plan="pro">
+                    Pro'ya geç
+                </button>
 
-          </div>
-
-          <h3>
-            Pro
-          </h3>
-
-          <div class="plan-price">
-            <strong>₺250</strong>
-            <span>/ ay</span>
-          </div>
-
-          <ul>
-
-            <li>100 günlük mesaj</li>
-            <li>50 araştırma</li>
-            <li>Görsel oluşturma</li>
-            <li>Gelişmiş kod desteği</li>
-            <li>Daha yüksek limitler</li>
-
-          </ul>
-
-          <button
-            class="plan-select-button primary"
-            data-plan="pro"
-            type="button"
-          >
-            Pro'ya geç
-          </button>
-
-        </article>
+            </article>
 
 
-        <!-- PLUS -->
+            <article class="plan-card plan-plus">
 
-        <article class="plan-option">
+                <div class="plan-card-top">
+                    <span class="plan-label">PLUS</span>
+                    <span class="plan-price">₺500<span>/ay</span></span>
+                </div>
 
-          <div class="plan-option-top">
+                <h3>Plus</h3>
+                <p>Üretim ve gelişmiş AI özelliklerini genişlet.</p>
 
-            <span class="plan-option-label">
-              PLUS
-            </span>
+                <ul>
+                    <li>Çok daha yüksek kullanım</li>
+                    <li>Gelişmiş medya araçları</li>
+                    <li>Video üretim desteği</li>
+                    <li>Öncelikli özellik erişimi</li>
+                </ul>
 
-            <span class="plan-option-icon">
-              ◈
-            </span>
+                <button
+                    class="plan-button primary-button primary-button-purple"
+                    type="button"
+                    data-plan="plus">
+                    Plus'a geç
+                </button>
 
-          </div>
-
-          <h3>
-            Plus
-          </h3>
-
-          <div class="plan-price">
-            <strong>₺500</strong>
-            <span>/ ay</span>
-          </div>
-
-          <ul>
-
-            <li>200 günlük mesaj</li>
-            <li>100 araştırma</li>
-            <li>4 görsel / gün</li>
-            <li>Video üretimi</li>
-            <li>20 MB dosya limiti</li>
-
-          </ul>
-
-          <button
-            class="plan-select-button"
-            data-plan="plus"
-            type="button"
-          >
-            Plus'a geç
-          </button>
-
-        </article>
+            </article>
 
 
-        <!-- ULTRA -->
+            <article class="plan-card plan-ultra">
 
-        <article class="plan-option ultra">
+                <div class="plan-card-top">
+                    <span class="plan-label">ULTRA</span>
+                    <span class="plan-price">₺1000<span>/ay</span></span>
+                </div>
 
-          <div class="plan-option-top">
+                <h3>Ultra</h3>
+                <p>TürkAI'nin en geniş özellik alanı.</p>
 
-            <span class="plan-option-label">
-              ULTRA
-            </span>
+                <ul>
+                    <li>Ultra yüksek kullanım</li>
+                    <li>Gelişmiş medya özellikleri</li>
+                    <li>Öncelikli sistem erişimi</li>
+                    <li>Yakında daha fazlası</li>
+                </ul>
 
-            <span class="plan-option-icon">
-              ✦
-            </span>
+                <button
+                    class="plan-button secondary-button"
+                    type="button"
+                    data-plan="ultra">
+                    Yakında
+                </button>
 
-          </div>
+            </article>
 
-          <h3>
-            Ultra
-          </h3>
-
-          <div class="plan-price">
-            <strong>₺1000</strong>
-            <span>/ ay</span>
-          </div>
-
-          <ul>
-
-            <li>1000 günlük mesaj</li>
-            <li>500 araştırma</li>
-            <li>20 görsel / gün</li>
-            <li>20 video / gün</li>
-            <li>1 GB dosya limiti</li>
-
-          </ul>
-
-          <button
-            class="plan-select-button"
-            data-plan="ultra"
-            type="button"
-          >
-            Yakında
-          </button>
-
-        </article>
-
-      </div>
+        </div>
 
     </div>
+</div>
 
-  </div>
 
+<!-- ============================================================
+     IMAGE CREATE MODAL
+     ============================================================ -->
+<div
+    id="imageCreateModal"
+    class="modal-overlay"
+    aria-hidden="true">
 
-  <!-- =====================================================
-       IMAGE GENERATOR MODAL
-  ====================================================== -->
+    <div class="modal-panel media-create-modal">
 
-  <div
-    class="modal-backdrop hidden"
-    id="imageModal"
-  >
+        <div class="modal-header">
+            <div>
+                <div class="eyebrow">IMAGE STUDIO</div>
+                <h2>Görsel oluştur</h2>
+                <p>Nasıl bir görsel istediğini anlat.</p>
+            </div>
 
-    <div class="modal generator-modal">
-
-      <div class="modal-header">
-
-        <div>
-
-          <span class="modal-eyebrow">
-            IMAGE STUDIO
-          </span>
-
-          <h2>
-            Görsel oluştur
-          </h2>
-
-          <p>
-            Hayalindeki görseli tarif et.
-          </p>
-
+            <button
+                class="modal-close"
+                type="button"
+                data-close-modal="imageCreateModal"
+                aria-label="Kapat">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6 6 18"/>
+                </svg>
+            </button>
         </div>
 
-        <button
-          class="modal-close"
-          data-close-modal="imageModal"
-          type="button"
-        >
-          ×
-        </button>
-
-      </div>
-
-
-      <div class="generator-body">
-
-        <label class="field-label">
-          Prompt
+        <label class="field-label" for="imageGenerationPrompt">
+            Görsel açıklaması
         </label>
 
         <textarea
-          id="imagePrompt"
-          class="generator-input"
-          maxlength="8000"
-          placeholder="Örneğin: Gece ışıklarıyla aydınlatılmış futuristik İstanbul..."
-        ></textarea>
+            id="imageGenerationPrompt"
+            class="modal-textarea"
+            rows="7"
+            maxlength="2000"
+            placeholder="Görseli ayrıntılı şekilde tarif et..."></textarea>
 
+        <div class="modal-actions">
 
-        <div class="generator-options">
+            <button
+                class="secondary-button"
+                type="button"
+                data-close-modal="imageCreateModal">
+                Vazgeç
+            </button>
 
-          <div class="generator-option">
-
-            <span>Format</span>
-
-            <select id="imageFormat">
-
-              <option value="png">
-                PNG
-              </option>
-
-              <option value="jpg">
-                JPG
-              </option>
-
-              <option value="webp">
-                WEBP
-              </option>
-
-            </select>
-
-          </div>
-
-
-          <div class="generator-option">
-
-            <span>Kalite</span>
-
-            <select id="imageQuality">
-
-              <option value="standard">
-                Standart
-              </option>
-
-              <option value="high">
-                Yüksek
-              </option>
-
-            </select>
-
-          </div>
+            <button
+                id="modalGenerateImageButton"
+                class="primary-button"
+                type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 3v18M3 12h18"/>
+                </svg>
+                Oluştur
+            </button>
 
         </div>
-
-
-        <button
-          id="generateImageButton"
-          class="generate-button"
-          type="button"
-        >
-
-          <span>
-            Görsel oluştur
-          </span>
-
-          <span>
-            →
-          </span>
-
-        </button>
-
-
-        <div
-          id="imageGenerationStatus"
-          class="generation-status hidden"
-        ></div>
-
-        <div
-          id="generatedImageContainer"
-          class="generated-media-container"
-        ></div>
-
-      </div>
 
     </div>
+</div>
 
-  </div>
 
+<!-- ============================================================
+     VIDEO CREATE MODAL
+     ============================================================ -->
+<div
+    id="videoCreateModal"
+    class="modal-overlay"
+    aria-hidden="true">
 
-  <!-- =====================================================
-       VIDEO GENERATOR MODAL
-  ====================================================== -->
+    <div class="modal-panel media-create-modal">
 
-  <div
-    class="modal-backdrop hidden"
-    id="videoModal"
-  >
+        <div class="modal-header">
+            <div>
+                <div class="eyebrow">VIDEO STUDIO</div>
+                <h2>Video oluştur</h2>
+                <p>Video fikrini üretim açıklamasına dönüştür.</p>
+            </div>
 
-    <div class="modal generator-modal">
-
-      <div class="modal-header">
-
-        <div>
-
-          <span class="modal-eyebrow">
-            VIDEO STUDIO
-          </span>
-
-          <h2>
-            Video oluştur
-          </h2>
-
-          <p>
-            Fikrini kısa bir video konseptine dönüştür.
-          </p>
-
+            <button
+                class="modal-close"
+                type="button"
+                data-close-modal="videoCreateModal"
+                aria-label="Kapat">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6 6 18"/>
+                </svg>
+            </button>
         </div>
 
-        <button
-          class="modal-close"
-          data-close-modal="videoModal"
-          type="button"
-        >
-          ×
-        </button>
-
-      </div>
-
-
-      <div class="generator-body">
-
-        <label class="field-label">
-          Video açıklaması
+        <label class="field-label" for="videoGenerationPrompt">
+            Video açıklaması
         </label>
 
         <textarea
-          id="videoPrompt"
-          class="generator-input"
-          maxlength="12000"
-          placeholder="Örneğin: İstanbul üzerinde gün batımında ilerleyen futuristik bir drone çekimi..."
-        ></textarea>
+            id="videoGenerationPrompt"
+            class="modal-textarea"
+            rows="7"
+            maxlength="2000"
+            placeholder="Sahneyi, hareketleri ve atmosferi anlat..."></textarea>
 
+        <div class="modal-actions">
 
-        <div class="generator-options">
+            <button
+                class="secondary-button"
+                type="button"
+                data-close-modal="videoCreateModal">
+                Vazgeç
+            </button>
 
-          <div class="generator-option">
-
-            <span>Süre</span>
-
-            <select id="videoDuration">
-
-              <option value="5">
-                5 saniye
-              </option>
-
-              <option value="10">
-                10 saniye
-              </option>
-
-              <option value="15">
-                15 saniye
-              </option>
-
-              <option value="30">
-                30 saniye
-              </option>
-
-            </select>
-
-          </div>
-
-
-          <div class="generator-option">
-
-            <span>Format</span>
-
-            <select id="videoFormat">
-
-              <option value="16:9">
-                16:9
-              </option>
-
-              <option value="9:16">
-                9:16
-              </option>
-
-              <option value="1:1">
-                1:1
-              </option>
-
-            </select>
-
-          </div>
+            <button
+                id="modalGenerateVideoButton"
+                class="primary-button primary-button-purple"
+                type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m8 5 11 7-11 7z"/>
+                </svg>
+                Oluştur
+            </button>
 
         </div>
 
-
-        <button
-          id="generateVideoButton"
-          class="generate-button"
-          type="button"
-        >
-
-          <span>
-            Video oluştur
-          </span>
-
-          <span>
-            →
-          </span>
-
-        </button>
-
-
-        <div
-          id="videoGenerationStatus"
-          class="generation-status hidden"
-        ></div>
-
-        <div
-          id="generatedVideoContainer"
-          class="generated-media-container"
-        ></div>
-
-      </div>
-
     </div>
+</div>
 
-  </div>
 
-
-  <!-- =====================================================
-       AUTH MODAL
-  ====================================================== -->
-
-  <div
-    class="modal-backdrop hidden"
+<!-- ============================================================
+     AUTH MODAL
+     ============================================================ -->
+<div
     id="authModal"
-  >
+    class="modal-overlay"
+    aria-hidden="true">
 
-    <div class="modal auth-modal">
+    <div class="modal-panel auth-modal">
 
-      <button
-        class="modal-close"
-        data-close-modal="authModal"
-        type="button"
-      >
-        ×
-      </button>
+        <div class="auth-brand">
+            <div class="auth-brand-mark">
+                T
+            </div>
 
+            <div>
+                <strong>TürkAI</strong>
+                <span>Yapay zeka platformu</span>
+            </div>
+        </div>
 
-      <div class="auth-logo">
-        <span>T</span>
-      </div>
+        <div class="auth-content">
 
+            <h2>TürkAI'ye hoş geldin</h2>
 
-      <span class="modal-eyebrow">
-        TÜRKAI HESABI
-      </span>
+            <p>
+                Sohbetlerini, ayarlarını ve deneyimini hesabınla senkronize et.
+            </p>
 
-      <h2>
-        TürkAI'ye giriş yap
-      </h2>
+            <button
+                id="googleLoginButton"
+                class="google-login-button"
+                type="button">
 
-      <p>
-        Sohbetlerini ve ayarlarını cihazların arasında
-        kullanmak için giriş yap.
-      </p>
+                <span class="google-logo">G</span>
 
+                <span>Google ile devam et</span>
 
-      <div
-        id="googleLoginButton"
-        class="google-login-container"
-      ></div>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m9 18 6-6-6-6"/>
+                </svg>
 
+            </button>
 
-      <div class="auth-divider">
-        <span>veya</span>
-      </div>
+            <div class="auth-divider">
+                <span>veya</span>
+            </div>
 
+            <button
+                class="secondary-button auth-continue-button"
+                type="button"
+                data-close-modal="authModal">
+                Şimdilik devam et
+            </button>
 
-      <button
-        id="continueGuestButton"
-        class="guest-button"
-        type="button"
-      >
-        Misafir olarak devam et
-      </button>
+        </div>
 
-
-      <small class="auth-note">
-        Hesap oluşturarak TürkAI kullanım koşullarını
-        kabul etmiş olursun.
-      </small>
+        <button
+            class="modal-close auth-close"
+            type="button"
+            data-close-modal="authModal"
+            aria-label="Kapat">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18"/>
+            </svg>
+        </button>
 
     </div>
+</div>
 
-  </div>
 
-
-  <!-- =====================================================
-       USER MENU
-  ====================================================== -->
-
-  <div
-    class="user-menu hidden"
+<!-- ============================================================
+     USER MENU
+     ============================================================ -->
+<div
     id="userMenu"
-  >
+    class="floating-menu user-menu"
+    hidden>
 
-    <button
-      id="userMenuProfile"
-      type="button"
-    >
-      <span>○</span>
-      Profil
-    </button>
+    <div class="user-menu-header">
 
-    <button
-      id="userMenuSettings"
-      type="button"
-    >
-      <span>⚙</span>
-      Ayarlar
-    </button>
+        <div class="menu-avatar" id="menuAvatar">
+            T
+        </div>
 
-    <div class="user-menu-divider"></div>
-
-    <button
-      id="logoutButton"
-      type="button"
-    >
-      <span>↪</span>
-      Çıkış yap
-    </button>
-
-  </div>
-
-
-  <!-- =====================================================
-       TASK PROGRESS
-  ====================================================== -->
-
-  <div
-    class="task-progress hidden"
-    id="taskProgress"
-  >
-
-    <div class="task-progress-icon">
-      ◌
-    </div>
-
-    <div class="task-progress-content">
-
-      <strong id="taskProgressTitle">
-        İşlem hazırlanıyor
-      </strong>
-
-      <span id="taskProgressText">
-        Lütfen bekle...
-      </span>
-
-      <div class="task-progress-bar">
-        <span id="taskProgressBar"></span>
-      </div>
+        <div>
+            <strong id="menuUserName">TürkAI Kullanıcısı</strong>
+            <span id="menuUserEmail">Misafir</span>
+        </div>
 
     </div>
 
+    <div class="menu-divider"></div>
+
     <button
-      id="closeTaskProgress"
-      type="button"
-    >
-      ×
+        class="menu-item"
+        type="button"
+        data-menu-action="settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2h-2.6v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1A1.7 1.7 0 0 0 8 15a1.7 1.7 0 0 0-1.5-1H6v-2.6h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V5h2.6v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.2V14h-.2a1.7 1.7 0 0 0-1.5 1z"/>
+        </svg>
+        Ayarlar
     </button>
 
-  </div>
+    <button
+        class="menu-item"
+        type="button"
+        data-menu-action="plans">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h16M6 4h12l2 3H4z"/>
+            <path d="M5 7v13h14V7"/>
+            <path d="M9 11h6"/>
+        </svg>
+        Planlar
+    </button>
+
+    <div class="menu-divider"></div>
+
+    <button
+        class="menu-item menu-item-danger"
+        type="button"
+        data-menu-action="logout">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M10 17l5-5-5-5"/>
+            <path d="M15 12H3"/>
+            <path d="M21 3v18"/>
+        </svg>
+        Çıkış yap
+    </button>
+
+</div>
 
 
-  <!-- =====================================================
-       GLOBAL TOAST
-  ====================================================== -->
+<!-- ============================================================
+     NOTIFICATION PANEL
+     ============================================================ -->
+<div
+    id="notificationPanel"
+    class="floating-menu notification-panel"
+    hidden>
 
-  <div
+    <div class="notification-header">
+        <div>
+            <strong>Bildirimler</strong>
+            <span>TürkAI güncellemeleri</span>
+        </div>
+
+        <button
+            id="clearNotificationsButton"
+            class="mini-icon-button"
+            type="button"
+            aria-label="Temizle"
+            title="Temizle">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16"/>
+                <path d="M10 11v6M14 11v6"/>
+                <path d="M6 7l1 14h10l1-14"/>
+            </svg>
+        </button>
+    </div>
+
+    <div id="notificationList" class="notification-list">
+
+        <div class="notification-empty">
+            <div class="notification-empty-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
+                    <path d="M10 21h4"/>
+                </svg>
+            </div>
+
+            <strong>Yeni bildirimin yok</strong>
+            <span>Önemli güncellemeler burada görünecek.</span>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ============================================================
+     TASK / PROGRESS PANEL
+     ============================================================ -->
+<div
+    id="taskPanel"
+    class="task-panel"
+    hidden>
+
+    <div class="task-panel-header">
+
+        <div class="task-status-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v18"/>
+                <path d="M3 12h18"/>
+            </svg>
+        </div>
+
+        <div>
+            <strong id="taskTitle">İşlem hazırlanıyor</strong>
+            <span id="taskSubtitle">TürkAI çalışıyor...</span>
+        </div>
+
+        <button
+            id="taskCloseButton"
+            class="mini-icon-button"
+            type="button"
+            aria-label="Kapat">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18"/>
+            </svg>
+        </button>
+
+    </div>
+
+    <div class="task-progress">
+        <div
+            id="taskProgressBar"
+            class="task-progress-bar"
+            style="width: 0%">
+        </div>
+    </div>
+
+    <div class="task-progress-meta">
+        <span id="taskProgressText">0%</span>
+        <span id="taskProgressState">Hazırlanıyor</span>
+    </div>
+
+</div>
+
+
+<!-- ============================================================
+     TOASTS
+     ============================================================ -->
+<div
     id="toastContainer"
     class="toast-container"
-  ></div>
+    aria-live="polite"
+    aria-atomic="true">
+</div>
 
 
-  <!-- =====================================================
-       LOADING SCREEN
-  ====================================================== -->
-
-  <div
+<!-- ============================================================
+     GLOBAL LOADER
+     ============================================================ -->
+<div
     id="globalLoader"
-    class="global-loader hidden"
-  >
+    class="global-loader"
+    hidden>
 
-    <div class="loader-orb">
-      <span>T</span>
+    <div class="global-loader-card">
+
+        <div class="loader-spinner"></div>
+
+        <div>
+            <strong id="globalLoaderTitle">TürkAI hazırlanıyor</strong>
+            <span id="globalLoaderText">Lütfen bekle...</span>
+        </div>
+
     </div>
 
-    <strong>
-      TürkAI
-    </strong>
-
-    <span>
-      Hazırlanıyor...
-    </span>
-
-  </div>
+</div>
 
 
-  <!-- =====================================================
-       CONFIG
-  ====================================================== -->
+<!-- ============================================================
+     MOBILE QUICK ACTIONS
+     ============================================================ -->
+<div
+    id="mobileQuickActions"
+    class="mobile-quick-actions">
 
-  <script>
+    <button
+        type="button"
+        data-action="new-chat"
+        aria-label="Yeni sohbet">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14"/>
+        </svg>
+    </button>
 
+    <button
+        type="button"
+        data-action="open-research"
+        aria-label="Araştırma">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"/>
+            <path d="m20 20-4-4"/>
+        </svg>
+    </button>
+
+    <button
+        type="button"
+        data-action="open-code"
+        aria-label="Kod">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m8 8-4 4 4 4"/>
+            <path d="m16 8 4 4-4 4"/>
+            <path d="m14 5-4 14"/>
+        </svg>
+    </button>
+
+</div>
+
+
+<!-- ============================================================
+     APP SCRIPT CONFIG
+     ============================================================ -->
+<script>
     window.TURKAI_APP_CONFIG = {
+        appName: "TürkAI",
+        version: "10.0.0",
+        apiBase: "",
+        socketPath: "/socket.io",
+        defaultModel: "auto",
 
-      apiBase: "",
+        features: {
+            chat: true,
+            research: true,
+            weather: true,
+            files: true,
+            code: true,
+            imageGeneration: true,
+            videoGeneration: true,
+            voice: true,
+            notifications: true
+        },
 
-      appName: "TürkAI",
-
-      version: "20.0.0",
-
-      environment: "production",
-
-      language: "tr-TR",
-
-      defaultModel: "auto",
-
-      defaultPlan: "free",
-
-      maxMessageLength: 50000,
-
-      requestTimeout: 60000,
-
-      features: {
-
-        chat: true,
-
-        memory: true,
-
-        research: true,
-
-        weather: true,
-
-        files: true,
-
-        coding: true,
-
-        imageGeneration: true,
-
-        videoGeneration: true,
-
-        realtime: true
-
-      }
-
+        limits: {
+            free: 50,
+            pro: 100,
+            plus: 200,
+            developer: 400
+        }
     };
 
-  </script>
+    document.documentElement.dataset.turkaiReady = "true";
+</script>
 
-
-  <!-- =====================================================
-       APP SCRIPT
-  ====================================================== -->
-
-  <script src="/app.js"></script>
-
-
-  <!-- =====================================================
-       SMALL FRONTEND BOOTSTRAP
-  ====================================================== -->
-
-  <script>
-
-    document.addEventListener("DOMContentLoaded", () => {
-
-      document.body.classList.add("turkai-ready");
-
-      const input =
-        document.getElementById("messageInput");
-
-      const counter =
-        document.getElementById("characterCounter");
-
-      if (input && counter) {
-
-        const updateCounter = () => {
-
-          counter.textContent =
-            `${input.value.length.toLocaleString("tr-TR")} / 50.000`;
-
-        };
-
-        input.addEventListener(
-          "input",
-          updateCounter
-        );
-
-        updateCounter();
-
-      }
-
-
-      /*
-       * Suggestion cards
-       */
-
-      document
-        .querySelectorAll(".suggestion-card")
-        .forEach(card => {
-
-          card.addEventListener("click", () => {
-
-            const prompt =
-              card.dataset.prompt || "";
-
-            if (!input || !prompt) {
-              return;
-            }
-
-            input.value = prompt;
-
-            input.dispatchEvent(
-              new Event("input", {
-                bubbles: true
-              })
-            );
-
-            input.focus();
-
-          });
-
-        });
-
-
-      /*
-       * Modal close
-       */
-
-      document
-        .querySelectorAll("[data-close-modal]")
-        .forEach(button => {
-
-          button.addEventListener("click", () => {
-
-            const id =
-              button.dataset.closeModal;
-
-            const modal =
-              document.getElementById(id);
-
-            if (modal) {
-              modal.classList.add("hidden");
-            }
-
-          });
-
-        });
-
-
-      /*
-       * Modal backdrop close
-       */
-
-      document
-        .querySelectorAll(".modal-backdrop")
-        .forEach(backdrop => {
-
-          backdrop.addEventListener("click", event => {
-
-            if (event.target === backdrop) {
-              backdrop.classList.add("hidden");
-            }
-
-          });
-
-        });
-
-
-      /*
-       * Image generator
-       */
-
-      const imageButton =
-        document.getElementById("openImageGenerator");
-
-      const imageModal =
-        document.getElementById("imageModal");
-
-      if (imageButton && imageModal) {
-
-        imageButton.addEventListener("click", () => {
-
-          imageModal.classList.remove("hidden");
-
-          setTimeout(() => {
-
-            document
-              .getElementById("imagePrompt")
-              ?.focus();
-
-          }, 100);
-
-        });
-
-      }
-
-
-      /*
-       * Video generator
-       */
-
-      const videoButton =
-        document.getElementById("openVideoGenerator");
-
-      const videoModal =
-        document.getElementById("videoModal");
-
-      if (videoButton && videoModal) {
-
-        videoButton.addEventListener("click", () => {
-
-          videoModal.classList.remove("hidden");
-
-          setTimeout(() => {
-
-            document
-              .getElementById("videoPrompt")
-              ?.focus();
-
-          }, 100);
-
-        });
-
-      }
-
-
-      /*
-       * Escape
-       */
-
-      document.addEventListener("keydown", event => {
-
-        if (event.key !== "Escape") {
-          return;
-        }
-
-        document
-          .querySelectorAll(".modal-backdrop")
-          .forEach(element => {
-
-            element.classList.add("hidden");
-
-          });
-
-        document
-          .querySelectorAll(".floating-menu")
-          .forEach(element => {
-
-            element.classList.add("hidden");
-
-          });
-
-        document
-          .querySelectorAll(".user-menu")
-          .forEach(element => {
-
-            element.classList.add("hidden");
-
-          });
-
-      });
-
-    });
-
-  </script>
+<script src="/app.js"></script>
 
 </body>
 </html>
