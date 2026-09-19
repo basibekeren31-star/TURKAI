@@ -2,1728 +2,1091 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#090b10">
 <meta name="description" content="TürkAI - Türkçe yapay zeka platformu">
+
 <title>TürkAI</title>
 
 <style>
-/* =========================================================
-   TÜRKAI — CLEAN PREMIUM
-   ========================================================= */
-
-:root {
-    --bg: #090b10;
-    --surface: #10131a;
-    --surface-2: #151923;
-    --surface-3: #1b1f2a;
-
-    --border: rgba(255,255,255,.075);
-    --border-strong: rgba(255,255,255,.12);
-
-    --text: #f4f5f7;
-    --text-soft: #b7bdc9;
-    --text-muted: #7d8491;
-
-    --accent: #7862e8;
-    --accent-hover: #8975ef;
-    --accent-soft: rgba(120,98,232,.13);
-
-    --success: #48c58a;
-    --danger: #e56b78;
-
-    --topbar: 58px;
-
-    --content-width: 820px;
-    --chat-width: 820px;
-    --composer-width: 760px;
-
-    --r-sm: 9px;
-    --r-md: 13px;
-    --r-lg: 17px;
-    --r-xl: 21px;
+:root{
+    --bg:#090b10;
+    --surface:#10131a;
+    --surface2:#151923;
+    --surface3:#1b1f2a;
+    --border:rgba(255,255,255,.075);
+    --border2:rgba(255,255,255,.12);
+    --text:#f4f5f7;
+    --soft:#b7bdc9;
+    --muted:#7d8491;
+    --accent:#7862e8;
+    --accent2:#8975ef;
+    --accentSoft:rgba(120,98,232,.13);
+    --success:#48c58a;
+    --danger:#e56b78;
+    --topbar:58px;
+    --chatWidth:820px;
+    --composerWidth:760px;
 }
 
-/* =========================================================
-   RESET
-   ========================================================= */
-
-* {
-    box-sizing: border-box;
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
 }
 
 html,
-body {
-    width: 100%;
-    min-height: 100%;
-    margin: 0;
-    padding: 0;
+body{
+    width:100%;
+    height:100%;
 }
 
-html {
-    background: var(--bg);
-}
-
-body {
-    min-height: 100vh;
-
-    color: var(--text);
-
-    background:
-        radial-gradient(
-            circle at 50% -15%,
-            rgba(120,98,232,.09),
-            transparent 34%
-        ),
-        var(--bg);
-
+body{
+    background:var(--bg);
+    color:var(--text);
     font-family:
         Inter,
-        ui-sans-serif,
         system-ui,
         -apple-system,
         BlinkMacSystemFont,
         "Segoe UI",
         sans-serif;
-
-    overflow-x: hidden;
+    overflow:hidden;
 }
 
 button,
 input,
-textarea,
-select {
-    font: inherit;
+textarea{
+    font:inherit;
 }
 
-button {
-    border: 0;
+button{
+    border:0;
+    cursor:pointer;
 }
-
-button,
-.suggestion {
-    -webkit-tap-highlight-color: transparent;
-}
-
-.hidden {
-    display: none !important;
-}
-
-/* =========================================================
-   APP
-   ========================================================= */
-
-#app {
-    width: 100%;
-    min-height: 100vh;
-
-    display: flex;
-    flex-direction: column;
-}
-
-/* =========================================================
-   TOPBAR
-   ========================================================= */
-
-.topbar {
-    width: 100%;
-    height: var(--topbar);
-    min-height: var(--topbar);
-
-    padding: 0 18px;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    background:
-        rgba(9,11,16,.88);
-
-    border-bottom:
-        1px solid var(--border);
-
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-/* =========================================================
-   BRAND
-   ========================================================= */
-
-.brand {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-
-    color: var(--text);
-
-    font-size: 16px;
-    font-weight: 750;
-
-    letter-spacing: -.25px;
-}
-
-.brand-icon {
-    width: 32px;
-    height: 32px;
-
-    flex: 0 0 32px;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 10px;
-
-    color: #ddd8ff;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(120,98,232,.24),
-            rgba(120,98,232,.07)
-        );
-
-    border:
-        1px solid rgba(120,98,232,.22);
-}
-
-/* =========================================================
-   ICONS
-   ========================================================= */
-
-.icon {
-    width: 18px;
-    height: 18px;
-
-    display: block;
-
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.icon-sm {
-    width: 16px;
-    height: 16px;
-}
-
-.icon-lg {
-    width: 21px;
-    height: 21px;
-}
-
-/* =========================================================
-   TOPBAR BUTTON
-   ========================================================= */
-
-#newChatButton {
-    height: 34px;
-
-    padding: 0 11px;
-
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-
-    color: var(--text-soft);
-
-    background:
-        rgba(255,255,255,.045);
-
-    border:
-        1px solid var(--border);
-
-    border-radius: 10px;
-
-    cursor: pointer;
-
-    transition:
-        background .18s ease,
-        border-color .18s ease,
-        color .18s ease;
-}
-
-#newChatButton:hover {
-    color: var(--text);
-
-    background:
-        rgba(255,255,255,.075);
-
-    border-color:
-        var(--border-strong);
-}
-
-/* =========================================================
-   CHAT VIEW
-   ========================================================= */
-
-#chatView {
-    width: 100%;
-    flex: 1;
-
-    min-height: 0;
-
-    padding:
-        0 16px;
-}
-
-/* =========================================================
-   WELCOME
-   ========================================================= */
-
-.welcome {
-    width: min(100%, var(--content-width));
-
-    min-height:
-        calc(100vh - var(--topbar) - 150px);
-
-    margin: 0 auto;
-
-    padding:
-        38px 10px 28px;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-
-    text-align: center;
-}
-
-/* =========================================================
-   WELCOME ICON
-   ========================================================= */
-
-.welcome-icon {
-    width: 58px;
-    height: 58px;
-
-    margin-bottom: 17px;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 17px;
-
-    color: #ded9ff;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(120,98,232,.19),
-            rgba(255,255,255,.035)
-        );
-
-    border:
-        1px solid var(--border-strong);
-
-    box-shadow:
-        0 14px 40px rgba(0,0,0,.24);
-}
-
-/* =========================================================
-   WELCOME TITLE
-   ========================================================= */
-
-.welcome h1 {
-    max-width: 700px;
-
-    margin: 0;
-
-    color: var(--text);
-
-    font-size:
-        clamp(28px, 4vw, 44px);
-
-    line-height: 1.08;
-
-    font-weight: 780;
-
-    letter-spacing: -1.8px;
-}
-
-/* =========================================================
-   WELCOME TEXT
-   ========================================================= */
-
-.welcome p {
-    width: min(100%, 560px);
-
-    margin:
-        13px auto 0;
-
-    color: var(--text-muted);
-
-    font-size: 14px;
-
-    line-height: 1.55;
-}
-
-/* =========================================================
-   SUGGESTIONS
-   ========================================================= */
-
-.suggestions {
-    width: min(100%, 700px);
-
-    margin:
-        25px auto 0;
-
-    display: grid;
-
-    grid-template-columns:
-        repeat(2, minmax(0, 1fr));
-
-    gap: 10px;
-}
-
-/* =========================================================
-   SUGGESTION
-   ========================================================= */
-
-.suggestion {
-    min-height: 82px;
-
-    padding: 13px 14px;
-
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: space-between;
-
-    text-align: left;
-
-    color: var(--text-soft);
-
-    background:
-        rgba(255,255,255,.028);
-
-    border:
-        1px solid var(--border);
-
-    border-radius:
-        var(--r-md);
-
-    cursor: pointer;
-
-    transition:
-        background .18s ease,
-        border-color .18s ease,
-        transform .18s ease;
-}
-
-.suggestion:hover {
-    background:
-        rgba(120,98,232,.065);
-
-    border-color:
-        rgba(120,98,232,.25);
-
-    transform:
-        translateY(-2px);
-}
-
-.suggestion:active {
-    transform:
-        translateY(0);
-}
-
-.suggestion-icon {
-    width: 29px;
-    height: 29px;
-
-    display: grid;
-    place-items: center;
-
-    color: #a99df0;
-
-    background:
-        rgba(120,98,232,.10);
-
-    border-radius: 8px;
-}
-
-.suggestion span {
-    margin-top: 8px;
-
-    color: var(--text-soft);
-
-    font-size: 12px;
-
-    line-height: 1.35;
-}
-
-/* =========================================================
-   CHAT MESSAGES
-   ========================================================= */
-
-.chat-messages {
-    width: min(100%, var(--chat-width));
-
-    margin: 0 auto;
-
-    padding:
-        22px 0 125px;
-
-    display: flex;
-    flex-direction: column;
-
-    gap: 12px;
-}
-
-/* =========================================================
-   MESSAGE
-   ========================================================= */
-
-.message {
-    width: 100%;
-
-    display: flex;
-}
-
-.message.user {
-    justify-content: flex-end;
-}
-
-.message.assistant {
-    justify-content: flex-start;
-}
-
-.message-shell {
-    max-width: 720px;
-
-    display: flex;
-    flex-direction: column;
-
-    gap: 5px;
-}
-
-.message-bubble {
-    max-width: 100%;
-
-    padding:
-        10px 13px;
-
-    color: var(--text);
-
-    font-size: 13px;
-
-    line-height: 1.6;
-
-    overflow-wrap: anywhere;
-
-    border-radius:
-        15px;
-}
-
-.message.user .message-bubble {
-    background:
-        linear-gradient(
-            135deg,
-            #6f58da,
-            #5e49c4
-        );
-
-    border-bottom-right-radius: 5px;
-
-    box-shadow:
-        0 8px 25px rgba(0,0,0,.18);
-}
-
-.message.assistant .message-bubble {
-    background:
-        rgba(255,255,255,.035);
-
-    border:
-        1px solid var(--border);
-
-    border-bottom-left-radius: 5px;
-}
-
-/* =========================================================
-   MESSAGE META
-   ========================================================= */
-
-.message-meta {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    padding:
-        0 4px;
-
-    color:
-        var(--text-muted);
-
-    font-size: 10px;
-}
-
-.message.user .message-meta {
-    justify-content: flex-end;
-}
-
-/* =========================================================
-   MESSAGE ACTIONS
-   ========================================================= */
-
-.message-actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-
-    opacity: .65;
-}
-
-.message-action {
-    width: 26px;
-    height: 26px;
-
-    display: grid;
-    place-items: center;
-
-    color: var(--text-muted);
-
-    background: transparent;
-
-    border-radius: 7px;
-
-    cursor: pointer;
-}
-
-.message-action:hover {
-    color: var(--text);
-
-    background:
-        rgba(255,255,255,.06);
-}
-
-/* =========================================================
-   CODE BLOCK
-   ========================================================= */
-
-.code-block {
-    margin:
-        10px 0;
-
-    overflow: hidden;
-
-    border:
-        1px solid rgba(255,255,255,.08);
-
-    border-radius:
-        var(--r-md);
-
-    background:
-        #0b0d12;
-}
-
-.code-header {
-    height: 32px;
-
-    padding: 0 10px;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    color: var(--text-muted);
-
-    background:
-        rgba(255,255,255,.025);
-
-    border-bottom:
-        1px solid rgba(255,255,255,.06);
-
-    font-size: 10px;
-}
-
-.code-copy {
-    padding: 4px 7px;
-
-    color: var(--text-muted);
-
-    background:
-        rgba(255,255,255,.045);
-
-    border-radius: 6px;
-
-    cursor: pointer;
-
-    font-size: 10px;
-}
-
-.code-copy:hover {
-    color: var(--text);
-}
-
-.code-block pre {
-    margin: 0;
-
-    padding: 13px;
-
-    overflow-x: auto;
-
-    color: #dfe2ea;
-
-    font-family:
-        Consolas,
-        "Cascadia Code",
-        monospace;
-
-    font-size: 12px;
-
-    line-height: 1.6;
-}
-
-/* =========================================================
-   COMPOSER AREA
-   ========================================================= */
-
-.composer-area {
-    width: 100%;
-
-    padding:
-        7px 16px 14px;
-
-    position: sticky;
-    bottom: 0;
-
-    z-index: 90;
-
-    background:
-        linear-gradient(
-            180deg,
-            transparent,
-            rgba(9,11,16,.92) 32%,
-            var(--bg) 75%
-        );
-}
-
-/* =========================================================
-   COMPOSER
-   ========================================================= */
-
-.composer {
-    width: min(100%, var(--composer-width));
-
-    min-height: 52px;
-
-    margin: 0 auto;
-
-    padding: 5px;
-
-    display: flex;
-    align-items: flex-end;
-
-    gap: 5px;
-
-    background:
-        rgba(18,21,29,.96);
-
-    border:
-        1px solid var(--border-strong);
-
-    border-radius:
-        16px;
-
-    box-shadow:
-        0 14px 45px rgba(0,0,0,.28);
-
-    backdrop-filter:
-        blur(20px);
-}
-
-/* =========================================================
-   TEXTAREA
-   ========================================================= */
-
-#messageInput {
-    flex: 1;
-
-    width: 100%;
-
-    min-height: 40px;
-    max-height: 140px;
-
-    margin: 0;
-
-    padding:
-        10px 8px;
-
-    resize: none;
-
-    outline: none;
-    border: 0;
-
-    color: var(--text);
-
-    background: transparent;
-
-    font-size: 13px;
-
-    line-height: 1.5;
-}
-
-#messageInput::placeholder {
-    color:
-        rgba(255,255,255,.34);
-}
-
-/* =========================================================
-   COMPOSER BUTTON
-   ========================================================= */
-
-.composer-button,
-.send-button {
-    width: 38px;
-    height: 38px;
-
-    flex: 0 0 38px;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 10px;
-
-    color:
-        var(--text-muted);
-
-    background:
-        rgba(255,255,255,.045);
-
-    border:
-        1px solid rgba(255,255,255,.05);
-
-    cursor: pointer;
-
-    transition:
-        background .18s ease,
-        color .18s ease,
-        transform .18s ease;
-}
-
-.composer-button:hover {
-    color: var(--text);
-
-    background:
-        rgba(255,255,255,.08);
-}
-
-.send-button {
-    color: white;
-
-    background:
-        var(--accent);
-
-    border-color:
-        transparent;
-}
-
-.send-button:hover {
-    background:
-        var(--accent-hover);
-
-    transform:
-        translateY(-1px);
-}
-
-.send-button:disabled {
-    opacity: .45;
-
-    cursor:
-        not-allowed;
-
-    transform:
-        none;
-}
-
-/* =========================================================
-   COMPOSER NOTE
-   ========================================================= */
-
-.composer-note {
-    width: min(100%, var(--composer-width));
-
-    margin:
-        6px auto 0;
-
-    text-align: center;
-
-    color:
-        var(--text-muted);
-
-    font-size: 10px;
-}
-
-/* =========================================================
-   FILE PREVIEW
-   ========================================================= */
-
-.file-preview {
-    width: min(100%, var(--composer-width));
-
-    margin:
-        0 auto 6px;
-
-    padding:
-        8px 10px;
-
-    display: flex;
-    align-items: center;
-    gap: 9px;
-
-    color: var(--text-soft);
-
-    background:
-        rgba(18,21,29,.95);
-
-    border:
-        1px solid var(--border);
-
-    border-radius:
-        11px;
-}
-
-.file-preview-content {
-    min-width: 0;
-    flex: 1;
-}
-
-#filePreviewName {
-    display: block;
-
-    overflow: hidden;
-
-    text-overflow: ellipsis;
-    white-space: nowrap;
-
-    font-size: 12px;
-}
-
-#filePreviewSize {
-    color: var(--text-muted);
-
-    font-size: 10px;
-}
-
-.close-button {
-    width: 27px;
-    height: 27px;
-
-    display: grid;
-    place-items: center;
-
-    color: var(--text-muted);
-
-    background:
-        transparent;
-
-    border-radius:
-        7px;
-
-    cursor: pointer;
-}
-
-.close-button:hover {
-    color: var(--text);
-
-    background:
-        rgba(255,255,255,.06);
-}
-
-/* =========================================================
-   LOADING
-   ========================================================= */
-
-.loading-overlay {
-    position: fixed;
-    inset: 0;
-
-    z-index: 900;
-
-    display: grid;
-    place-items: center;
-
-    background:
-        rgba(5,7,10,.55);
-
-    backdrop-filter:
-        blur(8px);
-}
-
-.loading-box {
-    min-width: 170px;
-
-    padding:
-        18px;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-
-    background:
-        var(--surface-2);
-
-    border:
-        1px solid var(--border);
-
-    border-radius:
-        var(--r-lg);
-
-    box-shadow:
-        0 25px 70px rgba(0,0,0,.4);
-}
-
-.loading-spinner {
-    width: 25px;
-    height: 25px;
-
-    border:
-        2px solid rgba(255,255,255,.12);
-
-    border-top-color:
-        var(--accent);
-
-    border-radius: 50%;
-
-    animation:
-        spin .75s linear infinite;
-}
-
-.loading-text {
-    color:
-        var(--text-soft);
-
-    font-size: 12px;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* =========================================================
-   TOAST
-   ========================================================= */
-
-.toast {
-    position: fixed;
-
-    left: 50%;
-    bottom: 80px;
-
-    z-index: 1000;
-
-    max-width: min(90vw, 420px);
-
-    padding:
-        9px 13px;
-
-    color:
-        var(--text);
-
-    background:
-        rgba(24,27,36,.96);
-
-    border:
-        1px solid var(--border-strong);
-
-    border-radius:
-        10px;
-
-    box-shadow:
-        0 12px 40px rgba(0,0,0,.35);
-
-    font-size: 12px;
-
-    transform:
-        translateX(-50%);
-
-    animation:
-        toastIn .2s ease;
-}
-
-@keyframes toastIn {
-    from {
-        opacity: 0;
-        transform:
-            translate(-50%, 6px);
-    }
-
-    to {
-        opacity: 1;
-        transform:
-            translate(-50%, 0);
-    }
-}
-
-/* =========================================================
-   MODAL
-   ========================================================= */
-
-.modal {
-    position: fixed;
-    inset: 0;
-
-    z-index: 700;
-
-    padding: 15px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    background:
-        rgba(0,0,0,.62);
-
-    backdrop-filter:
-        blur(12px);
-}
-
-.modal.hidden {
-    display: none;
-}
-
-.modal-content {
-    width: min(100%, 720px);
-
-    max-height:
-        calc(100vh - 30px);
-
-    overflow: auto;
-
-    padding: 20px;
-
-    color: var(--text);
-
-    background:
-        var(--surface-2);
-
-    border:
-        1px solid var(--border-strong);
-
-    border-radius:
-        var(--r-xl);
-
-    box-shadow:
-        0 30px 90px rgba(0,0,0,.5);
-}
-
-.modal-content.large {
-    width:
-        min(100%, 1050px);
-}
-
-.modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    margin-bottom: 18px;
-}
-
-.modal-title {
-    margin: 0;
-
-    font-size: 17px;
-    font-weight: 700;
-}
-
-.modal-subtitle {
-    margin-top: 4px;
-
-    color: var(--text-muted);
-
-    font-size: 11px;
-}
-
-/* =========================================================
-   FORM ELEMENTS
-   ========================================================= */
-
-.input,
-.select,
-.settings-input {
-    width: 100%;
-
-    height: 40px;
-
-    padding:
-        0 11px;
-
-    color: var(--text);
-
-    background:
-        rgba(255,255,255,.035);
-
-    border:
-        1px solid var(--border);
-
-    border-radius:
-        10px;
-
-    outline: none;
-}
-
-.input:focus,
-.select:focus,
-.settings-input:focus {
-    border-color:
-        rgba(120,98,232,.5);
-
-    box-shadow:
-        0 0 0 3px rgba(120,98,232,.08);
-}
-
-.textarea {
-    width: 100%;
-
-    min-height: 110px;
-
-    padding: 11px;
-
-    resize: vertical;
-
-    color: var(--text);
-
-    background:
-        rgba(255,255,255,.035);
-
-    border:
-        1px solid var(--border);
-
-    border-radius:
-        10px;
-
-    outline: none;
-}
-
-/* =========================================================
-   MODAL ACTION
-   ========================================================= */
-
-.primary-button {
-    height: 38px;
-
-    padding:
-        0 14px;
-
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-
-    color: white;
-
-    background:
-        var(--accent);
-
-    border-radius:
-        10px;
-
-    cursor: pointer;
-}
-
-.primary-button:hover {
-    background:
-        var(--accent-hover);
-}
-
-.secondary-button {
-    height: 38px;
-
-    padding:
-        0 14px;
-
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-
-    color: var(--text-soft);
-
-    background:
-        rgba(255,255,255,.05);
-
-    border:
-        1px solid var(--border);
-
-    border-radius:
-        10px;
-
-    cursor: pointer;
-}
-
-.secondary-button:hover {
-    color: var(--text);
-
-    background:
-        rgba(255,255,255,.08);
-}
-
-/* =========================================================
-   SETTINGS
-   ========================================================= */
-
-.settings-list {
-    display: flex;
-    flex-direction: column;
-
-    gap: 8px;
-}
-
-.settings-row {
-    min-height: 58px;
-
-    padding:
-        10px 12px;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 15px;
-
-    background:
-        rgba(255,255,255,.025);
-
-    border:
-        1px solid var(--border);
-
-    border-radius:
-        12px;
-}
-
-.settings-info {
-    min-width: 0;
-}
-
-.settings-label {
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.settings-description {
-    margin-top: 3px;
-
-    color: var(--text-muted);
-
-    font-size: 10px;
-}
-
-/* =========================================================
-   SWITCH
-   ========================================================= */
-
-.switch {
-    width: 38px;
-    height: 21px;
-
-    flex: 0 0 38px;
-
-    position: relative;
-
-    border-radius: 20px;
-
-    background:
-        rgba(255,255,255,.12);
-
-    cursor: pointer;
-
-    transition:
-        background .2s ease;
-}
-
-.switch input {
-    display: none;
-}
-
-.switch span {
-    width: 15px;
-    height: 15px;
-
-    position: absolute;
-
-    left: 3px;
-    top: 3px;
-
-    border-radius: 50%;
-
-    background: white;
-
-    transition:
-        transform .2s ease;
-}
-
-.switch:has(input:checked) {
-    background:
-        var(--accent);
-}
-
-.switch:has(input:checked) span {
-    transform:
-        translateX(17px);
-}
-
-/* =========================================================
-   CODE WORKSPACE
-   ========================================================= */
-
-.code-workspace {
-    width: 100%;
-
-    min-height: 480px;
-
-    display: grid;
-
-    grid-template-columns:
-        180px
-        minmax(0, 1fr)
-        240px;
-
-    overflow: hidden;
-
-    border:
-        1px solid var(--border);
-
-    border-radius:
-        14px;
-
-    background:
-        #0c0e13;
-}
-
-.code-sidebar {
-    min-width: 0;
-
-    padding: 10px;
-
-    border-right:
-        1px solid var(--border);
-}
-
-.code-editor {
-    min-width: 0;
-
-    display: flex;
-    flex-direction: column;
-}
-
-.code-output {
-    min-width: 0;
-
-    padding: 12px;
-
-    overflow: auto;
-
-    border-left:
-        1px solid var(--border);
-
-    background:
-        rgba(0,0,0,.13);
-}
-
-.code-editor textarea {
-    width: 100%;
-    height: 100%;
-    min-height: 470px;
-
-    padding: 15px;
-
-    resize: none;
-
-    color: #e3e6ed;
-
-    background:
-        #0b0d12;
-
-    border: 0;
-    outline: 0;
-
-    font-family:
-        Consolas,
-        "Cascadia Code",
-        monospace;
-
-    font-size: 12px;
-
-    line-height: 1.65;
-}
-
-/* =========================================================
-   SCROLLBAR
-   ========================================================= */
-
-* {
-    scrollbar-width: thin;
-
-    scrollbar-color:
-        rgba(255,255,255,.14)
-        transparent;
-}
-
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    background:
-        rgba(255,255,255,.13);
-
-    border-radius:
-        20px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background:
-        rgba(255,255,255,.21);
-}
-
-/* =========================================================
-   FOCUS
-   ========================================================= */
 
 button:focus-visible,
 textarea:focus-visible,
-input:focus-visible,
-select:focus-visible {
-    outline:
-        2px solid rgba(120,98,232,.65);
-
-    outline-offset:
-        2px;
+input:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
 }
 
-/* =========================================================
-   TABLET
-   ========================================================= */
+/* TOPBAR */
 
-@media (max-width: 850px) {
+.topbar{
+    height:var(--topbar);
+    width:100%;
+    position:fixed;
+    top:0;
+    left:0;
+    z-index:50;
 
-    .suggestions {
-        width: min(100%, 620px);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    padding:0 18px;
+
+    background:rgba(9,11,16,.88);
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+
+    border-bottom:1px solid var(--border);
+}
+
+.brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-width:0;
+}
+
+.brandIcon{
+    width:31px;
+    height:31px;
+    border-radius:9px;
+
+    display:grid;
+    place-items:center;
+
+    background:linear-gradient(
+        135deg,
+        var(--accent),
+        #5740bb
+    );
+
+    box-shadow:
+        0 5px 18px rgba(120,98,232,.22);
+}
+
+.brandIcon svg{
+    width:17px;
+    height:17px;
+}
+
+.brandText{
+    font-weight:750;
+    font-size:16px;
+    letter-spacing:-.3px;
+}
+
+.brandVersion{
+    color:var(--muted);
+    font-size:11px;
+    margin-left:2px;
+}
+
+.topActions{
+    display:flex;
+    align-items:center;
+    gap:7px;
+}
+
+.iconButton{
+    width:34px;
+    height:34px;
+
+    display:grid;
+    place-items:center;
+
+    border-radius:9px;
+
+    color:var(--soft);
+    background:transparent;
+    border:1px solid transparent;
+
+    transition:.18s ease;
+}
+
+.iconButton:hover{
+    color:var(--text);
+    background:var(--surface2);
+    border-color:var(--border);
+}
+
+.iconButton svg{
+    width:17px;
+    height:17px;
+}
+
+.newChatButton{
+    height:34px;
+
+    padding:0 11px;
+
+    display:flex;
+    align-items:center;
+    gap:7px;
+
+    border-radius:9px;
+
+    color:#fff;
+    background:var(--accent);
+
+    font-size:12px;
+    font-weight:650;
+
+    transition:.18s ease;
+}
+
+.newChatButton:hover{
+    background:var(--accent2);
+}
+
+.newChatButton svg{
+    width:15px;
+    height:15px;
+}
+
+/* MAIN */
+
+.app{
+    width:100%;
+    height:100%;
+    padding-top:var(--topbar);
+}
+
+.chatShell{
+    width:min(var(--chatWidth),100%);
+    height:100%;
+    margin:auto;
+
+    display:flex;
+    flex-direction:column;
+
+    position:relative;
+}
+
+.messages{
+    flex:1;
+    min-height:0;
+
+    overflow-y:auto;
+    overflow-x:hidden;
+
+    padding:
+        26px
+        20px
+        150px;
+
+    scrollbar-width:thin;
+    scrollbar-color:#272c38 transparent;
+}
+
+.messages::-webkit-scrollbar{
+    width:6px;
+}
+
+.messages::-webkit-scrollbar-thumb{
+    background:#272c38;
+    border-radius:20px;
+}
+
+/* WELCOME */
+
+.welcome{
+    min-height:calc(100vh - 210px);
+
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+
+    padding:35px 10px 20px;
+}
+
+.welcomeLogo{
+    width:54px;
+    height:54px;
+
+    display:grid;
+    place-items:center;
+
+    border-radius:16px;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent),
+            #4f38ad
+        );
+
+    box-shadow:
+        0 15px 40px rgba(120,98,232,.2);
+
+    margin-bottom:16px;
+}
+
+.welcomeLogo svg{
+    width:28px;
+    height:28px;
+}
+
+.welcome h1{
+    font-size:30px;
+    line-height:1.1;
+    letter-spacing:-1px;
+    margin-bottom:8px;
+}
+
+.welcome p{
+    color:var(--muted);
+    font-size:13px;
+    text-align:center;
+    max-width:480px;
+    line-height:1.6;
+}
+
+.suggestions{
+    width:min(700px,100%);
+
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:9px;
+
+    margin-top:25px;
+}
+
+.suggestion{
+    min-height:72px;
+
+    display:flex;
+    align-items:flex-start;
+    gap:11px;
+
+    text-align:left;
+
+    padding:13px;
+
+    color:var(--soft);
+    background:var(--surface);
+
+    border:1px solid var(--border);
+    border-radius:12px;
+
+    transition:.18s ease;
+}
+
+.suggestion:hover{
+    background:var(--surface2);
+    border-color:var(--border2);
+    transform:translateY(-1px);
+}
+
+.suggestionIcon{
+    width:30px;
+    height:30px;
+
+    flex:0 0 30px;
+
+    display:grid;
+    place-items:center;
+
+    border-radius:8px;
+    background:var(--accentSoft);
+    color:#a99bf4;
+}
+
+.suggestionIcon svg{
+    width:16px;
+    height:16px;
+}
+
+.suggestionText{
+    min-width:0;
+}
+
+.suggestionTitle{
+    color:var(--text);
+    font-size:12px;
+    font-weight:650;
+    margin-bottom:3px;
+}
+
+.suggestionDesc{
+    color:var(--muted);
+    font-size:11px;
+    line-height:1.45;
+}
+
+/* MESSAGE */
+
+.message{
+    width:100%;
+    display:flex;
+    margin-bottom:22px;
+}
+
+.message.user{
+    justify-content:flex-end;
+}
+
+.message.assistant{
+    justify-content:flex-start;
+}
+
+.bubble{
+    max-width:76%;
+
+    border-radius:14px;
+
+    padding:11px 13px;
+
+    font-size:13px;
+    line-height:1.65;
+
+    overflow-wrap:anywhere;
+}
+
+.user .bubble{
+    color:#fff;
+    background:var(--accent);
+
+    border-bottom-right-radius:5px;
+}
+
+.assistant .bubble{
+    color:var(--text);
+    background:var(--surface);
+
+    border:1px solid var(--border);
+
+    border-bottom-left-radius:5px;
+}
+
+.messageMeta{
+    display:flex;
+    align-items:center;
+    gap:7px;
+
+    color:var(--muted);
+    font-size:10px;
+
+    margin-bottom:5px;
+}
+
+.messageActions{
+    display:flex;
+    gap:4px;
+
+    margin-top:7px;
+}
+
+.smallButton{
+    height:25px;
+
+    display:flex;
+    align-items:center;
+    gap:5px;
+
+    padding:0 7px;
+
+    color:var(--muted);
+    background:transparent;
+
+    border:1px solid var(--border);
+    border-radius:7px;
+
+    font-size:10px;
+}
+
+.smallButton:hover{
+    color:var(--text);
+    background:var(--surface2);
+}
+
+.smallButton svg{
+    width:12px;
+    height:12px;
+}
+
+/* MARKDOWN */
+
+.textContent p{
+    margin-bottom:8px;
+}
+
+.textContent p:last-child{
+    margin-bottom:0;
+}
+
+.textContent strong{
+    font-weight:700;
+}
+
+.textContent ul{
+    margin:7px 0 7px 18px;
+}
+
+.textContent li{
+    margin:3px 0;
+}
+
+.inlineCode{
+    padding:2px 5px;
+
+    border-radius:5px;
+
+    background:#090b10;
+    border:1px solid var(--border);
+
+    color:#d7cef9;
+
+    font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+
+    font-size:11px;
+}
+
+.codeBlock{
+    margin:10px 0;
+
+    overflow:hidden;
+
+    border:1px solid var(--border2);
+    border-radius:10px;
+
+    background:#090b10;
+}
+
+.codeHeader{
+    height:31px;
+
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    padding:0 9px;
+
+    color:var(--muted);
+
+    border-bottom:1px solid var(--border);
+
+    font-size:10px;
+}
+
+.codeCopy{
+    color:var(--soft);
+    background:transparent;
+
+    display:flex;
+    align-items:center;
+    gap:4px;
+
+    font-size:10px;
+}
+
+.codeCopy svg{
+    width:12px;
+    height:12px;
+}
+
+.codeBlock pre{
+    margin:0;
+    padding:11px;
+
+    overflow:auto;
+
+    color:#dfe2ea;
+
+    font-size:11px;
+    line-height:1.55;
+
+    font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+}
+
+/* COMPOSER */
+
+.composerArea{
+    position:absolute;
+
+    left:50%;
+    bottom:17px;
+
+    transform:translateX(-50%);
+
+    width:min(var(--composerWidth),calc(100% - 30px));
+
+    z-index:20;
+}
+
+.composer{
+    position:relative;
+
+    display:flex;
+    align-items:flex-end;
+
+    min-height:54px;
+
+    padding:7px;
+
+    background:rgba(16,19,26,.96);
+
+    border:1px solid var(--border2);
+    border-radius:15px;
+
+    box-shadow:
+        0 15px 45px rgba(0,0,0,.35);
+
+    backdrop-filter:blur(20px);
+}
+
+.composer textarea{
+    flex:1;
+
+    min-width:0;
+    min-height:38px;
+    max-height:150px;
+
+    resize:none;
+
+    padding:10px 8px;
+
+    color:var(--text);
+    background:transparent;
+
+    border:0;
+    outline:0;
+
+    font-size:13px;
+    line-height:1.45;
+}
+
+.composer textarea::placeholder{
+    color:#686f7c;
+}
+
+.composerActions{
+    display:flex;
+    align-items:center;
+    gap:4px;
+
+    margin-left:5px;
+}
+
+.composerButton{
+    width:35px;
+    height:35px;
+
+    display:grid;
+    place-items:center;
+
+    border-radius:9px;
+
+    color:var(--muted);
+    background:transparent;
+}
+
+.composerButton:hover{
+    color:var(--text);
+    background:var(--surface2);
+}
+
+.composerButton svg{
+    width:17px;
+    height:17px;
+}
+
+.sendButton{
+    color:#fff;
+    background:var(--accent);
+}
+
+.sendButton:hover{
+    background:var(--accent2);
+}
+
+.sendButton:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+}
+
+.filePreview{
+    display:none;
+
+    align-items:center;
+    gap:8px;
+
+    position:absolute;
+
+    left:10px;
+    right:10px;
+    bottom:61px;
+
+    padding:7px 9px;
+
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:9px;
+
+    font-size:10px;
+}
+
+.filePreview.active{
+    display:flex;
+}
+
+.fileInfo{
+    flex:1;
+    min-width:0;
+
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+
+    color:var(--soft);
+}
+
+.removeFile{
+    width:25px;
+    height:25px;
+
+    display:grid;
+    place-items:center;
+
+    border-radius:7px;
+
+    color:var(--muted);
+    background:transparent;
+}
+
+.removeFile:hover{
+    color:var(--danger);
+    background:rgba(229,107,120,.1);
+}
+
+.composerHint{
+    text-align:center;
+
+    margin-top:7px;
+
+    color:#5e6470;
+    font-size:9px;
+}
+
+/* LOADING */
+
+.typing{
+    display:flex;
+    align-items:center;
+    gap:4px;
+    padding:4px 1px;
+}
+
+.typing span{
+    width:5px;
+    height:5px;
+
+    border-radius:50%;
+
+    background:#858b98;
+
+    animation:typing 1.2s infinite ease-in-out;
+}
+
+.typing span:nth-child(2){
+    animation-delay:.15s;
+}
+
+.typing span:nth-child(3){
+    animation-delay:.3s;
+}
+
+@keyframes typing{
+    0%,60%,100%{
+        opacity:.25;
+        transform:translateY(0);
     }
-
-    .code-workspace {
-        grid-template-columns:
-            150px
-            minmax(0, 1fr);
-    }
-
-    .code-output {
-        display: none;
+    30%{
+        opacity:1;
+        transform:translateY(-3px);
     }
 }
 
-/* =========================================================
-   MOBILE
-   ========================================================= */
+/* TOAST */
 
-@media (max-width: 600px) {
+.toast{
+    position:fixed;
 
-    :root {
-        --topbar: 52px;
+    left:50%;
+    bottom:86px;
+
+    transform:translateX(-50%) translateY(10px);
+
+    z-index:100;
+
+    max-width:calc(100% - 30px);
+
+    padding:9px 13px;
+
+    color:#fff;
+    background:#181c25;
+
+    border:1px solid var(--border2);
+    border-radius:9px;
+
+    font-size:11px;
+
+    opacity:0;
+    pointer-events:none;
+
+    transition:.2s ease;
+}
+
+.toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+}
+
+/* MODAL */
+
+.modal{
+    position:fixed;
+    inset:0;
+
+    z-index:90;
+
+    display:none;
+    align-items:center;
+    justify-content:center;
+
+    padding:20px;
+
+    background:rgba(0,0,0,.55);
+    backdrop-filter:blur(8px);
+}
+
+.modal.active{
+    display:flex;
+}
+
+.modalBox{
+    width:min(430px,100%);
+
+    background:var(--surface);
+
+    border:1px solid var(--border2);
+    border-radius:15px;
+
+    overflow:hidden;
+
+    box-shadow:0 25px 80px rgba(0,0,0,.45);
+}
+
+.modalHeader{
+    height:52px;
+
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    padding:0 15px;
+
+    border-bottom:1px solid var(--border);
+}
+
+.modalTitle{
+    font-size:14px;
+    font-weight:700;
+}
+
+.modalBody{
+    padding:15px;
+}
+
+.setting{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    gap:15px;
+
+    padding:11px 0;
+
+    border-bottom:1px solid var(--border);
+}
+
+.setting:last-child{
+    border-bottom:0;
+}
+
+.settingText{
+    min-width:0;
+}
+
+.settingTitle{
+    font-size:12px;
+    font-weight:600;
+}
+
+.settingDesc{
+    color:var(--muted);
+    font-size:10px;
+    margin-top:3px;
+}
+
+.switch{
+    width:37px;
+    height:21px;
+
+    flex:0 0 37px;
+
+    position:relative;
+
+    border-radius:20px;
+
+    background:#292e39;
+
+    cursor:pointer;
+}
+
+.switch input{
+    display:none;
+}
+
+.switch span{
+    position:absolute;
+
+    top:3px;
+    left:3px;
+
+    width:15px;
+    height:15px;
+
+    border-radius:50%;
+
+    background:#a2a7b2;
+
+    transition:.18s;
+}
+
+.switch input:checked + span{
+    transform:translateX(16px);
+    background:#fff;
+}
+
+.switch:has(input:checked){
+    background:var(--accent);
+}
+
+/* RESPONSIVE */
+
+@media(max-width:600px){
+
+    :root{
+        --topbar:52px;
     }
 
-    .topbar {
+    .topbar{
+        padding:0 11px;
+    }
+
+    .brandVersion{
+        display:none;
+    }
+
+    .brandText{
+        font-size:15px;
+    }
+
+    .newChatButton{
+        width:34px;
+        padding:0;
+        justify-content:center;
+    }
+
+    .newChatButton span{
+        display:none;
+    }
+
+    .messages{
         padding:
-            0 11px;
+            18px
+            11px
+            125px;
     }
 
-    #chatView {
-        padding:
-            0 9px;
+    .welcome{
+        min-height:calc(100vh - 170px);
+        padding:25px 4px 15px;
     }
 
-    .welcome {
-        min-height:
-            calc(100vh - 170px);
-
-        padding:
-            25px 4px 20px;
+    .welcomeLogo{
+        width:46px;
+        height:46px;
+        border-radius:13px;
     }
 
-    .welcome-icon {
-        width: 50px;
-        height: 50px;
-
-        margin-bottom: 14px;
-
-        border-radius: 15px;
+    .welcomeLogo svg{
+        width:23px;
+        height:23px;
     }
 
-    .welcome h1 {
-        font-size: 28px;
-        letter-spacing: -1px;
+    .welcome h1{
+        font-size:25px;
     }
 
-    .welcome p {
-        max-width: 420px;
-
-        font-size: 12px;
+    .welcome p{
+        font-size:12px;
     }
 
-    .suggestions {
-        width: 100%;
-
-        margin-top: 20px;
-
-        grid-template-columns:
-            1fr;
-
-        gap: 7px;
+    .suggestions{
+        grid-template-columns:1fr;
+        gap:7px;
+        margin-top:20px;
     }
 
-    .suggestion {
-        min-height: 62px;
-
-        padding:
-            10px 11px;
-
-        border-radius:
-            11px;
+    .suggestion{
+        min-height:61px;
+        padding:10px;
     }
 
-    .suggestion span {
-        font-size: 11px;
+    .suggestionIcon{
+        width:27px;
+        height:27px;
+        flex-basis:27px;
     }
 
-    .chat-messages {
-        padding:
-            15px 0 105px;
-
-        gap: 9px;
+    .suggestionDesc{
+        font-size:10px;
     }
 
-    .message-bubble {
-        max-width: 91%;
-
-        padding:
-            9px 11px;
-
-        font-size: 12px;
+    .bubble{
+        max-width:88%;
+        font-size:12px;
+        padding:9px 11px;
     }
 
-    .composer-area {
-        padding:
-            5px 8px
-            max(9px, env(safe-area-inset-bottom));
+    .composerArea{
+        width:calc(100% - 18px);
+        bottom:9px;
     }
 
-    .composer {
-        min-height: 47px;
-
-        padding: 4px;
-
-        border-radius:
-            14px;
+    .composer{
+        min-height:48px;
+        border-radius:13px;
     }
 
-    #messageInput {
-        min-height: 37px;
-
-        padding:
-            8px 6px;
-
-        font-size: 12px;
+    .composer textarea{
+        min-height:34px;
+        font-size:12px;
+        padding:8px 6px;
     }
 
-    .composer-button,
-    .send-button {
-        width: 35px;
-        height: 35px;
-
-        flex-basis: 35px;
-
-        border-radius:
-            9px;
+    .composerButton{
+        width:32px;
+        height:32px;
     }
 
-    .composer-note {
-        font-size: 9px;
+    .composerHint{
+        display:none;
     }
 
-    .modal {
-        padding: 8px;
-    }
-
-    .modal-content {
-        padding: 14px;
-
-        max-height:
-            calc(100vh - 16px);
-
-        border-radius:
-            16px;
-    }
-
-    .code-workspace {
-        display: block;
-
-        min-height: 400px;
-    }
-
-    .code-sidebar {
-        display: none;
-    }
-
-    .code-editor textarea {
-        min-height: 380px;
+    .filePreview{
+        bottom:54px;
     }
 }
 
-/* =========================================================
-   SMALL PHONE
-   ========================================================= */
+@media(max-width:380px){
 
-@media (max-width: 380px) {
-
-    .brand {
-        font-size: 14px;
+    .messages{
+        padding-left:8px;
+        padding-right:8px;
     }
 
-    #newChatButton span {
-        display: none;
+    .composerArea{
+        width:calc(100% - 12px);
     }
 
-    .welcome h1 {
-        font-size: 25px;
+    .topbar{
+        padding:0 8px;
     }
 
-    .welcome p {
-        font-size: 11px;
-    }
-
-    .message-bubble {
-        max-width: 94%;
+    .bubble{
+        max-width:92%;
     }
 }
 
-/* =========================================================
-   REDUCED MOTION
-   ========================================================= */
-
-@media (prefers-reduced-motion: reduce) {
+@media(prefers-reduced-motion:reduce){
 
     *,
     *::before,
-    *::after {
-        animation-duration: .01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: .01ms !important;
-        scroll-behavior: auto !important;
+    *::after{
+        animation-duration:.01ms!important;
+        animation-iteration-count:1!important;
+        transition-duration:.01ms!important;
     }
 }
 </style>
@@ -1731,474 +1094,512 @@ select:focus-visible {
 
 <body>
 
-<div id="app">
+<!-- TOPBAR -->
 
-    <!-- =====================================================
-         TOP BAR
-         ===================================================== -->
+<header class="topbar">
 
-    <header class="topbar">
+    <div class="brand">
 
-        <div class="brand">
+        <div class="brandIcon">
 
-            <div class="brand-icon">
-                <svg class="icon" viewBox="0 0 24 24">
-                    <path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3z"/>
-                    <path d="M19 15l.7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7L19 15z"/>
-                </svg>
-            </div>
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2">
 
-            <span>TürkAI</span>
+                <path d="M12 3v3"/>
+                <path d="M7 7l-2-2"/>
+                <path d="M17 7l2-2"/>
+
+                <rect
+                    x="4"
+                    y="8"
+                    width="16"
+                    height="11"
+                    rx="4"/>
+
+                <circle cx="9" cy="13" r="1"/>
+                <circle cx="15" cy="13" r="1"/>
+
+                <path d="M9 16h6"/>
+
+            </svg>
 
         </div>
 
+        <div class="brandText">
+            TürkAI
+        </div>
+
+        <div class="brandVersion">
+            11.0
+        </div>
+
+    </div>
+
+    <div class="topActions">
+
         <button
+            class="iconButton"
+            id="settingsButton"
+            title="Ayarlar"
+            aria-label="Ayarlar">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="1.8">
+
+                <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
+
+                <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.8 1.8-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20h-2.55v-.1a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-1.8-1.8.06-.06A1.7 1.7 0 0 0 8.1 15a1.7 1.7 0 0 0-1.56-1.03H6v-2.55h.1A1.7 1.7 0 0 0 7.66 10a1.7 1.7 0 0 0-.34-1.88l-.06-.06 1.8-1.8.06.06A1.7 1.7 0 0 0 11 6.66 1.7 1.7 0 0 0 12.03 5.1V5h2.55v.1A1.7 1.7 0 0 0 15.6 6.66a1.7 1.7 0 0 0 1.88-.34l.06-.06 1.8 1.8-.06.06A1.7 1.7 0 0 0 18.94 10a1.7 1.7 0 0 0 1.56 1.03h.1v2.55h-.1A1.7 1.7 0 0 0 19.4 15Z"/>
+
+            </svg>
+
+        </button>
+
+        <button
+            class="newChatButton"
             id="newChatButton"
-            type="button"
-            title="Yeni sohbet"
-        >
-            <svg class="icon icon-sm" viewBox="0 0 24 24">
+            title="Yeni sohbet">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2">
+
                 <path d="M12 5v14"/>
                 <path d="M5 12h14"/>
+
             </svg>
 
             <span>Yeni sohbet</span>
+
         </button>
 
-    </header>
+    </div>
+
+</header>
 
 
-    <!-- =====================================================
-         CHAT VIEW
-         ===================================================== -->
+<!-- APP -->
 
-    <main id="chatView">
+<main class="app">
 
-        <!-- WELCOME -->
-
-        <section id="welcomeState" class="welcome">
-
-            <div class="welcome-icon">
-
-                <svg class="icon-lg" viewBox="0 0 24 24">
-                    <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/>
-                    <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/>
-                </svg>
-
-            </div>
-
-            <h1>Bugün ne yapmak istiyorsun?</h1>
-
-            <p>
-                TürkAI ile soru sorabilir, kod yazabilir,
-                araştırma yapabilir ve dosyalarınla çalışabilirsin.
-            </p>
-
-
-            <!-- SUGGESTIONS -->
-
-            <div class="suggestions">
-
-                <button
-                    class="suggestion"
-                    type="button"
-                    data-suggestion="Bana JavaScript öğrenmek için kolay bir çalışma planı hazırla."
-                >
-
-                    <div class="suggestion-icon">
-                        <svg class="icon-sm" viewBox="0 0 24 24">
-                            <path d="M4 5h16v14H4z"/>
-                            <path d="M8 9h8"/>
-                            <path d="M8 13h5"/>
-                        </svg>
-                    </div>
-
-                    <span>
-                        JavaScript öğrenme planı hazırla
-                    </span>
-
-                </button>
-
-
-                <button
-                    class="suggestion"
-                    type="button"
-                    data-suggestion="Bana modern ve çalışan bir HTML uygulaması oluştur."
-                >
-
-                    <div class="suggestion-icon">
-                        <svg class="icon-sm" viewBox="0 0 24 24">
-                            <path d="M4 4h16v16H4z"/>
-                            <path d="M8 8l-3 4 3 4"/>
-                            <path d="M16 8l3 4-3 4"/>
-                            <path d="M14 6l-4 12"/>
-                        </svg>
-                    </div>
-
-                    <span>
-                        Çalışan bir HTML uygulaması oluştur
-                    </span>
-
-                </button>
-
-
-                <button
-                    class="suggestion"
-                    type="button"
-                    data-suggestion="Yapay zekâ hakkında bana anlaşılır bir şekilde bilgi ver."
-                >
-
-                    <div class="suggestion-icon">
-                        <svg class="icon-sm" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="8"/>
-                            <path d="M12 8v4l2.5 2"/>
-                        </svg>
-                    </div>
-
-                    <span>
-                        Bir konuyu anlaşılır şekilde öğren
-                    </span>
-
-                </button>
-
-
-                <button
-                    class="suggestion"
-                    type="button"
-                    data-suggestion="Bana yaratıcı bir proje fikri ver."
-                >
-
-                    <div class="suggestion-icon">
-                        <svg class="icon-sm" viewBox="0 0 24 24">
-                            <path d="M9 18h6"/>
-                            <path d="M10 22h4"/>
-                            <path d="M8.5 14.5A6 6 0 1115.5 14"/>
-                            <path d="M9 11h6"/>
-                        </svg>
-                    </div>
-
-                    <span>
-                        Yeni bir proje fikri bul
-                    </span>
-
-                </button>
-
-            </div>
-
-        </section>
-
-
-        <!-- CHAT MESSAGES -->
-
-        <section
-            id="chatMessages"
-            class="chat-messages"
-            aria-live="polite"
-        ></section>
-
-    </main>
-
-
-    <!-- =====================================================
-         COMPOSER
-         ===================================================== -->
-
-    <div class="composer-area">
-
-        <!-- FILE PREVIEW -->
+    <section class="chatShell">
 
         <div
-            id="filePreview"
-            class="file-preview hidden"
-        >
+            class="messages"
+            id="messages">
 
-            <div id="filePreviewIcon">
+            <!-- WELCOME -->
 
-                <svg class="icon-sm" viewBox="0 0 24 24">
-                    <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/>
-                    <path d="M13 2v7h7"/>
-                </svg>
+            <div
+                class="welcome"
+                id="welcome">
+
+                <div class="welcomeLogo">
+
+                    <svg viewBox="0 0 24 24"
+                         fill="none"
+                         stroke="currentColor"
+                         stroke-width="1.8">
+
+                        <path d="M12 3v3"/>
+                        <path d="M7 7 5 5"/>
+                        <path d="m17 7 2-2"/>
+
+                        <rect
+                            x="4"
+                            y="8"
+                            width="16"
+                            height="11"
+                            rx="4"/>
+
+                        <circle cx="9" cy="13" r="1"/>
+                        <circle cx="15" cy="13" r="1"/>
+
+                        <path d="M9 16h6"/>
+
+                    </svg>
+
+                </div>
+
+                <h1>Merhaba, ben TürkAI</h1>
+
+                <p>
+                    Sorularını cevaplayabilir, kod yazabilir,
+                    dosyalarını inceleyebilir ve server üzerinden
+                    seninle çalışabilirim.
+                </p>
+
+
+                <div class="suggestions">
+
+                    <button
+                        class="suggestion"
+                        data-prompt="JavaScript öğrenmeye başlamak istiyorum. Bana basit ve uygulamalı bir ders hazırla.">
+
+                        <div class="suggestionIcon">
+
+                            <svg viewBox="0 0 24 24"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 stroke-width="1.8">
+
+                                <path d="M4 5h16v14H4z"/>
+                                <path d="m8 10 3 2-3 2"/>
+                                <path d="M13 16h4"/>
+
+                            </svg>
+
+                        </div>
+
+                        <div class="suggestionText">
+                            <div class="suggestionTitle">
+                                Kodlama öğren
+                            </div>
+
+                            <div class="suggestionDesc">
+                                Uygulamalı JavaScript dersi başlat
+                            </div>
+                        </div>
+
+                    </button>
+
+
+                    <button
+                        class="suggestion"
+                        data-prompt="TürkAI için modern ve güvenli bir Node.js backend mimarisi öner.">
+
+                        <div class="suggestionIcon">
+
+                            <svg viewBox="0 0 24 24"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 stroke-width="1.8">
+
+                                <rect x="4" y="4" width="16" height="16" rx="3"/>
+                                <path d="M8 9h8"/>
+                                <path d="M8 13h5"/>
+                                <path d="M8 17h3"/>
+
+                            </svg>
+
+                        </div>
+
+                        <div class="suggestionText">
+                            <div class="suggestionTitle">
+                                Kod yaz
+                            </div>
+
+                            <div class="suggestionDesc">
+                                Backend veya frontend geliştirelim
+                            </div>
+                        </div>
+
+                    </button>
+
+
+                    <button
+                        class="suggestion"
+                        data-prompt="Yapay zekanın nasıl çalıştığını bana 6. sınıf seviyesinde ama sıkıcı olmadan anlat.">
+
+                        <div class="suggestionIcon">
+
+                            <svg viewBox="0 0 24 24"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 stroke-width="1.8">
+
+                                <circle cx="12" cy="12" r="8"/>
+                                <path d="M12 8v5l3 2"/>
+
+                            </svg>
+
+                        </div>
+
+                        <div class="suggestionText">
+                            <div class="suggestionTitle">
+                                Bir şey öğren
+                            </div>
+
+                            <div class="suggestionDesc">
+                                Konuyu sade ve anlaşılır anlat
+                            </div>
+                        </div>
+
+                    </button>
+
+
+                    <button
+                        class="suggestion"
+                        data-prompt="TürkAI projemi daha profesyonel hale getirmek için bana özellik fikirleri ver.">
+
+                        <div class="suggestionIcon">
+
+                            <svg viewBox="0 0 24 24"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 stroke-width="1.8">
+
+                                <path d="M12 3v18"/>
+                                <path d="M3 12h18"/>
+                                <path d="m5 5 14 14"/>
+                                <path d="m19 5-14 14"/>
+
+                            </svg>
+
+                        </div>
+
+                        <div class="suggestionText">
+                            <div class="suggestionTitle">
+                                TürkAI'yi geliştir
+                            </div>
+
+                            <div class="suggestionDesc">
+                                Yeni özellikler ve fikirler keşfet
+                            </div>
+                        </div>
+
+                    </button>
+
+                </div>
 
             </div>
-
-            <div class="file-preview-content">
-
-                <span id="filePreviewName">
-                    Dosya
-                </span>
-
-                <span id="filePreviewSize">
-                    0 KB
-                </span>
-
-            </div>
-
-            <button
-                id="closeFilePreview"
-                class="close-button"
-                type="button"
-                title="Dosyayı kaldır"
-            >
-
-                <svg class="icon-sm" viewBox="0 0 24 24">
-                    <path d="M6 6l12 12"/>
-                    <path d="M18 6L6 18"/>
-                </svg>
-
-            </button>
 
         </div>
 
 
         <!-- COMPOSER -->
 
-        <form
-            id="composerForm"
-            class="composer"
-        >
-
-            <button
-                id="fileUploadButton"
-                class="composer-button"
-                type="button"
-                title="Dosya ekle"
-            >
-
-                <svg class="icon-sm" viewBox="0 0 24 24">
-                    <path d="M12 5v14"/>
-                    <path d="M5 12h14"/>
-                </svg>
-
-            </button>
-
-            <input
-                id="fileInput"
-                type="file"
-                hidden
-            >
-
-
-            <textarea
-                id="messageInput"
-                rows="1"
-                autocomplete="off"
-                spellcheck="true"
-                placeholder="TürkAI'ye bir şey sor..."
-                aria-label="Mesaj"
-            ></textarea>
-
-
-            <button
-                id="voiceButton"
-                class="composer-button"
-                type="button"
-                title="Sesli yazma"
-            >
-
-                <svg class="icon-sm" viewBox="0 0 24 24">
-                    <rect x="9" y="3" width="6" height="11" rx="3"/>
-                    <path d="M5 11a7 7 0 0014 0"/>
-                    <path d="M12 18v3"/>
-                    <path d="M9 21h6"/>
-                </svg>
-
-            </button>
-
-
-            <button
-                id="sendButton"
-                class="send-button"
-                type="submit"
-                title="Gönder"
-            >
-
-                <svg class="icon-sm" viewBox="0 0 24 24">
-                    <path d="M22 2L11 13"/>
-                    <path d="M22 2l-7 20-4-9-9-4z"/>
-                </svg>
-
-            </button>
-
-        </form>
-
-
-        <div class="composer-note">
-            TürkAI yanıtlarını kontrol et. Önemli bilgiler değişebilir.
-        </div>
-
-    </div>
-
-
-    <!-- =====================================================
-         LOADING
-         ===================================================== -->
-
-    <div
-        id="loadingOverlay"
-        class="loading-overlay hidden"
-    >
-
-        <div class="loading-box">
-
-            <div class="loading-spinner"></div>
+        <div class="composerArea">
 
             <div
-                id="loadingText"
-                class="loading-text"
-            >
-                TürkAI düşünüyor...
-            </div>
+                class="filePreview"
+                id="filePreview">
 
-        </div>
-
-    </div>
-
-
-    <!-- =====================================================
-         TOAST
-         ===================================================== -->
-
-    <div
-        id="toast"
-        class="toast hidden"
-        role="status"
-    ></div>
-
-
-    <!-- =====================================================
-         SETTINGS MODAL
-         ===================================================== -->
-
-    <div
-        id="settingsModal"
-        class="modal hidden"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settingsTitle"
-    >
-
-        <div class="modal-content">
-
-            <div class="modal-header">
-
-                <div>
-
-                    <h2
-                        id="settingsTitle"
-                        class="modal-title"
-                    >
-                        Ayarlar
-                    </h2>
-
-                    <div class="modal-subtitle">
-                        TürkAI deneyimini özelleştir.
-                    </div>
-
+                <div class="fileInfo"
+                     id="fileInfo">
                 </div>
 
                 <button
-                    class="close-button"
-                    type="button"
-                    data-close-modal="settingsModal"
-                >
+                    class="removeFile"
+                    id="removeFile"
+                    title="Dosyayı kaldır">
 
-                    <svg class="icon-sm" viewBox="0 0 24 24">
-                        <path d="M6 6l12 12"/>
-                        <path d="M18 6L6 18"/>
-                    </svg>
+                    ×
 
                 </button>
 
             </div>
 
 
-            <div class="settings-list">
+            <form
+                class="composer"
+                id="composer">
 
-                <div class="settings-row">
+                <textarea
+                    id="messageInput"
+                    rows="1"
+                    maxlength="12000"
+                    placeholder="TürkAI'ye bir şey sor..."
+                    autocomplete="off"></textarea>
 
-                    <div class="settings-info">
 
-                        <div class="settings-label">
-                            Enter ile gönder
-                        </div>
+                <div class="composerActions">
 
-                        <div class="settings-description">
-                            Shift + Enter yeni satır oluşturur.
-                        </div>
+                    <button
+                        type="button"
+                        class="composerButton"
+                        id="fileButton"
+                        title="Dosya ekle"
+                        aria-label="Dosya ekle">
 
+                        <svg viewBox="0 0 24 24"
+                             fill="none"
+                             stroke="currentColor"
+                             stroke-width="1.8">
+
+                            <path d="m21 11.5-8.4 8.4a5 5 0 0 1-7.1-7.1L14 4.3a3.5 3.5 0 0 1 5 5L10.6 17.7a2 2 0 0 1-2.8-2.8l7.7-7.7"/>
+
+                        </svg>
+
+                    </button>
+
+
+                    <button
+                        type="button"
+                        class="composerButton"
+                        id="voiceButton"
+                        title="Sesli yaz"
+                        aria-label="Sesli yaz">
+
+                        <svg viewBox="0 0 24 24"
+                             fill="none"
+                             stroke="currentColor"
+                             stroke-width="1.8">
+
+                            <rect x="9" y="3" width="6" height="11" rx="3"/>
+                            <path d="M5 11a7 7 0 0 0 14 0"/>
+                            <path d="M12 18v3"/>
+                            <path d="M9 21h6"/>
+
+                        </svg>
+
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        class="composerButton sendButton"
+                        id="sendButton"
+                        title="Gönder"
+                        aria-label="Gönder">
+
+                        <svg viewBox="0 0 24 24"
+                             fill="none"
+                             stroke="currentColor"
+                             stroke-width="2">
+
+                            <path d="m4 4 16 8-16 8 3-8-3-8Z"/>
+                            <path d="M7 12h13"/>
+
+                        </svg>
+
+                    </button>
+
+                </div>
+
+            </form>
+
+            <div class="composerHint">
+                Enter gönderir · Shift + Enter yeni satır
+            </div>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<!-- FILE INPUT -->
+
+<input
+    type="file"
+    id="fileInput"
+    hidden
+    multiple>
+
+
+<!-- SETTINGS MODAL -->
+
+<div
+    class="modal"
+    id="settingsModal">
+
+    <div class="modalBox">
+
+        <div class="modalHeader">
+
+            <div class="modalTitle">
+                Ayarlar
+            </div>
+
+            <button
+                class="iconButton"
+                data-close-modal
+                aria-label="Kapat">
+
+                ×
+
+            </button>
+
+        </div>
+
+        <div class="modalBody">
+
+            <div class="setting">
+
+                <div class="settingText">
+
+                    <div class="settingTitle">
+                        Enter ile gönder
                     </div>
 
-                    <label class="switch">
-
-                        <input
-                            id="enterToSend"
-                            type="checkbox"
-                            checked
-                        >
-
-                        <span></span>
-
-                    </label>
+                    <div class="settingDesc">
+                        Enter mesajı gönderir.
+                    </div>
 
                 </div>
 
+                <label class="switch">
 
-                <div class="settings-row">
+                    <input
+                        type="checkbox"
+                        id="enterSetting"
+                        checked>
 
-                    <div class="settings-info">
+                    <span></span>
 
-                        <div class="settings-label">
-                            Yerel sohbet geçmişi
-                        </div>
+                </label>
 
-                        <div class="settings-description">
-                            Son konuşmaları bu cihazda sakla.
-                        </div>
+            </div>
 
+
+            <div class="setting">
+
+                <div class="settingText">
+
+                    <div class="settingTitle">
+                        Sohbet geçmişini kaydet
                     </div>
 
-                    <label class="switch">
-
-                        <input
-                            id="saveHistory"
-                            type="checkbox"
-                            checked
-                        >
-
-                        <span></span>
-
-                    </label>
+                    <div class="settingDesc">
+                        Tarayıcıdaki yerel geçmişi korur.
+                    </div>
 
                 </div>
 
+                <label class="switch">
 
-                <div class="settings-row">
+                    <input
+                        type="checkbox"
+                        id="historySetting"
+                        checked>
 
-                    <div class="settings-info">
+                    <span></span>
 
-                        <div class="settings-label">
-                            Animasyonlar
-                        </div>
+                </label>
 
-                        <div class="settings-description">
-                            Arayüz geçişlerini etkinleştir.
-                        </div>
+            </div>
 
+
+            <div class="setting">
+
+                <div class="settingText">
+
+                    <div class="settingTitle">
+                        Animasyonlar
                     </div>
 
-                    <label class="switch">
-
-                        <input
-                            id="animationsEnabled"
-                            type="checkbox"
-                            checked
-                        >
-
-                        <span></span>
-
-                    </label>
+                    <div class="settingDesc">
+                        Arayüz hareketlerini etkinleştirir.
+                    </div>
 
                 </div>
+
+                <label class="switch">
+
+                    <input
+                        type="checkbox"
+                        id="animationSetting"
+                        checked>
+
+                    <span></span>
+
+                </label>
 
             </div>
 
@@ -2209,11 +1610,19 @@ select:focus-visible {
 </div>
 
 
+<!-- TOAST -->
+
+<div
+    class="toast"
+    id="toast"
+    aria-live="polite"></div>
+
+
 <script>
 "use strict";
 
 /* =========================================================
-   TÜRKAI FRONTEND
+   TÜRKAI CLIENT ENGINE
    ========================================================= */
 
 const TK = {
@@ -2224,7 +1633,7 @@ const TK = {
 
     isGenerating: false,
 
-    selectedFile: null,
+    selectedFiles: [],
 
     recognition: null,
 
@@ -2242,147 +1651,53 @@ const TK = {
 
 
 /* =========================================================
-   ELEMENTLER
+   DOM
    ========================================================= */
 
-const $ = (selector) =>
-    document.querySelector(selector);
+const messagesEl =
+    document.getElementById("messages");
 
-const $$ = (selector) =>
-    Array.from(document.querySelectorAll(selector));
+const welcomeEl =
+    document.getElementById("welcome");
 
+const composer =
+    document.getElementById("composer");
 
-const elements = {
+const input =
+    document.getElementById("messageInput");
 
-    app:
-        $("#app"),
+const sendButton =
+    document.getElementById("sendButton");
 
-    welcome:
-        $("#welcomeState"),
+const fileButton =
+    document.getElementById("fileButton");
 
-    messages:
-        $("#chatMessages"),
+const fileInput =
+    document.getElementById("fileInput");
 
-    input:
-        $("#messageInput"),
+const voiceButton =
+    document.getElementById("voiceButton");
 
-    form:
-        $("#composerForm"),
+const filePreview =
+    document.getElementById("filePreview");
 
-    send:
-        $("#sendButton"),
+const fileInfo =
+    document.getElementById("fileInfo");
 
-    newChat:
-        $("#newChatButton"),
+const removeFile =
+    document.getElementById("removeFile");
 
-    fileButton:
-        $("#fileUploadButton"),
+const toastEl =
+    document.getElementById("toast");
 
-    fileInput:
-        $("#fileInput"),
+const settingsButton =
+    document.getElementById("settingsButton");
 
-    filePreview:
-        $("#filePreview"),
+const settingsModal =
+    document.getElementById("settingsModal");
 
-    fileName:
-        $("#filePreviewName"),
-
-    fileSize:
-        $("#filePreviewSize"),
-
-    closeFile:
-        $("#closeFilePreview"),
-
-    loading:
-        $("#loadingOverlay"),
-
-    loadingText:
-        $("#loadingText"),
-
-    toast:
-        $("#toast"),
-
-    voice:
-        $("#voiceButton"),
-
-    settings:
-        $("#settingsModal")
-
-};
-
-
-/* =========================================================
-   HELPERS
-   ========================================================= */
-
-function escapeHTML(value) {
-
-    return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-
-/* =========================================================
-   TEXT FORMATTER
-   ========================================================= */
-
-function renderText(text) {
-
-    const safe =
-        escapeHTML(text);
-
-    const parts =
-        safe.split(/(```[\s\S]*?```)/g);
-
-    return parts.map(part => {
-
-        if (
-            part.startsWith("```") &&
-            part.endsWith("```")
-        ) {
-
-            const content =
-                part
-                    .replace(/^```[a-zA-Z0-9_-]*\n?/, "")
-                    .replace(/```$/, "");
-
-            return `
-                <div class="code-block">
-
-                    <div class="code-header">
-
-                        <span>Kod</span>
-
-                        <button
-                            class="code-copy"
-                            type="button"
-                            data-copy-code
-                            data-code="${encodeURIComponent(content)}"
-                        >
-                            Kopyala
-                        </button>
-
-                    </div>
-
-                    <pre>${content}</pre>
-
-                </div>
-            `;
-
-        }
-
-        return part
-            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-            .replace(/`([^`]+)`/g, "<code>$1</code>")
-            .replace(/\n/g, "<br>");
-
-    }).join("");
-
-}
+const newChatButton =
+    document.getElementById("newChatButton");
 
 
 /* =========================================================
@@ -2391,243 +1706,31 @@ function renderText(text) {
 
 let toastTimer = null;
 
-function showToast(message) {
-
-    if (!elements.toast) return;
-
-    elements.toast.textContent =
-        message;
-
-    elements.toast.classList.remove("hidden");
+function toast(message){
 
     clearTimeout(toastTimer);
 
-    toastTimer =
-        setTimeout(() => {
+    toastEl.textContent = message;
 
-            elements.toast.classList.add("hidden");
+    toastEl.classList.add("show");
 
-        }, 2500);
+    toastTimer = setTimeout(() => {
+
+        toastEl.classList.remove("show");
+
+    }, 2600);
 }
 
 
 /* =========================================================
-   LOADING
-   ========================================================= */
-
-function setLoading(active, text) {
-
-    TK.isGenerating =
-        Boolean(active);
-
-    if (elements.loadingText) {
-
-        elements.loadingText.textContent =
-            text ||
-            "TürkAI düşünüyor...";
-
-    }
-
-    elements.loading?.classList.toggle(
-        "hidden",
-        !active
-    );
-
-    updateSendButton();
-}
-
-
-/* =========================================================
-   SEND BUTTON
-   ========================================================= */
-
-function updateSendButton() {
-
-    if (!elements.send) return;
-
-    elements.send.disabled =
-        TK.isGenerating ||
-        !elements.input.value.trim();
-
-}
-
-
-/* =========================================================
-   MESSAGE
-   ========================================================= */
-
-function addMessage(role, text) {
-
-    const message = {
-
-        id:
-            crypto.randomUUID
-                ? crypto.randomUUID()
-                : String(Date.now()),
-
-        role,
-
-        text,
-
-        time:
-            new Date().toISOString()
-
-    };
-
-    TK.messages.push(message);
-
-    renderMessage(message);
-
-    saveState();
-
-    scrollToBottom();
-
-    return message;
-}
-
-
-/* =========================================================
-   RENDER MESSAGE
-   ========================================================= */
-
-function renderMessage(message) {
-
-    if (!elements.messages) return;
-
-    const wrapper =
-        document.createElement("article");
-
-    wrapper.className =
-        `message ${message.role}`;
-
-    wrapper.dataset.messageId =
-        message.id;
-
-    const time =
-        new Date(message.time)
-            .toLocaleTimeString(
-                "tr-TR",
-                {
-                    hour: "2-digit",
-                    minute: "2-digit"
-                }
-            );
-
-    wrapper.innerHTML = `
-
-        <div class="message-shell">
-
-            <div class="message-bubble">
-
-                ${renderText(message.text)}
-
-            </div>
-
-            <div class="message-meta">
-
-                <span>
-                    ${message.role === "user"
-                        ? "Sen"
-                        : "TürkAI"}
-                </span>
-
-                <span>•</span>
-
-                <span>
-                    ${time}
-                </span>
-
-                ${
-                    message.role === "assistant"
-                    ? `
-                        <div class="message-actions">
-
-                            <button
-                                class="message-action"
-                                type="button"
-                                title="Kopyala"
-                                data-copy-message="${message.id}"
-                            >
-                                <svg
-                                    class="icon-sm"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <rect
-                                        x="9"
-                                        y="9"
-                                        width="11"
-                                        height="11"
-                                        rx="2"
-                                    />
-                                    <path
-                                        d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"
-                                    />
-                                </svg>
-                            </button>
-
-                        </div>
-                    `
-                    : ""
-                }
-
-            </div>
-
-        </div>
-    `;
-
-    elements.messages.appendChild(wrapper);
-}
-
-
-/* =========================================================
-   CLEAR / RENDER ALL
-   ========================================================= */
-
-function renderAllMessages() {
-
-    elements.messages.innerHTML = "";
-
-    TK.messages.forEach(
-        renderMessage
-    );
-
-    scrollToBottom();
-}
-
-
-/* =========================================================
-   SCROLL
-   ========================================================= */
-
-function scrollToBottom() {
-
-    requestAnimationFrame(() => {
-
-        window.scrollTo({
-
-            top:
-                document.documentElement
-                    .scrollHeight,
-
-            behavior:
-                "smooth"
-
-        });
-
-    });
-
-}
-
-
-/* =========================================================
-   API REQUEST
+   REQUEST HELPER
    ========================================================= */
 
 async function requestJSON(
     url,
     options = {},
-    timeout = 45000
-) {
+    timeout = 60000
+){
 
     const controller =
         new AbortController();
@@ -2638,7 +1741,7 @@ async function requestJSON(
             timeout
         );
 
-    try {
+    try{
 
         const response =
             await fetch(
@@ -2651,48 +1754,64 @@ async function requestJSON(
             );
 
         const contentType =
-            response.headers
-                .get("content-type") || "";
+            response.headers.get(
+                "content-type"
+            ) || "";
 
         let data;
 
-        if (
+        if(
             contentType.includes(
                 "application/json"
             )
-        ) {
+        ){
 
             data =
                 await response.json();
 
-        } else {
+        }else{
+
+            const text =
+                await response.text();
 
             data = {
-                text:
-                    await response.text()
+                text
             };
 
         }
 
-        if (!response.ok) {
+        if(!response.ok){
 
-            const error =
-                new Error(
-                    data?.error ||
-                    data?.message ||
-                    `HTTP ${response.status}`
-                );
+            const errorMessage =
+                data?.error ||
+                data?.message ||
+                data?.text ||
+                `Server hatası: ${response.status}`;
 
-            error.status =
-                response.status;
-
-            throw error;
+            throw new Error(
+                errorMessage
+            );
 
         }
 
         return data;
 
-    } finally {
+    }catch(error){
+
+        if(
+            error.name ===
+            "AbortError"
+        ){
+
+            throw new Error(
+                "Server yanıt vermedi veya bağlantı zaman aşımına uğradı."
+            );
+
+        }
+
+        throw error;
+
+    }finally{
 
         clearTimeout(timer);
 
@@ -2702,373 +1821,81 @@ async function requestJSON(
 
 
 /* =========================================================
-   CHAT API
+   SERVER CHAT
    ========================================================= */
 
-async function askBackend(text) {
+async function askBackend(text){
 
-    const payload = {
-
-        message:
-            text,
-
-        chatId:
-            TK.currentChatId,
-
-        model:
-            "fast"
-
-    };
+    /*
+     * ÖNEMLİ:
+     *
+     * Bu istek aynı server'a gider.
+     *
+     * Örneğin:
+     *
+     * https://senin-domainin.com
+     *
+     * ise istek:
+     *
+     * https://senin-domainin.com/api/chat
+     *
+     * olur.
+     */
 
     const data =
         await requestJSON(
             "/api/chat",
             {
-                method: "POST",
+                method:"POST",
 
-                headers: {
+                headers:{
                     "Content-Type":
                         "application/json"
                 },
 
-                body:
-                    JSON.stringify(payload)
-            }
+                body:JSON.stringify({
+
+                    message:text,
+
+                    chatId:
+                        TK.currentChatId,
+
+                    model:"fast"
+
+                })
+            },
+            120000
         );
 
-    const reply =
-        data?.reply ??
-        data?.response ??
-        data?.message ??
-        data?.text;
 
-    if (
-        typeof reply !== "string" ||
-        !reply.trim()
-    ) {
+    const reply =
+        data.reply ??
+        data.response ??
+        data.message ??
+        data.text;
+
+
+    if(
+        !reply ||
+        typeof reply !== "string"
+    ){
 
         throw new Error(
-            "Sunucudan geçerli bir yanıt alınamadı."
+            "Server geçerli bir TürkAI cevabı döndürmedi."
         );
 
     }
 
-    if (data.chatId) {
+
+    if(data.chatId){
 
         TK.currentChatId =
             data.chatId;
 
     }
 
+
     return reply;
-
-}
-
-
-/* =========================================================
-   SEND MESSAGE
-   ========================================================= */
-
-async function sendMessage() {
-
-    if (TK.isGenerating) return;
-
-    const text =
-        elements.input.value.trim();
-
-    if (!text) return;
-
-    addMessage(
-        "user",
-        text
-    );
-
-    elements.input.value = "";
-
-    autoResize();
-
-    updateSendButton();
-
-    setLoading(
-        true,
-        "TürkAI yanıt hazırlıyor..."
-    );
-
-    try {
-
-        const reply =
-            await askBackend(text);
-
-        addMessage(
-            "assistant",
-            reply
-        );
-
-    } catch (error) {
-
-        console.error(error);
-
-        addMessage(
-            "assistant",
-            "Şu anda sunucuya bağlanamadım. Backend'in çalıştığından ve `/api/chat` endpointinin aktif olduğundan emin ol."
-        );
-
-        showToast(
-            "Sunucu bağlantısı kurulamadı."
-        );
-
-    } finally {
-
-        setLoading(false);
-
-        updateSendButton();
-
-        elements.input.focus();
-
-    }
-
-}
-
-
-/* =========================================================
-   NEW CHAT
-   ========================================================= */
-
-function newChat() {
-
-    TK.messages = [];
-
-    TK.currentChatId = null;
-
-    elements.messages.innerHTML = "";
-
-    elements.welcome.classList.remove(
-        "hidden"
-    );
-
-    clearFile();
-
-    saveState();
-
-    elements.input.focus();
-
-    showToast(
-        "Yeni sohbet hazır."
-    );
-
-}
-
-
-/* =========================================================
-   HIDE WELCOME
-   ========================================================= */
-
-function hideWelcome() {
-
-    elements.welcome.classList.add(
-        "hidden"
-    );
-
-}
-
-
-/* =========================================================
-   SHOW WELCOME WHEN EMPTY
-   ========================================================= */
-
-function updateWelcome() {
-
-    elements.welcome.classList.toggle(
-        "hidden",
-        TK.messages.length > 0
-    );
-
-}
-
-
-/* =========================================================
-   INPUT AUTO RESIZE
-   ========================================================= */
-
-function autoResize() {
-
-    const input =
-        elements.input;
-
-    input.style.height =
-        "auto";
-
-    input.style.height =
-        Math.min(
-            input.scrollHeight,
-            140
-        ) + "px";
-
-}
-
-
-/* =========================================================
-   LOCAL STORAGE
-   ========================================================= */
-
-function saveState() {
-
-    if (!TK.settings.saveHistory) {
-        return;
-    }
-
-    try {
-
-        localStorage.setItem(
-            "turkai_messages",
-            JSON.stringify(
-                TK.messages
-            )
-        );
-
-        localStorage.setItem(
-            "turkai_chat_id",
-            TK.currentChatId || ""
-        );
-
-    } catch (error) {
-
-        console.warn(
-            "Local storage yazılamadı.",
-            error
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   LOAD STATE
-   ========================================================= */
-
-function loadState() {
-
-    try {
-
-        const messages =
-            localStorage.getItem(
-                "turkai_messages"
-            );
-
-        const chatId =
-            localStorage.getItem(
-                "turkai_chat_id"
-            );
-
-        if (messages) {
-
-            const parsed =
-                JSON.parse(messages);
-
-            if (
-                Array.isArray(parsed)
-            ) {
-
-                TK.messages =
-                    parsed;
-
-            }
-
-        }
-
-        TK.currentChatId =
-            chatId || null;
-
-    } catch (error) {
-
-        console.warn(
-            "Local storage okunamadı.",
-            error
-        );
-
-        TK.messages = [];
-
-        TK.currentChatId = null;
-
-    }
-
-    renderAllMessages();
-
-    updateWelcome();
-
-}
-
-
-/* =========================================================
-   FILE SIZE
-   ========================================================= */
-
-function formatBytes(bytes) {
-
-    if (!Number.isFinite(bytes)) {
-        return "0 B";
-    }
-
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-
-    if (bytes < 1024 * 1024) {
-        return `${(bytes / 1024).toFixed(1)} KB`;
-    }
-
-    return `${(
-        bytes /
-        (1024 * 1024)
-    ).toFixed(1)} MB`;
-
-}
-
-
-/* =========================================================
-   FILE SELECT
-   ========================================================= */
-
-function handleFile(file) {
-
-    if (!file) return;
-
-    TK.selectedFile =
-        file;
-
-    elements.fileName.textContent =
-        file.name;
-
-    elements.fileSize.textContent =
-        formatBytes(
-            file.size
-        );
-
-    elements.filePreview.classList.remove(
-        "hidden"
-    );
-
-    showToast(
-        "Dosya seçildi."
-    );
-
-}
-
-
-/* =========================================================
-   CLEAR FILE
-   ========================================================= */
-
-function clearFile() {
-
-    TK.selectedFile = null;
-
-    elements.fileInput.value = "";
-
-    elements.filePreview.classList.add(
-        "hidden"
-    );
 
 }
 
@@ -3077,77 +1904,541 @@ function clearFile() {
    FILE UPLOAD
    ========================================================= */
 
-async function uploadFile() {
+async function uploadFile(file){
 
-    const file =
-        TK.selectedFile;
-
-    if (!file) return;
-
-    const form =
+    const formData =
         new FormData();
 
-    form.append(
+    formData.append(
         "file",
         file
     );
 
-    setLoading(
-        true,
-        "Dosya yükleniyor..."
-    );
 
-    try {
-
-        const data =
-            await requestJSON(
-                "/api/upload",
-                {
-                    method: "POST",
-                    body: form
-                },
-                60000
-            );
-
-        const name =
-            data?.file?.name ||
-            data?.filename ||
-            file.name;
-
-        addMessage(
-            "user",
-            `Dosya yükledim: ${name}`
+    const data =
+        await requestJSON(
+            "/api/upload",
+            {
+                method:"POST",
+                body:formData
+            },
+            120000
         );
 
-        if (data?.message) {
 
-            addMessage(
-                "assistant",
-                data.message
+    return data;
+
+}
+
+
+/* =========================================================
+   ESCAPE HTML
+   ========================================================= */
+
+function escapeHTML(value){
+
+    return String(value)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+
+}
+
+
+/* =========================================================
+   TEXT RENDERER
+   ========================================================= */
+
+function renderText(text){
+
+    if(!text){
+        return "";
+    }
+
+
+    let safe =
+        escapeHTML(text);
+
+
+    /*
+     * Kod blokları
+     */
+
+    const codeBlocks = [];
+
+    safe =
+        safe.replace(
+            /```([a-zA-Z0-9_+-]*)\n?([\s\S]*?)```/g,
+            (
+                match,
+                language,
+                code
+            ) => {
+
+                const id =
+                    "code_" +
+                    Math.random()
+                        .toString(36)
+                        .slice(2);
+
+                codeBlocks.push({
+
+                    id,
+                    language:
+                        language || "code",
+                    code
+
+                });
+
+
+                return `
+
+                    <div
+                        class="codeBlock">
+
+                        <div
+                            class="codeHeader">
+
+                            <span>
+                                ${escapeHTML(
+                                    language ||
+                                    "code"
+                                )}
+                            </span>
+
+                            <button
+                                class="codeCopy"
+                                data-copy-code="${id}">
+
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.8">
+
+                                    <rect
+                                        x="9"
+                                        y="9"
+                                        width="11"
+                                        height="11"
+                                        rx="2"/>
+
+                                    <path
+                                        d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/>
+
+                                </svg>
+
+                                Kopyala
+
+                            </button>
+
+                        </div>
+
+                        <pre
+                            id="${id}">${code}</pre>
+
+                    </div>
+
+                `;
+
+            }
+        );
+
+
+    /*
+     * Satır yapısı
+     */
+
+    const lines =
+        safe.split("\n");
+
+
+    let html = "";
+
+    let paragraph = [];
+
+
+    function flushParagraph(){
+
+        if(!paragraph.length){
+            return;
+        }
+
+        let content =
+            paragraph.join("<br>");
+
+        content =
+            content.replace(
+                /\*\*(.*?)\*\*/g,
+                "<strong>$1</strong>"
             );
 
-        } else {
-
-            addMessage(
-                "assistant",
-                "Dosya sunucuya gönderildi."
+        content =
+            content.replace(
+                /`([^`]+)`/g,
+                '<span class="inlineCode">$1</span>'
             );
+
+        html +=
+            `<p>${content}</p>`;
+
+        paragraph = [];
+
+    }
+
+
+    for(
+        const line of lines
+    ){
+
+        const trimmed =
+            line.trim();
+
+
+        if(!trimmed){
+
+            flushParagraph();
+
+            continue;
 
         }
 
-        clearFile();
 
-    } catch (error) {
+        if(
+            /^[-*]\s+/.test(trimmed)
+        ){
 
-        console.error(error);
+            flushParagraph();
 
-        showToast(
-            "Dosya yüklenemedi."
+            html +=
+                `<ul><li>${
+                    trimmed.replace(
+                        /^[-*]\s+/,
+                        ""
+                    )
+                }</li></ul>`;
+
+            continue;
+
+        }
+
+
+        paragraph.push(line);
+
+    }
+
+
+    flushParagraph();
+
+
+    /*
+     * Kod bloklarının güvenli tutulması
+     */
+
+    for(
+        const block of codeBlocks
+    ){
+
+        /*
+         * Kod zaten HTML olarak
+         * escape edildi.
+         */
+
+    }
+
+
+    return html;
+
+}
+
+
+/* =========================================================
+   ADD MESSAGE
+   ========================================================= */
+
+function addMessage(
+    role,
+    content,
+    extra = {}
+){
+
+    const message = {
+
+        id:
+            cryptoRandomId(),
+
+        role,
+
+        content,
+
+        createdAt:
+            Date.now(),
+
+        ...extra
+
+    };
+
+
+    TK.messages.push(
+        message
+    );
+
+
+    renderMessage(
+        message
+    );
+
+
+    saveState();
+
+    scrollToBottom();
+
+
+    return message;
+
+}
+
+
+/* =========================================================
+   RANDOM ID
+   ========================================================= */
+
+function cryptoRandomId(){
+
+    if(
+        window.crypto &&
+        crypto.randomUUID
+    ){
+
+        return crypto.randomUUID();
+
+    }
+
+
+    return (
+        "msg_" +
+        Date.now() +
+        "_" +
+        Math.random()
+            .toString(36)
+            .slice(2)
+    );
+
+}
+
+
+/* =========================================================
+   RENDER MESSAGE
+   ========================================================= */
+
+function renderMessage(message){
+
+    if(welcomeEl){
+
+        welcomeEl.style.display =
+            "none";
+
+    }
+
+
+    const wrapper =
+        document.createElement(
+            "div"
         );
 
-    } finally {
+    wrapper.className =
+        `message ${message.role}`;
 
-        setLoading(false);
+
+    const bubble =
+        document.createElement(
+            "div"
+        );
+
+    bubble.className =
+        "bubble";
+
+
+    if(
+        message.role ===
+        "assistant"
+    ){
+
+        bubble.innerHTML =
+            `
+            <div class="messageMeta">
+                <span>TürkAI</span>
+            </div>
+
+            <div class="textContent">
+                ${renderText(
+                    message.content
+                )}
+            </div>
+
+            <div class="messageActions">
+
+                <button
+                    class="smallButton"
+                    data-copy-message="${message.id}">
+
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8">
+
+                        <rect
+                            x="9"
+                            y="9"
+                            width="11"
+                            height="11"
+                            rx="2"/>
+
+                        <path
+                            d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/>
+
+                    </svg>
+
+                    Kopyala
+
+                </button>
+
+            </div>
+            `;
+
+    }else{
+
+        bubble.innerHTML =
+            `
+            <div class="textContent">
+                ${renderText(
+                    message.content
+                )}
+            </div>
+            `;
+
+    }
+
+
+    wrapper.appendChild(
+        bubble
+    );
+
+    messagesEl.appendChild(
+        wrapper
+    );
+
+
+    /*
+     * Mesaj içindeki kod kopyalama
+     */
+
+    wrapper
+        .querySelectorAll(
+            "[data-copy-code]"
+        )
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                async () => {
+
+                    const id =
+                        button.dataset
+                            .copyCode;
+
+                    const code =
+                        document.getElementById(
+                            id
+                        );
+
+                    if(!code){
+                        return;
+                    }
+
+                    await copyText(
+                        code.textContent
+                    );
+
+                    toast(
+                        "Kod kopyalandı."
+                    );
+
+                }
+            );
+
+        });
+
+
+    /*
+     * Mesaj kopyalama
+     */
+
+    wrapper
+        .querySelectorAll(
+            "[data-copy-message]"
+        )
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                async () => {
+
+                    await copyText(
+                        message.content
+                    );
+
+                    toast(
+                        "Mesaj kopyalandı."
+                    );
+
+                }
+            );
+
+        });
+
+
+    scrollToBottom();
+
+}
+
+
+/* =========================================================
+   COPY
+   ========================================================= */
+
+async function copyText(text){
+
+    try{
+
+        await navigator.clipboard.writeText(
+            text
+        );
+
+    }catch{
+
+        const area =
+            document.createElement(
+                "textarea"
+            );
+
+        area.value =
+            text;
+
+        document.body.appendChild(
+            area
+        );
+
+        area.select();
+
+        document.execCommand(
+            "copy"
+        );
+
+        area.remove();
 
     }
 
@@ -3155,41 +2446,707 @@ async function uploadFile() {
 
 
 /* =========================================================
-   SUGGESTIONS
+   RENDER ALL
    ========================================================= */
 
-$$(".suggestion").forEach(
-    button => {
+function renderAllMessages(){
 
-        button.addEventListener(
-            "click",
-            () => {
+    messagesEl.innerHTML = "";
 
-                const value =
-                    button.dataset.suggestion ||
-                    "";
+    messagesEl.appendChild(
+        welcomeEl
+    );
 
-                elements.input.value =
-                    value;
 
-                autoResize();
+    if(!TK.messages.length){
 
-                updateSendButton();
+        welcomeEl.style.display =
+            "flex";
 
-                elements.input.focus();
+        return;
 
-            }
+    }
+
+
+    welcomeEl.style.display =
+        "none";
+
+
+    for(
+        const message
+        of TK.messages
+    ){
+
+        renderMessage(
+            message
         );
 
     }
-);
+
+}
 
 
 /* =========================================================
-   FORM
+   SCROLL
    ========================================================= */
 
-elements.form.addEventListener(
+function scrollToBottom(){
+
+    requestAnimationFrame(
+        () => {
+
+            messagesEl.scrollTo({
+
+                top:
+                    messagesEl.scrollHeight,
+
+                behavior:
+                    TK.settings
+                        .animationsEnabled
+                        ? "smooth"
+                        : "auto"
+
+            });
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   LOADING
+   ========================================================= */
+
+function addTyping(){
+
+    const wrapper =
+        document.createElement(
+            "div"
+        );
+
+    wrapper.className =
+        "message assistant";
+
+    wrapper.id =
+        "typingMessage";
+
+
+    wrapper.innerHTML = `
+
+        <div class="bubble">
+
+            <div class="messageMeta">
+                <span>TürkAI</span>
+            </div>
+
+            <div class="typing">
+
+                <span></span>
+                <span></span>
+                <span></span>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    messagesEl.appendChild(
+        wrapper
+    );
+
+
+    scrollToBottom();
+
+}
+
+
+function removeTyping(){
+
+    document
+        .getElementById(
+            "typingMessage"
+        )
+        ?.remove();
+
+}
+
+
+/* =========================================================
+   SEND MESSAGE
+   ========================================================= */
+
+async function sendMessage(){
+
+    if(
+        TK.isGenerating
+    ){
+
+        return;
+
+    }
+
+
+    const text =
+        input.value.trim();
+
+
+    if(
+        !text &&
+        !TK.selectedFiles.length
+    ){
+
+        return;
+
+    }
+
+
+    TK.isGenerating =
+        true;
+
+    sendButton.disabled =
+        true;
+
+
+    let finalText =
+        text;
+
+
+    /*
+     * Dosyalar varsa önce server'a gönder.
+     */
+
+    if(
+        TK.selectedFiles.length
+    ){
+
+        try{
+
+            for(
+                const file
+                of TK.selectedFiles
+            ){
+
+                const result =
+                    await uploadFile(
+                        file
+                    );
+
+
+                const fileName =
+                    result?.file?.name ||
+                    result?.name ||
+                    file.name;
+
+
+                finalText +=
+                    `\n\n[Dosya yüklendi: ${fileName}]`;
+
+            }
+
+        }catch(error){
+
+            toast(
+                "Dosya yüklenemedi: " +
+                error.message
+            );
+
+            TK.isGenerating =
+                false;
+
+            sendButton.disabled =
+                false;
+
+            return;
+
+        }
+
+    }
+
+
+    /*
+     * Kullanıcı mesajı
+     */
+
+    addMessage(
+        "user",
+        finalText
+    );
+
+
+    input.value =
+        "";
+
+    autoResize();
+
+
+    clearFiles();
+
+
+    /*
+     * Server
+     */
+
+    addTyping();
+
+
+    try{
+
+        const reply =
+            await askBackend(
+                finalText
+            );
+
+
+        removeTyping();
+
+
+        addMessage(
+            "assistant",
+            reply
+        );
+
+
+    }catch(error){
+
+        removeTyping();
+
+
+        addMessage(
+            "assistant",
+            "Server bağlantısında bir sorun oluştu.\n\n" +
+            "**Hata:** " +
+            error.message
+        );
+
+
+        toast(
+            "Server bağlantısı başarısız."
+        );
+
+    }finally{
+
+        TK.isGenerating =
+            false;
+
+        sendButton.disabled =
+            false;
+
+        input.focus();
+
+    }
+
+}
+
+
+/* =========================================================
+   TEXTAREA
+   ========================================================= */
+
+function autoResize(){
+
+    input.style.height =
+        "auto";
+
+    input.style.height =
+        Math.min(
+            input.scrollHeight,
+            150
+        ) + "px";
+
+}
+
+
+/* =========================================================
+   NEW CHAT
+   ========================================================= */
+
+function newChat(){
+
+    TK.messages = [];
+
+    TK.currentChatId =
+        null;
+
+
+    localStorage.removeItem(
+        "turkai_messages"
+    );
+
+    localStorage.removeItem(
+        "turkai_chat_id"
+    );
+
+
+    renderAllMessages();
+
+    clearFiles();
+
+    input.value =
+        "";
+
+    autoResize();
+
+    toast(
+        "Yeni sohbet başlatıldı."
+    );
+
+    input.focus();
+
+}
+
+
+/* =========================================================
+   FILES
+   ========================================================= */
+
+function updateFilePreview(){
+
+    if(
+        !TK.selectedFiles.length
+    ){
+
+        filePreview.classList
+            .remove("active");
+
+        fileInfo.textContent =
+            "";
+
+        return;
+
+    }
+
+
+    filePreview.classList
+        .add("active");
+
+
+    if(
+        TK.selectedFiles.length === 1
+    ){
+
+        fileInfo.textContent =
+            TK.selectedFiles[0].name;
+
+    }else{
+
+        fileInfo.textContent =
+            `${TK.selectedFiles.length} dosya seçildi`;
+
+    }
+
+}
+
+
+function clearFiles(){
+
+    TK.selectedFiles =
+        [];
+
+    fileInput.value =
+        "";
+
+    updateFilePreview();
+
+}
+
+
+/* =========================================================
+   LOCAL STORAGE
+   ========================================================= */
+
+function saveState(){
+
+    if(
+        !TK.settings.saveHistory
+    ){
+
+        return;
+
+    }
+
+
+    try{
+
+        localStorage.setItem(
+            "turkai_messages",
+            JSON.stringify(
+                TK.messages
+            )
+        );
+
+
+        if(
+            TK.currentChatId
+        ){
+
+            localStorage.setItem(
+                "turkai_chat_id",
+                TK.currentChatId
+            );
+
+        }
+
+    }catch(error){
+
+        console.warn(
+            "Local kayıt başarısız:",
+            error
+        );
+
+    }
+
+}
+
+
+function loadState(){
+
+    try{
+
+        const raw =
+            localStorage.getItem(
+                "turkai_messages"
+            );
+
+
+        if(raw){
+
+            const parsed =
+                JSON.parse(raw);
+
+
+            if(
+                Array.isArray(parsed)
+            ){
+
+                TK.messages =
+                    parsed;
+
+            }
+
+        }
+
+
+        TK.currentChatId =
+            localStorage.getItem(
+                "turkai_chat_id"
+            ) || null;
+
+
+    }catch(error){
+
+        console.warn(
+            "Local geçmiş okunamadı:",
+            error
+        );
+
+        TK.messages = [];
+
+    }
+
+
+    renderAllMessages();
+
+}
+
+
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+
+function openSettings(){
+
+    settingsModal.classList
+        .add("active");
+
+}
+
+
+function closeSettings(){
+
+    settingsModal.classList
+        .remove("active");
+
+}
+
+
+function loadSettings(){
+
+    try{
+
+        const raw =
+            localStorage.getItem(
+                "turkai_settings"
+            );
+
+
+        if(!raw){
+            return;
+        }
+
+
+        const settings =
+            JSON.parse(raw);
+
+
+        TK.settings = {
+
+            ...TK.settings,
+
+            ...settings
+
+        };
+
+
+    }catch{}
+
+}
+
+
+function saveSettings(){
+
+    localStorage.setItem(
+        "turkai_settings",
+        JSON.stringify(
+            TK.settings
+        )
+    );
+
+}
+
+
+/* =========================================================
+   VOICE INPUT
+   ========================================================= */
+
+function setupVoice(){
+
+    const Recognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+
+    if(!Recognition){
+
+        voiceButton.style.opacity =
+            ".45";
+
+        voiceButton.title =
+            "Bu tarayıcı sesli girişi desteklemiyor.";
+
+        return;
+
+    }
+
+
+    const recognition =
+        new Recognition();
+
+
+    recognition.lang =
+        "tr-TR";
+
+    recognition.interimResults =
+        true;
+
+    recognition.continuous =
+        false;
+
+
+    recognition.onstart = () => {
+
+        voiceButton.style
+            .color =
+            "var(--accent2)";
+
+        toast(
+            "Dinliyorum..."
+        );
+
+    };
+
+
+    recognition.onresult =
+        event => {
+
+            let transcript =
+                "";
+
+            for(
+                let i =
+                    event.resultIndex;
+                i <
+                    event.results.length;
+                i++
+            ){
+
+                transcript +=
+                    event.results[i][0]
+                        .transcript;
+
+            }
+
+
+            input.value =
+                transcript;
+
+            autoResize();
+
+        };
+
+
+    recognition.onerror =
+        event => {
+
+            toast(
+                "Sesli giriş hatası: " +
+                event.error
+            );
+
+        };
+
+
+    recognition.onend =
+        () => {
+
+            voiceButton.style
+                .color =
+                "";
+
+        };
+
+
+    TK.recognition =
+        recognition;
+
+
+    voiceButton.addEventListener(
+        "click",
+        () => {
+
+            try{
+
+                recognition.start();
+
+            }catch{
+
+                recognition.stop();
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   EVENTS
+   ========================================================= */
+
+composer.addEventListener(
     "submit",
     event => {
 
@@ -3201,23 +3158,39 @@ elements.form.addEventListener(
 );
 
 
-/* =========================================================
-   ENTER
-   ========================================================= */
+input.addEventListener(
+    "input",
+    autoResize
+);
 
-elements.input.addEventListener(
+
+input.addEventListener(
     "keydown",
     event => {
 
-        if (
-            event.key === "Enter" &&
-            !event.shiftKey &&
-            TK.settings.enterToSend
-        ) {
+        if(
+            event.key ===
+            "Enter"
+        ){
 
-            event.preventDefault();
+            if(
+                event.shiftKey
+            ){
 
-            sendMessage();
+                return;
+
+            }
+
+
+            if(
+                TK.settings.enterToSend
+            ){
+
+                event.preventDefault();
+
+                sendMessage();
+
+            }
 
         }
 
@@ -3225,165 +3198,85 @@ elements.input.addEventListener(
 );
 
 
-/* =========================================================
-   INPUT
-   ========================================================= */
-
-elements.input.addEventListener(
-    "input",
+fileButton.addEventListener(
+    "click",
     () => {
 
-        autoResize();
-
-        updateSendButton();
+        fileInput.click();
 
     }
 );
 
 
-/* =========================================================
-   NEW CHAT
-   ========================================================= */
+fileInput.addEventListener(
+    "change",
+    () => {
 
-elements.newChat.addEventListener(
+        TK.selectedFiles =
+            Array.from(
+                fileInput.files || []
+            );
+
+
+        if(
+            TK.selectedFiles.length
+        ){
+
+            toast(
+                `${TK.selectedFiles.length} dosya seçildi.`
+            );
+
+        }
+
+
+        updateFilePreview();
+
+    }
+);
+
+
+removeFile.addEventListener(
+    "click",
+    clearFiles
+);
+
+
+newChatButton.addEventListener(
     "click",
     newChat
 );
 
 
-/* =========================================================
-   FILE BUTTON
-   ========================================================= */
-
-elements.fileButton.addEventListener(
+settingsButton.addEventListener(
     "click",
-    () => {
-
-        elements.fileInput.click();
-
-    }
+    openSettings
 );
 
 
-/* =========================================================
-   FILE INPUT
-   ========================================================= */
+document
+    .querySelectorAll(
+        "[data-close-modal]"
+    )
+    .forEach(button => {
 
-elements.fileInput.addEventListener(
-    "change",
+        button.addEventListener(
+            "click",
+            closeSettings
+        );
+
+    });
+
+
+settingsModal.addEventListener(
+    "click",
     event => {
 
-        const file =
-            event.target.files?.[0];
+        if(
+            event.target ===
+            settingsModal
+        ){
 
-        handleFile(file);
-
-    }
-);
-
-
-/* =========================================================
-   CLOSE FILE
-   ========================================================= */
-
-elements.closeFile.addEventListener(
-    "click",
-    clearFile
-);
-
-
-/* =========================================================
-   MESSAGE COPY
-   ========================================================= */
-
-elements.messages.addEventListener(
-    "click",
-    async event => {
-
-        const button =
-            event.target.closest(
-                "[data-copy-message]"
-            );
-
-        if (button) {
-
-            const id =
-                button.dataset.copyMessage;
-
-            const message =
-                TK.messages.find(
-                    item =>
-                        item.id === id
-                );
-
-            if (!message) return;
-
-            try {
-
-                await navigator.clipboard.writeText(
-                    message.text
-                );
-
-                showToast(
-                    "Mesaj kopyalandı."
-                );
-
-            } catch {
-
-                showToast(
-                    "Kopyalama başarısız."
-                );
-
-            }
-
-            return;
-
-        }
-
-
-        const codeButton =
-            event.target.closest(
-                "[data-copy-code]"
-            );
-
-        if (codeButton) {
-
-            const encoded =
-                codeButton.dataset.code;
-
-            let code = "";
-
-            try {
-
-                code =
-                    decodeURIComponent(
-                        encoded
-                    );
-
-            } catch {
-
-                code =
-                    encoded;
-
-            }
-
-            try {
-
-                await navigator.clipboard.writeText(
-                    code
-                );
-
-                showToast(
-                    "Kod kopyalandı."
-                );
-
-            } catch {
-
-                showToast(
-                    "Kod kopyalanamadı."
-                );
-
-            }
+            closeSettings();
 
         }
 
@@ -3391,329 +3284,79 @@ elements.messages.addEventListener(
 );
 
 
-/* =========================================================
-   VOICE INPUT
-   ========================================================= */
-
-function setupVoice() {
-
-    const SpeechRecognition =
-        window.SpeechRecognition ||
-        window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-
-        elements.voice.addEventListener(
-            "click",
-            () => {
-
-                showToast(
-                    "Bu tarayıcı sesli yazmayı desteklemiyor."
-                );
-
-            }
-        );
-
-        return;
-
-    }
-
-    const recognition =
-        new SpeechRecognition();
-
-    recognition.lang =
-        "tr-TR";
-
-    recognition.continuous =
-        false;
-
-    recognition.interimResults =
-        true;
-
-    TK.recognition =
-        recognition;
-
-    recognition.onstart =
-        () => {
-
-            elements.voice.style.color =
-                "#b3a8ff";
-
-            showToast(
-                "Dinliyorum..."
-            );
-
-        };
-
-    recognition.onresult =
-        event => {
-
-            let text = "";
-
-            for (
-                let i = event.resultIndex;
-                i < event.results.length;
-                i++
-            ) {
-
-                text +=
-                    event.results[i][0].transcript;
-
-            }
-
-            elements.input.value =
-                text;
-
-            autoResize();
-
-            updateSendButton();
-
-        };
-
-    recognition.onerror =
-        () => {
-
-            showToast(
-                "Ses algılanamadı."
-            );
-
-        };
-
-    recognition.onend =
-        () => {
-
-            elements.voice.style.color =
-                "";
-
-        };
-
-    elements.voice.addEventListener(
-        "click",
-        () => {
-
-            try {
-
-                recognition.start();
-
-            } catch {
-
-                /* Zaten çalışıyorsa tekrar başlatma. */
-
-            }
-
-        }
-    );
-
-}
-
-setupVoice();
-
-
-/* =========================================================
-   SETTINGS
-   ========================================================= */
-
-function setupSettings() {
-
-    const enter =
-        $("#enterToSend");
-
-    const history =
-        $("#saveHistory");
-
-    const animations =
-        $("#animationsEnabled");
-
-    if (enter) {
-
-        enter.checked =
-            TK.settings.enterToSend;
-
-        enter.addEventListener(
-            "change",
-            () => {
-
-                TK.settings.enterToSend =
-                    enter.checked;
-
-            }
-        );
-
-    }
-
-    if (history) {
-
-        history.checked =
-            TK.settings.saveHistory;
-
-        history.addEventListener(
-            "change",
-            () => {
-
-                TK.settings.saveHistory =
-                    history.checked;
-
-                if (
-                    !history.checked
-                ) {
-
-                    try {
-
-                        localStorage.removeItem(
-                            "turkai_messages"
-                        );
-
-                        localStorage.removeItem(
-                            "turkai_chat_id"
-                        );
-
-                    } catch {}
-
-                } else {
-
-                    saveState();
-
-                }
-
-            }
-        );
-
-    }
-
-    if (animations) {
-
-        animations.checked =
-            TK.settings.animationsEnabled;
-
-        animations.addEventListener(
-            "change",
-            () => {
-
-                TK.settings.animationsEnabled =
-                    animations.checked;
-
-                document.body.classList.toggle(
-                    "no-animation",
-                    !animations.checked
-                );
-
-            }
-        );
-
-    }
-
-}
-
-setupSettings();
-
-
-/* =========================================================
-   MODAL CLOSE
-   ========================================================= */
-
-$$("[data-close-modal]").forEach(
-    button => {
+/*
+ * Öneriler
+ */
+
+document
+    .querySelectorAll(
+        ".suggestion"
+    )
+    .forEach(button => {
 
         button.addEventListener(
             "click",
             () => {
 
-                const id =
-                    button.dataset.closeModal;
+                input.value =
+                    button.dataset.prompt;
 
-                const modal =
-                    document.getElementById(id);
+                autoResize();
 
-                modal?.classList.add(
-                    "hidden"
-                );
+                input.focus();
 
             }
         );
 
-    }
-);
+    });
 
 
-/* =========================================================
-   ESCAPE
-   ========================================================= */
+/*
+ * Escape
+ */
 
 document.addEventListener(
     "keydown",
     event => {
 
-        if (
-            event.key === "Escape"
-        ) {
+        if(
+            event.key ===
+            "Escape"
+        ){
 
-            $$(".modal:not(.hidden)")
-                .forEach(
-                    modal =>
-                        modal.classList.add(
-                            "hidden"
-                        )
-                );
+            closeSettings();
 
         }
 
-    }
-);
 
+        /*
+         * Ctrl/Cmd + K
+         */
 
-/* =========================================================
-   CLICK OUTSIDE MODAL
-   ========================================================= */
-
-$$(".modal").forEach(
-    modal => {
-
-        modal.addEventListener(
-            "click",
-            event => {
-
-                if (
-                    event.target === modal
-                ) {
-
-                    modal.classList.add(
-                        "hidden"
-                    );
-
-                }
-
-            }
-        );
-
-    }
-);
-
-
-/* =========================================================
-   KEYBOARD SHORTCUT
-   ========================================================= */
-
-document.addEventListener(
-    "keydown",
-    event => {
-
-        if (
+        if(
             (event.ctrlKey ||
              event.metaKey) &&
-            event.key.toLowerCase() === "k"
-        ) {
+            event.key.toLowerCase() ===
+            "k"
+        ){
 
             event.preventDefault();
 
-            elements.input.focus();
+            input.focus();
 
         }
 
-        if (
+
+        /*
+         * Ctrl/Cmd + N
+         */
+
+        if(
             (event.ctrlKey ||
              event.metaKey) &&
-            event.key.toLowerCase() === "n"
-        ) {
+            event.key.toLowerCase() ===
+            "n"
+        ){
 
             event.preventDefault();
 
@@ -3726,47 +3369,188 @@ document.addEventListener(
 
 
 /* =========================================================
-   INITIALIZE
+   SETTINGS CONTROLS
    ========================================================= */
+
+document
+    .getElementById(
+        "enterSetting"
+    )
+    .addEventListener(
+        "change",
+        event => {
+
+            TK.settings.enterToSend =
+                event.target.checked;
+
+            saveSettings();
+
+        }
+    );
+
+
+document
+    .getElementById(
+        "historySetting"
+    )
+    .addEventListener(
+        "change",
+        event => {
+
+            TK.settings.saveHistory =
+                event.target.checked;
+
+            if(
+                !TK.settings.saveHistory
+            ){
+
+                localStorage.removeItem(
+                    "turkai_messages"
+                );
+
+                localStorage.removeItem(
+                    "turkai_chat_id"
+                );
+
+            }else{
+
+                saveState();
+
+            }
+
+        }
+    );
+
+
+document
+    .getElementById(
+        "animationSetting"
+    )
+    .addEventListener(
+        "change",
+        event => {
+
+            TK.settings.animationsEnabled =
+                event.target.checked;
+
+            saveSettings();
+
+        }
+    );
+
+
+/* =========================================================
+   INIT SETTINGS UI
+   ========================================================= */
+
+function syncSettingsUI(){
+
+    document
+        .getElementById(
+            "enterSetting"
+        )
+        .checked =
+        TK.settings.enterToSend;
+
+
+    document
+        .getElementById(
+            "historySetting"
+        )
+        .checked =
+        TK.settings.saveHistory;
+
+
+    document
+        .getElementById(
+            "animationSetting"
+        )
+        .checked =
+        TK.settings.animationsEnabled;
+
+}
+
+
+/* =========================================================
+   SERVER HEALTH CHECK
+   ========================================================= */
+
+async function checkServer(){
+
+    /*
+     * /api/chat POST endpointini
+     * burada çağırmıyoruz.
+     *
+     * Server'da /api/health varsa
+     * otomatik kontrol ediyoruz.
+     */
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/health",
+                {
+                    method:"GET",
+                    cache:"no-store"
+                }
+            );
+
+
+        if(
+            response.ok
+        ){
+
+            console.log(
+                "[TürkAI] Server bağlantısı aktif."
+            );
+
+        }else{
+
+            console.warn(
+                "[TürkAI] Health endpoint hata döndürdü."
+            );
+
+        }
+
+    }catch{
+
+        console.warn(
+            "[TürkAI] Health endpoint bulunamadı veya server erişilemiyor."
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   START
+   ========================================================= */
+
+loadSettings();
+
+syncSettingsUI();
 
 loadState();
 
-updateSendButton();
+setupVoice();
 
-elements.input.focus();
+checkServer();
+
+autoResize();
+
+input.focus();
 
 
-/* =========================================================
-   GLOBAL ERROR HANDLER
-   ========================================================= */
-
-window.addEventListener(
-    "error",
-    event => {
-
-        console.error(
-            "TürkAI frontend error:",
-            event.error
-        );
-
-    }
+console.log(
+    "%cTürkAI client başlatıldı.",
+    "color:#8975ef;font-weight:bold;"
 );
 
-
-/* =========================================================
-   UNHANDLED PROMISE
-   ========================================================= */
-
-window.addEventListener(
-    "unhandledrejection",
-    event => {
-
-        console.error(
-            "TürkAI promise error:",
-            event.reason
-        );
-
-    }
+console.log(
+    "[TürkAI] API:",
+    window.location.origin
 );
 
 </script>
