@@ -7015,3 +7015,816 @@ body::before {
  Accessible focus states
 ============================================================
 */
+/* ============================================================
+   TÜRKAI — FINAL LAYOUT FIX
+   ORTALAMA + RESPONSIVE + STABLE APP LAYOUT
+============================================================ */
+
+html,
+body {
+    width: 100%;
+    min-width: 0;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    overflow: hidden;
+}
+
+/* Ana uygulama */
+#appShell {
+    position: relative;
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+}
+
+/* Sidebar */
+#sidebar {
+    flex: 0 0 var(--sidebar-width, 272px);
+    width: var(--sidebar-width, 272px);
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Ana alan */
+#mainContent {
+    position: relative;
+    flex: 1 1 auto;
+    width: calc(100% - var(--sidebar-width, 272px));
+    min-width: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Üst bar */
+#topbar {
+    flex: 0 0 var(--topbar-height, 72px);
+    width: 100%;
+}
+
+/* Sayfa alanı */
+.page-container {
+    position: relative;
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    justify-content: center;
+}
+
+/* Her ekran */
+.screen {
+    position: relative;
+    width: 100%;
+    max-width: 1180px;
+    min-width: 0;
+    margin: 0 auto;
+    padding: 34px 42px 150px;
+    box-sizing: border-box;
+}
+
+/* Chat özel */
+#screen-chat {
+    max-width: 1180px;
+    min-height: 100%;
+    padding:
+        0
+        24px
+        130px;
+}
+
+/* Chat görünümü */
+#chatView {
+    position: relative;
+    width: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Mesaj alanı */
+#chatMessages {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    flex: 1 1 auto;
+    box-sizing: border-box;
+}
+
+/* Hoş geldin ekranı */
+#welcomeState {
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+/* Composer */
+#chatComposer {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+
+    width: 100%;
+    max-width: 900px;
+
+    margin: auto auto 0;
+
+    padding:
+        16px
+        0
+        18px;
+
+    box-sizing: border-box;
+}
+
+/* Composer kutusu */
+.composer-shell {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Mesaj genişliği */
+.chat-message {
+    width: 100%;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+}
+
+/* Sayfa başlıkları */
+.page-header {
+    width: 100%;
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Kart gridleri */
+.plans-grid,
+.admin-stat-grid,
+.admin-panels,
+.profile-layout,
+.settings-stack,
+.files-grid {
+    width: 100%;
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Araştırma */
+.research-search,
+.research-results,
+.research-shortcuts {
+    width: 100%;
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Kod alanı */
+.code-workspace {
+    width: 100%;
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Yardım */
+.help-search,
+.help-list {
+    width: 100%;
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Geçmiş */
+.history-search,
+.history-list {
+    width: 100%;
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Hafıza */
+.memory-list,
+.memory-info-card {
+    width: 100%;
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Ayarlar */
+.settings-card {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* ============================================================
+   AUTH CENTER
+============================================================ */
+
+#authScreen {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 30px;
+    box-sizing: border-box;
+
+    overflow-y: auto;
+}
+
+.auth-layout {
+    position: relative;
+    z-index: 2;
+
+    width: min(1120px, 100%);
+    margin: auto;
+
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        minmax(360px, 440px);
+
+    align-items: center;
+    gap: 70px;
+}
+
+.auth-card-wrapper {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 440px;
+    box-sizing: border-box;
+}
+
+/* ============================================================
+   OPENING CENTER
+============================================================ */
+
+#openingScreen {
+    position: fixed;
+    inset: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
+    height: 100%;
+
+    z-index: 9999;
+}
+
+.opening-content {
+    position: relative;
+    z-index: 2;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+
+    width: min(500px, 90%);
+    margin: auto;
+}
+
+/* ============================================================
+   MODALS CENTER
+============================================================ */
+
+.turkai-modal {
+    position: fixed;
+    inset: 0;
+
+    z-index: 9000;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    box-sizing: border-box;
+}
+
+.turkai-modal[hidden] {
+    display: none !important;
+}
+
+.modal-card,
+.command-card {
+    position: relative;
+
+    width: min(560px, 100%);
+    max-height: min(760px, 90vh);
+
+    margin: auto;
+
+    overflow-y: auto;
+
+    box-sizing: border-box;
+}
+
+/* ============================================================
+   NOTIFICATIONS CENTER
+============================================================ */
+
+#notificationsPanel {
+    position: absolute;
+
+    top: calc(var(--topbar-height, 72px) + 10px);
+    right: 24px;
+
+    z-index: 5000;
+
+    width: min(390px, calc(100% - 32px));
+    max-height: 600px;
+
+    overflow-y: auto;
+}
+
+/* ============================================================
+   MODEL PICKER
+============================================================ */
+
+#modelPickerList {
+    position: absolute;
+
+    z-index: 4000;
+
+    width: min(330px, calc(100% - 24px));
+    max-height: 500px;
+
+    overflow-y: auto;
+}
+
+#modelPickerList[hidden] {
+    display: none !important;
+}
+
+/* ============================================================
+   CONNECTION STATUS
+============================================================ */
+
+#connectionStatus {
+    position: absolute;
+
+    right: 20px;
+    bottom: 20px;
+
+    z-index: 1000;
+}
+
+/* ============================================================
+   MOBILE
+============================================================ */
+
+@media (max-width: 900px) {
+
+    #sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+
+        z-index: 7000;
+
+        width: min(300px, 86vw);
+
+        transform: translateX(-105%);
+        transition:
+            transform .22s ease;
+
+        flex-basis: auto;
+    }
+
+    #sidebar.open,
+    #sidebar.active,
+    body.sidebar-open #sidebar {
+        transform: translateX(0);
+    }
+
+    #mainContent {
+        width: 100%;
+    }
+
+    .screen {
+        padding:
+            26px
+            20px
+            120px;
+    }
+
+    #screen-chat {
+        padding:
+            0
+            14px
+            120px;
+    }
+
+    #chatMessages,
+    #chatComposer {
+        max-width: 760px;
+    }
+
+    .auth-layout {
+        grid-template-columns: 1fr;
+        gap: 30px;
+        max-width: 500px;
+    }
+
+    .auth-brand-panel {
+        text-align: center;
+    }
+
+    .auth-feature-list {
+        display: none;
+    }
+
+    .auth-card {
+        max-width: 500px;
+    }
+
+    .mobile-bottom-nav {
+        display: flex;
+    }
+
+    #connectionStatus {
+        display: none;
+    }
+}
+
+/* ============================================================
+   TABLET
+============================================================ */
+
+@media (min-width: 901px) and (max-width: 1200px) {
+
+    .screen {
+        padding-left: 28px;
+        padding-right: 28px;
+    }
+
+    #screen-chat {
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+
+    .auth-layout {
+        gap: 40px;
+        width: min(1000px, 100%);
+    }
+
+}
+
+/* ============================================================
+   PHONE
+============================================================ */
+
+@media (max-width: 600px) {
+
+    body {
+        overflow: hidden;
+    }
+
+    #mainContent {
+        min-height: 100dvh;
+    }
+
+    .page-container {
+        padding-bottom: 72px;
+    }
+
+    .screen {
+        padding:
+            22px
+            14px
+            110px;
+    }
+
+    #screen-chat {
+        padding:
+            0
+            8px
+            100px;
+    }
+
+    #chatMessages {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    #welcomeState {
+        max-width: 100%;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    #chatComposer {
+        width: 100%;
+        max-width: 100%;
+
+        padding:
+            10px
+            4px
+            8px;
+    }
+
+    .composer-shell {
+        border-radius: 18px;
+    }
+
+    .composer-bottom {
+        flex-wrap: wrap;
+    }
+
+    .composer-tools {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .composer-tool span {
+        display: none;
+    }
+
+    .composer-right {
+        min-width: 0;
+    }
+
+    .fusion-label,
+    .fusion-status {
+        display: none;
+    }
+
+    .model-selected-name {
+        max-width: 90px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .page-header {
+        align-items: flex-start;
+    }
+
+    .plans-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-panels {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .code-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .code-output-panel {
+        min-height: 220px;
+    }
+
+    .topbar-profile-info {
+        display: none;
+    }
+
+    .topbar-page-title #pageKicker {
+        display: none;
+    }
+
+    .topbar {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .topbar-actions {
+        gap: 4px;
+    }
+
+    .notification-button {
+        display: flex;
+    }
+
+    #notificationsPanel {
+        right: 10px;
+        top: 66px;
+        width: calc(100% - 20px);
+    }
+
+    .auth-screen {
+        padding: 16px;
+    }
+
+    .auth-layout {
+        width: 100%;
+    }
+
+    .auth-brand-panel {
+        display: none;
+    }
+
+    .auth-card {
+        max-width: 100%;
+    }
+
+    .auth-card-wrapper {
+        width: 100%;
+    }
+
+    .modal-card,
+    .command-card {
+        width: 100%;
+        max-height: 88dvh;
+        border-radius: 20px;
+    }
+
+    .mobile-menu-button {
+        display: flex;
+    }
+
+}
+
+/* ============================================================
+   VERY SMALL PHONES
+============================================================ */
+
+@media (max-width: 380px) {
+
+    .screen {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    #screen-chat {
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+
+    .welcome-state h2 {
+        font-size: 27px;
+    }
+
+    .suggestion-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .composer-bottom {
+        gap: 5px;
+    }
+
+    .composer-tools {
+        gap: 2px;
+    }
+
+    .composer-tool,
+    .icon-button {
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+    }
+
+    .send-button {
+        width: 40px;
+        min-width: 40px;
+        height: 40px;
+    }
+
+    .model-selector-button {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    .model-selected-name {
+        max-width: 70px;
+    }
+
+}
+
+/* ============================================================
+   SAFETY / DISPLAY FIXES
+============================================================ */
+
+[hidden] {
+    display: none !important;
+}
+
+button,
+input,
+textarea,
+select {
+    font: inherit;
+}
+
+img,
+svg {
+    max-width: 100%;
+}
+
+svg {
+    flex-shrink: 0;
+}
+
+button {
+    -webkit-tap-highlight-color: transparent;
+}
+
+textarea {
+    resize: none;
+}
+
+.page-container,
+#chatMessages,
+#historyList,
+#memoryList,
+#filesList,
+#researchResults {
+    scrollbar-width: thin;
+}
+
+/* Mobilde yatay taşmayı kesin olarak engelle */
+html,
+body,
+#appShell,
+#mainContent,
+.page-container {
+    max-width: 100%;
+}
+
+/* ============================================================
+   FINAL CENTERING
+============================================================ */
+
+#screen-chat > *,
+#screen-research > *,
+#screen-files > *,
+#screen-coding > *,
+#screen-memory > *,
+#screen-history > *,
+#screen-profile > *,
+#screen-plans > *,
+#screen-settings > *,
+#screen-help > *,
+#screen-admin > * {
+    box-sizing: border-box;
+}
+
+/* Masaüstünde içerik gerçekten ortada */
+@media (min-width: 901px) {
+
+    .screen:not(#screen-chat) {
+        display: block;
+    }
+
+    #screen-chat {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    #chatView {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+}
+
+/* ============================================================
+   END — LAYOUT FIX
+============================================================ */
