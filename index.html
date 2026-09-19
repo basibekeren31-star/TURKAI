@@ -1,3821 +1,2321 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
+  <meta charset="UTF-8">
 
-    <!-- =====================================================
-         TÜRKAI — INDEX.HTML
-         PART 1 / 3
-         PREMIUM APP SHELL + HEADER + SIDEBAR
-         ===================================================== -->
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  >
 
-    <meta charset="UTF-8">
+  <meta name="theme-color" content="#080b12">
+  <meta
+    name="description"
+    content="TürkAI — modern Türkçe yapay zeka platformu"
+  >
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
-    >
+  <title>TürkAI — Yapay Zeka</title>
 
-    <meta
-        name="theme-color"
-        content="#090b10"
-    >
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-    <meta
-        name="color-scheme"
-        content="dark light"
-    >
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  >
 
-    <meta
-        name="description"
-        content="TürkAI — Türkçe yapay zeka asistanı"
-    >
+  <link rel="stylesheet" href="/style.css">
 
-    <meta
-        name="application-name"
-        content="TürkAI"
-    >
-
-    <meta
-        name="mobile-web-app-capable"
-        content="yes"
-    >
-
-    <meta
-        name="apple-mobile-web-app-capable"
-        content="yes"
-    >
-
-    <meta
-        name="apple-mobile-web-app-status-bar-style"
-        content="black-translucent"
-    >
-
-    <meta
-        name="apple-mobile-web-app-title"
-        content="TürkAI"
-    >
-
-    <title>TürkAI — Yapay Zeka Asistanı</title>
-
-
-    <!-- =====================================================
-         GOOGLE IDENTITY
-         ===================================================== -->
-
-    <script
-        src="https://accounts.google.com/gsi/client"
-        async
-        defer
-    ></script>
-
-
-    <!-- =====================================================
-         SOCKET.IO
-         ===================================================== -->
-
-    <script
-        src="/socket.io/socket.io.js"
-        defer
-    ></script>
-
-
-    <!-- =====================================================
-         ICONS
-         ===================================================== -->
-
-    <link
-        rel="preconnect"
-        href="https://fonts.googleapis.com"
-    >
-
-    <link
-        rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossorigin
-    >
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet"
-    >
-
-
-    <!-- =====================================================
-         APP CSS
-         ===================================================== -->
-
-    <link
-        rel="stylesheet"
-        href="/style.css"
-    >
-
-
-    <!-- =====================================================
-         EARLY APP CONFIG
-         ===================================================== -->
-
-    <script>
-
-        /*
-         * app.js yüklenmeden önce kullanılacak
-         * temel frontend ayarları.
-         */
-
-        window.TURKAI_APP_CONFIG = {
-
-            apiBase:
-                "",
-
-            googleClientId:
-                "",
-
-            appName:
-                "TürkAI",
-
-            version:
-                "10.0.0",
-
-            environment:
-                "production",
-
-            language:
-                "tr-TR",
-
-            defaultModel:
-                "auto",
-
-            defaultPlan:
-                "free",
-
-            maxMessageLength:
-                50000,
-
-            requestTimeout:
-                60000
-        };
-
-    </script>
-
+  <script src="/socket.io/socket.io.js"></script>
 </head>
 
+<body>
 
-<body
-    class="turkai-app"
-    data-app="turkai"
-    data-version="10.0.0"
->
+  <!-- =====================================================
+       APP SHELL
+  ====================================================== -->
 
+  <div class="app-shell">
 
-<!-- =========================================================
-     APP ROOT
-     ========================================================= -->
-
-<div
-    id="app"
-    class="turkai-app-shell"
->
-
-
-    <!-- =====================================================
-         MOBILE SIDEBAR OVERLAY
-         ===================================================== -->
-
-    <div
-        id="sidebarOverlay"
-        class="turkai-sidebar-overlay"
-        aria-hidden="true"
-    ></div>
-
-
-    <!-- =====================================================
+    <!-- ===================================================
          SIDEBAR
-         ===================================================== -->
+    ==================================================== -->
 
-    <aside
-        id="sidebar"
-        class="turkai-sidebar"
-        aria-label="TürkAI menüsü"
-    >
+    <aside class="sidebar" id="sidebar">
 
-        <!-- =================================================
-             SIDEBAR HEADER
-             ================================================= -->
+      <div class="sidebar-top">
 
-        <div
-            class="turkai-sidebar-header"
+        <div class="brand">
+
+          <div class="brand-logo">
+            <span class="brand-logo-core"></span>
+          </div>
+
+          <div class="brand-text">
+            <strong>TürkAI</strong>
+            <span>Yapay Zeka</span>
+          </div>
+
+        </div>
+
+        <button
+          class="icon-button mobile-only"
+          id="closeSidebar"
+          type="button"
+          aria-label="Menüyü kapat"
         >
+          <span class="icon">×</span>
+        </button>
+
+      </div>
+
+      <!-- Yeni sohbet -->
+
+      <button
+        class="new-chat-button"
+        id="newChatButton"
+        type="button"
+      >
+        <span class="new-chat-icon">+</span>
+        <span>Yeni sohbet</span>
+      </button>
+
+      <!-- Navigasyon -->
+
+      <nav class="main-navigation">
+
+        <button
+          class="nav-item active"
+          data-page="chat"
+          type="button"
+        >
+          <span class="nav-icon">⌂</span>
+          <span>Sohbet</span>
+        </button>
+
+        <button
+          class="nav-item"
+          data-page="research"
+          type="button"
+        >
+          <span class="nav-icon">⌕</span>
+          <span>Araştır</span>
+        </button>
+
+        <button
+          class="nav-item"
+          data-page="files"
+          type="button"
+        >
+          <span class="nav-icon">□</span>
+          <span>Dosyalar</span>
+        </button>
+
+        <button
+          class="nav-item"
+          data-page="media"
+          type="button"
+        >
+          <span class="nav-icon">◇</span>
+          <span>Medya</span>
+        </button>
+
+        <button
+          class="nav-item"
+          data-page="code"
+          type="button"
+        >
+          <span class="nav-icon">&lt;/&gt;</span>
+          <span>Kod</span>
+        </button>
+
+      </nav>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Sohbet geçmişi -->
+
+      <div class="history-section">
+
+        <div class="section-label">
+          <span>SOHBETLER</span>
+        </div>
+
+        <div id="conversationList" class="conversation-list">
+
+          <button class="conversation-item" type="button">
+            <span class="conversation-icon">◌</span>
+            <span class="conversation-title">
+              Yeni sohbet
+            </span>
+          </button>
+
+        </div>
+
+      </div>
+
+      <!-- Sidebar alt -->
+
+      <div class="sidebar-bottom">
+
+        <button
+          class="sidebar-action"
+          id="settingsButton"
+          type="button"
+        >
+          <span class="nav-icon">⚙</span>
+          <span>Ayarlar</span>
+        </button>
+
+        <div class="plan-card">
+
+          <div class="plan-card-top">
+
+            <div>
+              <span class="plan-small">PLAN</span>
+              <strong id="sidebarPlanName">Free</strong>
+            </div>
+
+            <span class="plan-status"></span>
+
+          </div>
+
+          <div class="plan-progress">
+            <span id="planProgress"></span>
+          </div>
+
+          <div class="plan-footer">
+            <span id="planUsageText">0 / 50 mesaj</span>
 
             <button
-                id="sidebarClose"
-                class="turkai-icon-button"
-                type="button"
-                aria-label="Menüyü kapat"
-                data-action="sidebar"
+              id="upgradeButton"
+              type="button"
             >
-
-                <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-                    <path d="M18 6 6 18"></path>
-                    <path d="m6 6 12 12"></path>
-                </svg>
-
+              Yükselt
             </button>
+          </div>
 
+        </div>
+
+        <div class="user-mini">
+
+          <div class="user-avatar" id="userAvatar">
+            T
+          </div>
+
+          <div class="user-info">
+
+            <strong id="userName">
+              Misafir
+            </strong>
+
+            <span id="userEmail">
+              TürkAI hesabı
+            </span>
+
+          </div>
+
+          <button
+            class="user-menu-button"
+            id="userMenuButton"
+            type="button"
+          >
+            ⋯
+          </button>
+
+        </div>
+
+      </div>
+
+    </aside>
+
+
+    <!-- ===================================================
+         MAIN
+    ==================================================== -->
+
+    <main class="main-area">
+
+      <!-- Üst bar -->
+
+      <header class="topbar">
+
+        <div class="topbar-left">
+
+          <button
+            class="icon-button desktop-hidden"
+            id="openSidebar"
+            type="button"
+            aria-label="Menüyü aç"
+          >
+            ☰
+          </button>
+
+          <div class="page-heading">
+
+            <strong id="pageTitle">
+              TürkAI
+            </strong>
+
+            <span id="pageSubtitle">
+              Yapay zeka asistanın
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="topbar-right">
+
+          <!-- Model -->
+
+          <button
+            class="model-selector"
+            id="modelSelector"
+            type="button"
+          >
+
+            <span class="model-status-dot"></span>
+
+            <span id="selectedModel">
+              Otomatik
+            </span>
+
+            <span class="chevron">⌄</span>
+
+          </button>
+
+
+          <!-- Bağlantı -->
+
+          <div
+            class="connection-status"
+            id="connectionStatus"
+          >
+            <span class="connection-dot"></span>
+            <span class="connection-text">
+              Çevrimiçi
+            </span>
+          </div>
+
+
+          <!-- Bildirim -->
+
+          <button
+            class="icon-button notification-button"
+            id="notificationButton"
+            type="button"
+            aria-label="Bildirimler"
+          >
+            <span class="notification-icon">◉</span>
+            <span
+              class="notification-badge hidden"
+              id="notificationBadge"
+            >
+              0
+            </span>
+          </button>
+
+        </div>
+
+      </header>
+
+
+      <!-- =================================================
+           PAGE CONTAINER
+      ================================================== -->
+
+      <div class="page-container">
+
+
+        <!-- =================================================
+             CHAT PAGE
+        ================================================== -->
+
+        <section
+          class="page active"
+          id="chatPage"
+          data-page="chat"
+        >
+
+          <div
+            class="chat-scroll"
+            id="chatScroll"
+          >
+
+            <!-- Welcome -->
 
             <div
-                class="turkai-brand"
+              class="welcome-screen"
+              id="welcomeScreen"
             >
 
-                <div
-                    class="turkai-brand-mark"
-                    aria-hidden="true"
-                >
+              <div class="welcome-orb">
 
-                    <svg
-                        width="25"
-                        height="25"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                    >
+                <div class="orb-ring ring-one"></div>
+                <div class="orb-ring ring-two"></div>
+                <div class="orb-ring ring-three"></div>
 
-                        <path
-                            d="M12 2.8 14.2 9.8 21.2 12l-7 2.2-2.2 7-2.2-7L2.8 12l7-2.2L12 2.8Z"
-                            stroke="currentColor"
-                            stroke-width="1.7"
-                            stroke-linejoin="round"
-                        ></path>
-
-                        <path
-                            d="M19 3v4M17 5h4"
-                            stroke="currentColor"
-                            stroke-width="1.5"
-                            stroke-linecap="round"
-                        ></path>
-
-                    </svg>
-
+                <div class="orb-core">
+                  <span>T</span>
                 </div>
 
+              </div>
 
-                <div
-                    class="turkai-brand-text"
+
+              <div class="welcome-content">
+
+                <div class="welcome-eyebrow">
+                  TÜRKÇE YAPAY ZEKA
+                </div>
+
+                <h1>
+                  Merhaba, ben
+                  <span>TürkAI</span>.
+                </h1>
+
+                <p>
+                  Sorularını cevaplayabilir, kod yazabilir,
+                  araştırma yapabilir ve dosyalarını analiz
+                  edebilirim.
+                </p>
+
+              </div>
+
+
+              <!-- Öneri kartları -->
+
+              <div class="suggestion-grid">
+
+                <button
+                  class="suggestion-card"
+                  data-prompt="Bana modern bir JavaScript projesi fikri ver."
+                  type="button"
                 >
 
-                    <strong>
-                        TürkAI
-                    </strong>
+                  <span class="suggestion-icon">
+                    ✦
+                  </span>
 
-                    <span>
-                        AI Assistant
-                    </span>
+                  <span>
+                    <strong>Bir proje fikri ver</strong>
+                    <small>
+                      Yeni bir şey geliştirelim
+                    </small>
+                  </span>
 
-                </div>
+                </button>
+
+
+                <button
+                  class="suggestion-card"
+                  data-prompt="JavaScript'i bana basit ve eğlenceli şekilde öğret."
+                  type="button"
+                >
+
+                  <span class="suggestion-icon">
+                    ◇
+                  </span>
+
+                  <span>
+                    <strong>Kod öğren</strong>
+                    <small>
+                      Adım adım birlikte ilerleyelim
+                    </small>
+                  </span>
+
+                </button>
+
+
+                <button
+                  class="suggestion-card"
+                  data-prompt="Bugün teknoloji dünyasında önemli olan gelişmeleri araştır."
+                  type="button"
+                >
+
+                  <span class="suggestion-icon">
+                    ⌕
+                  </span>
+
+                  <span>
+                    <strong>Bir şey araştır</strong>
+                    <small>
+                      Güncel bilgileri bul
+                    </small>
+                  </span>
+
+                </button>
+
+
+                <button
+                  class="suggestion-card"
+                  data-prompt="Bana yaratıcı bir web sitesi tasarımı oluştur."
+                  type="button"
+                >
+
+                  <span class="suggestion-icon">
+                    ◈
+                  </span>
+
+                  <span>
+                    <strong>Tasarım oluştur</strong>
+                    <small>
+                      Fikri gerçek bir arayüze dönüştür
+                    </small>
+                  </span>
+
+                </button>
+
+              </div>
 
             </div>
 
-        </div>
 
-
-        <!-- =================================================
-             NEW CHAT
-             ================================================= -->
-
-        <div
-            class="turkai-sidebar-create"
-        >
-
-            <button
-                id="newChatButton"
-                class="turkai-new-chat-button"
-                type="button"
-                data-action="new-chat"
-            >
-
-                <span
-                    class="turkai-button-icon"
-                    aria-hidden="true"
-                >
-
-                    <svg
-                        width="19"
-                        height="19"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-
-                        <path
-                            d="M12 5v14"
-                        ></path>
-
-                        <path
-                            d="M5 12h14"
-                        ></path>
-
-                    </svg>
-
-                </span>
-
-                <span>
-                    Yeni sohbet
-                </span>
-
-            </button>
-
-        </div>
-
-
-        <!-- =================================================
-             SIDEBAR NAVIGATION
-             ================================================= -->
-
-        <nav
-            class="turkai-sidebar-nav"
-            aria-label="Ana menü"
-        >
-
-            <!-- CHAT -->
-
-            <button
-                class="turkai-nav-item active"
-                type="button"
-                data-action="chat"
-            >
-
-                <span
-                    class="turkai-nav-icon"
-                >
-
-                    <svg
-                        width="19"
-                        height="19"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-
-                        <path
-                            d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 2v-4.5A7.5 7.5 0 1 1 20 11.5Z"
-                        ></path>
-
-                    </svg>
-
-                </span>
-
-                <span>
-                    Sohbet
-                </span>
-
-            </button>
-
-
-            <!-- RESEARCH -->
-
-            <button
-                class="turkai-nav-item"
-                type="button"
-                data-action="research"
-            >
-
-                <span
-                    class="turkai-nav-icon"
-                >
-
-                    <svg
-                        width="19"
-                        height="19"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-
-                        <circle
-                            cx="11"
-                            cy="11"
-                            r="6.5"
-                        ></circle>
-
-                        <path
-                            d="m16 16 5 5"
-                        ></path>
-
-                        <path
-                            d="M11 7.5v7"
-                        ></path>
-
-                        <path
-                            d="M7.5 11h7"
-                        ></path>
-
-                    </svg>
-
-                </span>
-
-                <span>
-                    Araştır
-                </span>
-
-            </button>
-
-
-            <!-- FILES -->
-
-            <button
-                class="turkai-nav-item"
-                type="button"
-                data-action="files"
-            >
-
-                <span
-                    class="turkai-nav-icon"
-                >
-
-                    <svg
-                        width="19"
-                        height="19"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-
-                        <path
-                            d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"
-                        ></path>
-
-                        <path
-                            d="M14 2v6h6"
-                        ></path>
-
-                        <path
-                            d="M8 13h8"
-                        ></path>
-
-                        <path
-                            d="M8 17h6"
-                        ></path>
-
-                    </svg>
-
-                </span>
-
-                <span>
-                    Dosyalar
-                </span>
-
-            </button>
-
-
-            <!-- MEDIA -->
-
-            <button
-                class="turkai-nav-item"
-                type="button"
-                data-action="media"
-            >
-
-                <span
-                    class="turkai-nav-icon"
-                >
-
-                    <svg
-                        width="19"
-                        height="19"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-
-                        <rect
-                            x="3"
-                            y="3"
-                            width="18"
-                            height="18"
-                            rx="3"
-                        ></rect>
-
-                        <circle
-                            cx="8.5"
-                            cy="8.5"
-                            r="1.2"
-                        ></circle>
-
-                        <path
-                            d="m21 15-5-5L5 21"
-                        ></path>
-
-                    </svg>
-
-                </span>
-
-                <span>
-                    Medya
-                </span>
-
-            </button>
-
-
-            <!-- CODE -->
-
-            <button
-                class="turkai-nav-item"
-                type="button"
-                data-action="code"
-            >
-
-                <span
-                    class="turkai-nav-icon"
-                >
-
-                    <svg
-                        width="19"
-                        height="19"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-
-                        <path
-                            d="m8 9-4 3 4 3"
-                        ></path>
-
-                        <path
-                            d="m16 9 4 3-4 3"
-                        ></path>
-
-                        <path
-                            d="m14 5-4 14"
-                        ></path>
-
-                    </svg>
-
-                </span>
-
-                <span>
-                    Kodlama
-                </span>
-
-            </button>
-
-
-            <!-- =================================================
-                 NAV DIVIDER
-                 ================================================= -->
+            <!-- Mesajlar -->
 
             <div
-                class="turkai-nav-divider"
+              class="messages"
+              id="messages"
             ></div>
 
 
-            <!-- NOTIFICATIONS -->
-
-            <button
-                id="notificationButton"
-                class="turkai-nav-item"
-                type="button"
-                data-action="notifications"
-            >
-
-                <span
-                    class="turkai-nav-icon turkai-notification-icon"
-                >
-
-                    <svg
-                        width="19"
-                        height="19"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-
-                        <path
-                            d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"
-                        ></path>
-
-                        <path
-                            d="M10 21h4"
-                        ></path>
-
-                    </svg>
-
-                    <span
-                        id="notificationBadge"
-                        class="turkai-badge"
-                        hidden
-                    >
-                        0
-                    </span>
-
-                </span>
-
-                <span>
-                    Bildirimler
-                </span>
-
-            </button>
-
-
-            <!-- SETTINGS -->
-
-            <button
-                id="settingsButton"
-                class="turkai-nav-item"
-                type="button"
-                data-action="settings"
-            >
-
-                <span
-                    class="turkai-nav-icon"
-                >
-
-                    <svg
-                        width="19"
-                        height="19"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-
-                        <circle
-                            cx="12"
-                            cy="12"
-                            r="3"
-                        ></circle>
-
-                        <path
-                            d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.8 1.8-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.04 1.56V22h-2.55v-.1a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-1.8-1.8.06-.06A1.7 1.7 0 0 0 8.1 17a1.7 1.7 0 0 0-1.56-1.04H6v-2.55h.54A1.7 1.7 0 0 0 8.1 12.4a1.7 1.7 0 0 0-.34-1.88l-.06-.06 1.8-1.8.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 12.48 7.5V7h2.55v.5a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 1.8 1.8-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.04H22v2.55h-.5A1.7 1.7 0 0 0 19.4 15Z"
-                        ></path>
-
-                    </svg>
-
-                </span>
-
-                <span>
-                    Ayarlar
-                </span>
-
-            </button>
-
-        </nav>
-
-
-        <!-- =================================================
-             SIDEBAR SPACER
-             ================================================= -->
-
-        <div
-            class="turkai-sidebar-spacer"
-        ></div>
-
-
-        <!-- =================================================
-             PLAN CARD
-             ================================================= -->
-
-        <div
-            class="turkai-sidebar-plan"
-        >
+            <!-- Typing -->
 
             <div
-                class="turkai-plan-mini-icon"
+              class="typing-indicator hidden"
+              id="typingIndicator"
             >
 
-                <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.7"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
+              <div class="typing-avatar">
+                T
+              </div>
 
-                    <path
-                        d="m12 2 2.8 6.2L21 11l-6.2 2.8L12 20l-2.8-6.2L3 11l6.2-2.8L12 2Z"
-                    ></path>
+              <div class="typing-content">
 
-                </svg>
+                <span></span>
+                <span></span>
+                <span></span>
+
+              </div>
 
             </div>
 
+          </div>
+
+
+          <!-- =================================================
+               COMPOSER
+          ================================================== -->
+
+          <div class="composer-area">
 
             <div
-                class="turkai-plan-mini-content"
-            >
-
-                <span>
-                    Mevcut plan
-                </span>
-
-                <strong
-                    id="userPlan"
-                    data-user-plan
-                >
-                    FREE
-                </strong>
-
-            </div>
+              class="file-preview hidden"
+              id="filePreview"
+            ></div>
 
 
-            <button
-                type="button"
-                data-action="plans"
-                aria-label="Planları görüntüle"
-            >
+            <div class="composer-shell">
 
-                <svg
-                    width="17"
-                    height="17"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-
-                    <path
-                        d="m9 18 6-6-6-6"
-                    ></path>
-
-                </svg>
-
-            </button>
-
-        </div>
-
-
-        <!-- =================================================
-             USER PROFILE
-             ================================================= -->
-
-        <div
-            class="turkai-sidebar-user"
-        >
-
-            <div
-                class="turkai-user-avatar"
-                id="userAvatar"
-            >
-
-                <span
-                    data-user-initial
-                >
-                    T
-                </span>
-
-            </div>
-
-
-            <div
-                class="turkai-user-info"
-            >
-
-                <strong
-                    id="profileName"
-                    data-user-name
-                >
-                    Kullanıcı
-                </strong>
-
-                <span
-                    data-online-status
-                >
-                    Çevrimiçi
-                </span>
-
-            </div>
-
-
-            <button
-                id="logoutButton"
-                class="turkai-icon-button"
-                type="button"
-                data-action="logout"
-                aria-label="Çıkış yap"
-            >
-
-                <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-
-                    <path
-                        d="M10 17l5-5-5-5"
-                    ></path>
-
-                    <path
-                        d="M15 12H3"
-                    ></path>
-
-                    <path
-                        d="M21 19V5a2 2 0 0 0-2-2h-6"
-                    ></path>
-
-                </svg>
-
-            </button>
-
-        </div>
-
-    </aside>
-
-
-    <!-- =====================================================
-         MAIN AREA
-         ===================================================== -->
-
-    <main
-        id="main"
-        class="turkai-main"
-    >
-
-
-        <!-- =================================================
-             TOP HEADER
-             ================================================= -->
-
-        <header
-            id="topbar"
-            class="turkai-topbar"
-        >
-
-            <div
-                class="turkai-topbar-left"
-            >
-
-                <!-- MOBILE MENU -->
+              <div class="composer-tools-left">
 
                 <button
-                    id="sidebarToggle"
-                    class="turkai-icon-button turkai-mobile-menu"
-                    type="button"
-                    data-action="sidebar"
-                    aria-label="Menüyü aç"
+                  class="composer-tool"
+                  id="attachFileButton"
+                  type="button"
+                  title="Dosya ekle"
                 >
-
-                    <svg
-                        width="21"
-                        height="21"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-
-                        <path
-                            d="M4 6h16"
-                        ></path>
-
-                        <path
-                            d="M4 12h16"
-                        ></path>
-
-                        <path
-                            d="M4 18h16"
-                        ></path>
-
-                    </svg>
-
+                  +
                 </button>
 
+              </div>
 
-                <!-- PAGE TITLE -->
 
-                <div
-                    class="turkai-page-title"
+              <textarea
+                id="messageInput"
+                class="message-input"
+                rows="1"
+                maxlength="50000"
+                placeholder="TürkAI'ye bir şey sor..."
+                autocomplete="off"
+                spellcheck="true"
+              ></textarea>
+
+
+              <div class="composer-tools-right">
+
+                <button
+                  class="composer-tool"
+                  id="researchButton"
+                  type="button"
+                  title="İnternette araştır"
                 >
+                  ⌕
+                </button>
 
-                    <strong>
-                        TürkAI
-                    </strong>
+                <button
+                  class="composer-tool"
+                  id="voiceButton"
+                  type="button"
+                  title="Sesli giriş"
+                >
+                  ◉
+                </button>
 
-                    <span
-                        data-online-status
-                    >
-                        Çevrimiçi
-                    </span>
+                <button
+                  class="send-button"
+                  id="sendButton"
+                  type="button"
+                  title="Gönder"
+                >
+                  <span>↑</span>
+                </button>
 
-                </div>
+              </div>
 
             </div>
 
 
-            <div
-                class="turkai-topbar-center"
-            >
+            <div class="composer-footer">
 
-                <!-- MODEL SELECTOR -->
+              <span>
+                TürkAI yanıtları hata içerebilir. Önemli bilgileri
+                kontrol et.
+              </span>
 
-                <button
-                    id="modelButton"
-                    class="turkai-model-button"
-                    type="button"
-                    aria-haspopup="menu"
-                    aria-expanded="false"
-                >
-
-                    <span
-                        class="turkai-model-status"
-                    ></span>
-
-                    <span
-                        id="currentModelName"
-                    >
-                        Otomatik
-                    </span>
-
-                    <svg
-                        width="15"
-                        height="15"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-
-                        <path
-                            d="m6 9 6 6 6-6"
-                        ></path>
-
-                    </svg>
-
-                </button>
-
-
-                <!-- MODEL MENU -->
-
-                <div
-                    id="modelMenu"
-                    class="turkai-model-menu"
-                    role="menu"
-                    hidden
-                ></div>
+              <span id="characterCounter">
+                0 / 50000
+              </span>
 
             </div>
 
-
-            <div
-                class="turkai-topbar-right"
-            >
-
-                <!-- STATUS -->
-
-                <div
-                    class="turkai-live-status"
-                    title="Sunucu bağlantısı"
-                >
-
-                    <span
-                        id="connectionDot"
-                        class="turkai-connection-dot"
-                    ></span>
-
-                    <span
-                        id="connectionText"
-                    >
-                        Hazır
-                    </span>
-
-                </div>
-
-
-                <!-- NOTIFICATIONS -->
-
-                <button
-                    id="topNotificationButton"
-                    class="turkai-icon-button"
-                    type="button"
-                    data-action="notifications"
-                    aria-label="Bildirimler"
-                >
-
-                    <svg
-                        width="19"
-                        height="19"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-
-                        <path
-                            d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"
-                        ></path>
-
-                        <path
-                            d="M10 21h4"
-                        ></path>
-
-                    </svg>
-
-                    <span
-                        id="topNotificationBadge"
-                        class="turkai-button-badge"
-                        hidden
-                    >
-                        0
-                    </span>
-
-                </button>
-
-
-                <!-- PROFILE -->
-
-                <button
-                    id="profileButton"
-                    class="turkai-profile-button"
-                    type="button"
-                    data-action="profile"
-                    aria-label="Profil"
-                >
-
-                    <span
-                        class="turkai-profile-avatar"
-                    >
-                        <span
-                            data-user-initial
-                        >
-                            T
-                        </span>
-                    </span>
-
-                </button>
-
-            </div>
-
-        </header>
-
-
-        <!-- =================================================
-             CONTENT WRAPPER
-             ================================================= -->
-
-        <section
-            id="content"
-            class="turkai-content"
-        >
-
-            <!-- =================================================
-                 CHAT PAGE
-                 ================================================= -->
-
-            <section
-                id="chatPage"
-                class="turkai-chat-page active"
-                aria-label="TürkAI sohbet"
-            >
-
-
-                <!-- =================================================
-                     WELCOME AREA
-                     ================================================= -->
-
-                <div
-                    id="welcomeScreen"
-                    class="turkai-welcome"
-                >
-
-                    <div
-                        class="turkai-welcome-orb"
-                        aria-hidden="true"
-                    >
-
-                        <div
-                            class="turkai-orb-inner"
-                        >
-
-                            <svg
-                                width="42"
-                                height="42"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.5"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            >
-
-                                <path
-                                    d="M12 2.8 14.2 9.8 21.2 12l-7 2.2-2.2 7-2.2-7L2.8 12l7-2.2L12 2.8Z"
-                                ></path>
-
-                                <path
-                                    d="M19 3v4"
-                                ></path>
-
-                                <path
-                                    d="M17 5h4"
-                                ></path>
-
-                            </svg>
-
-                        </div>
-
-                    </div>
-
-
-                    <h1>
-                        <span
-                            data-user-greeting
-                        >
-                            Merhaba
-                        </span>
-                    </h1>
-
-
-                    <p>
-                        Bugün ne yapmak istiyorsun?
-                    </p>
-
-
-                    <!-- QUICK ACTIONS -->
-
-                    <div
-                        class="turkai-quick-actions"
-                    >
-
-                        <button
-                            type="button"
-                            data-quick-action="research"
-                        >
-
-                            <span>
-
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.8"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-
-                                    <circle
-                                        cx="11"
-                                        cy="11"
-                                        r="6.5"
-                                    ></circle>
-
-                                    <path
-                                        d="m16 16 5 5"
-                                    ></path>
-
-                                </svg>
-
-                            </span>
-
-                            Araştır
-
-                        </button>
-
-
-                        <button
-                            type="button"
-                            data-quick-action="code"
-                        >
-
-                            <span>
-
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.8"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-
-                                    <path
-                                        d="m8 9-4 3 4 3"
-                                    ></path>
-
-                                    <path
-                                        d="m16 9 4 3-4 3"
-                                    ></path>
-
-                                    <path
-                                        d="m14 5-4 14"
-                                    ></path>
-
-                                </svg>
-
-                            </span>
-
-                            Kod yaz
-
-                        </button>
-
-
-                        <button
-                            type="button"
-                            data-quick-action="weather"
-                        >
-
-                            <span>
-
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.8"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-
-                                    <circle
-                                        cx="12"
-                                        cy="12"
-                                        r="4"
-                                    ></circle>
-
-                                    <path
-                                        d="M12 2v2"
-                                    ></path>
-
-                                    <path
-                                        d="M12 20v2"
-                                    ></path>
-
-                                    <path
-                                        d="m4.93 4.93 1.42 1.42"
-                                    ></path>
-
-                                    <path
-                                        d="m17.65 17.65 1.42 1.42"
-                                    ></path>
-
-                                    <path
-                                        d="M2 12h2"
-                                    ></path>
-
-                                    <path
-                                        d="M20 12h2"
-                                    ></path>
-
-                                </svg>
-
-                            </span>
-
-                            Hava durumu
-
-                        </button>
-
-
-                        <button
-                            type="button"
-                            data-quick-action="explain"
-                        >
-
-                            <span>
-
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.8"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-
-                                    <circle
-                                        cx="12"
-                                        cy="12"
-                                        r="9"
-                                    ></circle>
-
-                                    <path
-                                        d="M9.7 9a2.5 2.5 0 0 1 4.8 1c0 1.8-2.5 2-2.5 3.5"
-                                    ></path>
-
-                                    <path
-                                        d="M12 17h.01"
-                                    ></path>
-
-                                </svg>
-
-                            </span>
-
-                            Bir şey öğret
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-
-                <!-- =================================================
-                     MESSAGE AREA
-                     ================================================= -->
-
-                <div
-                    id="messages"
-                    class="turkai-messages"
-                    aria-live="polite"
-                    aria-label="Mesajlar"
-                ></div>
-
-
-                <!-- =================================================
-                     TYPING INDICATOR
-                     ================================================= -->
-
-                <div
-                    id="typingIndicator"
-                    class="turkai-typing-indicator"
-                    hidden
-                >
-
-                    <div
-                        class="turkai-typing-avatar"
-                    >
-
-                        <svg
-                            width="17"
-                            height="17"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.6"
-                        >
-
-                            <path
-                                d="M12 2.8 14.2 9.8 21.2 12l-7 2.2-2.2 7-2.2-7L2.8 12l7-2.2L12 2.8Z"
-                            ></path>
-
-                        </svg>
-
-                    </div>
-
-
-                    <div
-                        class="turkai-typing-dots"
-                    >
-
-                        <span></span>
-                        <span></span>
-                        <span></span>
-
-                    </div>
-
-                    <span>
-                        TürkAI düşünüyor
-                    </span>
-
-                </div>
-<!-- =========================================================
-     TÜRKAI — INDEX.HTML
-     PART 2 / 3
-     CHAT COMPOSER + TOOLS + FILES + WEATHER + RESEARCH
-     ========================================================= -->
-
-
-                <!-- =================================================
-                     COMPOSER AREA
-                     ================================================= -->
-
-                <div
-                    id="composerArea"
-                    class="turkai-composer-area"
-                >
-
-                    <!-- =================================================
-                         SELECTED FILE PREVIEW
-                         ================================================= -->
-
-                    <div
-                        id="filePreview"
-                        class="turkai-file-preview"
-                        hidden
-                    >
-
-                        <div
-                            class="turkai-file-preview-icon"
-                        >
-
-                            <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.7"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            >
-
-                                <path
-                                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"
-                                ></path>
-
-                                <path
-                                    d="M14 2v6h6"
-                                ></path>
-
-                            </svg>
-
-                        </div>
-
-
-                        <div
-                            class="turkai-file-preview-info"
-                        >
-
-                            <strong
-                                id="filePreviewName"
-                            >
-                                Dosya
-                            </strong>
-
-                            <span
-                                id="filePreviewMeta"
-                            >
-                                Hazır
-                            </span>
-
-                        </div>
-
-
-                        <div
-                            class="turkai-file-progress"
-                            hidden
-                        >
-
-                            <div
-                                id="fileProgressBar"
-                            ></div>
-
-                        </div>
-
-
-                        <button
-                            id="removeFileButton"
-                            class="turkai-icon-button"
-                            type="button"
-                            aria-label="Dosyayı kaldır"
-                        >
-
-                            <svg
-                                width="17"
-                                height="17"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            >
-
-                                <path
-                                    d="M18 6 6 18"
-                                ></path>
-
-                                <path
-                                    d="m6 6 12 12"
-                                ></path>
-
-                            </svg>
-
-                        </button>
-
-                    </div>
-
-
-                    <!-- =================================================
-                         RESEARCH STATUS
-                         ================================================= -->
-
-                    <div
-                        id="researchStatus"
-                        class="turkai-research-status"
-                        hidden
-                    >
-
-                        <div
-                            class="turkai-research-spinner"
-                        ></div>
-
-                        <span
-                            id="researchStatusText"
-                        >
-                            İnternette araştırılıyor...
-                        </span>
-
-                    </div>
-
-
-                    <!-- =================================================
-                         WEATHER RESULT
-                         ================================================= -->
-
-                    <div
-                        id="weatherResult"
-                        class="turkai-weather-result"
-                        hidden
-                    >
-
-                        <div
-                            class="turkai-weather-icon"
-                        ></div>
-
-                        <div
-                            class="turkai-weather-content"
-                        >
-
-                            <strong
-                                id="weatherLocation"
-                            >
-                                —
-                            </strong>
-
-                            <span
-                                id="weatherTemperature"
-                            >
-                                —
-                            </span>
-
-                            <small
-                                id="weatherDescription"
-                            >
-                                —
-                            </small>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- =================================================
-                         COMPOSER CARD
-                         ================================================= -->
-
-                    <div
-                        id="composer"
-                        class="turkai-composer"
-                    >
-
-                        <!-- TOP TOOL ROW -->
-
-                        <div
-                            class="turkai-composer-top"
-                        >
-
-                            <div
-                                class="turkai-composer-tools-left"
-                            >
-
-                                <!-- FILE -->
-
-                                <button
-                                    id="fileButton"
-                                    class="turkai-composer-tool"
-                                    type="button"
-                                    title="Dosya ekle"
-                                    aria-label="Dosya ekle"
-                                >
-
-                                    <svg
-                                        width="18"
-                                        height="18"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.8"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    >
-
-                                        <path
-                                            d="M21.4 11.6 12 21a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 1 1-2.8-2.8l8.3-8.3"
-                                        ></path>
-
-                                    </svg>
-
-                                    <span>
-                                        Dosya
-                                    </span>
-
-                                </button>
-
-
-                                <!-- RESEARCH -->
-
-                                <button
-                                    id="researchButton"
-                                    class="turkai-composer-tool"
-                                    type="button"
-                                    title="İnternette araştır"
-                                    aria-label="İnternette araştır"
-                                >
-
-                                    <svg
-                                        width="18"
-                                        height="18"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.8"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    >
-
-                                        <circle
-                                            cx="11"
-                                            cy="11"
-                                            r="6.5"
-                                        ></circle>
-
-                                        <path
-                                            d="m16 16 5 5"
-                                        ></path>
-
-                                    </svg>
-
-                                    <span>
-                                        Araştır
-                                    </span>
-
-                                </button>
-
-
-                                <!-- WEATHER -->
-
-                                <button
-                                    id="weatherButton"
-                                    class="turkai-composer-tool"
-                                    type="button"
-                                    title="Hava durumu"
-                                    aria-label="Hava durumu"
-                                >
-
-                                    <svg
-                                        width="18"
-                                        height="18"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.8"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    >
-
-                                        <path
-                                            d="M17.5 19H8a5 5 0 1 1 1.4-9.8A6 6 0 0 1 21 11.5 3.5 3.5 0 0 1 17.5 19Z"
-                                        ></path>
-
-                                        <path
-                                            d="M8 5V3"
-                                        ></path>
-
-                                        <path
-                                            d="M4.5 6.5 3 5"
-                                        ></path>
-
-                                        <path
-                                            d="M15.5 6.5 17 5"
-                                        ></path>
-
-                                    </svg>
-
-                                    <span>
-                                        Hava
-                                    </span>
-
-                                </button>
-
-
-                                <!-- IMAGE -->
-
-                                <button
-                                    id="imageButton"
-                                    class="turkai-composer-tool"
-                                    type="button"
-                                    title="Görsel oluştur"
-                                    aria-label="Görsel oluştur"
-                                >
-
-                                    <svg
-                                        width="18"
-                                        height="18"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.8"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    >
-
-                                        <rect
-                                            x="3"
-                                            y="3"
-                                            width="18"
-                                            height="18"
-                                            rx="3"
-                                        ></rect>
-
-                                        <circle
-                                            cx="8.5"
-                                            cy="8.5"
-                                            r="1.2"
-                                        ></circle>
-
-                                        <path
-                                            d="m21 15-5-5L5 21"
-                                        ></path>
-
-                                    </svg>
-
-                                    <span>
-                                        Görsel
-                                    </span>
-
-                                </button>
-
-
-                                <!-- VIDEO -->
-
-                                <button
-                                    id="videoButton"
-                                    class="turkai-composer-tool"
-                                    type="button"
-                                    title="Video oluştur"
-                                    aria-label="Video oluştur"
-                                >
-
-                                    <svg
-                                        width="18"
-                                        height="18"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.8"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    >
-
-                                        <rect
-                                            x="3"
-                                            y="5"
-                                            width="13"
-                                            height="14"
-                                            rx="2"
-                                        ></rect>
-
-                                        <path
-                                            d="m16 10 5-3v10l-5-3"
-                                        ></path>
-
-                                    </svg>
-
-                                    <span>
-                                        Video
-                                    </span>
-
-                                </button>
-
-                            </div>
-
-
-                            <!-- MODEL SHORTCUT -->
-
-                            <div
-                                class="turkai-composer-model"
-                            >
-
-                                <button
-                                    type="button"
-                                    data-action="model"
-                                    aria-label="Model seç"
-                                >
-
-                                    <span
-                                        class="turkai-model-dot"
-                                    ></span>
-
-                                    <span
-                                        id="composerModelName"
-                                    >
-                                        Otomatik
-                                    </span>
-
-                                    <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="2"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    >
-
-                                        <path
-                                            d="m6 9 6 6 6-6"
-                                        ></path>
-
-                                    </svg>
-
-                                </button>
-
-                            </div>
-
-                        </div>
-
-
-                        <!-- =================================================
-                             TEXT INPUT
-                             ================================================= -->
-
-                        <div
-                            class="turkai-composer-input-row"
-                        >
-
-                            <textarea
-                                id="messageInput"
-                                class="turkai-message-input"
-                                rows="1"
-                                maxlength="50000"
-                                autocomplete="off"
-                                autocorrect="on"
-                                spellcheck="true"
-                                placeholder="TürkAI'ye bir şey sor..."
-                                aria-label="Mesaj yaz"
-                            ></textarea>
-
-
-                            <!-- VOICE -->
-
-                            <button
-                                id="voiceButton"
-                                class="turkai-input-action"
-                                type="button"
-                                title="Sesli giriş"
-                                aria-label="Sesli giriş"
-                            >
-
-                                <svg
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.8"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-
-                                    <rect
-                                        x="9"
-                                        y="3"
-                                        width="6"
-                                        height="11"
-                                        rx="3"
-                                    ></rect>
-
-                                    <path
-                                        d="M5 11a7 7 0 0 0 14 0"
-                                    ></path>
-
-                                    <path
-                                        d="M12 18v3"
-                                    ></path>
-
-                                    <path
-                                        d="M8 21h8"
-                                    ></path>
-
-                                </svg>
-
-                            </button>
-
-
-                            <!-- SEND -->
-
-                            <button
-                                id="sendButton"
-                                class="turkai-send-button"
-                                type="button"
-                                aria-label="Gönder"
-                            >
-
-                                <svg
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-
-                                    <path
-                                        d="m22 2-7 20-4-9-9-4Z"
-                                    ></path>
-
-                                    <path
-                                        d="M22 2 11 13"
-                                    ></path>
-
-                                </svg>
-
-                            </button>
-
-                        </div>
-
-
-                        <!-- =================================================
-                             COMPOSER FOOTER
-                             ================================================= -->
-
-                        <div
-                            class="turkai-composer-footer"
-                        >
-
-                            <span>
-                                TürkAI hata yapabilir.
-                                Önemli bilgileri kontrol et.
-                            </span>
-
-
-                            <div
-                                class="turkai-composer-status"
-                            >
-
-                                <span
-                                    id="composerStatus"
-                                >
-                                    Hazır
-                                </span>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- =================================================
-                         FILE INPUT
-                         ================================================= -->
-
-                    <input
-                        id="fileInput"
-                        type="file"
-                        hidden
-                        multiple="false"
-                        accept="
-                            .txt,
-                            .md,
-                            .json,
-                            .csv,
-                            .html,
-                            .css,
-                            .js,
-                            .ts,
-                            .jsx,
-                            .tsx,
-                            .py,
-                            .java,
-                            .c,
-                            .cpp,
-                            .h,
-                            .hpp,
-                            .cs,
-                            .php,
-                            .sql,
-                            .xml,
-                            .yaml,
-                            .yml,
-                            .log,
-                            .pdf
-                        "
-                    >
-
-
-                    <!-- =================================================
-                         COMPOSER HINTS
-                         ================================================= -->
-
-                    <div
-                        class="turkai-composer-hints"
-                    >
-
-                        <span>
-                            <kbd>Enter</kbd>
-                            gönder
-                        </span>
-
-                        <span>
-                            <kbd>Shift</kbd>
-                            +
-                            <kbd>Enter</kbd>
-                            yeni satır
-                        </span>
-
-                        <span>
-                            Dosya sürükleyip bırakabilirsin
-                        </span>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            <!-- =================================================
-                 RESEARCH PAGE
-                 ================================================= -->
-
-            <section
-                id="researchPage"
-                class="turkai-page"
-                hidden
-            >
-
-                <div
-                    class="turkai-page-header"
-                >
-
-                    <div>
-
-                        <span
-                            class="turkai-page-eyebrow"
-                        >
-                            WEB INTELLIGENCE
-                        </span>
-
-                        <h2>
-                            İnternet araştırması
-                        </h2>
-
-                        <p>
-                            Güncel bilgileri web üzerinden
-                            araştır ve kaynakları incele.
-                        </p>
-
-                    </div>
-
-                    <button
-                        id="researchPageButton"
-                        class="turkai-primary-button"
-                        type="button"
-                    >
-
-                        <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.8"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        >
-
-                            <circle
-                                cx="11"
-                                cy="11"
-                                r="6.5"
-                            ></circle>
-
-                            <path
-                                d="m16 16 5 5"
-                            ></path>
-
-                        </svg>
-
-                        Araştırmayı başlat
-
-                    </button>
-
-                </div>
-
-
-                <div
-                    id="researchResults"
-                    class="turkai-research-results"
-                ></div>
-
-            </section>
-
-
-            <!-- =================================================
-                 FILES PAGE
-                 ================================================= -->
-
-            <section
-                id="filesPage"
-                class="turkai-page"
-                hidden
-            >
-
-                <div
-                    class="turkai-page-header"
-                >
-
-                    <div>
-
-                        <span
-                            class="turkai-page-eyebrow"
-                        >
-                            DOCUMENT ENGINE
-                        </span>
-
-                        <h2>
-                            Dosyalarım
-                        </h2>
-
-                        <p>
-                            Belgelerini yükle, oku,
-                            analiz et ve TürkAI ile çalış.
-                        </p>
-
-                    </div>
-
-                    <button
-                        id="filesUploadButton"
-                        class="turkai-primary-button"
-                        type="button"
-                    >
-
-                        <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.8"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        >
-
-                            <path
-                                d="M12 16V4"
-                            ></path>
-
-                            <path
-                                d="m7 9 5-5 5 5"
-                            ></path>
-
-                            <path
-                                d="M5 20h14"
-                            ></path>
-
-                        </svg>
-
-                        Dosya yükle
-
-                    </button>
-
-                </div>
-
-
-                <div
-                    id="filesList"
-                    class="turkai-files-grid"
-                ></div>
-
-            </section>
-
-
-            <!-- =================================================
-                 MEDIA PAGE
-                 ================================================= -->
-
-            <section
-                id="mediaPage"
-                class="turkai-page"
-                hidden
-            >
-
-                <div
-                    class="turkai-page-header"
-                >
-
-                    <div>
-
-                        <span
-                            class="turkai-page-eyebrow"
-                        >
-                            CREATIVE ENGINE
-                        </span>
-
-                        <h2>
-                            Medya oluştur
-                        </h2>
-
-                        <p>
-                            Görsel ve video üretim görevlerini
-                            buradan yönet.
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <div
-                    class="turkai-media-grid"
-                >
-
-                    <button
-                        type="button"
-                        class="turkai-media-card"
-                        data-media-action="image"
-                    >
-
-                        <div
-                            class="turkai-media-card-icon"
-                        >
-
-                            <svg
-                                width="28"
-                                height="28"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.7"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            >
-
-                                <rect
-                                    x="3"
-                                    y="3"
-                                    width="18"
-                                    height="18"
-                                    rx="3"
-                                ></rect>
-
-                                <circle
-                                    cx="8.5"
-                                    cy="8.5"
-                                    r="1.2"
-                                ></circle>
-
-                                <path
-                                    d="m21 15-5-5L5 21"
-                                ></path>
-
-                            </svg>
-
-                        </div>
-
-                        <strong>
-                            Görsel oluştur
-                        </strong>
-
-                        <span>
-                            Yapay zeka ile görsel üret.
-                        </span>
-
-                    </button>
-
-
-                    <button
-                        type="button"
-                        class="turkai-media-card"
-                        data-media-action="video"
-                    >
-
-                        <div
-                            class="turkai-media-card-icon"
-                        >
-
-                            <svg
-                                width="28"
-                                height="28"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.7"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            >
-
-                                <rect
-                                    x="3"
-                                    y="5"
-                                    width="13"
-                                    height="14"
-                                    rx="2"
-                                ></rect>
-
-                                <path
-                                    d="m16 10 5-3v10l-5-3"
-                                ></path>
-
-                            </svg>
-
-                        </div>
-
-                        <strong>
-                            Video oluştur
-                        </strong>
-
-                        <span>
-                            Video üretim görevlerini başlat.
-                        </span>
-
-                    </button>
-
-                </div>
-
-            </section>
-
-
-            <!-- =================================================
-                 CODE PAGE
-                 ================================================= -->
-
-            <section
-                id="codePage"
-                class="turkai-page"
-                hidden
-            >
-
-                <div
-                    class="turkai-page-header"
-                >
-
-                    <div>
-
-                        <span
-                            class="turkai-page-eyebrow"
-                        >
-                            CODE INTELLIGENCE
-                        </span>
-
-                        <h2>
-                            Kodlama
-                        </h2>
-
-                        <p>
-                            JavaScript, Python, HTML, CSS,
-                            Java, C#, C++ ve daha fazlası.
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <div
-                    class="turkai-code-workspace"
-                >
-
-                    <div
-                        class="turkai-code-toolbar"
-                    >
-
-                        <span>
-                            TürkAI Code
-                        </span>
-
-                        <div>
-
-                            <button
-                                type="button"
-                                data-code-language="javascript"
-                            >
-                                JavaScript
-                            </button>
-
-                            <button
-                                type="button"
-                                data-code-language="python"
-                            >
-                                Python
-                            </button>
-
-                            <button
-                                type="button"
-                                data-code-language="html"
-                            >
-                                HTML
-                            </button>
-
-                        </div>
-
-                    </div>
-
-
-                    <textarea
-                        id="codeEditor"
-                        class="turkai-code-editor"
-                        spellcheck="false"
-                        placeholder="// Kodunu buraya yaz..."
-                    ></textarea>
-
-
-                    <div
-                        class="turkai-code-footer"
-                    >
-
-                        <span
-                            id="codeLanguage"
-                        >
-                            JavaScript
-                        </span>
-
-                        <button
-                            id="runCodeButton"
-                            type="button"
-                        >
-
-                            <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            >
-
-                                <path
-                                    d="m8 5 11 7-11 7V5Z"
-                                ></path>
-
-                            </svg>
-
-                            Çalıştır
-
-                        </button>
-
-                    </div>
-
-
-                    <pre
-                        id="codeOutput"
-                        class="turkai-code-output"
-                    ></pre>
-
-                </div>
-
-            </section>
-<!-- =========================================================
-     TÜRKAI — INDEX.HTML
-     PART 3 / 3
-     MODALS + SETTINGS + NOTIFICATIONS + PLANS + FINAL SCRIPTS
-     ========================================================= -->
-
-
-            <!-- =================================================
-                 SETTINGS PAGE
-                 ================================================= -->
-
-            <section
-                id="settingsPage"
-                class="turkai-page"
-                hidden
-            >
-
-                <div
-                    class="turkai-page-header"
-                >
-
-                    <div>
-
-                        <span
-                            class="turkai-page-eyebrow"
-                        >
-                            CONTROL CENTER
-                        </span>
-
-                        <h2>
-                            Ayarlar
-                        </h2>
-
-                        <p>
-                            TürkAI deneyimini kendine göre
-                            düzenle.
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <div
-                    class="turkai-settings-layout"
-                >
-
-                    <!-- ACCOUNT -->
-
-                    <div
-                        class="turkai-settings-section"
-                    >
-
-                        <div
-                            class="turkai-settings-section-title"
-                        >
-
-                            <div>
-
-                                <strong>
-                                    Hesap
-                                </strong>
-
-                                <span>
-                                    Hesap bilgilerin
-                                </span>
-
-                            </div>
-
-                        </div>
-
-
-                        <div
-                            class="turkai-account-card"
-                        >
-
-                            <div
-                                id="settingsAvatar"
-                                class="turkai-settings-avatar"
-                            >
-
-                                <span
-                                    data-user-initial
-                                >
-                                    T
-                                </span>
-
-                            </div>
-
-
-                            <div
-                                class="turkai-account-info"
-                            >
-
-                                <strong
-                                    id="settingsUserName"
-                                    data-user-name
-                                >
-                                    Kullanıcı
-                                </strong>
-
-                                <span
-                                    id="settingsUserPlan"
-                                    data-user-plan
-                                >
-                                    FREE
-                                </span>
-
-                            </div>
-
-
-                            <button
-                                id="settingsLogoutButton"
-                                class="turkai-secondary-button"
-                                type="button"
-                                data-action="logout"
-                            >
-                                Çıkış yap
-                            </button>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- APPEARANCE -->
-
-                    <div
-                        class="turkai-settings-section"
-                    >
-
-                        <div
-                            class="turkai-settings-section-title"
-                        >
-
-                            <div>
-
-                                <strong>
-                                    Görünüm
-                                </strong>
-
-                                <span>
-                                    Arayüz tercihlerinin
-                                </span>
-
-                            </div>
-
-                        </div>
-
-
-                        <div
-                            class="turkai-setting-row"
-                        >
-
-                            <div
-                                class="turkai-setting-info"
-                            >
-
-                                <strong>
-                                    Tema
-                                </strong>
-
-                                <span>
-                                    TürkAI görünümünü değiştir.
-                                </span>
-
-                            </div>
-
-
-                            <select
-                                id="themeSelect"
-                                class="turkai-select"
-                            >
-
-                                <option
-                                    value="dark"
-                                >
-                                    Koyu
-                                </option>
-
-                                <option
-                                    value="light"
-                                >
-                                    Açık
-                                </option>
-
-                                <option
-                                    value="system"
-                                >
-                                    Sistem
-                                </option>
-
-                            </select>
-
-                        </div>
-
-
-                        <div
-                            class="turkai-setting-row"
-                        >
-
-                            <div
-                                class="turkai-setting-info"
-                            >
-
-                                <strong>
-                                    Kompakt görünüm
-                                </strong>
-
-                                <span>
-                                    Mesajlar ve paneller daha
-                                    sıkı görünsün.
-                                </span>
-
-                            </div>
-
-
-                            <label
-                                class="turkai-switch"
-                            >
-
-                                <input
-                                    id="compactToggle"
-                                    type="checkbox"
-                                >
-
-                                <span></span>
-
-                            </label>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- AI -->
-
-                    <div
-                        class="turkai-settings-section"
-                    >
-
-                        <div
-                            class="turkai-settings-section-title"
-                        >
-
-                            <div>
-
-                                <strong>
-                                    Yapay zeka
-                                </strong>
-
-                                <span>
-                                    TürkAI davranış seçenekleri
-                                </span>
-
-                            </div>
-
-                        </div>
-
-
-                        <div
-                            class="turkai-setting-row"
-                        >
-
-                            <div
-                                class="turkai-setting-info"
-                            >
-
-                                <strong>
-                                    Hafıza
-                                </strong>
-
-                                <span>
-                                    Sohbet bağlamının
-                                    hatırlanmasına izin ver.
-                                </span>
-
-                            </div>
-
-
-                            <label
-                                class="turkai-switch"
-                            >
-
-                                <input
-                                    id="memoryToggle"
-                                    type="checkbox"
-                                    checked
-                                >
-
-                                <span></span>
-
-                            </label>
-
-                        </div>
-
-
-                        <div
-                            class="turkai-setting-row"
-                        >
-
-                            <div
-                                class="turkai-setting-info"
-                            >
-
-                                <strong>
-                                    Otomatik araştırma
-                                </strong>
-
-                                <span>
-                                    Güncel sorularda web
-                                    araştırmasını kullan.
-                                </span>
-
-                            </div>
-
-
-                            <label
-                                class="turkai-switch"
-                            >
-
-                                <input
-                                    id="autoResearchToggle"
-                                    type="checkbox"
-                                    checked
-                                >
-
-                                <span></span>
-
-                            </label>
-
-                        </div>
-
-
-                        <div
-                            class="turkai-setting-row"
-                        >
-
-                            <div
-                                class="turkai-setting-info"
-                            >
-
-                                <strong>
-                                    Ses
-                                </strong>
-
-                                <span>
-                                    Arayüz seslerini etkinleştir.
-                                </span>
-
-                            </div>
-
-
-                            <label
-                                class="turkai-switch"
-                            >
-
-                                <input
-                                    id="soundToggle"
-                                    type="checkbox"
-                                    checked
-                                >
-
-                                <span></span>
-
-                            </label>
-
-                        </div>
-
-
-                        <div
-                            class="turkai-setting-row"
-                        >
-
-                            <div
-                                class="turkai-setting-info"
-                            >
-
-                                <strong>
-                                    Enter ile gönder
-                                </strong>
-
-                                <span>
-                                    Enter'a basınca mesajı gönder.
-                                </span>
-
-                            </div>
-
-
-                            <label
-                                class="turkai-switch"
-                            >
-
-                                <input
-                                    id="enterToSendToggle"
-                                    type="checkbox"
-                                    checked
-                                >
-
-                                <span></span>
-
-                            </label>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- USAGE -->
-
-                    <div
-                        class="turkai-settings-section"
-                    >
-
-                        <div
-                            class="turkai-settings-section-title"
-                        >
-
-                            <div>
-
-                                <strong>
-                                    Kullanım
-                                </strong>
-
-                                <span>
-                                    Günlük TürkAI kullanımın
-                                </span>
-
-                            </div>
-
-                        </div>
-
-
-                        <div
-                            id="usagePanel"
-                            class="turkai-usage-panel"
-                        >
-
-                            <div
-                                class="turkai-usage-title"
-                            >
-                                Günlük kullanım
-                            </div>
-
-                            <div
-                                class="turkai-usage-count"
-                            >
-                                —
-                            </div>
-
-                            <div
-                                class="turkai-usage-bar"
-                            >
-
-                                <div
-                                    style="width:0%"
-                                ></div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- GOOGLE LOGIN -->
-
-                    <div
-                        class="turkai-settings-section"
-                    >
-
-                        <div
-                            class="turkai-settings-section-title"
-                        >
-
-                            <div>
-
-                                <strong>
-                                    Google hesabı
-                                </strong>
-
-                                <span>
-                                    Hesabını Google ile bağla.
-                                </span>
-
-                            </div>
-
-                        </div>
-
-
-                        <div
-                            id="googleLogin"
-                            class="turkai-google-login"
-                        ></div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            <!-- =================================================
-                 NOTIFICATION PAGE
-                 ================================================= -->
-
-            <section
-                id="notificationsPage"
-                class="turkai-page"
-                hidden
-            >
-
-                <div
-                    class="turkai-page-header"
-                >
-
-                    <div>
-
-                        <span
-                            class="turkai-page-eyebrow"
-                        >
-                            NOTIFICATIONS
-                        </span>
-
-                        <h2>
-                            Bildirimler
-                        </h2>
-
-                        <p>
-                            TürkAI sisteminden gelen
-                            bildirimler burada görünür.
-                        </p>
-
-                    </div>
-
-
-                    <button
-                        id="markAllNotificationsButton"
-                        class="turkai-secondary-button"
-                        type="button"
-                    >
-                        Tümünü okundu yap
-                    </button>
-
-                </div>
-
-
-                <div
-                    id="notificationsList"
-                    class="turkai-notifications-list"
-                ></div>
-
-            </section>
-
-
-            <!-- =================================================
-                 PLANS PAGE
-                 ================================================= -->
-
-            <section
-                id="plansPage"
-                class="turkai-page"
-                hidden
-            >
-
-                <div
-                    class="turkai-page-header"
-                >
-
-                    <div>
-
-                        <span
-                            class="turkai-page-eyebrow"
-                        >
-                            TÜRKAI PLANS
-                        </span>
-
-                        <h2>
-                            Planlar
-                        </h2>
-
-                        <p>
-                            TürkAI özelliklerini ve kullanım
-                            limitlerini incele.
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <div
-                    id="plansContainer"
-                    class="turkai-plans-grid"
-                ></div>
-
-            </section>
-
+          </div>
 
         </section>
 
-    </main>
 
+        <!-- =================================================
+             RESEARCH PAGE
+        ================================================== -->
 
-    <!-- =========================================================
-         IMAGE GENERATION MODAL
-         ========================================================= -->
-
-    <div
-        id="imageCreateModal"
-        class="turkai-modal"
-        hidden
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="imageModalTitle"
-    >
-
-        <div
-            class="turkai-modal-backdrop"
-            data-close-modal="imageCreateModal"
-        ></div>
-
-
-        <div
-            class="turkai-modal-card"
+        <section
+          class="page"
+          id="researchPage"
+          data-page="research"
         >
 
-            <div
-                class="turkai-modal-header"
-            >
+          <div class="tool-page">
 
-                <div>
+            <div class="tool-hero">
 
-                    <span
-                        class="turkai-modal-eyebrow"
-                    >
-                        CREATIVE ENGINE
-                    </span>
+              <div class="tool-icon-large">
+                ⌕
+              </div>
 
-                    <h3
-                        id="imageModalTitle"
-                    >
-                        Görsel oluştur
-                    </h3>
+              <div>
 
-                </div>
+                <span class="tool-eyebrow">
+                  WEB INTELLIGENCE
+                </span>
+
+                <h2>
+                  Araştırma
+                </h2>
+
+                <p>
+                  Güncel bilgileri internet üzerinden araştır.
+                </p>
+
+              </div>
+
+            </div>
 
 
-                <button
-                    class="turkai-icon-button"
-                    type="button"
-                    data-close-modal="imageCreateModal"
-                    aria-label="Kapat"
-                >
+            <div class="research-box">
 
-                    <svg
-                        width="19"
-                        height="19"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
+              <textarea
+                id="researchInput"
+                placeholder="Ne araştırmamı istersin?"
+              ></textarea>
 
-                        <path
-                            d="M18 6 6 18"
-                        ></path>
-
-                        <path
-                            d="m6 6 12 12"
-                        ></path>
-
-                    </svg>
-
-                </button>
+              <button
+                id="runResearchButton"
+                type="button"
+              >
+                Araştırmayı başlat
+              </button>
 
             </div>
 
 
             <div
-                class="turkai-modal-body"
-            >
+              id="researchResults"
+              class="research-results"
+            ></div>
 
-                <label
-                    class="turkai-field"
-                >
+          </div>
 
-                    <span>
-                        Prompt
-                    </span>
-
-                    <textarea
-                        id="imagePrompt"
-                        rows="5"
-                        maxlength="5000"
-                        placeholder="Nasıl bir görsel oluşturmak istiyorsun?"
-                    ></textarea>
-
-                </label>
+        </section>
 
 
-                <div
-                    class="turkai-field-grid"
-                >
+        <!-- =================================================
+             FILES PAGE
+        ================================================== -->
 
-                    <label
-                        class="turkai-field"
-                    >
-
-                        <span>
-                            Boyut
-                        </span>
-
-                        <select
-                            id="imageSize"
-                        >
-
-                            <option
-                                value="square"
-                            >
-                                Kare
-                            </option>
-
-                            <option
-                                value="portrait"
-                            >
-                                Dikey
-                            </option>
-
-                            <option
-                                value="landscape"
-                            >
-                                Yatay
-                            </option>
-
-                            <option
-                                value="wide"
-                            >
-                                Geniş
-                            </option>
-
-                        </select>
-
-                    </label>
-
-
-                    <label
-                        class="turkai-field"
-                    >
-
-                        <span>
-                            Kalite
-                        </span>
-
-                        <select
-                            id="imageQuality"
-                        >
-
-                            <option
-                                value="standard"
-                            >
-                                Standart
-                            </option>
-
-                            <option
-                                value="high"
-                            >
-                                Yüksek
-                            </option>
-
-                        </select>
-
-                    </label>
-
-                </div>
-
-
-                <div
-                    id="imageGenerationStatus"
-                    class="turkai-generation-status"
-                    hidden
-                >
-
-                    <div
-                        class="turkai-generation-spinner"
-                    ></div>
-
-                    <span>
-                        Görsel görevi hazırlanıyor...
-                    </span>
-
-                </div>
-
-            </div>
-
-
-            <div
-                class="turkai-modal-footer"
-            >
-
-                <button
-                    type="button"
-                    class="turkai-secondary-button"
-                    data-close-modal="imageCreateModal"
-                >
-                    Vazgeç
-                </button>
-
-                <button
-                    id="generateImageButton"
-                    type="button"
-                    class="turkai-primary-button"
-                >
-
-                    <svg
-                        width="17"
-                        height="17"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                    >
-
-                        <path
-                            d="M12 2.8 14.2 9.8 21.2 12l-7 2.2-2.2 7-2.2-7L2.8 12l7-2.2L12 2.8Z"
-                        ></path>
-
-                    </svg>
-
-                    Oluştur
-
-                </button>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- =========================================================
-         VIDEO GENERATION MODAL
-         ========================================================= -->
-
-    <div
-        id="videoCreateModal"
-        class="turkai-modal"
-        hidden
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="videoModalTitle"
-    >
-
-        <div
-            class="turkai-modal-backdrop"
-            data-close-modal="videoCreateModal"
-        ></div>
-
-
-        <div
-            class="turkai-modal-card"
+        <section
+          class="page"
+          id="filesPage"
+          data-page="files"
         >
 
-            <div
-                class="turkai-modal-header"
-            >
+          <div class="tool-page">
 
-                <div>
+            <div class="tool-hero">
 
-                    <span
-                        class="turkai-modal-eyebrow"
-                    >
-                        VIDEO ENGINE
-                    </span>
+              <div class="tool-icon-large">
+                □
+              </div>
 
-                    <h3
-                        id="videoModalTitle"
-                    >
-                        Video oluştur
-                    </h3>
+              <div>
 
-                </div>
+                <span class="tool-eyebrow">
+                  FILE INTELLIGENCE
+                </span>
 
+                <h2>
+                  Dosyalar
+                </h2>
 
-                <button
-                    class="turkai-icon-button"
-                    type="button"
-                    data-close-modal="videoCreateModal"
-                    aria-label="Kapat"
-                >
+                <p>
+                  Belgelerini yükle, TürkAI ile analiz et.
+                </p>
 
-                    <svg
-                        width="19"
-                        height="19"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                    >
-
-                        <path
-                            d="M18 6 6 18"
-                        ></path>
-
-                        <path
-                            d="m6 6 12 12"
-                        ></path>
-
-                    </svg>
-
-                </button>
+              </div>
 
             </div>
 
 
             <div
-                class="turkai-modal-body"
+              class="upload-zone"
+              id="uploadZone"
             >
 
-                <label
-                    class="turkai-field"
-                >
+              <div class="upload-icon">
+                ↑
+              </div>
 
-                    <span>
-                        Video açıklaması
-                    </span>
+              <strong>
+                Dosyanı buraya bırak
+              </strong>
 
-                    <textarea
-                        id="videoPrompt"
-                        rows="5"
-                        maxlength="5000"
-                        placeholder="Nasıl bir video oluşturmak istiyorsun?"
-                    ></textarea>
+              <span>
+                veya cihazından seç
+              </span>
 
-                </label>
+              <button
+                id="chooseFileButton"
+                type="button"
+              >
+                Dosya seç
+              </button>
 
-
-                <div
-                    class="turkai-field-grid"
-                >
-
-                    <label
-                        class="turkai-field"
-                    >
-
-                        <span>
-                            Süre
-                        </span>
-
-                        <select
-                            id="videoDuration"
-                        >
-
-                            <option
-                                value="5"
-                            >
-                                5 saniye
-                            </option>
-
-                            <option
-                                value="10"
-                            >
-                                10 saniye
-                            </option>
-
-                            <option
-                                value="15"
-                            >
-                                15 saniye
-                            </option>
-
-                            <option
-                                value="20"
-                            >
-                                20 saniye
-                            </option>
-
-                        </select>
-
-                    </label>
-
-
-                    <label
-                        class="turkai-field"
-                    >
-
-                        <span>
-                            Çözünürlük
-                        </span>
-
-                        <select
-                            id="videoResolution"
-                        >
-
-                            <option
-                                value="720p"
-                            >
-                                720p
-                            </option>
-
-                            <option
-                                value="1080p"
-                            >
-                                1080p
-                            </option>
-
-                        </select>
-
-                    </label>
-
-                </div>
-
-
-                <div
-                    id="videoGenerationStatus"
-                    class="turkai-generation-status"
-                    hidden
-                >
-
-                    <div
-                        class="turkai-generation-spinner"
-                    ></div>
-
-                    <span>
-                        Video görevi hazırlanıyor...
-                    </span>
-
-                </div>
+              <input
+                type="file"
+                id="fileInput"
+                hidden
+                multiple
+              >
 
             </div>
 
 
             <div
-                class="turkai-modal-footer"
-            >
+              id="fileList"
+              class="file-list"
+            ></div>
 
-                <button
-                    type="button"
-                    class="turkai-secondary-button"
-                    data-close-modal="videoCreateModal"
-                >
-                    Vazgeç
-                </button>
+          </div>
 
-                <button
-                    id="generateVideoButton"
-                    type="button"
-                    class="turkai-primary-button"
-                >
-
-                    <svg
-                        width="17"
-                        height="17"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                    >
-
-                        <rect
-                            x="3"
-                            y="5"
-                            width="13"
-                            height="14"
-                            rx="2"
-                        ></rect>
-
-                        <path
-                            d="m16 10 5-3v10l-5-3"
-                        ></path>
-
-                    </svg>
-
-                    Video oluştur
-
-                </button>
-
-            </div>
-
-        </div>
-
-    </div>
+        </section>
 
 
-    <!-- =========================================================
-         NOTIFICATION DRAWER
-         ========================================================= -->
+        <!-- =================================================
+             MEDIA PAGE
+        ================================================== -->
 
-    <aside
-        id="notificationPanel"
-        class="turkai-notification-panel"
-        hidden
-        aria-label="Bildirimler"
-    >
-
-        <div
-            class="turkai-panel-header"
+        <section
+          class="page"
+          id="mediaPage"
+          data-page="media"
         >
 
-            <div>
+          <div class="tool-page">
+
+            <div class="tool-hero">
+
+              <div class="tool-icon-large">
+                ◈
+              </div>
+
+              <div>
+
+                <span class="tool-eyebrow">
+                  CREATIVE STUDIO
+                </span>
+
+                <h2>
+                  Medya
+                </h2>
+
+                <p>
+                  Yapay zeka ile görsel ve video fikirleri oluştur.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div class="media-grid">
+
+              <button
+                class="media-card"
+                id="openImageGenerator"
+                type="button"
+              >
+
+                <div class="media-card-icon">
+                  ◇
+                </div>
 
                 <strong>
-                    Bildirimler
+                  Görsel oluştur
                 </strong>
 
                 <span>
-                    Son bildirimler
+                  Metinden yaratıcı görseller üret.
                 </span>
+
+                <div class="media-card-arrow">
+                  →
+                </div>
+
+              </button>
+
+
+              <button
+                class="media-card"
+                id="openVideoGenerator"
+                type="button"
+              >
+
+                <div class="media-card-icon">
+                  ▷
+                </div>
+
+                <strong>
+                  Video oluştur
+                </strong>
+
+                <span>
+                  Fikrini kısa videolara dönüştür.
+                </span>
+
+                <div class="media-card-arrow">
+                  →
+                </div>
+
+              </button>
 
             </div>
 
 
-            <button
-                class="turkai-icon-button"
-                type="button"
-                data-action="close-notifications"
-                aria-label="Kapat"
-            >
+            <div
+              id="mediaHistory"
+              class="media-history"
+            ></div>
 
-                <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                >
+          </div>
 
-                    <path
-                        d="M18 6 6 18"
-                    ></path>
-
-                    <path
-                        d="m6 6 12 12"
-                    ></path>
-
-                </svg>
-
-            </button>
-
-        </div>
+        </section>
 
 
-        <div
-            id="notificationPanelList"
-            class="turkai-panel-list"
-        ></div>
+        <!-- =================================================
+             CODE PAGE
+        ================================================== -->
 
-    </aside>
-
-
-    <!-- =========================================================
-         TOAST CONTAINER
-         ========================================================= -->
-
-    <div
-        id="toastContainer"
-        class="turkai-toast-container"
-        aria-live="polite"
-        aria-atomic="true"
-    ></div>
-
-
-    <!-- =========================================================
-         GLOBAL LOADING
-         ========================================================= -->
-
-    <div
-        id="globalLoader"
-        class="turkai-global-loader"
-        hidden
-        aria-hidden="true"
-    >
-
-        <div
-            class="turkai-loader-orb"
+        <section
+          class="page"
+          id="codePage"
+          data-page="code"
         >
 
-            <svg
-                width="30"
-                height="30"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-            >
+          <div class="tool-page code-page">
 
-                <path
-                    d="M12 2.8 14.2 9.8 21.2 12l-7 2.2-2.2 7-2.2-7L2.8 12l7-2.2L12 2.8Z"
-                ></path>
+            <div class="tool-hero">
 
-            </svg>
+              <div class="tool-icon-large">
+                &lt;/&gt;
+              </div>
 
-        </div>
+              <div>
+
+                <span class="tool-eyebrow">
+                  CODE INTELLIGENCE
+                </span>
+
+                <h2>
+                  Kod
+                </h2>
+
+                <p>
+                  Kod yaz, incele, düzelt ve geliştir.
+                </p>
+
+              </div>
+
+            </div>
 
 
-        <span>
-            TürkAI hazırlanıyor...
-        </span>
+            <div class="code-workspace">
+
+              <div class="code-toolbar">
+
+                <select id="codeLanguage">
+
+                  <option value="javascript">
+                    JavaScript
+                  </option>
+
+                  <option value="html">
+                    HTML
+                  </option>
+
+                  <option value="css">
+                    CSS
+                  </option>
+
+                  <option value="python">
+                    Python
+                  </option>
+
+                  <option value="java">
+                    Java
+                  </option>
+
+                  <option value="csharp">
+                    C#
+                  </option>
+
+                  <option value="cpp">
+                    C++
+                  </option>
+
+                </select>
+
+                <button
+                  id="analyzeCodeButton"
+                  type="button"
+                >
+                  Kodu analiz et
+                </button>
+
+              </div>
+
+
+              <textarea
+                id="codeInput"
+                class="code-editor"
+                spellcheck="false"
+                placeholder="// Kodunu buraya yaz..."
+              ></textarea>
+
+
+              <div
+                id="codeOutput"
+                class="code-output"
+              >
+                <span>
+                  Analiz sonucu burada görünecek.
+                </span>
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+      </div>
+
+    </main>
+
+  </div>
+
+
+  <!-- =====================================================
+       MODEL MENU
+  ====================================================== -->
+
+  <div
+    class="floating-menu hidden"
+    id="modelMenu"
+  >
+
+    <div class="floating-menu-title">
+      Model seç
+    </div>
+
+    <button
+      class="model-option active"
+      data-model="auto"
+      type="button"
+    >
+      <span class="model-option-dot"></span>
+      <span>
+        <strong>Otomatik</strong>
+        <small>En uygun modeli seç</small>
+      </span>
+    </button>
+
+    <button
+      class="model-option"
+      data-model="fast"
+      type="button"
+    >
+      <span class="model-option-dot"></span>
+      <span>
+        <strong>Hızlı</strong>
+        <small>Günlük sorular</small>
+      </span>
+    </button>
+
+    <button
+      class="model-option"
+      data-model="smart"
+      type="button"
+    >
+      <span class="model-option-dot"></span>
+      <span>
+        <strong>Akıllı</strong>
+        <small>Detaylı düşünme</small>
+      </span>
+    </button>
+
+    <button
+      class="model-option"
+      data-model="code"
+      type="button"
+    >
+      <span class="model-option-dot"></span>
+      <span>
+        <strong>Kod</strong>
+        <small>Yazılım görevleri</small>
+      </span>
+    </button>
+
+  </div>
+
+
+  <!-- =====================================================
+       NOTIFICATION PANEL
+  ====================================================== -->
+
+  <aside
+    class="notification-panel hidden"
+    id="notificationPanel"
+  >
+
+    <div class="panel-header">
+
+      <strong>
+        Bildirimler
+      </strong>
+
+      <button
+        id="closeNotificationPanel"
+        type="button"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <div
+      id="notificationList"
+      class="notification-list"
+    >
+
+      <div class="empty-state">
+        <span>◉</span>
+        <strong>Bildirim yok</strong>
+        <small>Yeni bildirimler burada görünecek.</small>
+      </div>
+
+    </div>
+
+  </aside>
+
+
+  <!-- =====================================================
+       MOBILE OVERLAY
+  ====================================================== -->
+
+  <div
+    class="sidebar-overlay hidden"
+    id="sidebarOverlay"
+  ></div>
+  <!-- =====================================================
+       SETTINGS PANEL
+  ====================================================== -->
+
+  <aside
+    class="settings-panel hidden"
+    id="settingsPanel"
+  >
+
+    <div class="panel-header">
+
+      <div>
+        <span class="panel-eyebrow">KİŞİSELLEŞTİRME</span>
+        <strong>Ayarlar</strong>
+      </div>
+
+      <button
+        class="panel-close"
+        id="closeSettingsPanel"
+        type="button"
+      >
+        ×
+      </button>
 
     </div>
 
 
-</div>
+    <div class="settings-content">
+
+      <!-- Hesap -->
+
+      <section class="settings-section">
+
+        <div class="settings-section-title">
+          <span>Hesap</span>
+        </div>
+
+        <div class="account-card">
+
+          <div
+            class="account-avatar"
+            id="settingsAvatar"
+          >
+            T
+          </div>
+
+          <div class="account-details">
+
+            <strong id="settingsUserName">
+              Misafir
+            </strong>
+
+            <span id="settingsUserEmail">
+              Henüz giriş yapılmadı
+            </span>
+
+          </div>
+
+          <button
+            id="loginFromSettings"
+            class="small-action"
+            type="button"
+          >
+            Giriş
+          </button>
+
+        </div>
+
+      </section>
 
 
-<!-- =========================================================
-     INLINE FALLBACK HELPERS
-     ========================================================= -->
+      <!-- Görünüm -->
 
-<script>
+      <section class="settings-section">
 
-    /*
-     * Bazı tarayıcılarda CSS.escape bulunmayabilir.
-     * Güvenli küçük bir fallback.
-     */
-
-    if (
-        typeof window.CSS ===
-        "undefined"
-    ) {
-
-        window.CSS = {};
-
-    }
+        <div class="settings-section-title">
+          <span>Görünüm</span>
+        </div>
 
 
-    if (
-        typeof window.CSS.escape !==
-        "function"
-    ) {
+        <div class="setting-row">
 
-        window.CSS.escape =
-            function(value) {
+          <div class="setting-row-info">
 
-                return String(value)
-                    .replace(
-                        /[^a-zA-Z0-9_\-]/g,
-                        "\\$&"
-                    );
-            };
-    }
+            <strong>Koyu tema</strong>
+
+            <small>
+              TürkAI'nin koyu görünümünü kullan
+            </small>
+
+          </div>
+
+          <label class="switch">
+
+            <input
+              type="checkbox"
+              id="darkModeToggle"
+              checked
+            >
+
+            <span class="switch-slider"></span>
+
+          </label>
+
+        </div>
 
 
-    /*
-     * User initial.
-     */
+        <div class="setting-row">
 
-    function updateTurkAIUserInitial() {
+          <div class="setting-row-info">
 
-        const name =
-            document.querySelector(
-                "[data-user-name]"
-            )?.textContent
-            ?.trim() ||
-            "T";
+            <strong>Sohbet geçmişi</strong>
 
-        const initial =
-            name
-                .charAt(0)
-                .toUpperCase();
+            <small>
+              Konuşmalarını bu cihazda göster
+            </small>
 
+          </div>
+
+          <label class="switch">
+
+            <input
+              type="checkbox"
+              id="historyToggle"
+              checked
+            >
+
+            <span class="switch-slider"></span>
+
+          </label>
+
+        </div>
+
+
+        <div class="setting-row">
+
+          <div class="setting-row-info">
+
+            <strong>Animasyonlar</strong>
+
+            <small>
+              Arayüz hareketlerini etkinleştir
+            </small>
+
+          </div>
+
+          <label class="switch">
+
+            <input
+              type="checkbox"
+              id="animationsToggle"
+              checked
+            >
+
+            <span class="switch-slider"></span>
+
+          </label>
+
+        </div>
+
+      </section>
+
+
+      <!-- AI -->
+
+      <section class="settings-section">
+
+        <div class="settings-section-title">
+          <span>Yapay zeka</span>
+        </div>
+
+
+        <div class="setting-row">
+
+          <div class="setting-row-info">
+
+            <strong>Otomatik araştırma</strong>
+
+            <small>
+              Güncel sorularda araştırma yap
+            </small>
+
+          </div>
+
+          <label class="switch">
+
+            <input
+              type="checkbox"
+              id="autoResearchToggle"
+              checked
+            >
+
+            <span class="switch-slider"></span>
+
+          </label>
+
+        </div>
+
+
+        <div class="setting-row">
+
+          <div class="setting-row-info">
+
+            <strong>Yanıt sesleri</strong>
+
+            <small>
+              Sesli özellikleri etkinleştir
+            </small>
+
+          </div>
+
+          <label class="switch">
+
+            <input
+              type="checkbox"
+              id="voiceToggle"
+            >
+
+            <span class="switch-slider"></span>
+
+          </label>
+
+        </div>
+
+      </section>
+
+
+      <!-- Dil -->
+
+      <section class="settings-section">
+
+        <div class="settings-section-title">
+          <span>Dil</span>
+        </div>
+
+        <select
+          id="languageSelect"
+          class="settings-select"
+        >
+
+          <option value="tr-TR">
+            Türkçe
+          </option>
+
+          <option value="en-US">
+            English
+          </option>
+
+        </select>
+
+      </section>
+
+
+      <!-- Sistem -->
+
+      <section class="settings-section">
+
+        <div class="settings-section-title">
+          <span>Sistem</span>
+        </div>
+
+        <button
+          class="settings-action-row"
+          id="clearLocalDataButton"
+          type="button"
+        >
+
+          <span class="action-row-icon">
+            ⌫
+          </span>
+
+          <span>
+            <strong>Yerel verileri temizle</strong>
+            <small>
+              Bu cihazdaki sohbet verilerini temizler
+            </small>
+          </span>
+
+          <span class="action-row-arrow">
+            →
+          </span>
+
+        </button>
+
+      </section>
+
+    </div>
+
+  </aside>
+
+
+  <!-- =====================================================
+       PLAN MODAL
+  ====================================================== -->
+
+  <div
+    class="modal-backdrop hidden"
+    id="plansModal"
+  >
+
+    <div class="modal plans-modal">
+
+      <div class="modal-header">
+
+        <div>
+
+          <span class="modal-eyebrow">
+            TÜRKAI PLANS
+          </span>
+
+          <h2>
+            Planını seç
+          </h2>
+
+          <p>
+            TürkAI'yi kullanım ihtiyacına göre özelleştir.
+          </p>
+
+        </div>
+
+        <button
+          class="modal-close"
+          data-close-modal="plansModal"
+          type="button"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <div class="plans-grid">
+
+        <!-- FREE -->
+
+        <article class="plan-option">
+
+          <div class="plan-option-top">
+
+            <span class="plan-option-label">
+              FREE
+            </span>
+
+            <span class="plan-option-icon">
+              ○
+            </span>
+
+          </div>
+
+          <h3>
+            Ücretsiz
+          </h3>
+
+          <div class="plan-price">
+            <strong>₺0</strong>
+            <span>/ ay</span>
+          </div>
+
+          <ul>
+
+            <li>50 günlük mesaj</li>
+            <li>10 araştırma</li>
+            <li>Dosya analizi</li>
+            <li>Kod desteği</li>
+
+          </ul>
+
+          <button
+            class="plan-select-button"
+            data-plan="free"
+            type="button"
+          >
+            Mevcut plan
+          </button>
+
+        </article>
+
+
+        <!-- PRO -->
+
+        <article class="plan-option featured">
+
+          <div class="plan-badge">
+            POPÜLER
+          </div>
+
+          <div class="plan-option-top">
+
+            <span class="plan-option-label">
+              PRO
+            </span>
+
+            <span class="plan-option-icon">
+              ◆
+            </span>
+
+          </div>
+
+          <h3>
+            Pro
+          </h3>
+
+          <div class="plan-price">
+            <strong>₺250</strong>
+            <span>/ ay</span>
+          </div>
+
+          <ul>
+
+            <li>100 günlük mesaj</li>
+            <li>50 araştırma</li>
+            <li>Görsel oluşturma</li>
+            <li>Gelişmiş kod desteği</li>
+            <li>Daha yüksek limitler</li>
+
+          </ul>
+
+          <button
+            class="plan-select-button primary"
+            data-plan="pro"
+            type="button"
+          >
+            Pro'ya geç
+          </button>
+
+        </article>
+
+
+        <!-- PLUS -->
+
+        <article class="plan-option">
+
+          <div class="plan-option-top">
+
+            <span class="plan-option-label">
+              PLUS
+            </span>
+
+            <span class="plan-option-icon">
+              ◈
+            </span>
+
+          </div>
+
+          <h3>
+            Plus
+          </h3>
+
+          <div class="plan-price">
+            <strong>₺500</strong>
+            <span>/ ay</span>
+          </div>
+
+          <ul>
+
+            <li>200 günlük mesaj</li>
+            <li>100 araştırma</li>
+            <li>4 görsel / gün</li>
+            <li>Video üretimi</li>
+            <li>20 MB dosya limiti</li>
+
+          </ul>
+
+          <button
+            class="plan-select-button"
+            data-plan="plus"
+            type="button"
+          >
+            Plus'a geç
+          </button>
+
+        </article>
+
+
+        <!-- ULTRA -->
+
+        <article class="plan-option ultra">
+
+          <div class="plan-option-top">
+
+            <span class="plan-option-label">
+              ULTRA
+            </span>
+
+            <span class="plan-option-icon">
+              ✦
+            </span>
+
+          </div>
+
+          <h3>
+            Ultra
+          </h3>
+
+          <div class="plan-price">
+            <strong>₺1000</strong>
+            <span>/ ay</span>
+          </div>
+
+          <ul>
+
+            <li>1000 günlük mesaj</li>
+            <li>500 araştırma</li>
+            <li>20 görsel / gün</li>
+            <li>20 video / gün</li>
+            <li>1 GB dosya limiti</li>
+
+          </ul>
+
+          <button
+            class="plan-select-button"
+            data-plan="ultra"
+            type="button"
+          >
+            Yakında
+          </button>
+
+        </article>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =====================================================
+       IMAGE GENERATOR MODAL
+  ====================================================== -->
+
+  <div
+    class="modal-backdrop hidden"
+    id="imageModal"
+  >
+
+    <div class="modal generator-modal">
+
+      <div class="modal-header">
+
+        <div>
+
+          <span class="modal-eyebrow">
+            IMAGE STUDIO
+          </span>
+
+          <h2>
+            Görsel oluştur
+          </h2>
+
+          <p>
+            Hayalindeki görseli tarif et.
+          </p>
+
+        </div>
+
+        <button
+          class="modal-close"
+          data-close-modal="imageModal"
+          type="button"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <div class="generator-body">
+
+        <label class="field-label">
+          Prompt
+        </label>
+
+        <textarea
+          id="imagePrompt"
+          class="generator-input"
+          maxlength="8000"
+          placeholder="Örneğin: Gece ışıklarıyla aydınlatılmış futuristik İstanbul..."
+        ></textarea>
+
+
+        <div class="generator-options">
+
+          <div class="generator-option">
+
+            <span>Format</span>
+
+            <select id="imageFormat">
+
+              <option value="png">
+                PNG
+              </option>
+
+              <option value="jpg">
+                JPG
+              </option>
+
+              <option value="webp">
+                WEBP
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <div class="generator-option">
+
+            <span>Kalite</span>
+
+            <select id="imageQuality">
+
+              <option value="standard">
+                Standart
+              </option>
+
+              <option value="high">
+                Yüksek
+              </option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+
+        <button
+          id="generateImageButton"
+          class="generate-button"
+          type="button"
+        >
+
+          <span>
+            Görsel oluştur
+          </span>
+
+          <span>
+            →
+          </span>
+
+        </button>
+
+
+        <div
+          id="imageGenerationStatus"
+          class="generation-status hidden"
+        ></div>
+
+        <div
+          id="generatedImageContainer"
+          class="generated-media-container"
+        ></div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =====================================================
+       VIDEO GENERATOR MODAL
+  ====================================================== -->
+
+  <div
+    class="modal-backdrop hidden"
+    id="videoModal"
+  >
+
+    <div class="modal generator-modal">
+
+      <div class="modal-header">
+
+        <div>
+
+          <span class="modal-eyebrow">
+            VIDEO STUDIO
+          </span>
+
+          <h2>
+            Video oluştur
+          </h2>
+
+          <p>
+            Fikrini kısa bir video konseptine dönüştür.
+          </p>
+
+        </div>
+
+        <button
+          class="modal-close"
+          data-close-modal="videoModal"
+          type="button"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <div class="generator-body">
+
+        <label class="field-label">
+          Video açıklaması
+        </label>
+
+        <textarea
+          id="videoPrompt"
+          class="generator-input"
+          maxlength="12000"
+          placeholder="Örneğin: İstanbul üzerinde gün batımında ilerleyen futuristik bir drone çekimi..."
+        ></textarea>
+
+
+        <div class="generator-options">
+
+          <div class="generator-option">
+
+            <span>Süre</span>
+
+            <select id="videoDuration">
+
+              <option value="5">
+                5 saniye
+              </option>
+
+              <option value="10">
+                10 saniye
+              </option>
+
+              <option value="15">
+                15 saniye
+              </option>
+
+              <option value="30">
+                30 saniye
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <div class="generator-option">
+
+            <span>Format</span>
+
+            <select id="videoFormat">
+
+              <option value="16:9">
+                16:9
+              </option>
+
+              <option value="9:16">
+                9:16
+              </option>
+
+              <option value="1:1">
+                1:1
+              </option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+
+        <button
+          id="generateVideoButton"
+          class="generate-button"
+          type="button"
+        >
+
+          <span>
+            Video oluştur
+          </span>
+
+          <span>
+            →
+          </span>
+
+        </button>
+
+
+        <div
+          id="videoGenerationStatus"
+          class="generation-status hidden"
+        ></div>
+
+        <div
+          id="generatedVideoContainer"
+          class="generated-media-container"
+        ></div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =====================================================
+       AUTH MODAL
+  ====================================================== -->
+
+  <div
+    class="modal-backdrop hidden"
+    id="authModal"
+  >
+
+    <div class="modal auth-modal">
+
+      <button
+        class="modal-close"
+        data-close-modal="authModal"
+        type="button"
+      >
+        ×
+      </button>
+
+
+      <div class="auth-logo">
+        <span>T</span>
+      </div>
+
+
+      <span class="modal-eyebrow">
+        TÜRKAI HESABI
+      </span>
+
+      <h2>
+        TürkAI'ye giriş yap
+      </h2>
+
+      <p>
+        Sohbetlerini ve ayarlarını cihazların arasında
+        kullanmak için giriş yap.
+      </p>
+
+
+      <div
+        id="googleLoginButton"
+        class="google-login-container"
+      ></div>
+
+
+      <div class="auth-divider">
+        <span>veya</span>
+      </div>
+
+
+      <button
+        id="continueGuestButton"
+        class="guest-button"
+        type="button"
+      >
+        Misafir olarak devam et
+      </button>
+
+
+      <small class="auth-note">
+        Hesap oluşturarak TürkAI kullanım koşullarını
+        kabul etmiş olursun.
+      </small>
+
+    </div>
+
+  </div>
+
+
+  <!-- =====================================================
+       USER MENU
+  ====================================================== -->
+
+  <div
+    class="user-menu hidden"
+    id="userMenu"
+  >
+
+    <button
+      id="userMenuProfile"
+      type="button"
+    >
+      <span>○</span>
+      Profil
+    </button>
+
+    <button
+      id="userMenuSettings"
+      type="button"
+    >
+      <span>⚙</span>
+      Ayarlar
+    </button>
+
+    <div class="user-menu-divider"></div>
+
+    <button
+      id="logoutButton"
+      type="button"
+    >
+      <span>↪</span>
+      Çıkış yap
+    </button>
+
+  </div>
+
+
+  <!-- =====================================================
+       TASK PROGRESS
+  ====================================================== -->
+
+  <div
+    class="task-progress hidden"
+    id="taskProgress"
+  >
+
+    <div class="task-progress-icon">
+      ◌
+    </div>
+
+    <div class="task-progress-content">
+
+      <strong id="taskProgressTitle">
+        İşlem hazırlanıyor
+      </strong>
+
+      <span id="taskProgressText">
+        Lütfen bekle...
+      </span>
+
+      <div class="task-progress-bar">
+        <span id="taskProgressBar"></span>
+      </div>
+
+    </div>
+
+    <button
+      id="closeTaskProgress"
+      type="button"
+    >
+      ×
+    </button>
+
+  </div>
+
+
+  <!-- =====================================================
+       GLOBAL TOAST
+  ====================================================== -->
+
+  <div
+    id="toastContainer"
+    class="toast-container"
+  ></div>
+
+
+  <!-- =====================================================
+       LOADING SCREEN
+  ====================================================== -->
+
+  <div
+    id="globalLoader"
+    class="global-loader hidden"
+  >
+
+    <div class="loader-orb">
+      <span>T</span>
+    </div>
+
+    <strong>
+      TürkAI
+    </strong>
+
+    <span>
+      Hazırlanıyor...
+    </span>
+
+  </div>
+
+
+  <!-- =====================================================
+       CONFIG
+  ====================================================== -->
+
+  <script>
+
+    window.TURKAI_APP_CONFIG = {
+
+      apiBase: "",
+
+      appName: "TürkAI",
+
+      version: "20.0.0",
+
+      environment: "production",
+
+      language: "tr-TR",
+
+      defaultModel: "auto",
+
+      defaultPlan: "free",
+
+      maxMessageLength: 50000,
+
+      requestTimeout: 60000,
+
+      features: {
+
+        chat: true,
+
+        memory: true,
+
+        research: true,
+
+        weather: true,
+
+        files: true,
+
+        coding: true,
+
+        imageGeneration: true,
+
+        videoGeneration: true,
+
+        realtime: true
+
+      }
+
+    };
+
+  </script>
+
+
+  <!-- =====================================================
+       APP SCRIPT
+  ====================================================== -->
+
+  <script src="/app.js"></script>
+
+
+  <!-- =====================================================
+       SMALL FRONTEND BOOTSTRAP
+  ====================================================== -->
+
+  <script>
+
+    document.addEventListener("DOMContentLoaded", () => {
+
+      document.body.classList.add("turkai-ready");
+
+      const input =
+        document.getElementById("messageInput");
+
+      const counter =
+        document.getElementById("characterCounter");
+
+      if (input && counter) {
+
+        const updateCounter = () => {
+
+          counter.textContent =
+            `${input.value.length.toLocaleString("tr-TR")} / 50.000`;
+
+        };
+
+        input.addEventListener(
+          "input",
+          updateCounter
+        );
+
+        updateCounter();
+
+      }
+
+
+      /*
+       * Suggestion cards
+       */
+
+      document
+        .querySelectorAll(".suggestion-card")
+        .forEach(card => {
+
+          card.addEventListener("click", () => {
+
+            const prompt =
+              card.dataset.prompt || "";
+
+            if (!input || !prompt) {
+              return;
+            }
+
+            input.value = prompt;
+
+            input.dispatchEvent(
+              new Event("input", {
+                bubbles: true
+              })
+            );
+
+            input.focus();
+
+          });
+
+        });
+
+
+      /*
+       * Modal close
+       */
+
+      document
+        .querySelectorAll("[data-close-modal]")
+        .forEach(button => {
+
+          button.addEventListener("click", () => {
+
+            const id =
+              button.dataset.closeModal;
+
+            const modal =
+              document.getElementById(id);
+
+            if (modal) {
+              modal.classList.add("hidden");
+            }
+
+          });
+
+        });
+
+
+      /*
+       * Modal backdrop close
+       */
+
+      document
+        .querySelectorAll(".modal-backdrop")
+        .forEach(backdrop => {
+
+          backdrop.addEventListener("click", event => {
+
+            if (event.target === backdrop) {
+              backdrop.classList.add("hidden");
+            }
+
+          });
+
+        });
+
+
+      /*
+       * Image generator
+       */
+
+      const imageButton =
+        document.getElementById("openImageGenerator");
+
+      const imageModal =
+        document.getElementById("imageModal");
+
+      if (imageButton && imageModal) {
+
+        imageButton.addEventListener("click", () => {
+
+          imageModal.classList.remove("hidden");
+
+          setTimeout(() => {
+
+            document
+              .getElementById("imagePrompt")
+              ?.focus();
+
+          }, 100);
+
+        });
+
+      }
+
+
+      /*
+       * Video generator
+       */
+
+      const videoButton =
+        document.getElementById("openVideoGenerator");
+
+      const videoModal =
+        document.getElementById("videoModal");
+
+      if (videoButton && videoModal) {
+
+        videoButton.addEventListener("click", () => {
+
+          videoModal.classList.remove("hidden");
+
+          setTimeout(() => {
+
+            document
+              .getElementById("videoPrompt")
+              ?.focus();
+
+          }, 100);
+
+        });
+
+      }
+
+
+      /*
+       * Escape
+       */
+
+      document.addEventListener("keydown", event => {
+
+        if (event.key !== "Escape") {
+          return;
+        }
 
         document
-            .querySelectorAll(
-                "[data-user-initial]"
-            )
-            .forEach(
-                element => {
+          .querySelectorAll(".modal-backdrop")
+          .forEach(element => {
 
-                    element.textContent =
-                        initial;
-                }
-            );
-    }
+            element.classList.add("hidden");
 
+          });
 
-    document.addEventListener(
-        "turkai:ready",
-        updateTurkAIUserInitial
-    );
+        document
+          .querySelectorAll(".floating-menu")
+          .forEach(element => {
 
+            element.classList.add("hidden");
 
-    document.addEventListener(
-        "DOMContentLoaded",
-        updateTurkAIUserInitial
-    );
+          });
 
-</script>
+        document
+          .querySelectorAll(".user-menu")
+          .forEach(element => {
 
+            element.classList.add("hidden");
 
-<!-- =========================================================
-     APP.JS
-     ========================================================= -->
+          });
 
-<script
-    src="/app.js"
-    defer
-></script>
+      });
 
+    });
 
-<!-- =========================================================
-     FINAL
-     ========================================================= -->
+  </script>
 
 </body>
 </html>
