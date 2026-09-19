@@ -2,90 +2,93 @@
 
 /*
 ╔══════════════════════════════════════════════════════════════════════╗
-║                         TÜRKAI SERVER                              ║
-║                         VERSION 12.0                               ║
+║                            TÜRKAI                                  ║
+║                     BACKEND SERVER 11.0.0                          ║
 ║                                                                      ║
-║  PARÇA 1 / 5                                                        ║
+║  PART 1 / 5                                                        ║
 ║                                                                      ║
-║  Bu bölüm:                                                           ║
-║  - Express                                                          ║
-║  - HTTP                                                              ║
-║  - Socket.IO                                                         ║
-║  - CORS                                                              ║
-║  - Helmet                                                            ║
-║  - JSON database                                                     ║
-║  - Klasör sistemi                                                    ║
-║  - Yardımcı fonksiyonlar                                             ║
-║  - ID üretimi                                                         ║
-║  - Log sistemi                                                        ║
-║  - Güvenlik yardımcıları                                             ║
-║  - Request yardımcıları                                              ║
-║  - Temel server altyapısı                                             ║
+║  ÇEKİRDEK                                                            ║
+║  • Express                                                          ║
+║  • HTTP                                                              ║
+║  • Socket.IO                                                        ║
+║  • CORS                                                             ║
+║  • Helmet                                                           ║
+║  • JSON database                                                    ║
+║  • User system                                                       ║
+║  • Session system                                                    ║
+║  • Logging                                                           ║
+║  • Request metrics                                                   ║
+║  • Security foundation                                              ║
+║  • Health API                                                        ║
+║  • Status API                                                        ║
+║  • Basic system API                                                  ║
 ║                                                                      ║
-║  SONRAKİ PARÇALAR BU DOSYANIN ALTINA EKLENECEK.                     ║
+║  ÖNEMLİ:                                                            ║
+║  Bu bölüm tek başına Node.js ile çalışabilir.                       ║
+║  Part 2/5 bu dosyanın devamıdır.                                    ║
 ╚══════════════════════════════════════════════════════════════════════╝
 */
 
 
-/* ================================================================
-   001 — MODÜLLER
-================================================================ */
+/* =========================================================
+   1. MODÜLLER
+========================================================= */
 
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const http = require("http");
-const os = require("os");
 
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const { Server } = require("socket.io");
 
+
+/* =========================================================
+   2. ENV
+========================================================= */
+
 require("dotenv").config();
 
 
-/* ================================================================
-   002 — EXPRESS
-================================================================ */
+/* =========================================================
+   3. EXPRESS
+========================================================= */
 
 const app = express();
 
-const httpServer = http.createServer(app);
+const httpServer =
+    http.createServer(app);
+
+const io =
+    new Server(httpServer, {
+        cors: {
+            origin: "*",
+            methods: [
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
+            ]
+        }
+    });
 
 
-/* ================================================================
-   003 — SOCKET.IO
-================================================================ */
+/* =========================================================
+   4. UYGULAMA BİLGİLERİ
+========================================================= */
 
-const io = new Server(httpServer, {
-    cors: {
-        origin: "*",
-        methods: [
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE",
-            "OPTIONS"
-        ]
-    }
-});
+const APP_NAME =
+    "TürkAI";
 
+const APP_VERSION =
+    "11.0.0";
 
-/* ================================================================
-   004 — TEMEL AYARLAR
-================================================================ */
-
-const PORT = Number(process.env.PORT) || 3000;
-
-const HOST =
-    process.env.HOST ||
-    "0.0.0.0";
-
-const APP_NAME = "TürkAI";
-
-const APP_VERSION = "12.0.0";
+const APP_DESCRIPTION =
+    "Türkçe yapay zeka platformu";
 
 const NODE_ENV =
     process.env.NODE_ENV ||
@@ -94,20 +97,28 @@ const NODE_ENV =
 const IS_PRODUCTION =
     NODE_ENV === "production";
 
-const START_TIME = Date.now();
+const PORT =
+    Number(process.env.PORT) || 3000;
+
+const HOST =
+    process.env.HOST ||
+    "0.0.0.0";
+
+const START_TIME =
+    Date.now();
+
+const SERVER_ID =
+    crypto
+        .randomBytes(12)
+        .toString("hex");
 
 
-/* ================================================================
-   005 — ROOT DİZİNLERİ
-================================================================ */
+/* =========================================================
+   5. ANA DİZİNLER
+========================================================= */
 
-const ROOT_DIR = __dirname;
-
-const PUBLIC_DIR =
-    path.join(
-        ROOT_DIR,
-        "public"
-    );
+const ROOT_DIR =
+    __dirname;
 
 const DATA_DIR =
     path.join(
@@ -115,7 +126,7 @@ const DATA_DIR =
         "data"
     );
 
-const DB_DIR =
+const DATABASE_DIR =
     path.join(
         DATA_DIR,
         "database"
@@ -133,28 +144,16 @@ const USERS_DIR =
         "users"
     );
 
-const GENERATED_DIR =
-    path.join(
-        STORAGE_DIR,
-        "generated"
-    );
-
 const UPLOADS_DIR =
     path.join(
         STORAGE_DIR,
         "uploads"
     );
 
-const PROJECTS_DIR =
+const GENERATED_DIR =
     path.join(
         STORAGE_DIR,
-        "projects"
-    );
-
-const TEMP_DIR =
-    path.join(
-        STORAGE_DIR,
-        "temp"
+        "generated"
     );
 
 const LOGS_DIR =
@@ -163,158 +162,221 @@ const LOGS_DIR =
         "logs"
     );
 
-const BACKUPS_DIR =
+const CACHE_DIR =
     path.join(
         DATA_DIR,
-        "backups"
+        "cache"
+    );
+
+const TEMP_DIR =
+    path.join(
+        DATA_DIR,
+        "temp"
+    );
+
+const PUBLIC_DIR =
+    path.join(
+        ROOT_DIR,
+        "public"
     );
 
 
-/* ================================================================
-   006 — GEREKLİ KLASÖRLER
-================================================================ */
+/* =========================================================
+   6. DİZİNLERİ OLUŞTUR
+========================================================= */
 
-const REQUIRED_DIRECTORIES = [
-    PUBLIC_DIR,
+const DIRECTORIES = [
     DATA_DIR,
-    DB_DIR,
+    DATABASE_DIR,
     STORAGE_DIR,
     USERS_DIR,
-    GENERATED_DIR,
     UPLOADS_DIR,
-    PROJECTS_DIR,
-    TEMP_DIR,
+    GENERATED_DIR,
     LOGS_DIR,
-    BACKUPS_DIR
+    CACHE_DIR,
+    TEMP_DIR,
+    PUBLIC_DIR
 ];
 
-for (const directory of REQUIRED_DIRECTORIES) {
+for (
+    const directory of DIRECTORIES
+) {
     try {
+
         fs.mkdirSync(
             directory,
             {
                 recursive: true
             }
         );
+
     } catch (error) {
+
         console.error(
-            "[TürkAI] Klasör oluşturulamadı:",
-            directory,
+            "[TürkAI] Dizin oluşturulamadı:",
+            directory
+        );
+
+        console.error(
             error.message
         );
     }
 }
 
 
-/* ================================================================
-   007 — DATABASE DOSYALARI
-================================================================ */
+/* =========================================================
+   7. VERİTABANI DOSYALARI
+========================================================= */
 
 const DB_FILES = {
 
     users:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "users.json"
         ),
 
     sessions:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "sessions.json"
         ),
 
     chats:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "chats.json"
         ),
 
     messages:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "messages.json"
         ),
 
     memories:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "memories.json"
         ),
 
     knowledge:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "knowledge.json"
         ),
 
     feedback:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "feedback.json"
         ),
 
     corrections:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "corrections.json"
         ),
 
     usage:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "usage.json"
         ),
 
     audit:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "audit.json"
         ),
 
     security:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "security.json"
         ),
 
     settings:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "settings.json"
         ),
 
     files:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "files.json"
-        ),
-
-    projects:
-        path.join(
-            DB_DIR,
-            "projects.json"
         ),
 
     notifications:
         path.join(
-            DB_DIR,
+            DATABASE_DIR,
             "notifications.json"
         ),
 
-    events:
+    projects:
         path.join(
-            DB_DIR,
-            "events.json"
+            DATABASE_DIR,
+            "projects.json"
+        ),
+
+    research:
+        path.join(
+            DATABASE_DIR,
+            "research.json"
+        ),
+
+    payments:
+        path.join(
+            DATABASE_DIR,
+            "payments.json"
         )
 };
 
 
-/* ================================================================
-   008 — BOŞ DATABASE ŞABLONLARI
-================================================================ */
+/* =========================================================
+   8. LOG DOSYALARI
+========================================================= */
 
-const DEFAULT_DATABASES = {
+const LOG_FILES = {
+
+    server:
+        path.join(
+            LOGS_DIR,
+            "server.log"
+        ),
+
+    error:
+        path.join(
+            LOGS_DIR,
+            "error.log"
+        ),
+
+    access:
+        path.join(
+            LOGS_DIR,
+            "access.log"
+        ),
+
+    security:
+        path.join(
+            LOGS_DIR,
+            "security.log"
+        ),
+
+    ai:
+        path.join(
+            LOGS_DIR,
+            "ai.log"
+        )
+};
+
+
+/* =========================================================
+   9. VARSAYILAN VERİLER
+========================================================= */
+
+const DATABASE_DEFAULTS = {
 
     users: [],
 
@@ -338,50 +400,173 @@ const DEFAULT_DATABASES = {
 
     security: [],
 
-    settings: {},
+    settings: {
+
+        maintenance: false,
+
+        registrationEnabled: true,
+
+        researchEnabled: true,
+
+        uploadsEnabled: true,
+
+        aiEnabled: true,
+
+        imageGenerationEnabled: true,
+
+        videoGenerationEnabled: true,
+
+        socketEnabled: true
+    },
 
     files: [],
 
-    projects: [],
-
     notifications: [],
 
-    events: []
+    projects: [],
+
+    research: [],
+
+    payments: []
 };
 
 
-/* ================================================================
-   009 — JSON OKUMA
-================================================================ */
+/* =========================================================
+   10. DOSYA GARANTİSİ
+========================================================= */
 
-function readJSON(
+function ensureJSONFile(
     filePath,
-    fallback = null
+    defaultValue
 ) {
 
     try {
 
-        if (!fs.existsSync(filePath)) {
-            return fallback;
+        if (
+            !fs.existsSync(
+                filePath
+            )
+        ) {
+
+            fs.writeFileSync(
+                filePath,
+                JSON.stringify(
+                    defaultValue,
+                    null,
+                    2
+                ),
+                "utf8"
+            );
+
+            return true;
         }
 
-        const raw =
+        const content =
             fs.readFileSync(
                 filePath,
                 "utf8"
             );
 
-        if (!raw.trim()) {
+        if (
+            !content.trim()
+        ) {
+
+            fs.writeFileSync(
+                filePath,
+                JSON.stringify(
+                    defaultValue,
+                    null,
+                    2
+                ),
+                "utf8"
+            );
+        }
+
+        return true;
+
+    } catch (error) {
+
+        console.error(
+            "[TürkAI] JSON dosyası hazırlanamadı:",
+            filePath
+        );
+
+        console.error(
+            error.message
+        );
+
+        return false;
+    }
+}
+
+
+/* =========================================================
+   11. TÜM VERİTABANI DOSYALARINI HAZIRLA
+========================================================= */
+
+for (
+    const [name, filePath]
+    of Object.entries(DB_FILES)
+) {
+
+    const defaultValue =
+        Object.prototype.hasOwnProperty.call(
+            DATABASE_DEFAULTS,
+            name
+        )
+            ? DATABASE_DEFAULTS[name]
+            : [];
+
+    ensureJSONFile(
+        filePath,
+        defaultValue
+    );
+}
+
+
+/* =========================================================
+   12. JSON OKUMA
+========================================================= */
+
+function readJSONSafe(
+    filePath,
+    fallback
+) {
+
+    try {
+
+        if (
+            !fs.existsSync(
+                filePath
+            )
+        ) {
             return fallback;
         }
 
-        return JSON.parse(raw);
+        const content =
+            fs.readFileSync(
+                filePath,
+                "utf8"
+            );
+
+        if (
+            !content.trim()
+        ) {
+            return fallback;
+        }
+
+        return JSON.parse(
+            content
+        );
 
     } catch (error) {
 
         console.error(
             "[TürkAI] JSON okuma hatası:",
-            filePath,
+            filePath
+        );
+
+        console.error(
             error.message
         );
 
@@ -390,24 +575,24 @@ function readJSON(
 }
 
 
-/* ================================================================
-   010 — JSON YAZMA
-================================================================ */
+/* =========================================================
+   13. JSON YAZMA
+========================================================= */
 
-function writeJSON(
+function writeJSONSafe(
     filePath,
-    data
+    value
 ) {
 
     try {
 
-        const tempFile =
+        const temporaryFile =
             `${filePath}.tmp`;
 
         fs.writeFileSync(
-            tempFile,
+            temporaryFile,
             JSON.stringify(
-                data,
+                value,
                 null,
                 2
             ),
@@ -415,7 +600,7 @@ function writeJSON(
         );
 
         fs.renameSync(
-            tempFile,
+            temporaryFile,
             filePath
         );
 
@@ -425,241 +610,55 @@ function writeJSON(
 
         console.error(
             "[TürkAI] JSON yazma hatası:",
-            filePath,
+            filePath
+        );
+
+        console.error(
             error.message
         );
 
-        return false;
-    }
-}
-
-
-/* ================================================================
-   011 — DATABASE BAŞLATMA
-================================================================ */
-
-function initializeDatabase() {
-
-    for (
-        const [name, filePath]
-        of Object.entries(DB_FILES)
-    ) {
-
-        if (!fs.existsSync(filePath)) {
-
-            const template =
-                DEFAULT_DATABASES[name] ??
-                null;
-
-            writeJSON(
-                filePath,
-                template
-            );
-
-            console.log(
-                `[TürkAI] Database oluşturuldu: ${name}`
-            );
-        }
-    }
-}
-
-initializeDatabase();
-
-
-/* ================================================================
-   012 — DATABASE CACHE
-================================================================ */
-
-const DB = {};
-
-function loadDatabaseCache() {
-
-    for (
-        const [name, filePath]
-        of Object.entries(DB_FILES)
-    ) {
-
-        DB[name] =
-            readJSON(
-                filePath,
-                DEFAULT_DATABASES[name]
-            );
-    }
-}
-
-loadDatabaseCache();
-
-
-/* ================================================================
-   013 — DATABASE KAYDET
-================================================================ */
-
-function saveDatabase(
-    name
-) {
-
-    if (!DB_FILES[name]) {
-        return false;
-    }
-
-    return writeJSON(
-        DB_FILES[name],
-        DB[name]
-    );
-}
-
-
-/* ================================================================
-   014 — TÜM DATABASE'İ KAYDET
-================================================================ */
-
-function saveAllDatabases() {
-
-    for (
-        const name
-        of Object.keys(DB_FILES)
-    ) {
-
         try {
-            saveDatabase(name);
-        } catch (error) {
+
+            fs.writeFileSync(
+                filePath,
+                JSON.stringify(
+                    value,
+                    null,
+                    2
+                ),
+                "utf8"
+            );
+
+            return true;
+
+        } catch (secondError) {
 
             console.error(
-                "[TürkAI] Database save:",
-                name,
-                error.message
+                "[TürkAI] Yedek yazma da başarısız:"
             );
+
+            console.error(
+                secondError.message
+            );
+
+            return false;
         }
     }
 }
 
 
-/* ================================================================
-   015 — ID ÜRETİCİ
-================================================================ */
-
-function createId(
-    prefix = "id"
-) {
-
-    const random =
-        crypto
-            .randomBytes(12)
-            .toString("hex");
-
-    const timestamp =
-        Date.now()
-            .toString(36);
-
-    return `${prefix}_${timestamp}_${random}`;
-}
-
-
-/* ================================================================
-   016 — SESSION ID
-================================================================ */
-
-function createSessionId() {
-
-    return createId(
-        "session"
-    );
-}
-
-
-/* ================================================================
-   017 — CHAT ID
-================================================================ */
-
-function createChatId() {
-
-    return createId(
-        "chat"
-    );
-}
-
-
-/* ================================================================
-   018 — MESSAGE ID
-================================================================ */
-
-function createMessageId() {
-
-    return createId(
-        "msg"
-    );
-}
-
-
-/* ================================================================
-   019 — USER ID
-================================================================ */
-
-function createUserId() {
-
-    return createId(
-        "user"
-    );
-}
-
-
-/* ================================================================
-   020 — FILE ID
-================================================================ */
-
-function createFileId() {
-
-    return createId(
-        "file"
-    );
-}
-
-
-/* ================================================================
-   021 — PROJECT ID
-================================================================ */
-
-function createProjectId() {
-
-    return createId(
-        "project"
-    );
-}
-
-
-/* ================================================================
-   022 — ISO TARİH
-================================================================ */
-
-function nowISO() {
-
-    return new Date()
-        .toISOString();
-}
-
-
-/* ================================================================
-   023 — UNIX ZAMAN
-================================================================ */
-
-function nowUnix() {
-
-    return Date.now();
-}
-
-
-/* ================================================================
-   024 — METİN TEMİZLE
-================================================================ */
+/* =========================================================
+   14. METİN TEMİZLEME
+========================================================= */
 
 function cleanText(
     value,
-    maxLength = 10000
+    maxLength = 20000
 ) {
 
     if (
-        value === undefined ||
-        value === null
+        value === null ||
+        value === undefined
     ) {
         return "";
     }
@@ -668,9 +667,19 @@ function cleanText(
         String(value);
 
     text =
-        text
-            .replace(/\u0000/g, "")
-            .trim();
+        text.replace(
+            /\u0000/g,
+            ""
+        );
+
+    text =
+        text.replace(
+            /\r\n/g,
+            "\n"
+        );
+
+    text =
+        text.trim();
 
     if (
         text.length >
@@ -688,161 +697,135 @@ function cleanText(
 }
 
 
-/* ================================================================
-   025 — GÜVENLİ DOSYA ADI
-================================================================ */
-
-function safeFileName(
+function normalizeText(
     value
 ) {
 
-    const input =
-        cleanText(
-            value,
-            180
-        );
-
-    return input
-        .replace(
-            /[^a-zA-Z0-9._-]/g,
-            "_"
+    return cleanText(
+        value,
+        50000
+    )
+        .toLocaleLowerCase(
+            "tr-TR"
         )
         .replace(
-            /_+/g,
-            "_"
+            /\s+/g,
+            " "
+        )
+        .trim();
+}
+
+
+/* =========================================================
+   15. ZAMAN FONKSİYONLARI
+========================================================= */
+
+function nowISO() {
+
+    return new Date()
+        .toISOString();
+}
+
+
+function nowUnix() {
+
+    return Date.now();
+}
+
+
+function getTodayKey() {
+
+    const date =
+        new Date();
+
+    const year =
+        date.getUTCFullYear();
+
+    const month =
+        String(
+            date.getUTCMonth() + 1
+        ).padStart(
+            2,
+            "0"
         );
-}
 
+    const day =
+        String(
+            date.getUTCDate()
+        ).padStart(
+            2,
+            "0"
+        );
 
-/* ================================================================
-   026 — BOOLEAN PARSE
-================================================================ */
-
-function toBoolean(
-    value,
-    fallback = false
-) {
-
-    if (
-        value === true ||
-        value === false
-    ) {
-        return value;
-    }
-
-    if (
-        value === "true" ||
-        value === "1" ||
-        value === 1
-    ) {
-        return true;
-    }
-
-    if (
-        value === "false" ||
-        value === "0" ||
-        value === 0
-    ) {
-        return false;
-    }
-
-    return fallback;
-}
-
-
-/* ================================================================
-   027 — NUMBER PARSE
-================================================================ */
-
-function toNumber(
-    value,
-    fallback = 0
-) {
-
-    const number =
-        Number(value);
-
-    if (
-        Number.isFinite(number)
-    ) {
-        return number;
-    }
-
-    return fallback;
-}
-
-
-/* ================================================================
-   028 — ARRAY GÜVENLİ
-================================================================ */
-
-function safeArray(
-    value
-) {
-
-    return Array.isArray(value)
-        ? value
-        : [];
-}
-
-
-/* ================================================================
-   029 — OBJECT GÜVENLİ
-================================================================ */
-
-function safeObject(
-    value
-) {
-
-    if (
-        value &&
-        typeof value === "object" &&
-        !Array.isArray(value)
-    ) {
-        return value;
-    }
-
-    return {};
-}
-
-
-/* ================================================================
-   030 — LOG DOSYASI
-================================================================ */
-
-const LOG_FILE =
-    path.join(
-        LOGS_DIR,
-        "server.log"
+    return (
+        `${year}-${month}-${day}`
     );
+}
 
 
-/* ================================================================
-   031 — LOG YAZ
-================================================================ */
+/* =========================================================
+   16. ID FONKSİYONLARI
+========================================================= */
 
-function writeLog(
-    level,
-    message,
-    extra = null
+function createId(
+    prefix = "id"
 ) {
 
-    const line = [
-        `[${nowISO()}]`,
-        `[${String(level).toUpperCase()}]`,
-        message,
-        extra
-            ? JSON.stringify(extra)
-            : ""
-    ]
-        .filter(Boolean)
-        .join(" ");
+    return (
+        prefix +
+        "_" +
+        Date.now().toString(36) +
+        "_" +
+        crypto
+            .randomBytes(8)
+            .toString("hex")
+    );
+}
+
+
+function createUUID() {
+
+    if (
+        typeof crypto.randomUUID ===
+        "function"
+    ) {
+
+        return crypto.randomUUID();
+    }
+
+    return createId(
+        "uuid"
+    );
+}
+
+
+function createToken(
+    bytes = 32
+) {
+
+    return crypto
+        .randomBytes(bytes)
+        .toString("hex");
+}
+
+
+/* =========================================================
+   17. LOG FONKSİYONLARI
+========================================================= */
+
+function appendLog(
+    filePath,
+    message
+) {
 
     try {
 
+        const line =
+            `[${nowISO()}] ${message}\n`;
+
         fs.appendFileSync(
-            LOG_FILE,
-            line + "\n",
+            filePath,
+            line,
             "utf8"
         );
 
@@ -853,190 +836,193 @@ function writeLog(
             error.message
         );
     }
-
-    if (
-        level === "error"
-    ) {
-
-        console.error(
-            line
-        );
-
-    } else if (
-        level === "warn"
-    ) {
-
-        console.warn(
-            line
-        );
-
-    } else {
-
-        console.log(
-            line
-        );
-    }
 }
 
 
-/* ================================================================
-   032 — LOG KISAYOLLARI
-================================================================ */
-
 function logInfo(
-    message,
-    extra
+    message
 ) {
 
-    writeLog(
-        "info",
-        message,
-        extra
+    console.log(
+        `[TürkAI] ${message}`
+    );
+
+    appendLog(
+        LOG_FILES.server,
+        message
     );
 }
 
 
 function logWarn(
-    message,
-    extra
+    message
 ) {
 
-    writeLog(
-        "warn",
-        message,
-        extra
+    console.warn(
+        `[TürkAI][UYARI] ${message}`
+    );
+
+    appendLog(
+        LOG_FILES.server,
+        `UYARI: ${message}`
     );
 }
 
 
 function logError(
     message,
-    extra
+    error = null
 ) {
 
-    writeLog(
-        "error",
-        message,
-        extra
-    );
-}
-
-
-/* ================================================================
-   033 — REQUEST ID
-================================================================ */
-
-function createRequestId() {
-
-    return createId(
-        "req"
-    );
-}
-
-
-/* ================================================================
-   034 — IP AL
-================================================================ */
-
-function getClientIP(
-    req
-) {
-
-    const forwarded =
-        req.headers[
-            "x-forwarded-for"
-        ];
+    let output =
+        message;
 
     if (
-        forwarded
+        error &&
+        error.stack
     ) {
 
-        return String(
-            forwarded
-        )
-        .split(",")[0]
-        .trim();
+        output +=
+            `\n${error.stack}`;
     }
 
-    return (
-        req.socket?.remoteAddress ||
-        req.ip ||
-        "unknown"
+    console.error(
+        `[TürkAI][HATA] ${output}`
+    );
+
+    appendLog(
+        LOG_FILES.error,
+        output
     );
 }
 
 
-/* ================================================================
-   035 — USER AGENT
-================================================================ */
-
-function getUserAgent(
-    req
+function logSecurity(
+    message
 ) {
 
-    return cleanText(
-        req.headers[
-            "user-agent"
-        ] || "",
-        1000
+    appendLog(
+        LOG_FILES.security,
+        message
     );
 }
 
 
-/* ================================================================
-   036 — REQUEST LOGGER
-================================================================ */
+function logAI(
+    message
+) {
 
-app.use(
-    (
-        req,
-        res,
-        next
-    ) => {
+    appendLog(
+        LOG_FILES.ai,
+        message
+    );
+}
 
-        const requestId =
-            createRequestId();
 
-        req.requestId =
-            requestId;
+/* =========================================================
+   18. REQUEST METRICS
+========================================================= */
 
-        const started =
-            Date.now();
+const REQUEST_METRICS = {
 
-        res.setHeader(
-            "X-Request-ID",
-            requestId
-        );
+    total: 0,
 
-        res.on(
-            "finish",
-            () => {
+    successful: 0,
 
-                const duration =
-                    Date.now() -
-                    started;
+    failed: 0,
 
-                logInfo(
-                    `${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`,
-                    {
-                        requestId,
-                        ip:
-                            getClientIP(
-                                req
-                            )
-                    }
-                );
-            }
-        );
+    active: 0,
 
-        next();
-    }
+    startedAt:
+        nowISO(),
+
+    byMethod: {
+
+        GET: 0,
+
+        POST: 0,
+
+        PUT: 0,
+
+        PATCH: 0,
+
+        DELETE: 0,
+
+        OPTIONS: 0
+    },
+
+    byPath: {}
+};
+
+
+/* =========================================================
+   19. AI DURUMU
+========================================================= */
+
+const AI_STATUS = {
+
+    online: true,
+
+    provider: "local",
+
+    lastProvider: "local",
+
+    lastSuccessAt: null,
+
+    lastErrorAt: null,
+
+    lastError: null,
+
+    requestCount: 0,
+
+    successCount: 0,
+
+    failureCount: 0
+};
+
+
+/* =========================================================
+   20. SERVER DURUMU
+========================================================= */
+
+const SERVER_STATE = {
+
+    ready: false,
+
+    started: false,
+
+    shuttingDown: false,
+
+    maintenance: false,
+
+    serverId:
+        SERVER_ID,
+
+    startedAt:
+        nowISO(),
+
+    environment:
+        NODE_ENV,
+
+    version:
+        APP_VERSION
+};
+
+
+/* =========================================================
+   21. EXPRESS GÜVENLİK AYARLARI
+========================================================= */
+
+app.disable(
+    "x-powered-by"
 );
 
 
-/* ================================================================
-   037 — HELMET
-================================================================ */
+app.set(
+    "trust proxy",
+    1
+);
+
 
 app.use(
     helmet({
@@ -1044,20 +1030,19 @@ app.use(
             false,
 
         crossOriginEmbedderPolicy:
+            false,
+
+        crossOriginResourcePolicy:
             false
     })
 );
 
 
-/* ================================================================
-   038 — CORS
-================================================================ */
-
 app.use(
     cors({
         origin: true,
 
-        credentials: false,
+        credentials: true,
 
         methods: [
             "GET",
@@ -1072,49 +1057,112 @@ app.use(
             "Content-Type",
             "Authorization",
             "X-Requested-With",
-            "X-Request-ID"
+            "X-TurkAI-User",
+            "X-TurkAI-Session"
         ]
     })
 );
 
 
-/* ================================================================
-   039 — BODY PARSER
-================================================================ */
+/* =========================================================
+   22. BODY PARSER
+========================================================= */
 
 app.use(
     express.json({
-        limit: "20mb"
+        limit: "25mb"
     })
 );
+
 
 app.use(
     express.urlencoded({
         extended: true,
-        limit: "20mb"
+        limit: "25mb"
     })
 );
 
 
-/* ================================================================
-   040 — JSON HEADER
-================================================================ */
+/* =========================================================
+   23. REQUEST METRIC MIDDLEWARE
+========================================================= */
 
 app.use(
-    (
-        req,
-        res,
-        next
-    ) => {
+    (req, res, next) => {
 
-        res.setHeader(
-            "X-TurkAI-Version",
-            APP_VERSION
-        );
+        const start =
+            process.hrtime.bigint();
 
-        res.setHeader(
-            "X-TurkAI-Server",
-            "TürkAI"
+        REQUEST_METRICS.total++;
+
+        REQUEST_METRICS.active++;
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                REQUEST_METRICS.byMethod,
+                req.method
+            )
+        ) {
+
+            REQUEST_METRICS.byMethod[
+                req.method
+            ]++;
+        }
+
+        const routePath =
+            req.path || "/";
+
+        if (
+            !REQUEST_METRICS.byPath[
+                routePath
+            ]
+        ) {
+
+            REQUEST_METRICS.byPath[
+                routePath
+            ] = 0;
+        }
+
+        REQUEST_METRICS.byPath[
+            routePath
+        ]++;
+
+        res.on(
+            "finish",
+            () => {
+
+                REQUEST_METRICS.active--;
+
+                const duration =
+                    Number(
+                        process.hrtime.bigint() -
+                        start
+                    ) / 1000000;
+
+                if (
+                    res.statusCode >= 200 &&
+                    res.statusCode < 400
+                ) {
+
+                    REQUEST_METRICS.successful++;
+
+                } else {
+
+                    REQUEST_METRICS.failed++;
+                }
+
+                if (
+                    req.path !==
+                    "/api/health"
+                ) {
+
+                    appendLog(
+                        LOG_FILES.access,
+
+                        `${req.method} ${req.originalUrl} ${res.statusCode} ${duration.toFixed(2)}ms`
+                    );
+                }
+            }
         );
 
         next();
@@ -1122,222 +1170,790 @@ app.use(
 );
 
 
-/* ================================================================
-   041 — RATE LIMIT CACHE
-================================================================ */
+/* =========================================================
+   24. KULLANICI SİSTEMİ
+========================================================= */
 
-const RATE_LIMIT_CACHE =
-    new Map();
+function getUsers() {
 
+    const users =
+        readJSONSafe(
+            DB_FILES.users,
+            []
+        );
 
-/* ================================================================
-   042 — RATE LIMIT TEMİZLEME
-================================================================ */
-
-setInterval(
-    () => {
-
-        const now =
-            Date.now();
-
-        for (
-            const [
-                key,
-                value
-            ]
-            of RATE_LIMIT_CACHE
-        ) {
-
-            if (
-                now -
-                value.windowStart >
-                15 * 60 * 1000
-            ) {
-
-                RATE_LIMIT_CACHE.delete(
-                    key
-                );
-            }
-        }
-
-    },
-    60 * 1000
-);
+    return Array.isArray(users)
+        ? users
+        : [];
+}
 
 
-/* ================================================================
-   043 — BASİT RATE LIMIT
-================================================================ */
-
-function simpleRateLimit(
-    options = {}
+function saveUsers(
+    users
 ) {
 
-    const limit =
-        Number(
-            options.limit
-        ) || 120;
+    return writeJSONSafe(
+        DB_FILES.users,
+        Array.isArray(users)
+            ? users
+            : []
+    );
+}
 
-    const windowMs =
-        Number(
-            options.windowMs
-        ) ||
-        15 * 60 * 1000;
+
+function findUserById(
+    userId
+) {
+
+    const users =
+        getUsers();
 
     return (
-        req,
-        res,
-        next
-    ) => {
+        users.find(
+            user =>
+                user.id ===
+                userId
+        ) || null
+    );
+}
 
-        const ip =
-            getClientIP(req);
 
-        const key =
-            `${ip}:${req.path}`;
+function findUserByEmail(
+    email
+) {
 
-        const now =
-            Date.now();
+    const normalized =
+        cleanText(
+            email,
+            500
+        ).toLocaleLowerCase(
+            "tr-TR"
+        );
 
-        let record =
-            RATE_LIMIT_CACHE.get(
-                key
+    if (!normalized) {
+        return null;
+    }
+
+    const users =
+        getUsers();
+
+    return (
+        users.find(
+            user =>
+                String(
+                    user.email || ""
+                ).toLocaleLowerCase(
+                    "tr-TR"
+                ) === normalized
+        ) || null
+    );
+}
+
+
+/* =========================================================
+   25. KULLANICI OLUŞTUR
+========================================================= */
+
+function createUser(
+    data = {}
+) {
+
+    const email =
+        cleanText(
+            data.email,
+            500
+        );
+
+    if (email) {
+
+        const existing =
+            findUserByEmail(
+                email
             );
 
-        if (
-            !record ||
-            now -
-            record.windowStart >
-            windowMs
-        ) {
-
-            record = {
-                count: 0,
-                windowStart: now
-            };
+        if (existing) {
+            return existing;
         }
+    }
 
-        record.count++;
+    const user = {
 
-        RATE_LIMIT_CACHE.set(
-            key,
-            record
-        );
+        id:
+            data.id ||
+            createUUID(),
 
-        res.setHeader(
-            "X-RateLimit-Limit",
-            String(limit)
-        );
+        name:
+            cleanText(
+                data.name ||
+                "TürkAI Kullanıcısı",
+                200
+            ),
 
-        res.setHeader(
-            "X-RateLimit-Remaining",
-            String(
-                Math.max(
-                    0,
-                    limit -
-                    record.count
-                )
-            )
-        );
+        email,
 
-        if (
-            record.count >
-            limit
-        ) {
+        avatar:
+            cleanText(
+                data.avatar ||
+                "",
+                2000
+            ),
 
-            return res
-                .status(429)
-                .json({
-                    ok: false,
-                    error:
-                        "Çok fazla istek gönderildi.",
-                    code:
-                        "RATE_LIMITED",
-                    requestId:
-                        req.requestId
-                });
-        }
+        plan:
+            data.plan ||
+            "free",
 
-        next();
+        active:
+            true,
+
+        createdAt:
+            nowISO(),
+
+        updatedAt:
+            nowISO()
+    };
+
+    const users =
+        getUsers();
+
+    users.push(
+        user
+    );
+
+    saveUsers(
+        users
+    );
+
+    return user;
+}
+
+
+/* =========================================================
+   26. MİSAFİR KULLANICI
+========================================================= */
+
+function getGuestUser() {
+
+    return {
+
+        id:
+            "guest",
+
+        name:
+            "Misafir",
+
+        email:
+            "",
+
+        avatar:
+            "",
+
+        plan:
+            "free",
+
+        guest:
+            true,
+
+        active:
+            true
     };
 }
 
 
-/* ================================================================
-   044 — HEALTH ENDPOINT
-================================================================ */
+/* =========================================================
+   27. SESSION SİSTEMİ
+========================================================= */
+
+function getSessions() {
+
+    const sessions =
+        readJSONSafe(
+            DB_FILES.sessions,
+            []
+        );
+
+    return Array.isArray(
+        sessions
+    )
+        ? sessions
+        : [];
+}
+
+
+function saveSessions(
+    sessions
+) {
+
+    return writeJSONSafe(
+        DB_FILES.sessions,
+        Array.isArray(
+            sessions
+        )
+            ? sessions
+            : []
+    );
+}
+
+
+/* =========================================================
+   28. SESSION OLUŞTUR
+========================================================= */
+
+function createSession(
+    userId
+) {
+
+    const session = {
+
+        id:
+            createId(
+                "session"
+            ),
+
+        token:
+            createToken(
+                32
+            ),
+
+        userId,
+
+        createdAt:
+            nowISO(),
+
+        lastUsedAt:
+            nowISO(),
+
+        expiresAt:
+            new Date(
+                Date.now() +
+                30 *
+                24 *
+                60 *
+                60 *
+                1000
+            ).toISOString()
+    };
+
+    const sessions =
+        getSessions();
+
+    sessions.push(
+        session
+    );
+
+    saveSessions(
+        sessions
+    );
+
+    return session;
+}
+
+
+/* =========================================================
+   29. SESSION BUL
+========================================================= */
+
+function getSessionByToken(
+    token
+) {
+
+    const normalized =
+        cleanText(
+            token,
+            500
+        );
+
+    if (!normalized) {
+        return null;
+    }
+
+    const sessions =
+        getSessions();
+
+    const session =
+        sessions.find(
+            item =>
+                item.token ===
+                normalized
+        );
+
+    if (!session) {
+        return null;
+    }
+
+    if (
+        session.expiresAt
+    ) {
+
+        const expires =
+            new Date(
+                session.expiresAt
+            ).getTime();
+
+        if (
+            Number.isFinite(
+                expires
+            ) &&
+            expires < Date.now()
+        ) {
+
+            return null;
+        }
+    }
+
+    return session;
+}
+
+
+/* =========================================================
+   30. REQUEST USER
+========================================================= */
+
+function getRequestUser(
+    req
+) {
+
+    const headerUser =
+        req.headers[
+            "x-turkai-user"
+        ];
+
+    const bodyUser =
+        req.body &&
+        typeof req.body ===
+        "object"
+            ? req.body.userId
+            : null;
+
+    const queryUser =
+        req.query &&
+        typeof req.query ===
+        "object"
+            ? req.query.userId
+            : null;
+
+    const userId =
+        cleanText(
+            headerUser ||
+            bodyUser ||
+            queryUser ||
+            "",
+            300
+        );
+
+    if (!userId) {
+
+        return getGuestUser();
+    }
+
+    const user =
+        findUserById(
+            userId
+        );
+
+    if (!user) {
+
+        return getGuestUser();
+    }
+
+    return user;
+}
+
+
+/* =========================================================
+   31. AUTH MIDDLEWARE
+========================================================= */
+
+function optionalAuth(
+    req,
+    res,
+    next
+) {
+
+    req.user =
+        null;
+
+    req.session =
+        null;
+
+    const authorization =
+        req.headers.authorization;
+
+    if (
+        authorization &&
+        authorization.startsWith(
+            "Bearer "
+        )
+    ) {
+
+        const token =
+            authorization
+                .slice(7)
+                .trim();
+
+        const session =
+            getSessionByToken(
+                token
+            );
+
+        if (session) {
+
+            const user =
+                findUserById(
+                    session.userId
+                );
+
+            if (user) {
+
+                session.lastUsedAt =
+                    nowISO();
+
+                const sessions =
+                    getSessions();
+
+                const index =
+                    sessions.findIndex(
+                        item =>
+                            item.id ===
+                            session.id
+                    );
+
+                if (index !== -1) {
+
+                    sessions[index] =
+                        session;
+
+                    saveSessions(
+                        sessions
+                    );
+                }
+
+                req.user =
+                    user;
+
+                req.session =
+                    session;
+            }
+        }
+    }
+
+    if (!req.user) {
+
+        req.user =
+            getRequestUser(
+                req
+            );
+    }
+
+    next();
+}
+
+
+app.use(
+    optionalAuth
+);
+
+
+/* =========================================================
+   32. PLAN SİSTEMİ
+========================================================= */
+
+const PLANS = {
+
+    free: {
+
+        id:
+            "free",
+
+        name:
+            "Free",
+
+        price:
+            0,
+
+        dailyMessages:
+            50,
+
+        dailyResearch:
+            5,
+
+        dailyImages:
+            0,
+
+        dailyVideos:
+            0,
+
+        maxFileSizeMB:
+            10,
+
+        memory:
+            true,
+
+        coding:
+            true,
+
+        research:
+            true
+    },
+
+    pro: {
+
+        id:
+            "pro",
+
+        name:
+            "Pro",
+
+        price:
+            250,
+
+        dailyMessages:
+            100,
+
+        dailyResearch:
+            25,
+
+        dailyImages:
+            2,
+
+        dailyVideos:
+            0,
+
+        maxFileSizeMB:
+            25,
+
+        memory:
+            true,
+
+        coding:
+            true,
+
+        research:
+            true
+    },
+
+    plus: {
+
+        id:
+            "plus",
+
+        name:
+            "Plus",
+
+        price:
+            500,
+
+        dailyMessages:
+            200,
+
+        dailyResearch:
+            75,
+
+        dailyImages:
+            4,
+
+        dailyVideos:
+            5,
+
+        maxFileSizeMB:
+            50,
+
+        memory:
+            true,
+
+        coding:
+            true,
+
+        research:
+            true
+    },
+
+    ultra: {
+
+        id:
+            "ultra",
+
+        name:
+            "Ultra",
+
+        price:
+            1000,
+
+        dailyMessages:
+            1000,
+
+        dailyResearch:
+            250,
+
+        dailyImages:
+            10,
+
+        dailyVideos:
+            15,
+
+        maxFileSizeMB:
+            100,
+
+        memory:
+            true,
+
+        coding:
+            true,
+
+        research:
+            true
+    },
+
+    developer: {
+
+        id:
+            "developer",
+
+        name:
+            "Developer",
+
+        price:
+            0,
+
+        dailyMessages:
+            400,
+
+        dailyResearch:
+            500,
+
+        dailyImages:
+            50,
+
+        dailyVideos:
+            50,
+
+        maxFileSizeMB:
+            200,
+
+        memory:
+            true,
+
+        coding:
+            true,
+
+        research:
+            true
+    }
+};
+
+
+/* =========================================================
+   33. PLAN DOĞRULAMA
+========================================================= */
+
+function normalizePlan(
+    plan
+) {
+
+    const value =
+        cleanText(
+            plan,
+            100
+        ).toLocaleLowerCase(
+            "tr-TR"
+        );
+
+    if (
+        PLANS[value]
+    ) {
+
+        return value;
+    }
+
+    return "free";
+}
+
+
+/* =========================================================
+   34. SETTINGS
+========================================================= */
+
+function getSettings() {
+
+    const settings =
+        readJSONSafe(
+            DB_FILES.settings,
+            DATABASE_DEFAULTS.settings
+        );
+
+    return {
+        ...DATABASE_DEFAULTS.settings,
+        ...(settings || {})
+    };
+}
+
+
+function saveSettings(
+    settings
+) {
+
+    return writeJSONSafe(
+        DB_FILES.settings,
+        {
+            ...DATABASE_DEFAULTS.settings,
+            ...(settings || {})
+        }
+    );
+}
+
+
+/* =========================================================
+   35. HEALTH
+========================================================= */
 
 app.get(
     "/api/health",
-    (
-        req,
-        res
-    ) => {
+    (req, res) => {
 
-        res.json({
-            ok: true,
+        const memory =
+            process.memoryUsage();
+
+        res.status(200).json({
+
+            ok:
+                true,
+
+            success:
+                true,
 
             status:
                 "online",
 
-            name:
+            app:
                 APP_NAME,
 
             version:
                 APP_VERSION,
+
+            serverId:
+                SERVER_ID,
 
             environment:
                 NODE_ENV,
 
-            uptime:
+            uptimeSeconds:
                 Math.floor(
-                    (
-                        Date.now() -
-                        START_TIME
-                    ) / 1000
+                    process.uptime()
                 ),
 
-            timestamp:
-                nowISO(),
+            memory: {
 
-            requestId:
-                req.requestId
-        });
-    }
-);
+                rss:
+                    memory.rss,
 
+                heapUsed:
+                    memory.heapUsed,
 
-/* ================================================================
-   045 — ROOT API
-================================================================ */
+                heapTotal:
+                    memory.heapTotal,
 
-app.get(
-    "/api",
-    (
-        req,
-        res
-    ) => {
-
-        res.json({
-
-            ok: true,
-
-            name:
-                APP_NAME,
-
-            version:
-                APP_VERSION,
-
-            message:
-                "TürkAI API aktif.",
-
-            endpoints: [
-                "/api/health",
-                "/api/chat",
-                "/api/upload",
-                "/api/research",
-                "/api/weather"
-            ],
+                external:
+                    memory.external
+            },
 
             timestamp:
                 nowISO()
@@ -1346,69 +1962,86 @@ app.get(
 );
 
 
-/* ================================================================
-   046 — SERVER INFO
-================================================================ */
+/* =========================================================
+   36. STATUS
+========================================================= */
 
 app.get(
-    "/api/server-info",
-    (
-        req,
-        res
-    ) => {
+    "/api/status",
+    (req, res) => {
 
         const memory =
             process.memoryUsage();
 
         res.json({
 
-            ok: true,
+            ok:
+                true,
 
-            app: {
-                name:
-                    APP_NAME,
+            success:
+                true,
 
-                version:
-                    APP_VERSION,
+            app:
+                APP_NAME,
+
+            version:
+                APP_VERSION,
+
+            description:
+                APP_DESCRIPTION,
+
+            server: {
+
+                id:
+                    SERVER_ID,
+
+                host:
+                    HOST,
+
+                port:
+                    PORT,
 
                 environment:
                     NODE_ENV,
 
-                node:
-                    process.version,
-
-                platform:
-                    process.platform,
-
-                architecture:
-                    process.arch
-            },
-
-            server: {
-
-                hostname:
-                    os.hostname(),
-
-                cpuCount:
-                    os.cpus().length,
-
                 uptime:
                     process.uptime(),
 
-                memory: {
+                startedAt:
+                    SERVER_STATE.startedAt,
 
-                    rss:
-                        memory.rss,
+                ready:
+                    SERVER_STATE.ready
+            },
 
-                    heapTotal:
-                        memory.heapTotal,
+            ai:
+                AI_STATUS,
 
-                    heapUsed:
-                        memory.heapUsed,
+            requests: {
 
-                    external:
-                        memory.external
-                }
+                total:
+                    REQUEST_METRICS.total,
+
+                active:
+                    REQUEST_METRICS.active,
+
+                successful:
+                    REQUEST_METRICS.successful,
+
+                failed:
+                    REQUEST_METRICS.failed
+            },
+
+            memory: {
+
+                rss:
+                    memory.rss,
+
+                heapUsed:
+                    memory.heapUsed,
+
+                heapTotal:
+                    memory.heapTotal
             },
 
             timestamp:
@@ -1418,96 +2051,218 @@ app.get(
 );
 
 
-/* ================================================================
-   047 — STATIC PUBLIC
-================================================================ */
+/* =========================================================
+   37. TEST
+========================================================= */
 
-if (
-    fs.existsSync(
-        PUBLIC_DIR
-    )
-) {
+app.get(
+    "/api/test",
+    (req, res) => {
 
-    app.use(
-        express.static(
-            PUBLIC_DIR,
-            {
-                index:
-                    "index.html",
+        res.json({
 
-                extensions: [
-                    "html"
-                ],
+            ok:
+                true,
 
-                maxAge:
-                    IS_PRODUCTION
-                        ? "1h"
-                        : 0
-            }
-        )
-    );
-}
+            success:
+                true,
 
+            message:
+                "TürkAI API çalışıyor.",
 
-/* ================================================================
-   048 — SECURITY HEADER
-================================================================ */
+            app:
+                APP_NAME,
 
-app.use(
-    (
-        req,
-        res,
-        next
-    ) => {
+            version:
+                APP_VERSION,
 
-        res.setHeader(
-            "X-Content-Type-Options",
-            "nosniff"
-        );
+            serverId:
+                SERVER_ID,
 
-        res.setHeader(
-            "X-Frame-Options",
-            "SAMEORIGIN"
-        );
-
-        res.setHeader(
-            "Referrer-Policy",
-            "strict-origin-when-cross-origin"
-        );
-
-        next();
+            timestamp:
+                nowISO()
+        });
     }
 );
 
 
-/* ================================================================
-   049 — SOCKET.IO BAĞLANTI
-================================================================ */
+/* =========================================================
+   38. PLANLAR
+========================================================= */
+
+app.get(
+    "/api/plans",
+    (req, res) => {
+
+        res.json({
+
+            ok:
+                true,
+
+            plans:
+                Object.values(
+                    PLANS
+                )
+        });
+    }
+);
+
+
+/* =========================================================
+   39. BENİM PLANIM
+========================================================= */
+
+app.get(
+    "/api/me/plan",
+    (req, res) => {
+
+        const user =
+            req.user ||
+            getGuestUser();
+
+        const plan =
+            normalizePlan(
+                user.plan
+            );
+
+        res.json({
+
+            ok:
+                true,
+
+            userId:
+                user.id,
+
+            plan:
+                PLANS[plan]
+        });
+    }
+);
+
+
+/* =========================================================
+   40. ME
+========================================================= */
+
+app.get(
+    "/api/me",
+    (req, res) => {
+
+        const user =
+            req.user ||
+            getGuestUser();
+
+        res.json({
+
+            ok:
+                true,
+
+            user
+        });
+    }
+);
+
+
+/* =========================================================
+   41. SESSION OLUŞTURMA
+========================================================= */
+
+app.post(
+    "/api/session",
+    (req, res) => {
+
+        const name =
+            cleanText(
+                req.body &&
+                req.body.name,
+                200
+            ) ||
+            "TürkAI Kullanıcısı";
+
+        const email =
+            cleanText(
+                req.body &&
+                req.body.email,
+                500
+            );
+
+        let user =
+            email
+                ? findUserByEmail(
+                    email
+                )
+                : null;
+
+        if (!user) {
+
+            user =
+                createUser({
+                    name,
+                    email,
+                    avatar:
+                        req.body &&
+                        req.body.avatar
+                });
+        }
+
+        const session =
+            createSession(
+                user.id
+            );
+
+        res.json({
+
+            ok:
+                true,
+
+            success:
+                true,
+
+            user,
+
+            session: {
+
+                id:
+                    session.id,
+
+                token:
+                    session.token,
+
+                expiresAt:
+                    session.expiresAt
+            }
+        });
+    }
+);
+
+
+/* =========================================================
+   42. SOCKET.IO
+========================================================= */
 
 io.on(
     "connection",
-    (
-        socket
-    ) => {
+    socket => {
 
         logInfo(
-            "Socket.IO bağlantısı",
-            {
-                socketId:
-                    socket.id
-            }
+            `Socket bağlandı: ${socket.id}`
         );
 
         socket.emit(
             "turkai:connected",
             {
-                ok: true,
 
-                server:
+                ok:
+                    true,
+
+                app:
                     APP_NAME,
 
                 version:
                     APP_VERSION,
+
+                socketId:
+                    socket.id,
 
                 timestamp:
                     nowISO()
@@ -1516,12 +2271,19 @@ io.on(
 
 
         socket.on(
-            "ping",
-            () => {
+            "turkai:ping",
+            data => {
 
                 socket.emit(
-                    "pong",
+                    "turkai:pong",
                     {
+
+                        ok:
+                            true,
+
+                        received:
+                            data ?? null,
+
                         timestamp:
                             nowISO()
                     }
@@ -1532,18 +2294,10 @@ io.on(
 
         socket.on(
             "disconnect",
-            (
-                reason
-            ) => {
+            reason => {
 
                 logInfo(
-                    "Socket.IO bağlantısı kapandı",
-                    {
-                        socketId:
-                            socket.id,
-
-                        reason
-                    }
+                    `Socket ayrıldı: ${socket.id} | ${reason}`
                 );
             }
         );
@@ -1551,151 +2305,48 @@ io.on(
 );
 
 
-/* ================================================================
-   050 — GENEL 404 API
-================================================================ */
+/* =========================================================
+   43. API 404
+========================================================= */
 
 app.use(
     "/api",
-    (
-        req,
-        res
-    ) => {
+    (req, res) => {
 
-        res.status(404)
-            .json({
+        res.status(404).json({
 
-                ok: false,
+            ok:
+                false,
 
-                error:
-                    "API endpoint bulunamadı.",
+            success:
+                false,
 
-                code:
-                    "API_NOT_FOUND",
+            error:
+                "API endpoint bulunamadı.",
 
-                path:
-                    req.originalUrl,
+            path:
+                req.originalUrl,
 
-                method:
-                    req.method,
+            method:
+                req.method,
 
-                requestId:
-                    req.requestId,
-
-                available:
-                    [
-                        "/api",
-                        "/api/health",
-                        "/api/server-info",
-                        "/api/chat"
-                    ]
-            });
+            timestamp:
+                nowISO()
+        });
     }
 );
 
 
-/* ================================================================
-   051 — FRONTEND FALLBACK
-================================================================ */
-
-app.get(
-    "*",
-    (
-        req,
-        res,
-        next
-    ) => {
-
-        if (
-            req.path.startsWith(
-                "/api/"
-            )
-        ) {
-
-            return next();
-        }
-
-        const indexPath =
-            path.join(
-                PUBLIC_DIR,
-                "index.html"
-            );
-
-        if (
-            fs.existsSync(
-                indexPath
-            )
-        ) {
-
-            return res.sendFile(
-                indexPath
-            );
-        }
-
-        return res.status(404)
-            .send(
-                `
-                <!doctype html>
-                <html lang="tr">
-                <head>
-                    <meta charset="utf-8">
-                    <title>TürkAI</title>
-                    <style>
-                        body{
-                            margin:0;
-                            background:#090b10;
-                            color:#fff;
-                            font-family:Arial,sans-serif;
-                            display:grid;
-                            place-items:center;
-                            min-height:100vh;
-                        }
-                        .box{
-                            padding:30px;
-                            border:1px solid #252a36;
-                            border-radius:18px;
-                            background:#11151d;
-                            text-align:center;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="box">
-                        <h1>TürkAI</h1>
-                        <p>Frontend bulunamadı.</p>
-                    </div>
-                </body>
-                </html>
-                `
-            );
-    }
-);
-
-
-/* ================================================================
-   052 — GENEL ERROR HANDLER
-================================================================ */
+/* =========================================================
+   44. GLOBAL ERROR HANDLER
+========================================================= */
 
 app.use(
-    (
-        error,
-        req,
-        res,
-        next
-    ) => {
+    (error, req, res, next) => {
 
         logError(
-            "Express hata yakaladı",
-            {
-                message:
-                    error?.message,
-
-                stack:
-                    error?.stack,
-
-                requestId:
-                    req.requestId
-            }
+            `${req.method} ${req.originalUrl}`,
+            error
         );
 
         if (
@@ -1708,160 +2359,142 @@ app.use(
         }
 
         res.status(
-            Number(
-                error?.status
-            ) || 500
-        )
-        .json({
+            error.statusCode ||
+            500
+        ).json({
 
-            ok: false,
+            ok:
+                false,
+
+            success:
+                false,
 
             error:
                 IS_PRODUCTION
-                    ? "Sunucu hatası."
-                    : (
-                        error?.message ||
-                        "Sunucu hatası."
-                    ),
+                    ? "Sunucu tarafında bir hata oluştu."
+                    : error.message,
 
-            code:
-                "INTERNAL_SERVER_ERROR",
-
-            requestId:
-                req.requestId
+            timestamp:
+                nowISO()
         });
     }
 );
 
 
-/* ================================================================
-   053 — PROCESS HATA YAKALAMA
-================================================================ */
+/* =========================================================
+   45. SERVER BAŞLATMA
+========================================================= */
 
-process.on(
-    "uncaughtException",
-    (
-        error
-    ) => {
+function startServer() {
 
-        logError(
-            "UNCAUGHT EXCEPTION",
-            {
-                message:
-                    error.message,
+    if (
+        SERVER_STATE.started
+    ) {
 
-                stack:
-                    error.stack
-            }
+        logWarn(
+            "Sunucu zaten başlatılmış."
         );
+
+        return;
     }
-);
+
+    httpServer.listen(
+        PORT,
+        HOST,
+        () => {
+
+            SERVER_STATE.started =
+                true;
+
+            SERVER_STATE.ready =
+                true;
+
+            logInfo(
+                "════════════════════════════════════════"
+            );
+
+            logInfo(
+                "TürkAI sunucusu başlatıldı."
+            );
+
+            logInfo(
+                `Uygulama: ${APP_NAME}`
+            );
+
+            logInfo(
+                `Sürüm: ${APP_VERSION}`
+            );
+
+            logInfo(
+                `Ortam: ${NODE_ENV}`
+            );
+
+            logInfo(
+                `Host: ${HOST}`
+            );
+
+            logInfo(
+                `Port: ${PORT}`
+            );
+
+            logInfo(
+                `Server ID: ${SERVER_ID}`
+            );
+
+            logInfo(
+                `Health: http://localhost:${PORT}/api/health`
+            );
+
+            logInfo(
+                "════════════════════════════════════════"
+            );
+        }
+    );
+}
 
 
-/* ================================================================
-   054 — UNHANDLED PROMISE
-================================================================ */
+/* =========================================================
+   46. SHUTDOWN
+========================================================= */
 
-process.on(
-    "unhandledRejection",
-    (
-        reason
-    ) => {
-
-        logError(
-            "UNHANDLED REJECTION",
-            {
-                reason:
-                    String(reason)
-            }
-        );
-    }
-);
-
-
-/* ================================================================
-   055 — SHUTDOWN
-================================================================ */
-
-let shuttingDown =
-    false;
-
-async function gracefulShutdown(
+function shutdown(
     signal
 ) {
 
     if (
-        shuttingDown
+        SERVER_STATE.shuttingDown
     ) {
+
         return;
     }
 
-    shuttingDown =
+    SERVER_STATE.shuttingDown =
         true;
 
+    SERVER_STATE.ready =
+        false;
+
     logInfo(
-        `Server kapatılıyor: ${signal}`
+        `${signal} alındı. TürkAI kapatılıyor...`
     );
 
-    try {
+    io.close(
+        () => {
 
-        saveAllDatabases();
+            httpServer.close(
+                () => {
 
-    } catch (error) {
+                    logInfo(
+                        "TürkAI sunucusu güvenli şekilde kapatıldı."
+                    );
 
-        logError(
-            "Database kapanış kaydı başarısız",
-            {
-                message:
-                    error.message
-            }
-        );
-    }
-
-    try {
-
-        io.close();
-
-    } catch (error) {
-
-        logError(
-            "Socket.IO kapatma hatası",
-            {
-                message:
-                    error.message
-            }
-        );
-    }
-
-    try {
-
-        httpServer.close(
-            () => {
-
-                logInfo(
-                    "HTTP server kapandı."
-                );
-
-                process.exit(
-                    0
-                );
-            }
-        );
-
-    } catch (error) {
-
-        logError(
-            "HTTP server kapatma hatası",
-            {
-                message:
-                    error.message
-            }
-        );
-
-        process.exit(
-            1
-        );
-    }
+                    process.exit(
+                        0
+                    );
+                }
+            );
+        }
+    );
 
     setTimeout(
         () => {
@@ -1878,3770 +2511,169 @@ async function gracefulShutdown(
 
 process.on(
     "SIGTERM",
-    () =>
-        gracefulShutdown(
-            "SIGTERM"
-        )
+    () => {
+        shutdown("SIGTERM");
+    }
 );
+
 
 process.on(
     "SIGINT",
-    () =>
-        gracefulShutdown(
-            "SIGINT"
-        )
+    () => {
+        shutdown("SIGINT");
+    }
 );
 
 
-/* ================================================================
-   056 — START SERVER
-================================================================ */
+/* =========================================================
+   47. UNHANDLED ERROR
+========================================================= */
 
-function startServer() {
+process.on(
+    "uncaughtException",
+    error => {
 
-    httpServer.listen(
-        PORT,
-        HOST,
-        () => {
-
-            console.log("");
-            console.log(
-                "════════════════════════════════════════════════════════"
-            );
-            console.log(
-                "                    TÜRKAI SERVER"
-            );
-            console.log(
-                "════════════════════════════════════════════════════════"
-            );
-            console.log(
-                `Uygulama : ${APP_NAME}`
-            );
-            console.log(
-                `Versiyon : ${APP_VERSION}`
-            );
-            console.log(
-                `Node     : ${process.version}`
-            );
-            console.log(
-                `Ortam    : ${NODE_ENV}`
-            );
-            console.log(
-                `Port     : ${PORT}`
-            );
-            console.log(
-                `Host     : ${HOST}`
-            );
-            console.log(
-                `Public   : ${PUBLIC_DIR}`
-            );
-            console.log(
-                `Database : ${DB_DIR}`
-            );
-            console.log(
-                "────────────────────────────────────────────────────────"
-            );
-            console.log(
-                `Health   : http://localhost:${PORT}/api/health`
-            );
-            console.log(
-                `API      : http://localhost:${PORT}/api`
-            );
-            console.log(
-                `Server   : http://localhost:${PORT}/api/server-info`
-            );
-            console.log(
-                "────────────────────────────────────────────────────────"
-            );
-            console.log(
-                "🔥 TÜRKAI SERVER AKTİF 🔥"
-            );
-            console.log(
-                "════════════════════════════════════════════════════════"
-            );
-            console.log("");
-
-            logInfo(
-                "TürkAI server başlatıldı",
-                {
-                    port:
-                        PORT,
-
-                    host:
-                        HOST,
-
-                    version:
-                        APP_VERSION
-                }
-            );
-        }
-    );
-}
+        logError(
+            "Yakalanmamış exception.",
+            error
+        );
+    }
+);
 
 
-/* ================================================================
-   057 — BAŞLAT
-================================================================ */
+process.on(
+    "unhandledRejection",
+    reason => {
+
+        logError(
+            "Yakalanmamış promise rejection.",
+            reason instanceof Error
+                ? reason
+                : new Error(
+                    String(reason)
+                )
+        );
+    }
+);
+
+
+/* =========================================================
+   48. BAŞLANGIÇ
+========================================================= */
+
+SERVER_STATE.started =
+    false;
+
+SERVER_STATE.ready =
+    false;
+
+logInfo(
+    `${APP_NAME} ${APP_VERSION} hazırlanıyor...`
+);
 
 startServer();
 
 
-/*
-╔══════════════════════════════════════════════════════════════════════╗
-║                         PARÇA 1 SONU                                ║
-║                                                                      ║
-║  BURADAN SONRA PARÇA 2 GELECEK.                                    ║
-║                                                                      ║
-║  ÖNEMLİ:                                                            ║
-║  Şimdilik server.js'yi çalıştırırsan:                               ║
-║                                                                      ║
-║      node server.js                                                 ║
-║                                                                      ║
-║  şu endpointler çalışır:                                           ║
-║                                                                      ║
-║      /api                                                           ║
-║      /api/health                                                    ║
-║      /api/server-info                                               ║
-║                                                                      ║
-║  /api/chat ise PARÇA 3'te gerçek olarak eklenecek.                  ║
-╚══════════════════════════════════════════════════════════════════════╝
-*/
-/* ================================================================
-   TÜRKAI SERVER — PARÇA 2 / 5
-   USER + SESSION + CHAT + MEMORY + KNOWLEDGE ENGINE
-================================================================ */
+/* =========================================================
+   49. EXPORT
+========================================================= */
 
+module.exports = {
 
-/* ================================================================
-   058 — PLAN SİSTEMİ
-================================================================ */
+    app,
 
-const PLANS = {
+    httpServer,
 
-    free: {
-        name: "Free",
-        dailyMessages: 50,
-        maxChats: 20,
-        maxMemory: 50,
-        maxUploadMB: 10,
-        research: true,
-        weather: true,
-        coding: true,
-        imageGeneration: false,
-        videoGeneration: false
-    },
+    io,
 
-    pro: {
-        name: "Pro",
-        dailyMessages: 100,
-        maxChats: 100,
-        maxMemory: 250,
-        maxUploadMB: 25,
-        research: true,
-        weather: true,
-        coding: true,
-        imageGeneration: true,
-        videoGeneration: false
-    },
+    APP_NAME,
 
-    plus: {
-        name: "Plus",
-        dailyMessages: 200,
-        maxChats: 250,
-        maxMemory: 500,
-        maxUploadMB: 50,
-        research: true,
-        weather: true,
-        coding: true,
-        imageGeneration: true,
-        videoGeneration: true
-    },
+    APP_VERSION,
 
-    ultra: {
-        name: "Ultra",
-        dailyMessages: 1000,
-        maxChats: 1000,
-        maxMemory: 2000,
-        maxUploadMB: 100,
-        research: true,
-        weather: true,
-        coding: true,
-        imageGeneration: true,
-        videoGeneration: true
-    },
+    PORT,
 
-    developer: {
-        name: "Developer",
-        dailyMessages: 400,
-        maxChats: 9999,
-        maxMemory: 9999,
-        maxUploadMB: 200,
-        research: true,
-        weather: true,
-        coding: true,
-        imageGeneration: true,
-        videoGeneration: true
-    }
+    HOST,
+
+    DB_FILES,
+
+    LOG_FILES,
+
+    PLANS,
+
+    AI_STATUS,
+
+    SERVER_STATE,
+
+    REQUEST_METRICS,
+
+    readJSONSafe,
+
+    writeJSONSafe,
+
+    cleanText,
+
+    normalizeText,
+
+    nowISO,
+
+    nowUnix,
+
+    getTodayKey,
+
+    createId,
+
+    createUUID,
+
+    createToken,
+
+    getUsers,
+
+    saveUsers,
+
+    findUserById,
+
+    findUserByEmail,
+
+    createUser,
+
+    getGuestUser,
+
+    getSessions,
+
+    saveSessions,
+
+    createSession,
+
+    getSessionByToken,
+
+    getRequestUser,
+
+    getSettings,
+
+    saveSettings,
+
+    logInfo,
+
+    logWarn,
+
+    logError,
+
+    logSecurity,
+
+    logAI
 };
-
-
-/* ================================================================
-   059 — PLAN GETİR
-================================================================ */
-
-function getPlan(
-    planName
-) {
-
-    const key =
-        String(
-            planName || "free"
-        )
-        .toLowerCase();
-
-    return (
-        PLANS[key] ||
-        PLANS.free
-    );
-}
-
-
-/* ================================================================
-   060 — PLAN NORMALİZE
-================================================================ */
-
-function normalizePlan(
-    plan
-) {
-
-    const key =
-        String(
-            plan || "free"
-        )
-        .toLowerCase();
-
-    if (
-        !PLANS[key]
-    ) {
-        return "free";
-    }
-
-    return key;
-}
-
-
-/* ================================================================
-   061 — USER BUL
-================================================================ */
-
-function findUserById(
-    userId
-) {
-
-    if (
-        !userId
-    ) {
-        return null;
-    }
-
-    return safeArray(
-        DB.users
-    )
-    .find(
-        user =>
-            user.id === userId
-    ) || null;
-}
-
-
-/* ================================================================
-   062 — EMAIL İLE USER BUL
-================================================================ */
-
-function findUserByEmail(
-    email
-) {
-
-    const normalized =
-        cleanText(
-            email,
-            320
-        )
-        .toLowerCase();
-
-    if (
-        !normalized
-    ) {
-        return null;
-    }
-
-    return safeArray(
-        DB.users
-    )
-    .find(
-        user =>
-            String(
-                user.email || ""
-            )
-            .toLowerCase() ===
-            normalized
-    ) || null;
-}
-
-
-/* ================================================================
-   063 — USER OLUŞTUR
-================================================================ */
-
-function createUser(
-    data = {}
-) {
-
-    const now =
-        nowISO();
-
-    const user = {
-
-        id:
-            createUserId(),
-
-        name:
-            cleanText(
-                data.name ||
-                "TürkAI Kullanıcısı",
-                120
-            ),
-
-        email:
-            cleanText(
-                data.email || "",
-                320
-            )
-            .toLowerCase(),
-
-        avatar:
-            cleanText(
-                data.avatar || "",
-                1000
-            ),
-
-        provider:
-            cleanText(
-                data.provider ||
-                "local",
-                50
-            ),
-
-        plan:
-            normalizePlan(
-                data.plan ||
-                "free"
-            ),
-
-        active:
-            true,
-
-        createdAt:
-            now,
-
-        updatedAt:
-            now,
-
-        lastSeenAt:
-            now,
-
-        settings: {
-
-            language:
-                "tr",
-
-            theme:
-                "dark",
-
-            notifications:
-                true,
-
-            sound:
-                true,
-
-            research:
-                true
-        },
-
-        stats: {
-
-            totalMessages:
-                0,
-
-            totalChats:
-                0,
-
-            totalUploads:
-                0,
-
-            totalResearch:
-                0
-        }
-    };
-
-    DB.users.push(
-        user
-    );
-
-    saveDatabase(
-        "users"
-    );
-
-    return user;
-}
-
-
-/* ================================================================
-   064 — USER GETİR VEYA OLUŞTUR
-================================================================ */
-
-function getOrCreateUser(
-    data = {}
-) {
-
-    let user = null;
-
-    if (
-        data.id
-    ) {
-
-        user =
-            findUserById(
-                data.id
-            );
-    }
-
-    if (
-        !user &&
-        data.email
-    ) {
-
-        user =
-            findUserByEmail(
-                data.email
-            );
-    }
-
-    if (
-        user
-    ) {
-
-        user.lastSeenAt =
-            nowISO();
-
-        user.updatedAt =
-            nowISO();
-
-        if (
-            data.name
-        ) {
-
-            user.name =
-                cleanText(
-                    data.name,
-                    120
-                );
-        }
-
-        if (
-            data.avatar
-        ) {
-
-            user.avatar =
-                cleanText(
-                    data.avatar,
-                    1000
-                );
-        }
-
-        saveDatabase(
-            "users"
-        );
-
-        return user;
-    }
-
-    return createUser(
-        data
-    );
-}
-
-
-/* ================================================================
-   065 — USER PUBLIC VERİ
-================================================================ */
-
-function publicUser(
-    user
-) {
-
-    if (
-        !user
-    ) {
-        return null;
-    }
-
-    return {
-
-        id:
-            user.id,
-
-        name:
-            user.name,
-
-        email:
-            user.email,
-
-        avatar:
-            user.avatar,
-
-        provider:
-            user.provider,
-
-        plan:
-            user.plan,
-
-        planInfo:
-            getPlan(
-                user.plan
-            ),
-
-        active:
-            user.active,
-
-        createdAt:
-            user.createdAt,
-
-        lastSeenAt:
-            user.lastSeenAt,
-
-        stats:
-            user.stats,
-
-        settings:
-            user.settings
-    };
-}
-
-
-/* ================================================================
-   066 — SESSION OLUŞTUR
-================================================================ */
-
-function createSession(
-    user
-) {
-
-    const token =
-        crypto
-            .randomBytes(32)
-            .toString("hex");
-
-    const session = {
-
-        id:
-            createSessionId(),
-
-        token,
-
-        userId:
-            user.id,
-
-        createdAt:
-            nowISO(),
-
-        lastSeenAt:
-            nowISO(),
-
-        expiresAt:
-            new Date(
-                Date.now() +
-                30 *
-                24 *
-                60 *
-                60 *
-                1000
-            )
-            .toISOString(),
-
-        ip:
-            null,
-
-        userAgent:
-            null,
-
-        active:
-            true
-    };
-
-    DB.sessions.push(
-        session
-    );
-
-    saveDatabase(
-        "sessions"
-    );
-
-    return session;
-}
-
-
-/* ================================================================
-   067 — SESSION BUL
-================================================================ */
-
-function findSession(
-    token
-) {
-
-    if (
-        !token
-    ) {
-        return null;
-    }
-
-    const session =
-        safeArray(
-            DB.sessions
-        )
-        .find(
-            item =>
-                item.token ===
-                token &&
-                item.active === true
-        );
-
-    if (
-        !session
-    ) {
-        return null;
-    }
-
-    if (
-        session.expiresAt &&
-        new Date(
-            session.expiresAt
-        ).getTime() <
-        Date.now()
-    ) {
-
-        session.active =
-            false;
-
-        saveDatabase(
-            "sessions"
-        );
-
-        return null;
-    }
-
-    return session;
-}
-
-
-/* ================================================================
-   068 — TOKEN ÇÖZ
-================================================================ */
-
-function getTokenFromRequest(
-    req
-) {
-
-    const authorization =
-        req.headers.authorization;
-
-    if (
-        authorization &&
-        authorization.startsWith(
-            "Bearer "
-        )
-    ) {
-
-        return authorization
-            .slice(7)
-            .trim();
-    }
-
-    const headerToken =
-        req.headers[
-            "x-session-token"
-        ];
-
-    if (
-        headerToken
-    ) {
-        return String(
-            headerToken
-        ).trim();
-    }
-
-    return null;
-}
-
-
-/* ================================================================
-   069 — SESSION USER
-================================================================ */
-
-function getRequestUser(
-    req
-) {
-
-    const token =
-        getTokenFromRequest(
-            req
-        );
-
-    if (
-        token
-    ) {
-
-        const session =
-            findSession(
-                token
-            );
-
-        if (
-            session
-        ) {
-
-            const user =
-                findUserById(
-                    session.userId
-                );
-
-            if (
-                user
-            ) {
-
-                session.lastSeenAt =
-                    nowISO();
-
-                user.lastSeenAt =
-                    nowISO();
-
-                return user;
-            }
-        }
-    }
-
-    return null;
-}
-
-
-/* ================================================================
-   070 — USER MIDDLEWARE
-================================================================ */
-
-function attachUser(
-    req,
-    res,
-    next
-) {
-
-    try {
-
-        req.user =
-            getRequestUser(
-                req
-            );
-
-    } catch (
-        error
-    ) {
-
-        logError(
-            "attachUser hatası",
-            {
-                message:
-                    error.message
-            }
-        );
-
-        req.user =
-            null;
-    }
-
-    next();
-}
-
-app.use(
-    attachUser
-);
-
-
-/* ================================================================
-   071 — GUEST USER
-================================================================ */
-
-function getGuestUser(
-    req
-) {
-
-    const guestId =
-        req.headers[
-            "x-guest-id"
-        ] ||
-        req.body?.guestId ||
-        req.query?.guestId;
-
-    if (
-        guestId
-    ) {
-
-        return {
-            id:
-                `guest_${cleanText(
-                    guestId,
-                    100
-                )}`,
-
-            name:
-                "Misafir",
-
-            plan:
-                "free",
-
-            guest:
-                true
-        };
-    }
-
-    return {
-        id:
-            `guest_${getClientIP(
-                req
-            )}`,
-
-        name:
-            "Misafir",
-
-        plan:
-            "free",
-
-        guest:
-            true
-    };
-}
-
-
-/* ================================================================
-   072 — CHAT BUL
-================================================================ */
-
-function findChatById(
-    chatId
-) {
-
-    if (
-        !chatId
-    ) {
-        return null;
-    }
-
-    return safeArray(
-        DB.chats
-    )
-    .find(
-        chat =>
-            chat.id === chatId
-    ) || null;
-}
-
-
-/* ================================================================
-   073 — USER CHATLARI
-================================================================ */
-
-function getUserChats(
-    userId
-) {
-
-    return safeArray(
-        DB.chats
-    )
-    .filter(
-        chat =>
-            chat.userId ===
-            userId
-    )
-    .sort(
-        (
-            a,
-            b
-        ) =>
-            new Date(
-                b.updatedAt
-            ) -
-            new Date(
-                a.updatedAt
-            )
-    );
-}
-
-
-/* ================================================================
-   074 — CHAT OLUŞTUR
-================================================================ */
-
-function createChat(
-    userId,
-    data = {}
-) {
-
-    const now =
-        nowISO();
-
-    const chat = {
-
-        id:
-            createChatId(),
-
-        userId,
-
-        title:
-            cleanText(
-                data.title ||
-                "Yeni sohbet",
-                200
-            ),
-
-        model:
-            cleanText(
-                data.model ||
-                "fast",
-                100
-            ),
-
-        createdAt:
-            now,
-
-        updatedAt:
-            now,
-
-        archived:
-            false,
-
-        pinned:
-            false,
-
-        messageCount:
-            0,
-
-        metadata:
-            safeObject(
-                data.metadata
-            )
-    };
-
-    DB.chats.push(
-        chat
-    );
-
-    saveDatabase(
-        "chats"
-    );
-
-    return chat;
-}
-
-
-/* ================================================================
-   075 — CHAT ERİŞİM KONTROL
-================================================================ */
-
-function userOwnsChat(
-    user,
-    chat
-) {
-
-    if (
-        !user ||
-        !chat
-    ) {
-        return false;
-    }
-
-    if (
-        user.guest
-    ) {
-
-        return (
-            chat.userId ===
-            user.id
-        );
-    }
-
-    return (
-        chat.userId ===
-        user.id
-    );
-}
-
-
-/* ================================================================
-   076 — MESAJLARI GETİR
-================================================================ */
-
-function getChatMessages(
-    chatId,
-    limit = 100
-) {
-
-    const safeLimit =
-        Math.min(
-            Math.max(
-                Number(limit) || 100,
-                1
-            ),
-            500
-        );
-
-    return safeArray(
-        DB.messages
-    )
-    .filter(
-        message =>
-            message.chatId ===
-            chatId
-    )
-    .sort(
-        (
-            a,
-            b
-        ) =>
-            new Date(
-                a.createdAt
-            ) -
-            new Date(
-                b.createdAt
-            )
-    )
-    .slice(
-        -safeLimit
-    );
-}
-
-
-/* ================================================================
-   077 — MESAJ OLUŞTUR
-================================================================ */
-
-function createMessage(
-    data = {}
-) {
-
-    const message = {
-
-        id:
-            createMessageId(),
-
-        chatId:
-            data.chatId,
-
-        userId:
-            data.userId || null,
-
-        role:
-            data.role ||
-            "user",
-
-        content:
-            cleanText(
-                data.content || "",
-                50000
-            ),
-
-        model:
-            data.model ||
-            null,
-
-        createdAt:
-            nowISO(),
-
-        metadata:
-            safeObject(
-                data.metadata
-            )
-    };
-
-    DB.messages.push(
-        message
-    );
-
-    saveDatabase(
-        "messages"
-    );
-
-    const chat =
-        findChatById(
-            data.chatId
-        );
-
-    if (
-        chat
-    ) {
-
-        chat.messageCount =
-            getChatMessages(
-                chat.id,
-                10000
-            ).length;
-
-        chat.updatedAt =
-            nowISO();
-
-        saveDatabase(
-            "chats"
-        );
-    }
-
-    return message;
-}
-
-
-/* ================================================================
-   078 — CHAT BAŞLIĞI ÜRET
-================================================================ */
-
-function generateChatTitle(
-    text
-) {
-
-    const clean =
-        cleanText(
-            text,
-            200
-        );
-
-    if (
-        !clean
-    ) {
-        return "Yeni sohbet";
-    }
-
-    const words =
-        clean.split(
-            /\s+/
-        );
-
-    let title =
-        words
-            .slice(
-                0,
-                8
-            )
-            .join(" ");
-
-    if (
-        title.length >
-        60
-    ) {
-
-        title =
-            title.slice(
-                0,
-                60
-            );
-    }
-
-    if (
-        clean.length >
-        title.length
-    ) {
-
-        title +=
-            "…";
-    }
-
-    return title;
-}
-
-
-/* ================================================================
-   079 — CHAT TITLE OTOMATİK
-================================================================ */
-
-function updateChatTitle(
-    chat,
-    firstMessage
-) {
-
-    if (
-        !chat
-    ) {
-        return;
-    }
-
-    if (
-        chat.messageCount <= 2 ||
-        chat.title ===
-        "Yeni sohbet"
-    ) {
-
-        chat.title =
-            generateChatTitle(
-                firstMessage
-            );
-
-        chat.updatedAt =
-            nowISO();
-
-        saveDatabase(
-            "chats"
-        );
-    }
-}
-
-
-/* ================================================================
-   080 — MEMORY BUL
-================================================================ */
-
-function getUserMemories(
-    userId
-) {
-
-    return safeArray(
-        DB.memories
-    )
-    .filter(
-        memory =>
-            memory.userId ===
-            userId
-    )
-    .sort(
-        (
-            a,
-            b
-        ) =>
-            new Date(
-                b.updatedAt
-            ) -
-            new Date(
-                a.updatedAt
-            )
-    );
-}
-
-
-/* ================================================================
-   081 — MEMORY EKLE
-================================================================ */
-
-function addMemory(
-    userId,
-    content,
-    metadata = {}
-) {
-
-    const text =
-        cleanText(
-            content,
-            2000
-        );
-
-    if (
-        !text
-    ) {
-        return null;
-    }
-
-    const existing =
-        safeArray(
-            DB.memories
-        )
-        .find(
-            item =>
-                item.userId ===
-                userId &&
-                item.content
-                    .toLowerCase() ===
-                text.toLowerCase()
-        );
-
-    if (
-        existing
-    ) {
-
-        existing.updatedAt =
-            nowISO();
-
-        existing.metadata =
-            safeObject(
-                metadata
-            );
-
-        saveDatabase(
-            "memories"
-        );
-
-        return existing;
-    }
-
-    const memory = {
-
-        id:
-            createId(
-                "memory"
-            ),
-
-        userId,
-
-        content:
-            text,
-
-        createdAt:
-            nowISO(),
-
-        updatedAt:
-            nowISO(),
-
-        important:
-            Boolean(
-                metadata.important
-            ),
-
-        source:
-            metadata.source ||
-            "user",
-
-        metadata:
-            safeObject(
-                metadata
-            )
-    };
-
-    DB.memories.push(
-        memory
-    );
-
-    saveDatabase(
-        "memories"
-    );
-
-    return memory;
-}
-
-
-/* ================================================================
-   082 — MEMORY SİL
-================================================================ */
-
-function deleteMemory(
-    userId,
-    memoryId
-) {
-
-    const index =
-        DB.memories.findIndex(
-            memory =>
-                memory.id ===
-                memoryId &&
-                memory.userId ===
-                userId
-        );
-
-    if (
-        index === -1
-    ) {
-        return false;
-    }
-
-    DB.memories.splice(
-        index,
-        1
-    );
-
-    saveDatabase(
-        "memories"
-    );
-
-    return true;
-}
-
-
-/* ================================================================
-   083 — KNOWLEDGE ARAMA
-================================================================ */
-
-function searchKnowledge(
-    query,
-    limit = 5
-) {
-
-    const text =
-        cleanText(
-            query,
-            5000
-        )
-        .toLowerCase();
-
-    if (
-        !text
-    ) {
-        return [];
-    }
-
-    const queryWords =
-        text
-            .split(
-                /\s+/
-            )
-            .filter(
-                word =>
-                    word.length >= 2
-            );
-
-    const results =
-        safeArray(
-            DB.knowledge
-        )
-        .map(
-            item => {
-
-                const source =
-                    `${item.question || ""} ${item.answer || ""}`
-                    .toLowerCase();
-
-                let score = 0;
-
-                for (
-                    const word
-                    of queryWords
-                ) {
-
-                    if (
-                        source.includes(
-                            word
-                        )
-                    ) {
-
-                        score++;
-                    }
-                }
-
-                if (
-                    source.includes(
-                        text
-                    )
-                ) {
-
-                    score += 5;
-                }
-
-                return {
-                    item,
-                    score
-                };
-            }
-        )
-        .filter(
-            result =>
-                result.score > 0
-        )
-        .sort(
-            (
-                a,
-                b
-            ) =>
-                b.score -
-                a.score
-        )
-        .slice(
-            0,
-            Math.max(
-                1,
-                limit
-            )
-        );
-
-    return results;
-}
-
-
-/* ================================================================
-   084 — KNOWLEDGE CEVABI
-================================================================ */
-
-function findKnowledgeAnswer(
-    query
-) {
-
-    const results =
-        searchKnowledge(
-            query,
-            3
-        );
-
-    if (
-        !results.length
-    ) {
-        return null;
-    }
-
-    const best =
-        results[0];
-
-    if (
-        best.score < 2
-    ) {
-        return null;
-    }
-
-    return {
-
-        answer:
-            best.item.answer,
-
-        source:
-            "knowledge",
-
-        score:
-            best.score,
-
-        id:
-            best.item.id
-    };
-}
-
-
-/* ================================================================
-   085 — KNOWLEDGE KAYDET
-================================================================ */
-
-function saveKnowledge(
-    question,
-    answer,
-    metadata = {}
-) {
-
-    const q =
-        cleanText(
-            question,
-            5000
-        );
-
-    const a =
-        cleanText(
-            answer,
-            20000
-        );
-
-    if (
-        !q ||
-        !a
-    ) {
-        return null;
-    }
-
-    const existing =
-        safeArray(
-            DB.knowledge
-        )
-        .find(
-            item =>
-                String(
-                    item.question || ""
-                )
-                .toLowerCase() ===
-                q.toLowerCase()
-        );
-
-    if (
-        existing
-    ) {
-
-        existing.answer =
-            a;
-
-        existing.updatedAt =
-            nowISO();
-
-        existing.metadata =
-            safeObject(
-                metadata
-            );
-
-        saveDatabase(
-            "knowledge"
-        );
-
-        return existing;
-    }
-
-    const entry = {
-
-        id:
-            createId(
-                "knowledge"
-            ),
-
-        question:
-            q,
-
-        answer:
-            a,
-
-        createdAt:
-            nowISO(),
-
-        updatedAt:
-            nowISO(),
-
-        usageCount:
-            0,
-
-        metadata:
-            safeObject(
-                metadata
-            )
-    };
-
-    DB.knowledge.push(
-        entry
-    );
-
-    saveDatabase(
-        "knowledge"
-    );
-
-    return entry;
-}
-
-
-/* ================================================================
-   086 — KNOWLEDGE KULLANIMI
-================================================================ */
-
-function markKnowledgeUsed(
-    knowledgeId
-) {
-
-    const item =
-        DB.knowledge.find(
-            entry =>
-                entry.id ===
-                knowledgeId
-        );
-
-    if (
-        !item
-    ) {
-        return;
-    }
-
-    item.usageCount =
-        Number(
-            item.usageCount
-        ) + 1;
-
-    item.updatedAt =
-        nowISO();
-
-    saveDatabase(
-        "knowledge"
-    );
-}
-
-
-/* ================================================================
-   087 — GÜNLÜK ANAHTAR
-================================================================ */
-
-function getDateKey(
-    date = new Date()
-) {
-
-    return date
-        .toISOString()
-        .slice(
-            0,
-            10
-        );
-}
-
-
-/* ================================================================
-   088 — KULLANIM GETİR
-================================================================ */
-
-function getUsageRecord(
-    userId
-) {
-
-    const day =
-        getDateKey();
-
-    if (
-        !DB.usage ||
-        typeof DB.usage !==
-        "object"
-    ) {
-
-        DB.usage = {};
-    }
-
-    if (
-        !DB.usage[userId]
-    ) {
-
-        DB.usage[userId] = {};
-    }
-
-    if (
-        !DB.usage[userId][day]
-    ) {
-
-        DB.usage[userId][day] = {
-
-            messages:
-                0,
-
-            research:
-                0,
-
-            images:
-                0,
-
-            videos:
-                0,
-
-            uploads:
-                0
-        };
-    }
-
-    return DB.usage[
-        userId
-    ][day];
-}
-
-
-/* ================================================================
-   089 — KULLANIM ARTIR
-================================================================ */
-
-function incrementUsage(
-    userId,
-    type = "messages"
-) {
-
-    const record =
-        getUsageRecord(
-            userId
-        );
-
-    if (
-        typeof record[type] !==
-        "number"
-    ) {
-
-        record[type] =
-            0;
-    }
-
-    record[type]++;
-
-    saveDatabase(
-        "usage"
-    );
-
-    return record;
-}
-
-
-/* ================================================================
-   090 — MESAJ LİMİTİ
-================================================================ */
-
-function canSendMessage(
-    user
-) {
-
-    if (
-        !user
-    ) {
-        return {
-            allowed: true
-        };
-    }
-
-    const plan =
-        getPlan(
-            user.plan
-        );
-
-    const usage =
-        getUsageRecord(
-            user.id
-        );
-
-    const used =
-        Number(
-            usage.messages
-        ) || 0;
-
-    if (
-        used >=
-        plan.dailyMessages
-    ) {
-
-        return {
-
-            allowed:
-                false,
-
-            reason:
-                "Günlük mesaj limitine ulaştın.",
-
-            used,
-
-            limit:
-                plan.dailyMessages
-        };
-    }
-
-    return {
-
-        allowed:
-            true,
-
-        used,
-
-        limit:
-            plan.dailyMessages
-    };
-}
-
-
-/* ================================================================
-   091 — CHAT LİMİTİ
-================================================================ */
-
-function canCreateChat(
-    user
-) {
-
-    if (
-        !user
-    ) {
-        return {
-            allowed: true
-        };
-    }
-
-    const plan =
-        getPlan(
-            user.plan
-        );
-
-    const chats =
-        getUserChats(
-            user.id
-        );
-
-    if (
-        chats.length >=
-        plan.maxChats
-    ) {
-
-        return {
-
-            allowed:
-                false,
-
-            reason:
-                "Maksimum sohbet sayısına ulaştın.",
-
-            used:
-                chats.length,
-
-            limit:
-                plan.maxChats
-        };
-    }
-
-    return {
-
-        allowed:
-            true,
-
-        used:
-            chats.length,
-
-        limit:
-            plan.maxChats
-    };
-}
-
-
-/* ================================================================
-   092 — MEMORY LİMİTİ
-================================================================ */
-
-function canCreateMemory(
-    user
-) {
-
-    if (
-        !user
-    ) {
-        return {
-            allowed: true
-        };
-    }
-
-    const plan =
-        getPlan(
-            user.plan
-        );
-
-    const memories =
-        getUserMemories(
-            user.id
-        );
-
-    if (
-        memories.length >=
-        plan.maxMemory
-    ) {
-
-        return {
-
-            allowed:
-                false,
-
-            reason:
-                "Memory limitine ulaştın.",
-
-            used:
-                memories.length,
-
-            limit:
-                plan.maxMemory
-        };
-    }
-
-    return {
-
-        allowed:
-            true,
-
-        used:
-            memories.length,
-
-        limit:
-            plan.maxMemory
-    };
-}
-
-
-/* ================================================================
-   093 — PLAN İSTATİSTİĞİ
-================================================================ */
-
-function getUserUsage(
-    user
-) {
-
-    if (
-        !user
-    ) {
-        return {
-            messages: 0,
-            research: 0,
-            images: 0,
-            videos: 0,
-            uploads: 0
-        };
-    }
-
-    return getUsageRecord(
-        user.id
-    );
-}
-
-
-/* ================================================================
-   094 — USER STATS
-================================================================ */
-
-function calculateUserStats(
-    user
-) {
-
-    if (
-        !user
-    ) {
-        return {};
-    }
-
-    const chats =
-        getUserChats(
-            user.id
-        );
-
-    const messages =
-        DB.messages.filter(
-            message =>
-                message.userId ===
-                user.id
-        );
-
-    const memories =
-        getUserMemories(
-            user.id
-        );
-
-    const usage =
-        getUserUsage(
-            user
-        );
-
-    return {
-
-        chats:
-            chats.length,
-
-        messages:
-            messages.length,
-
-        memories:
-            memories.length,
-
-        daily:
-            usage,
-
-        plan:
-            user.plan,
-
-        planInfo:
-            getPlan(
-                user.plan
-            )
-    };
-}
-
-
-/* ================================================================
-   095 — AUTH LOGIN
-================================================================ */
-
-app.post(
-    "/api/auth/login",
-    simpleRateLimit({
-        limit: 30,
-        windowMs:
-            15 *
-            60 *
-            1000
-    }),
-    (
-        req,
-        res
-    ) => {
-
-        try {
-
-            const body =
-                safeObject(
-                    req.body
-                );
-
-            const user =
-                getOrCreateUser({
-
-                    id:
-                        body.userId,
-
-                    name:
-                        body.name,
-
-                    email:
-                        body.email,
-
-                    avatar:
-                        body.avatar,
-
-                    provider:
-                        body.provider ||
-                        "local"
-                });
-
-            const session =
-                createSession(
-                    user
-                );
-
-            session.ip =
-                getClientIP(
-                    req
-                );
-
-            session.userAgent =
-                getUserAgent(
-                    req
-                );
-
-            saveDatabase(
-                "sessions"
-            );
-
-            res.json({
-
-                ok:
-                    true,
-
-                token:
-                    session.token,
-
-                sessionId:
-                    session.id,
-
-                user:
-                    publicUser(
-                        user
-                    )
-            });
-
-        } catch (
-            error
-        ) {
-
-            logError(
-                "Login hatası",
-                {
-                    message:
-                        error.message
-                }
-            );
-
-            res.status(500)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Giriş işlemi başarısız."
-                });
-        }
-    }
-);
-
-
-/* ================================================================
-   096 — AUTH ME
-================================================================ */
-
-app.get(
-    "/api/auth/me",
-    (
-        req,
-        res
-    ) => {
-
-        const user =
-            req.user;
-
-        if (
-            !user
-        ) {
-
-            return res.json({
-
-                ok:
-                    true,
-
-                authenticated:
-                    false,
-
-                user:
-                    null
-            });
-        }
-
-        return res.json({
-
-            ok:
-                true,
-
-            authenticated:
-                true,
-
-            user:
-                publicUser(
-                    user
-                )
-        });
-    }
-);
-
-
-/* ================================================================
-   097 — LOGOUT
-================================================================ */
-
-app.post(
-    "/api/auth/logout",
-    (
-        req,
-        res
-    ) => {
-
-        const token =
-            getTokenFromRequest(
-                req
-            );
-
-        if (
-            token
-        ) {
-
-            const session =
-                findSession(
-                    token
-                );
-
-            if (
-                session
-            ) {
-
-                session.active =
-                    false;
-
-                saveDatabase(
-                    "sessions"
-                );
-            }
-        }
-
-        res.json({
-
-            ok:
-                true,
-
-            message:
-                "Oturum kapatıldı."
-        });
-    }
-);
-
-
-/* ================================================================
-   098 — USER PROFILE
-================================================================ */
-
-app.get(
-    "/api/user/profile",
-    (
-        req,
-        res
-    ) => {
-
-        if (
-            !req.user
-        ) {
-
-            return res.status(401)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Oturum gerekli."
-                });
-        }
-
-        return res.json({
-
-            ok:
-                true,
-
-            user:
-                publicUser(
-                    req.user
-                ),
-
-            stats:
-                calculateUserStats(
-                    req.user
-                )
-        });
-    }
-);
-
-
-/* ================================================================
-   099 — USER SETTINGS
-================================================================ */
-
-app.patch(
-    "/api/user/settings",
-    (
-        req,
-        res
-    ) => {
-
-        if (
-            !req.user
-        ) {
-
-            return res.status(401)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Oturum gerekli."
-                });
-        }
-
-        const settings =
-            safeObject(
-                req.body?.settings ||
-                req.body
-            );
-
-        req.user.settings = {
-
-            ...req.user.settings,
-
-            ...settings
-        };
-
-        req.user.updatedAt =
-            nowISO();
-
-        saveDatabase(
-            "users"
-        );
-
-        res.json({
-
-            ok:
-                true,
-
-            settings:
-                req.user.settings
-        });
-    }
-);
-
-
-/* ================================================================
-   100 — CHAT LISTESİ
-================================================================ */
-
-app.get(
-    "/api/chats",
-    (
-        req,
-        res
-    ) => {
-
-        if (
-            !req.user
-        ) {
-
-            return res.json({
-
-                ok:
-                    true,
-
-                chats:
-                    []
-            });
-        }
-
-        const chats =
-            getUserChats(
-                req.user.id
-            )
-            .map(
-                chat => ({
-                    ...chat
-                })
-            );
-
-        res.json({
-
-            ok:
-                true,
-
-            chats
-        });
-    }
-);
-
-
-/* ================================================================
-   101 — CHAT OLUŞTUR API
-================================================================ */
-
-app.post(
-    "/api/chats",
-    (
-        req,
-        res
-    ) => {
-
-        const user =
-            req.user ||
-            getGuestUser(req);
-
-        const permission =
-            canCreateChat(
-                user
-            );
-
-        if (
-            !permission.allowed
-        ) {
-
-            return res.status(403)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        permission.reason,
-
-                    limit:
-                        permission.limit,
-
-                    used:
-                        permission.used
-                });
-        }
-
-        const chat =
-            createChat(
-                user.id,
-                req.body || {}
-            );
-
-        res.json({
-
-            ok:
-                true,
-
-            chat
-        });
-    }
-);
-
-
-/* ================================================================
-   102 — CHAT DETAY
-================================================================ */
-
-app.get(
-    "/api/chats/:chatId",
-    (
-        req,
-        res
-    ) => {
-
-        const user =
-            req.user ||
-            getGuestUser(req);
-
-        const chat =
-            findChatById(
-                req.params.chatId
-            );
-
-        if (
-            !chat
-        ) {
-
-            return res.status(404)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Sohbet bulunamadı."
-                });
-        }
-
-        if (
-            !userOwnsChat(
-                user,
-                chat
-            )
-        ) {
-
-            return res.status(403)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Bu sohbete erişim iznin yok."
-                });
-        }
-
-        res.json({
-
-            ok:
-                true,
-
-            chat,
-
-            messages:
-                getChatMessages(
-                    chat.id,
-                    500
-                )
-        });
-    }
-);
-
-
-/* ================================================================
-   103 — CHAT SİL
-================================================================ */
-
-app.delete(
-    "/api/chats/:chatId",
-    (
-        req,
-        res
-    ) => {
-
-        const user =
-            req.user ||
-            getGuestUser(req);
-
-        const index =
-            DB.chats.findIndex(
-                chat =>
-                    chat.id ===
-                    req.params.chatId &&
-                    chat.userId ===
-                    user.id
-            );
-
-        if (
-            index === -1
-        ) {
-
-            return res.status(404)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Sohbet bulunamadı."
-                });
-        }
-
-        const chat =
-            DB.chats[index];
-
-        DB.chats.splice(
-            index,
-            1
-        );
-
-        DB.messages =
-            DB.messages.filter(
-                message =>
-                    message.chatId !==
-                    chat.id
-            );
-
-        saveDatabase(
-            "chats"
-        );
-
-        saveDatabase(
-            "messages"
-        );
-
-        res.json({
-
-            ok:
-                true,
-
-            message:
-                "Sohbet silindi."
-        });
-    }
-);
-
-
-/* ================================================================
-   104 — CHAT PIN
-================================================================ */
-
-app.patch(
-    "/api/chats/:chatId/pin",
-    (
-        req,
-        res
-    ) => {
-
-        const user =
-            req.user ||
-            getGuestUser(req);
-
-        const chat =
-            findChatById(
-                req.params.chatId
-            );
-
-        if (
-            !chat ||
-            !userOwnsChat(
-                user,
-                chat
-            )
-        ) {
-
-            return res.status(404)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Sohbet bulunamadı."
-                });
-        }
-
-        chat.pinned =
-            !chat.pinned;
-
-        chat.updatedAt =
-            nowISO();
-
-        saveDatabase(
-            "chats"
-        );
-
-        res.json({
-
-            ok:
-                true,
-
-            pinned:
-                chat.pinned
-        });
-    }
-);
-
-
-/* ================================================================
-   105 — MEMORY GET
-================================================================ */
-
-app.get(
-    "/api/memory",
-    (
-        req,
-        res
-    ) => {
-
-        if (
-            !req.user
-        ) {
-
-            return res.json({
-
-                ok:
-                    true,
-
-                memories:
-                    []
-            });
-        }
-
-        res.json({
-
-            ok:
-                true,
-
-            memories:
-                getUserMemories(
-                    req.user.id
-                )
-        });
-    }
-);
-
-
-/* ================================================================
-   106 — MEMORY EKLE API
-================================================================ */
-
-app.post(
-    "/api/memory",
-    (
-        req,
-        res
-    ) => {
-
-        if (
-            !req.user
-        ) {
-
-            return res.status(401)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Memory için giriş yapmalısın."
-                });
-        }
-
-        const permission =
-            canCreateMemory(
-                req.user
-            );
-
-        if (
-            !permission.allowed
-        ) {
-
-            return res.status(403)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        permission.reason,
-
-                    limit:
-                        permission.limit,
-
-                    used:
-                        permission.used
-                });
-        }
-
-        const memory =
-            addMemory(
-                req.user.id,
-                req.body?.content,
-                req.body?.metadata
-            );
-
-        if (
-            !memory
-        ) {
-
-            return res.status(400)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Geçerli memory içeriği gerekli."
-                });
-        }
-
-        res.json({
-
-            ok:
-                true,
-
-            memory
-        });
-    }
-);
-
-
-/* ================================================================
-   107 — MEMORY SİL API
-================================================================ */
-
-app.delete(
-    "/api/memory/:memoryId",
-    (
-        req,
-        res
-    ) => {
-
-        if (
-            !req.user
-        ) {
-
-            return res.status(401)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Oturum gerekli."
-                });
-        }
-
-        const deleted =
-            deleteMemory(
-                req.user.id,
-                req.params.memoryId
-            );
-
-        if (
-            !deleted
-        ) {
-
-            return res.status(404)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Memory bulunamadı."
-                });
-        }
-
-        res.json({
-
-            ok:
-                true,
-
-            message:
-                "Memory silindi."
-        });
-    }
-);
-
-
-/* ================================================================
-   108 — MEMORY ARAMA
-================================================================ */
-
-app.get(
-    "/api/memory/search",
-    (
-        req,
-        res
-    ) => {
-
-        if (
-            !req.user
-        ) {
-
-            return res.status(401)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Oturum gerekli."
-                });
-        }
-
-        const query =
-            cleanText(
-                req.query.q,
-                5000
-            )
-            .toLowerCase();
-
-        const results =
-            getUserMemories(
-                req.user.id
-            )
-            .filter(
-                memory =>
-                    memory.content
-                        .toLowerCase()
-                        .includes(
-                            query
-                        )
-            )
-            .slice(
-                0,
-                50
-            );
-
-        res.json({
-
-            ok:
-                true,
-
-            query,
-
-            results
-        });
-    }
-);
-
-
-/* ================================================================
-   109 — USAGE API
-================================================================ */
-
-app.get(
-    "/api/usage",
-    (
-        req,
-        res
-    ) => {
-
-        if (
-            !req.user
-        ) {
-
-            return res.json({
-
-                ok:
-                    true,
-
-                plan:
-                    "free",
-
-                usage: {
-                    messages: 0
-                }
-            });
-        }
-
-        const usage =
-            getUserUsage(
-                req.user
-            );
-
-        const plan =
-            getPlan(
-                req.user.plan
-            );
-
-        res.json({
-
-            ok:
-                true,
-
-            plan:
-                req.user.plan,
-
-            planInfo:
-                plan,
-
-            usage,
-
-            limits: {
-
-                messages:
-                    plan.dailyMessages,
-
-                chats:
-                    plan.maxChats,
-
-                memory:
-                    plan.maxMemory
-            }
-        });
-    }
-);
-
-
-/* ================================================================
-   110 — KNOWLEDGE API
-================================================================ */
-
-app.get(
-    "/api/knowledge/search",
-    simpleRateLimit({
-        limit: 60,
-        windowMs:
-            15 *
-            60 *
-            1000
-    }),
-    (
-        req,
-        res
-    ) => {
-
-        const query =
-            cleanText(
-                req.query.q,
-                5000
-            );
-
-        if (
-            !query
-        ) {
-
-            return res.status(400)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Arama sorgusu gerekli."
-                });
-        }
-
-        const results =
-            searchKnowledge(
-                query,
-                10
-            );
-
-        res.json({
-
-            ok:
-                true,
-
-            query,
-
-            results
-        });
-    }
-);
-
-
-/* ================================================================
-   111 — KNOWLEDGE EKLE
-================================================================ */
-
-app.post(
-    "/api/knowledge",
-    (
-        req,
-        res
-    ) => {
-
-        const question =
-            cleanText(
-                req.body?.question,
-                5000
-            );
-
-        const answer =
-            cleanText(
-                req.body?.answer,
-                20000
-            );
-
-        if (
-            !question ||
-            !answer
-        ) {
-
-            return res.status(400)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Soru ve cevap gerekli."
-                });
-        }
-
-        const entry =
-            saveKnowledge(
-                question,
-                answer,
-                {
-                    source:
-                        "api"
-                }
-            );
-
-        res.json({
-
-            ok:
-                true,
-
-            entry
-        });
-    }
-);
-
-
-/* ================================================================
-   112 — STATS
-================================================================ */
-
-app.get(
-    "/api/stats",
-    (
-        req,
-        res
-    ) => {
-
-        const user =
-            req.user;
-
-        res.json({
-
-            ok:
-                true,
-
-            server: {
-
-                users:
-                    DB.users.length,
-
-                sessions:
-                    DB.sessions.length,
-
-                chats:
-                    DB.chats.length,
-
-                messages:
-                    DB.messages.length,
-
-                memories:
-                    DB.memories.length,
-
-                knowledge:
-                    DB.knowledge.length,
-
-                files:
-                    DB.files.length,
-
-                projects:
-                    DB.projects.length
-            },
-
-            user:
-                user
-                    ? calculateUserStats(
-                        user
-                    )
-                    : null,
-
-            timestamp:
-                nowISO()
-        });
-    }
-);
-
-
-/* ================================================================
-   113 — OTOMATİK TEMİZLEME
-================================================================ */
-
-function cleanupExpiredSessions() {
-
-    const now =
-        Date.now();
-
-    let changed =
-        false;
-
-    for (
-        const session
-        of safeArray(
-            DB.sessions
-        )
-    ) {
-
-        if (
-            session.expiresAt &&
-            new Date(
-                session.expiresAt
-            ).getTime() <
-            now &&
-            session.active
-        ) {
-
-            session.active =
-                false;
-
-            changed =
-                true;
-        }
-    }
-
-    if (
-        changed
-    ) {
-
-        saveDatabase(
-            "sessions"
-        );
-    }
-}
-
-
-/* ================================================================
-   114 — SESSION CLEANUP
-================================================================ */
-
-setInterval(
-    cleanupExpiredSessions,
-    60 *
-    60 *
-    1000
-);
-
-
-/* ================================================================
-   115 — MEMORY AUTO SAVE
-================================================================ */
-
-function autoRemember(
-    user,
-    text
-) {
-
-    if (
-        !user ||
-        user.guest
-    ) {
-        return null;
-    }
-
-    const value =
-        cleanText(
-            text,
-            1000
-        );
-
-    if (
-        !value
-    ) {
-        return null;
-    }
-
-    const patterns = [
-
-        /benim adım\s+(.+)/i,
-
-        /adım\s+(.+)/i,
-
-        /ben\s+(.+)\s+seviyorum/i,
-
-        /favorim\s+(.+)/i,
-
-        /(.+)\s+öğreniyorum/i
-    ];
-
-    for (
-        const pattern
-        of patterns
-    ) {
-
-        const match =
-            value.match(
-                pattern
-            );
-
-        if (
-            match
-        ) {
-
-            const memory =
-                cleanText(
-                    match[0],
-                    1000
-                );
-
-            if (
-                memory
-            ) {
-
-                const permission =
-                    canCreateMemory(
-                        user
-                    );
-
-                if (
-                    permission.allowed
-                ) {
-
-                    return addMemory(
-                        user.id,
-                        memory,
-                        {
-                            source:
-                                "auto"
-                        }
-                    );
-                }
-            }
-        }
-    }
-
-    return null;
-}
-
-
-/* ================================================================
-   116 — CHAT CONTEXT
-================================================================ */
-
-function buildChatContext(
-    user,
-    chatId,
-    limit = 12
-) {
-
-    const messages =
-        getChatMessages(
-            chatId,
-            limit
-        );
-
-    const memories =
-        user &&
-        !user.guest
-            ? getUserMemories(
-                user.id
-            ).slice(
-                0,
-                20
-            )
-            : [];
-
-    return {
-
-        messages,
-
-        memories,
-
-        user:
-            user
-                ? {
-                    id:
-                        user.id,
-
-                    name:
-                        user.name,
-
-                    plan:
-                        user.plan
-                }
-                : null
-    };
-}
-
-
-/* ================================================================
-   117 — DATABASE BACKUP
-================================================================ */
-
-function backupDatabase() {
-
-    const timestamp =
-        Date.now();
-
-    const backupFolder =
-        path.join(
-            BACKUPS_DIR,
-            String(timestamp)
-        );
-
-    try {
-
-        fs.mkdirSync(
-            backupFolder,
-            {
-                recursive: true
-            }
-        );
-
-        for (
-            const [
-                name,
-                filePath
-            ]
-            of Object.entries(
-                DB_FILES
-            )
-        ) {
-
-            if (
-                fs.existsSync(
-                    filePath
-                )
-            ) {
-
-                fs.copyFileSync(
-                    filePath,
-                    path.join(
-                        backupFolder,
-                        `${name}.json`
-                    )
-                );
-            }
-        }
-
-        return backupFolder;
-
-    } catch (
-        error
-    ) {
-
-        logError(
-            "Database backup hatası",
-            {
-                message:
-                    error.message
-            }
-        );
-
-        return null;
-    }
-}
-
-
-/* ================================================================
-   118 — OTOMATİK BACKUP
-================================================================ */
-
-setInterval(
-    () => {
-
-        try {
-
-            backupDatabase();
-
-        } catch (
-            error
-        ) {
-
-            logError(
-                "Otomatik backup hatası",
-                {
-                    message:
-                        error.message
-                }
-            );
-        }
-
-    },
-    6 *
-    60 *
-    60 *
-    1000
-);
-
-
-/* ================================================================
-   119 — PLAN AKTİVASYON
-================================================================ */
-
-const TURKAI_PRO_CODE =
-    process.env.TURKAI_PRO_CODE ||
-    "";
-
-
-/* ================================================================
-   120 — PLAN KODU DOĞRULA
-================================================================ */
-
-function activatePlanByCode(
-    user,
-    code
-) {
-
-    if (
-        !user
-    ) {
-        return {
-            success: false,
-            error:
-                "Kullanıcı bulunamadı."
-        };
-    }
-
-    const input =
-        cleanText(
-            code,
-            200
-        );
-
-    if (
-        !input
-    ) {
-
-        return {
-            success: false,
-            error:
-                "Kod gerekli."
-        };
-    }
-
-    if (
-        TURKAI_PRO_CODE &&
-        input ===
-        TURKAI_PRO_CODE
-    ) {
-
-        user.plan =
-            "pro";
-
-        user.updatedAt =
-            nowISO();
-
-        saveDatabase(
-            "users"
-        );
-
-        return {
-
-            success:
-                true,
-
-            plan:
-                "pro",
-
-            planInfo:
-                getPlan(
-                    "pro"
-                )
-        };
-    }
-
-    return {
-
-        success:
-            false,
-
-        error:
-            "Geçersiz aktivasyon kodu."
-    };
-}
-
-
-/* ================================================================
-   121 — PRO AKTİVASYON API
-================================================================ */
-
-app.post(
-    "/api/pro/activate",
-    (
-        req,
-        res
-    ) => {
-
-        if (
-            !req.user
-        ) {
-
-            return res.status(401)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Önce giriş yapmalısın."
-                });
-        }
-
-        const result =
-            activatePlanByCode(
-                req.user,
-                req.body?.code
-            );
-
-        if (
-            !result.success
-        ) {
-
-            return res.status(400)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        result.error
-                });
-        }
-
-        res.json({
-
-            ok:
-                true,
-
-            ...result
-        });
-    }
-);
-
-
-/* ================================================================
-   122 — PLAN API
-================================================================ */
-
-app.get(
-    "/api/plans",
-    (
-        req,
-        res
-    ) => {
-
-        res.json({
-
-            ok:
-                true,
-
-            plans:
-                PLANS
-        });
-    }
-);
-
-
-/* ================================================================
-   123 — SYSTEM STATUS
-================================================================ */
-
-app.get(
-    "/api/system/status",
-    (
-        req,
-        res
-    ) => {
-
-        res.json({
-
-            ok:
-                true,
-
-            status:
-                "online",
-
-            turkai:
-                true,
-
-            version:
-                APP_VERSION,
-
-            node:
-                process.version,
-
-            uptime:
-                process.uptime(),
-
-            database: {
-
-                users:
-                    DB.users.length,
-
-                chats:
-                    DB.chats.length,
-
-                messages:
-                    DB.messages.length,
-
-                memories:
-                    DB.memories.length,
-
-                knowledge:
-                    DB.knowledge.length
-            },
-
-            timestamp:
-                nowISO()
-        });
-    }
-);
-
-
-/* ================================================================
-   124 — PARÇA 2 SONU
-================================================================ */
-
-/*
-    PARÇA 2 TAMAMLANDI.
-
-    Bu bölüm artık şunları sağlıyor:
-
-    /api/auth/login
-    /api/auth/me
-    /api/auth/logout
-
-    /api/user/profile
-    /api/user/settings
-
-    /api/chats
-    /api/chats/:chatId
-    /api/chats/:chatId/pin
-
-    /api/memory
-    /api/memory/search
-
-    /api/usage
-    /api/stats
-
-    /api/knowledge
-    /api/knowledge/search
-
-    /api/plans
-    /api/pro/activate
-
-    /api/system/status
-
-    SONRA:
-    PARÇA 3 = GERÇEK /api/chat MOTORU
-*//* ================================================================
-   TÜRKAI SERVER — PARÇA 3 / 5
-   CHAT ENGINE + LOCAL AI + GROQ + CEREBRAS + FALLBACK
-================================================================ */
-
-
-/* ================================================================
-   125 — AI AYARLARI
-================================================================ */
+/* =========================================================
+   TÜRKAI SERVER 11.0.0
+   PART 2 / 5
+   AI ÇEKİRDEĞİ + CHAT SİSTEMİ
+========================================================= */
+
+
+/* =========================================================
+   50. AI AYARLARI
+========================================================= */
 
 const AI_CONFIG = {
-
-    groqApiKey:
-        process.env.GROQ_API_KEY ||
-        "",
-
-    cerebrasApiKey:
-        process.env.CEREBRAS_API_KEY ||
-        "",
-
-    openRouterApiKey:
-        process.env.OPENROUTER_API_KEY ||
-        "",
-
-    geminiApiKey:
-        process.env.GEMINI_API_KEY ||
-        "",
-
-    groqModel:
-        process.env.GROQ_MODEL ||
-        "openai/gpt-oss-20b",
-
-    cerebrasModel:
-        process.env.CEREBRAS_MODEL ||
-        "gpt-oss-120b",
-
-    openRouterModel:
-        process.env.OPENROUTER_MODEL ||
-        "openai/gpt-oss-20b",
-
-    geminiModel:
-        process.env.GEMINI_MODEL ||
-        "gemini-2.0-flash",
 
     temperature:
         Number(
@@ -5651,84 +2683,195 @@ const AI_CONFIG = {
     maxTokens:
         Number(
             process.env.AI_MAX_TOKENS
-        ) || 3000,
+        ) || 4096,
 
     timeout:
         Number(
             process.env.AI_TIMEOUT
-        ) || 60000
+        ) || 30000,
+
+    models: {
+
+        groq:
+            process.env.GROQ_MODEL ||
+            "openai/gpt-oss-20b",
+
+        cerebras:
+            process.env.CEREBRAS_MODEL ||
+            "gpt-oss-120b",
+
+        openrouter:
+            process.env.OPENROUTER_MODEL ||
+            "openai/gpt-oss-20b",
+
+        gemini:
+            process.env.GEMINI_MODEL ||
+            "gemini-2.0-flash"
+    },
+
+    providers: {
+
+        groq:
+            Boolean(
+                process.env.GROQ_API_KEY
+            ),
+
+        cerebras:
+            Boolean(
+                process.env.CEREBRAS_API_KEY
+            ),
+
+        openrouter:
+            Boolean(
+                process.env.OPENROUTER_API_KEY
+            ),
+
+        gemini:
+            Boolean(
+                process.env.GEMINI_API_KEY
+            )
+    }
 };
 
 
-/* ================================================================
-   126 — AI DURUMU
-================================================================ */
+/* =========================================================
+   51. AI SAĞLAYICI DURUMLARI
+========================================================= */
 
-const AI_STATUS = {
+const AI_PROVIDERS = {
 
     groq: {
+
+        name:
+            "Groq",
+
         enabled:
-            Boolean(
-                AI_CONFIG.groqApiKey
-            ),
+            AI_CONFIG.providers.groq,
 
         failures:
             0,
 
-        lastFailure:
+        successes:
+            0,
+
+        lastError:
+            null,
+
+        lastSuccess:
             null
     },
 
     cerebras: {
+
+        name:
+            "Cerebras",
+
         enabled:
-            Boolean(
-                AI_CONFIG.cerebrasApiKey
-            ),
+            AI_CONFIG.providers.cerebras,
 
         failures:
             0,
 
-        lastFailure:
+        successes:
+            0,
+
+        lastError:
+            null,
+
+        lastSuccess:
             null
     },
 
     openrouter: {
+
+        name:
+            "OpenRouter",
+
         enabled:
-            Boolean(
-                AI_CONFIG.openRouterApiKey
-            ),
+            AI_CONFIG.providers.openrouter,
 
         failures:
             0,
 
-        lastFailure:
+        successes:
+            0,
+
+        lastError:
+            null,
+
+        lastSuccess:
             null
     },
 
     gemini: {
+
+        name:
+            "Gemini",
+
         enabled:
-            Boolean(
-                AI_CONFIG.geminiApiKey
-            ),
+            AI_CONFIG.providers.gemini,
 
         failures:
             0,
 
-        lastFailure:
+        successes:
+            0,
+
+        lastError:
+            null,
+
+        lastSuccess:
             null
     }
 };
 
 
-/* ================================================================
-   127 — FETCH
-================================================================ */
+/* =========================================================
+   52. AI SİSTEM PROMPTU
+========================================================= */
+
+const TURKAI_SYSTEM_PROMPT = `
+Sen TürkAI'sın.
+
+Türkçe konuşan kullanıcılar için tasarlanmış
+modern, yardımcı ve anlaşılır bir yapay zeka
+asistanısın.
+
+Kurallar:
+
+1. Kullanıcı Türkçe konuşuyorsa Türkçe cevap ver.
+2. Kullanıcının dilini mümkün olduğunca koru.
+3. Kod istenirse çalışan ve anlaşılır kod üret.
+4. Kod verirken gerekli dosya adlarını belirt.
+5. Kullanıcı "knk", "dostum" gibi samimi konuşuyorsa
+   doğal ve samimi cevap verebilirsin.
+6. Bilmediğin bilgiyi kesin gerçekmiş gibi uydurma.
+7. Güncel bilgi gerektiğinde araştırma sistemi kullanılabilir.
+8. Matematik işlemlerinde sonucu mümkün olduğunca doğru hesapla.
+9. Kullanıcının sorusunu gereksiz yere tekrar etme.
+10. Gereksiz uzun girişler yapma.
+11. Kullanıcı açıkça ayrıntı isterse ayrıntılı cevap ver.
+12. Kod istenirse kodu eksik bırakma.
+13. Bir hata düzeltilecekse hatanın nedenini ve çözümünü belirt.
+14. Güvenlik açısından zararlı veya tehlikeli işlemleri
+    kolaylaştırma.
+15. Kullanıcı bir uygulama geliştiriyorsa mevcut yapıya
+    uyumlu kod üretmeye çalış.
+
+Senin uygulama adın:
+
+TürkAI
+`;
+
+
+/* =========================================================
+   53. FETCH TIMEOUT
+========================================================= */
 
 async function fetchWithTimeout(
     url,
     options = {},
-    timeout =
-        AI_CONFIG.timeout
+    timeout = AI_CONFIG.timeout
 ) {
 
     const controller =
@@ -5744,14 +2887,17 @@ async function fetchWithTimeout(
 
     try {
 
-        return await fetch(
-            url,
-            {
-                ...options,
-                signal:
-                    controller.signal
-            }
-        );
+        const response =
+            await fetch(
+                url,
+                {
+                    ...options,
+                    signal:
+                        controller.signal
+                }
+            );
+
+        return response;
 
     } finally {
 
@@ -5762,9 +2908,9 @@ async function fetchWithTimeout(
 }
 
 
-/* ================================================================
-   128 — JSON RESPONSE OKUMA
-================================================================ */
+/* =========================================================
+   54. RESPONSE JSON
+========================================================= */
 
 async function parseJSONResponse(
     response
@@ -5773,49 +2919,39 @@ async function parseJSONResponse(
     const text =
         await response.text();
 
-    let data = null;
+    if (!text) {
+        return {};
+    }
 
     try {
 
-        data =
+        return JSON.parse(
             text
-                ? JSON.parse(text)
-                : null;
+        );
 
     } catch {
 
-        data = {
+        return {
             raw:
                 text
         };
     }
-
-    return {
-        status:
-            response.status,
-
-        ok:
-            response.ok,
-
-        data
-    };
 }
 
 
-/* ================================================================
-   129 — AI ERROR
-================================================================ */
+/* =========================================================
+   55. AI HATA NESNESİ
+========================================================= */
 
 function createAIError(
     provider,
-    status,
-    message
+    message,
+    status = 500
 ) {
 
     const error =
         new Error(
-            message ||
-            `${provider} API hatası`
+            message
         );
 
     error.provider =
@@ -5828,9 +2964,52 @@ function createAIError(
 }
 
 
-/* ================================================================
-   130 — PROVIDER FAILURE
-================================================================ */
+/* =========================================================
+   56. AI BAŞARILI
+========================================================= */
+
+function registerProviderSuccess(
+    provider
+) {
+
+    if (
+        AI_PROVIDERS[provider]
+    ) {
+
+        AI_PROVIDERS[
+            provider
+        ].successes++;
+
+        AI_PROVIDERS[
+            provider
+        ].lastSuccess =
+            nowISO();
+
+        AI_PROVIDERS[
+            provider
+        ].lastError =
+            null;
+    }
+
+    AI_STATUS.provider =
+        provider;
+
+    AI_STATUS.lastProvider =
+        provider;
+
+    AI_STATUS.lastSuccessAt =
+        nowISO();
+
+    AI_STATUS.lastError =
+        null;
+
+    AI_STATUS.successCount++;
+}
+
+
+/* =========================================================
+   57. AI HATA
+========================================================= */
 
 function registerProviderFailure(
     provider,
@@ -5838,456 +3017,645 @@ function registerProviderFailure(
 ) {
 
     if (
-        !AI_STATUS[provider]
+        AI_PROVIDERS[provider]
     ) {
-        return;
+
+        AI_PROVIDERS[
+            provider
+        ].failures++;
+
+        AI_PROVIDERS[
+            provider
+        ].lastError =
+            error.message;
     }
 
-    AI_STATUS[
-        provider
-    ].failures++;
+    AI_STATUS.lastErrorAt =
+        nowISO();
 
-    AI_STATUS[
-        provider
-    ].lastFailure = {
+    AI_STATUS.lastError =
+        error.message;
 
-        at:
-            nowISO(),
+    AI_STATUS.failureCount++;
 
-        status:
-            error?.status ||
-            null,
-
-        message:
-            cleanText(
-                error?.message ||
-                "Bilinmeyen hata",
-                500
-            )
-    };
-
-    logWarn(
-        `${provider} AI başarısız`,
-        {
-            status:
-                error?.status,
-
-            message:
-                error?.message
-        }
+    logAI(
+        `${provider} başarısız: ${error.message}`
     );
 }
 
 
-/* ================================================================
-   131 — PROVIDER SUCCESS
-================================================================ */
-
-function registerProviderSuccess(
-    provider
-) {
-
-    if (
-        !AI_STATUS[provider]
-    ) {
-        return;
-    }
-
-    AI_STATUS[
-        provider
-    ].failures = 0;
-}
-
-
-/* ================================================================
-   132 — SYSTEM PROMPT
-================================================================ */
-
-const TURKAI_SYSTEM_PROMPT = `
-Sen TürkAI'sın.
-
-Türkçe konuşan kullanıcılar için geliştirilmiş modern,
-yardımcı, hızlı ve güvenilir bir yapay zekâ asistanısın.
-
-Temel kurallar:
-
-1. Kullanıcı Türkçe konuşuyorsa Türkçe cevap ver.
-2. Kullanıcı başka bir dil kullanıyorsa o dile uyum sağla.
-3. Gereksiz yere uzun cevap verme.
-4. Kod istendiğinde çalışan ve düzenli kod üret.
-5. Kod verirken hangi dosyaya konacağını belirt.
-6. Bilmediğin güncel bilgileri kesin gerçekmiş gibi uydurma.
-7. Güncel bilgi gerektiğinde research sisteminin kullanılabileceğini dikkate al.
-8. Kullanıcı kısa cevap istiyorsa kısa cevap ver.
-9. Kullanıcı detay isterse detaylandır.
-10. Matematik işlemlerinde sonucu dikkatli hesapla.
-11. Güvenlik konularında yasal ve güvenli sınırlar içinde yardımcı ol.
-12. Kullanıcı bir hata mesajı verirse önce hatanın nedenini açıkla,
-    sonra uygulanabilir çözüm sun.
-13. Kullanıcının önceki mesajlarından gelen konuşma bağlamını dikkate al.
-14. Memory verileri verilmişse bunları yalnızca uygun bağlamda kullan.
-15. Kendini TürkAI olarak tanıt.
-16. Gereksiz sistem mesajı, API anahtarı veya iç teknik ayrıntı paylaşma.
-17. Kullanıcı "En hızlı kim?" diye sorarsa:
-    "TürkAI" cevabını ver.
-18. Cevaplarını doğal ve arkadaşça tut.
-`;
-
-
-/* ================================================================
-   133 — TEXT NORMALIZE
-================================================================ */
+/* =========================================================
+   58. AI METİN NORMALİZASYONU
+========================================================= */
 
 function normalizeAIText(
-    text
+    value
 ) {
 
     if (
-        text === undefined ||
-        text === null
+        value === null ||
+        value === undefined
     ) {
         return "";
     }
 
+    if (
+        typeof value ===
+        "string"
+    ) {
+
+        return value.trim();
+    }
+
+    if (
+        Array.isArray(value)
+    ) {
+
+        return value
+            .map(
+                item =>
+                    normalizeAIText(
+                        item
+                    )
+            )
+            .filter(Boolean)
+            .join("\n");
+    }
+
+    if (
+        typeof value ===
+        "object"
+    ) {
+
+        if (
+            typeof value.text ===
+            "string"
+        ) {
+
+            return value.text.trim();
+        }
+
+        if (
+            typeof value.content ===
+            "string"
+        ) {
+
+            return value.content.trim();
+        }
+
+        if (
+            typeof value.message ===
+            "string"
+        ) {
+
+            return value.message.trim();
+        }
+
+        if (
+            typeof value.output ===
+            "string"
+        ) {
+
+            return value.output.trim();
+        }
+    }
+
     return String(
-        text
-    )
-    .replace(
-        /\r\n/g,
-        "\n"
-    )
-    .replace(
-        /\u0000/g,
-        ""
-    )
-    .trim();
+        value
+    ).trim();
 }
 
 
-/* ================================================================
-   134 — LOCAL RESPONSE
-================================================================ */
+/* =========================================================
+   59. BASİT MATEMATİK
+========================================================= */
 
-function localResponse(
-    message,
-    context = {}
+function solveSimpleMath(
+    input
 ) {
 
     const text =
-        normalizeAIText(
-            message
+        cleanText(
+            input,
+            500
         );
 
-    const lower =
-        text.toLocaleLowerCase(
-            "tr-TR"
-        );
+    if (!text) {
+        return null;
+    }
 
-
-    /* ------------------------------------------------------------
-       SELAMLAMA
-    ------------------------------------------------------------ */
+    const normalized =
+        text
+            .replace(
+                /,/g,
+                "."
+            )
+            .replace(
+                /×/g,
+                "*"
+            )
+            .replace(
+                /÷/g,
+                "/"
+            )
+            .replace(
+                /−/g,
+                "-"
+            )
+            .trim();
 
     if (
-        /^(merhaba|selam|sa|hey|hello|hi|selamlar)[!. ]*$/i
-            .test(text)
+        !/^[0-9+\-*/().%\s]+$/.test(
+            normalized
+        )
     ) {
 
-        const name =
-            context.user?.name;
+        return null;
+    }
+
+    if (
+        !/[+\-*/%]/.test(
+            normalized
+        )
+    ) {
+
+        return null;
+    }
+
+    try {
+
+        /*
+         * Burada sadece matematik karakterleri
+         * kabul edildiği için kontrollü hesaplama
+         * yapılır.
+         */
+
+        const result =
+            Function(
+                `"use strict"; return (${normalized})`
+            )();
 
         if (
-            name &&
-            name !==
-            "Misafir"
+            typeof result !==
+            "number" ||
+            !Number.isFinite(
+                result
+            )
         ) {
 
-            return `Merhaba ${name}! Ben TürkAI. Sana nasıl yardımcı olabilirim?`;
+            return null;
         }
 
-        return (
-            "Merhaba! Ben TürkAI. " +
-            "Kodlama, araştırma, matematik, eğitim veya günlük sorularında yardımcı olabilirim."
+        return String(
+            result
         );
+
+    } catch {
+
+        return null;
+    }
+}
+
+
+/* =========================================================
+   60. YEREL CEVAP SİSTEMİ
+========================================================= */
+
+function localResponse(
+    message
+) {
+
+    const original =
+        cleanText(
+            message,
+            5000
+        );
+
+    const text =
+        normalizeText(
+            original
+        );
+
+    if (!text) {
+
+        return {
+            handled:
+                true,
+
+            text:
+                "Buradayım. Ne yapmak istiyorsun?"
+        };
     }
 
 
-    /* ------------------------------------------------------------
-       EN HIZLI
-    ------------------------------------------------------------ */
+    /* -----------------------------------------
+       SELAMLAMA
+    ----------------------------------------- */
 
     if (
-        lower.includes(
+        /^(selam|merhaba|hey|sa|sela(m|münaleyküm)|günaydın|iyi akşamlar|iyi geceler)\b/
+            .test(text)
+    ) {
+
+        return {
+
+            handled:
+                true,
+
+            text:
+                "Selam knk! 👋 TürkAI burada. Ne yapalım?"
+        };
+    }
+
+
+    /* -----------------------------------------
+       TÜRKAI SORUSU
+    ----------------------------------------- */
+
+    if (
+        text.includes(
             "en hızlı kim"
         )
     ) {
 
-        return "TürkAI";
+        return {
+
+            handled:
+                true,
+
+            text:
+                "TürkAI ⚡🤖"
+        };
     }
 
 
-    /* ------------------------------------------------------------
-       KİMSİN
-    ------------------------------------------------------------ */
+    /* -----------------------------------------
+       SEN KİMSİN
+    ----------------------------------------- */
 
     if (
-        lower.includes(
+        text.includes(
             "sen kimsin"
         ) ||
-        lower.includes(
-            "kimsin sen"
+        text.includes(
+            "adın ne"
         ) ||
-        lower ===
-        "türkai nedir"
-    ) {
-
-        return (
-            "Ben TürkAI. Türkçe odaklı, " +
-            "kodlama, araştırma, eğitim ve günlük sorularda " +
-            "yardımcı olmak için tasarlanmış bir yapay zekâ asistanıyım."
-        );
-    }
-
-
-    /* ------------------------------------------------------------
-       SAAT
-    ------------------------------------------------------------ */
-
-    if (
-        lower.includes(
-            "saat kaç"
+        text.includes(
+            "ismin ne"
         )
     ) {
 
-        return (
-            "Sunucunun saat bilgisi: " +
-            new Date().toLocaleTimeString(
-                "tr-TR"
-            )
-        );
+        return {
+
+            handled:
+                true,
+
+            text:
+                "Ben TürkAI'yım. Türkçe odaklı yapay zeka asistanıyım."
+        };
     }
 
 
-    /* ------------------------------------------------------------
-       TARİH
-    ------------------------------------------------------------ */
-
-    if (
-        lower.includes(
-            "bugün hangi gün"
-        ) ||
-        lower.includes(
-            "bugünün tarihi"
-        ) ||
-        lower.includes(
-            "bugün tarih"
-        )
-    ) {
-
-        return (
-            "Bugünün tarihi: " +
-            new Date().toLocaleDateString(
-                "tr-TR",
-                {
-                    weekday:
-                        "long",
-
-                    year:
-                        "numeric",
-
-                    month:
-                        "long",
-
-                    day:
-                        "numeric"
-                }
-            )
-        );
-    }
-
-
-    /* ------------------------------------------------------------
+    /* -----------------------------------------
        TEŞEKKÜR
-    ------------------------------------------------------------ */
+    ----------------------------------------- */
 
     if (
-        /^(teşekkür|teşekkürler|sağ ol|eyvallah|thanks)[!. ]*$/i
-            .test(text)
+        text.includes(
+            "teşekkür"
+        ) ||
+        text === "sağ ol" ||
+        text === "eyvallah"
     ) {
 
-        return (
-            "Rica ederim! "
-            +
-            "Başka bir konuda da yardımcı olabilirim."
-        );
+        return {
+
+            handled:
+                true,
+
+            text:
+                "Rica ederim knk. 😎"
+        };
     }
 
 
-    /* ------------------------------------------------------------
-       EVET
-    ------------------------------------------------------------ */
+    /* -----------------------------------------
+       MATEMATİK
+    ----------------------------------------- */
 
-    if (
-        lower === "evet"
-    ) {
-
-        return (
-            "Tamamdır. Devam edebiliriz."
+    const math =
+        solveSimpleMath(
+            original
         );
+
+    if (math !== null) {
+
+        return {
+
+            handled:
+                true,
+
+            text:
+                `Sonuç: ${math}`
+        };
     }
 
 
-    /* ------------------------------------------------------------
-       HAYIR
-    ------------------------------------------------------------ */
+    /* -----------------------------------------
+       BOŞ / KISA KOMUTLAR
+    ----------------------------------------- */
 
     if (
-        lower === "hayır"
+        text === "yardım" ||
+        text === "help"
     ) {
 
-        return (
-            "Tamamdır. Başka bir şey yapmak istersen buradayım."
-        );
+        return {
+
+            handled:
+                true,
+
+            text:
+                [
+                    "TürkAI ile şunları yapabilirsin:",
+                    "",
+                    "• Soru sorabilirsin",
+                    "• Kod yazdırabilirsin",
+                    "• Proje geliştirebilirsin",
+                    "• Metin oluşturabilirsin",
+                    "• Matematik çözebilirsin",
+                    "• Araştırma yaptırabilirsin",
+                    "• Dosya işlemleri kullanabilirsin"
+                ].join("\n")
+        };
     }
 
 
-    /* ------------------------------------------------------------
-       KODLAMA
-    ------------------------------------------------------------ */
+    return {
 
-    if (
-        lower.includes(
-            "javascript öğren"
+        handled:
+            false,
+
+        text:
+            null
+    };
+}
+
+
+/* =========================================================
+   61. CHAT MESAJLARI
+========================================================= */
+
+function getMessages() {
+
+    const messages =
+        readJSONSafe(
+            DB_FILES.messages,
+            []
+        );
+
+    return Array.isArray(
+        messages
+    )
+        ? messages
+        : [];
+}
+
+
+function saveMessages(
+    messages
+) {
+
+    return writeJSONSafe(
+        DB_FILES.messages,
+        Array.isArray(
+            messages
         )
-    ) {
-
-        return (
-            "JavaScript öğrenmeye değişkenler, koşullar, " +
-            "fonksiyonlar ve DOM ile başlayabiliriz. " +
-            "İstersen TürkAI üzerinde küçük bir proje yaparak ilerleyebiliriz."
-        );
-    }
-
-
-    if (
-        lower.includes(
-            "html öğren"
-        )
-    ) {
-
-        return (
-            "HTML sayfanın iskeletini oluşturur. " +
-            "Başlangıçta HTML etiketleri, formlar, butonlar ve sayfa yapısını öğrenmek iyi bir başlangıçtır."
-        );
-    }
-
-
-    if (
-        lower.includes(
-            "css öğren"
-        )
-    ) {
-
-        return (
-            "CSS, HTML elemanlarının görünümünü kontrol eder. " +
-            "Renk, boyut, boşluk, grid, flexbox ve responsive tasarımla başlayabiliriz."
-        );
-    }
-
-
-    /* ------------------------------------------------------------
-       MATEMATİK BASİT
-    ------------------------------------------------------------ */
-
-    const mathCandidate =
-        text.match(
-            /^[\d\s+\-*/().,%]+$/
-        );
-
-    if (
-        mathCandidate
-    ) {
-
-        try {
-
-            const expression =
-                text
-                    .replace(
-                        /,/g,
-                        "."
-                    )
-                    .replace(
-                        /%/g,
-                        "/100"
-                    );
-
-            if (
-                expression.length <= 100
-            ) {
-
-                const valid =
-                    /^[0-9+\-*/().\s]+$/
-                        .test(
-                            expression
-                        );
-
-                if (
-                    valid
-                ) {
-
-                    const result =
-                        Function(
-                            `"use strict"; return (${expression})`
-                        )();
-
-                    if (
-                        Number.isFinite(
-                            result
-                        )
-                    ) {
-
-                        return String(
-                            result
-                        );
-                    }
-                }
-            }
-
-        } catch {
-            /* local math fallback başarısız */
-        }
-    }
-
-
-    /* ------------------------------------------------------------
-       DEFAULT
-    ------------------------------------------------------------ */
-
-    return (
-        "Bu soruyu yerel bilgi motorumla doğrudan yanıtlayamadım. " +
-        "İstersen daha açık bir şekilde sorabilir veya güncel bilgi gerekiyorsa araştırma özelliğini kullanabilirsin."
+            ? messages
+            : []
     );
 }
 
 
-/* ================================================================
-   135 — CONTEXT MESAJLARI
-================================================================ */
+/* =========================================================
+   62. CHATLER
+========================================================= */
 
-function buildAIMessageList(
-    user,
-    chatId,
-    message
-) {
+function getChats() {
 
-    const context =
-        buildChatContext(
-            user,
-            chatId,
-            16
+    const chats =
+        readJSONSafe(
+            DB_FILES.chats,
+            []
         );
 
-    const messages = [
+    return Array.isArray(
+        chats
+    )
+        ? chats
+        : [];
+}
+
+
+function saveChats(
+    chats
+) {
+
+    return writeJSONSafe(
+        DB_FILES.chats,
+        Array.isArray(
+            chats
+        )
+            ? chats
+            : []
+    );
+}
+
+
+/* =========================================================
+   63. CHAT OLUŞTUR
+========================================================= */
+
+function createChat(
+    userId,
+    title = "Yeni sohbet"
+) {
+
+    const chat = {
+
+        id:
+            createId(
+                "chat"
+            ),
+
+        userId:
+            userId ||
+            "guest",
+
+        title:
+            cleanText(
+                title,
+                200
+            ) ||
+            "Yeni sohbet",
+
+        createdAt:
+            nowISO(),
+
+        updatedAt:
+            nowISO(),
+
+        messageCount:
+            0,
+
+        archived:
+            false
+    };
+
+    const chats =
+        getChats();
+
+    chats.push(
+        chat
+    );
+
+    saveChats(
+        chats
+    );
+
+    return chat;
+}
+
+
+/* =========================================================
+   64. CHAT BUL
+========================================================= */
+
+function findChatById(
+    chatId
+) {
+
+    if (!chatId) {
+        return null;
+    }
+
+    const chats =
+        getChats();
+
+    return (
+        chats.find(
+            chat =>
+                chat.id ===
+                chatId
+        ) || null
+    );
+}
+
+
+/* =========================================================
+   65. MESAJ EKLE
+========================================================= */
+
+function addMessage(
+    data = {}
+) {
+
+    const message = {
+
+        id:
+            createId(
+                "msg"
+            ),
+
+        chatId:
+            data.chatId ||
+            null,
+
+        userId:
+            data.userId ||
+            "guest",
+
+        role:
+            data.role ||
+            "user",
+
+        content:
+            cleanText(
+                data.content,
+                50000
+            ),
+
+        model:
+            data.model ||
+            "local",
+
+        provider:
+            data.provider ||
+            "local",
+
+        createdAt:
+            nowISO(),
+
+        metadata:
+            data.metadata ||
+            {}
+    };
+
+    const messages =
+        getMessages();
+
+    messages.push(
+        message
+    );
+
+    saveMessages(
+        messages
+    );
+
+    return message;
+}
+
+
+/* =========================================================
+   66. CHAT MESAJLARINI AL
+========================================================= */
+
+function getChatMessages(
+    chatId,
+    limit = 30
+) {
+
+    const messages =
+        getMessages();
+
+    return messages
+        .filter(
+            message =>
+                message.chatId ===
+                chatId
+        )
+        .slice(
+            -Math.max(
+                1,
+                Math.min(
+                    Number(limit) || 30,
+                    100
+                )
+            )
+        );
+}
+
+
+/* =========================================================
+   67. AI MESAJ LİSTESİ
+========================================================= */
+
+function buildAIMessageList(
+    chatMessages,
+    userMessage
+) {
+
+    const list = [
 
         {
             role:
@@ -6299,114 +3667,77 @@ function buildAIMessageList(
     ];
 
 
-    /* ------------------------------------------------------------
-       MEMORY
-    ------------------------------------------------------------ */
-
-    if (
-        context.memories.length
-    ) {
-
-        const memoryText =
-            context.memories
-                .slice(
-                    0,
-                    20
-                )
-                .map(
-                    memory =>
-                        `- ${memory.content}`
-                )
-                .join(
-                    "\n"
-                );
-
-        messages.push({
-
-            role:
-                "system",
-
-            content:
-                `Kullanıcı hakkında kayıtlı uygun bilgiler:\n${memoryText}`
-        });
-    }
-
-
-    /* ------------------------------------------------------------
-       CHAT HISTORY
-    ------------------------------------------------------------ */
-
     for (
-        const item
-        of context.messages
+        const message
+        of chatMessages
     ) {
 
         if (
-            !item.content
+            !message ||
+            !message.content
         ) {
             continue;
         }
 
-        if (
-            item.role !== "user" &&
-            item.role !== "assistant" &&
-            item.role !== "system"
-        ) {
-            continue;
-        }
+        const role =
+            message.role ===
+            "assistant"
+                ? "assistant"
+                : "user";
 
-        messages.push({
+        list.push({
 
-            role:
-                item.role,
+            role,
 
             content:
-                item.content
+                cleanText(
+                    message.content,
+                    20000
+                )
         });
     }
 
 
-    /* ------------------------------------------------------------
-       CURRENT MESSAGE
-    ------------------------------------------------------------ */
-
-    messages.push({
+    list.push({
 
         role:
             "user",
 
         content:
-            message
+            cleanText(
+                userMessage,
+                20000
+            )
     });
 
-    return messages;
+
+    return list;
 }
 
 
-/* ================================================================
-   136 — GROQ
-================================================================ */
+/* =========================================================
+   68. GROQ
+========================================================= */
 
 async function callGroq(
     messages
 ) {
 
-    if (
-        !AI_CONFIG.groqApiKey
-    ) {
+    const apiKey =
+        process.env.GROQ_API_KEY;
+
+    if (!apiKey) {
 
         throw createAIError(
             "groq",
-            0,
-            "Groq API anahtarı yok."
+            "GROQ_API_KEY bulunamadı.",
+            401
         );
     }
 
     const response =
         await fetchWithTimeout(
-
             "https://api.groq.com/openai/v1/chat/completions",
-
             {
 
                 method:
@@ -6418,14 +3749,14 @@ async function callGroq(
                         "application/json",
 
                     "Authorization":
-                        `Bearer ${AI_CONFIG.groqApiKey}`
+                        `Bearer ${apiKey}`
                 },
 
                 body:
                     JSON.stringify({
 
                         model:
-                            AI_CONFIG.groqModel,
+                            AI_CONFIG.models.groq,
 
                         messages,
 
@@ -6439,91 +3770,73 @@ async function callGroq(
         );
 
 
-    const result =
+    const data =
         await parseJSONResponse(
             response
         );
 
 
     if (
-        !result.ok
+        !response.ok
     ) {
 
-        const message =
-            result.data?.error?.message ||
-            `Groq HTTP ${result.status}`;
-
         throw createAIError(
+
             "groq",
-            result.status,
-            message
+
+            data?.error?.message ||
+            data?.message ||
+            `Groq HTTP ${response.status}`,
+
+            response.status
         );
     }
 
 
-    const answer =
-        result.data
-            ?.choices?.[0]
-            ?.message?.content;
+    const text =
+        data?.choices?.[0]?.message?.content;
 
 
-    if (
-        !answer
-    ) {
+    if (!text) {
 
         throw createAIError(
             "groq",
-            result.status,
-            "Groq boş cevap döndürdü."
+            "Groq boş cevap döndürdü.",
+            502
         );
     }
 
 
-    registerProviderSuccess(
-        "groq"
+    return normalizeAIText(
+        text
     );
-
-    return {
-
-        provider:
-            "groq",
-
-        model:
-            AI_CONFIG.groqModel,
-
-        answer:
-            normalizeAIText(
-                answer
-            )
-    };
 }
 
 
-/* ================================================================
-   137 — CEREBRAS
-================================================================ */
+/* =========================================================
+   69. CEREBRAS
+========================================================= */
 
 async function callCerebras(
     messages
 ) {
 
-    if (
-        !AI_CONFIG.cerebrasApiKey
-    ) {
+    const apiKey =
+        process.env.CEREBRAS_API_KEY;
+
+    if (!apiKey) {
 
         throw createAIError(
             "cerebras",
-            0,
-            "Cerebras API anahtarı yok."
+            "CEREBRAS_API_KEY bulunamadı.",
+            401
         );
     }
 
 
     const response =
         await fetchWithTimeout(
-
             "https://api.cerebras.ai/v1/chat/completions",
-
             {
 
                 method:
@@ -6535,14 +3848,14 @@ async function callCerebras(
                         "application/json",
 
                     "Authorization":
-                        `Bearer ${AI_CONFIG.cerebrasApiKey}`
+                        `Bearer ${apiKey}`
                 },
 
                 body:
                     JSON.stringify({
 
                         model:
-                            AI_CONFIG.cerebrasModel,
+                            AI_CONFIG.models.cerebras,
 
                         messages,
 
@@ -6556,92 +3869,73 @@ async function callCerebras(
         );
 
 
-    const result =
+    const data =
         await parseJSONResponse(
             response
         );
 
 
     if (
-        !result.ok
+        !response.ok
     ) {
 
-        const message =
-            result.data?.error?.message ||
-            `Cerebras HTTP ${result.status}`;
-
         throw createAIError(
+
             "cerebras",
-            result.status,
-            message
+
+            data?.error?.message ||
+            data?.message ||
+            `Cerebras HTTP ${response.status}`,
+
+            response.status
         );
     }
 
 
-    const answer =
-        result.data
-            ?.choices?.[0]
-            ?.message?.content;
+    const text =
+        data?.choices?.[0]?.message?.content;
 
 
-    if (
-        !answer
-    ) {
+    if (!text) {
 
         throw createAIError(
             "cerebras",
-            result.status,
-            "Cerebras boş cevap döndürdü."
+            "Cerebras boş cevap döndürdü.",
+            502
         );
     }
 
 
-    registerProviderSuccess(
-        "cerebras"
+    return normalizeAIText(
+        text
     );
-
-
-    return {
-
-        provider:
-            "cerebras",
-
-        model:
-            AI_CONFIG.cerebrasModel,
-
-        answer:
-            normalizeAIText(
-                answer
-            )
-    };
 }
 
 
-/* ================================================================
-   138 — OPENROUTER
-================================================================ */
+/* =========================================================
+   70. OPENROUTER
+========================================================= */
 
 async function callOpenRouter(
     messages
 ) {
 
-    if (
-        !AI_CONFIG.openRouterApiKey
-    ) {
+    const apiKey =
+        process.env.OPENROUTER_API_KEY;
+
+    if (!apiKey) {
 
         throw createAIError(
             "openrouter",
-            0,
-            "OpenRouter API anahtarı yok."
+            "OPENROUTER_API_KEY bulunamadı.",
+            401
         );
     }
 
 
     const response =
         await fetchWithTimeout(
-
             "https://openrouter.ai/api/v1/chat/completions",
-
             {
 
                 method:
@@ -6653,10 +3947,11 @@ async function callOpenRouter(
                         "application/json",
 
                     "Authorization":
-                        `Bearer ${AI_CONFIG.openRouterApiKey}`,
+                        `Bearer ${apiKey}`,
 
                     "HTTP-Referer":
-                        "https://turkai.app",
+                        process.env.APP_URL ||
+                        "http://localhost:3000",
 
                     "X-Title":
                         "TürkAI"
@@ -6666,7 +3961,7 @@ async function callOpenRouter(
                     JSON.stringify({
 
                         model:
-                            AI_CONFIG.openRouterModel,
+                            AI_CONFIG.models.openrouter,
 
                         messages,
 
@@ -6680,103 +3975,88 @@ async function callOpenRouter(
         );
 
 
-    const result =
+    const data =
         await parseJSONResponse(
             response
         );
 
 
     if (
-        !result.ok
+        !response.ok
     ) {
 
-        const message =
-            result.data?.error?.message ||
-            `OpenRouter HTTP ${result.status}`;
-
         throw createAIError(
+
             "openrouter",
-            result.status,
-            message
+
+            data?.error?.message ||
+            data?.message ||
+            `OpenRouter HTTP ${response.status}`,
+
+            response.status
         );
     }
 
 
-    const answer =
-        result.data
-            ?.choices?.[0]
-            ?.message?.content;
+    const text =
+        data?.choices?.[0]?.message?.content;
 
 
-    if (
-        !answer
-    ) {
+    if (!text) {
 
         throw createAIError(
             "openrouter",
-            result.status,
-            "OpenRouter boş cevap döndürdü."
+            "OpenRouter boş cevap döndürdü.",
+            502
         );
     }
 
 
-    registerProviderSuccess(
-        "openrouter"
+    return normalizeAIText(
+        text
     );
-
-
-    return {
-
-        provider:
-            "openrouter",
-
-        model:
-            AI_CONFIG.openRouterModel,
-
-        answer:
-            normalizeAIText(
-                answer
-            )
-    };
 }
 
 
-/* ================================================================
-   139 — GEMINI
-================================================================ */
+/* =========================================================
+   71. GEMINI
+========================================================= */
 
 async function callGemini(
     messages
 ) {
 
-    if (
-        !AI_CONFIG.geminiApiKey
-    ) {
+    const apiKey =
+        process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
 
         throw createAIError(
             "gemini",
-            0,
-            "Gemini API anahtarı yok."
+            "GEMINI_API_KEY bulunamadı.",
+            401
         );
     }
 
 
+    const model =
+        AI_CONFIG.models.gemini;
+
+
     const systemMessages =
-        messages
-            .filter(
-                item =>
-                    item.role ===
-                    "system"
-            );
+        messages.filter(
+            item =>
+                item.role ===
+                "system"
+        );
 
 
     const normalMessages =
-        messages
-            .filter(
-                item =>
-                    item.role !==
-                    "system"
-            );
+        messages.filter(
+            item =>
+                item.role !==
+                "system"
+        );
 
 
     const systemText =
@@ -6785,45 +4065,36 @@ async function callGemini(
                 item =>
                     item.content
             )
-            .join(
-                "\n\n"
-            );
+            .join("\n\n");
 
 
     const contents =
-        normalMessages
-            .map(
-                item => ({
+        normalMessages.map(
+            item => ({
 
-                    role:
-                        item.role ===
-                        "assistant"
-                            ? "model"
-                            : "user",
+                role:
+                    item.role ===
+                    "assistant"
+                        ? "model"
+                        : "user",
 
-                    parts: [
-                        {
-                            text:
-                                item.content
-                        }
-                    ]
-                })
-            );
+                parts: [
+                    {
+                        text:
+                            item.content
+                    }
+                ]
+            })
+        );
 
 
     const url =
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-            AI_CONFIG.geminiModel
-        )}:generateContent?key=${encodeURIComponent(
-            AI_CONFIG.geminiApiKey
-        )}`;
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
 
     const response =
         await fetchWithTimeout(
-
             url,
-
             {
 
                 method:
@@ -6838,16 +4109,17 @@ async function callGemini(
                 body:
                     JSON.stringify({
 
-                        systemInstruction: {
-
-                            parts: [
-                                {
-                                    text:
-                                        systemText ||
-                                        TURKAI_SYSTEM_PROMPT
+                        systemInstruction:
+                            systemText
+                                ? {
+                                    parts: [
+                                        {
+                                            text:
+                                                systemText
+                                        }
+                                    ]
                                 }
-                            ]
-                        },
+                                : undefined,
 
                         contents,
 
@@ -6864,140 +4136,117 @@ async function callGemini(
         );
 
 
-    const result =
+    const data =
         await parseJSONResponse(
             response
         );
 
 
     if (
-        !result.ok
+        !response.ok
     ) {
 
-        const message =
-            result.data?.error?.message ||
-            `Gemini HTTP ${result.status}`;
-
         throw createAIError(
+
             "gemini",
-            result.status,
-            message
+
+            data?.error?.message ||
+            data?.message ||
+            `Gemini HTTP ${response.status}`,
+
+            response.status
         );
     }
 
 
-    const answer =
-        result.data
-            ?.candidates?.[0]
-            ?.content?.parts
-            ?.map(
+    const parts =
+        data?.candidates?.[0]?.content?.parts ||
+        [];
+
+
+    const text =
+        parts
+            .map(
                 part =>
                     part.text || ""
             )
-            .join(
-                ""
-            );
+            .join("\n")
+            .trim();
 
 
-    if (
-        !answer
-    ) {
+    if (!text) {
 
         throw createAIError(
             "gemini",
-            result.status,
-            "Gemini boş cevap döndürdü."
+            "Gemini boş cevap döndürdü.",
+            502
         );
     }
 
 
-    registerProviderSuccess(
-        "gemini"
-    );
-
-
-    return {
-
-        provider:
-            "gemini",
-
-        model:
-            AI_CONFIG.geminiModel,
-
-        answer:
-            normalizeAIText(
-                answer
-            )
-    };
+    return text;
 }
 
 
-/* ================================================================
-   140 — AI PROVIDER SIRASI
-================================================================ */
+/* =========================================================
+   72. SAĞLAYICI SIRASI
+========================================================= */
+
+const PROVIDER_ORDER = [
+
+    "groq",
+
+    "cerebras",
+
+    "openrouter",
+
+    "gemini"
+];
+
+
+/* =========================================================
+   73. MODEL ÇAĞIRICI
+========================================================= */
 
 async function callAIProviders(
-    messages
+    messages,
+    preferredProvider = null
 ) {
 
-    const providers = [
+    AI_STATUS.requestCount++;
 
-        {
-            name:
-                "groq",
+    const order = [
+        ...(preferredProvider &&
+        PROVIDER_ORDER.includes(
+            preferredProvider
+        )
+            ? [
+                preferredProvider
+            ]
+            : []),
 
-            enabled:
-                AI_STATUS.groq.enabled,
-
-            fn:
-                () =>
-                    callGroq(
-                        messages
-                    )
-        },
-
-        {
-            name:
-                "cerebras",
-
-            enabled:
-                AI_STATUS.cerebras.enabled,
-
-            fn:
-                () =>
-                    callCerebras(
-                        messages
-                    )
-        },
-
-        {
-            name:
-                "openrouter",
-
-            enabled:
-                AI_STATUS.openrouter.enabled,
-
-            fn:
-                () =>
-                    callOpenRouter(
-                        messages
-                    )
-        },
-
-        {
-            name:
-                "gemini",
-
-            enabled:
-                AI_STATUS.gemini.enabled,
-
-            fn:
-                () =>
-                    callGemini(
-                        messages
-                    )
-        }
+        ...PROVIDER_ORDER.filter(
+            provider =>
+                provider !==
+                preferredProvider
+        )
     ];
+
+
+    const callers = {
+
+        groq:
+            callGroq,
+
+        cerebras:
+            callCerebras,
+
+        openrouter:
+            callOpenRouter,
+
+        gemini:
+            callGemini
+    };
 
 
     const errors = [];
@@ -7005,11 +4254,17 @@ async function callAIProviders(
 
     for (
         const provider
-        of providers
+        of order
     ) {
 
+        const providerInfo =
+            AI_PROVIDERS[
+                provider
+            ];
+
         if (
-            !provider.enabled
+            !providerInfo ||
+            !providerInfo.enabled
         ) {
             continue;
         }
@@ -7017,155 +4272,103 @@ async function callAIProviders(
 
         try {
 
-            const result =
-                await provider.fn();
+            logAI(
+                `${provider} deneniyor...`
+            );
 
-            return {
 
-                ...result,
+            const answer =
+                await callers[
+                    provider
+                ](
+                    messages
+                );
 
-                fallback:
-                    errors.length > 0,
 
-                errors
-            };
+            if (
+                answer &&
+                answer.trim()
+            ) {
 
-        } catch (
-            error
-        ) {
+                registerProviderSuccess(
+                    provider
+                );
+
+                return {
+
+                    ok:
+                        true,
+
+                    provider,
+
+                    text:
+                        answer
+                };
+            }
+
+
+            throw createAIError(
+                provider,
+                "Boş cevap.",
+                502
+            );
+
+        } catch (error) {
 
             registerProviderFailure(
-                provider.name,
+                provider,
                 error
             );
 
             errors.push({
 
-                provider:
-                    provider.name,
+                provider,
+
+                message:
+                    error.message,
 
                 status:
-                    error?.status ||
-                    null,
-
-                error:
-                    cleanText(
-                        error?.message ||
-                        "Bilinmeyen hata",
-                        500
-                    )
+                    error.status ||
+                    500
             });
         }
     }
 
 
+    AI_STATUS.provider =
+        "local";
+
+
     return {
 
-        answer:
-            null,
+        ok:
+            false,
 
         provider:
             "local",
 
-        model:
-            "local",
-
-        fallback:
-            true,
+        text:
+            "",
 
         errors
     };
 }
 
 
-/* ================================================================
-   141 — CURRENT QUESTION TESPİT
-================================================================ */
-
-function looksLikeCurrentQuestion(
-    text
-) {
-
-    const lower =
-        cleanText(
-            text,
-            5000
-        )
-        .toLocaleLowerCase(
-            "tr-TR"
-        );
-
-
-    const currentWords = [
-
-        "bugün",
-
-        "şu an",
-
-        "şimdi",
-
-        "son dakika",
-
-        "güncel",
-
-        "en son",
-
-        "2026",
-
-        "haber",
-
-        "hava",
-
-        "döviz",
-
-        "dolar",
-
-        "euro",
-
-        "altın",
-
-        "kur",
-
-        "kaç tl",
-
-        "kaç lira",
-
-        "kim kazandı",
-
-        "maç sonucu"
-    ];
-
-
-    return currentWords.some(
-        word =>
-            lower.includes(
-                word
-            )
-    );
-}
-
-
-/* ================================================================
-   142 — CODING SORUSU
-================================================================ */
+/* =========================================================
+   74. KOD SORUSU ALGILAMA
+========================================================= */
 
 function looksLikeCodingQuestion(
     text
 ) {
 
-    const lower =
-        cleanText(
-            text,
-            5000
-        )
-        .toLocaleLowerCase(
-            "tr-TR"
+    const value =
+        normalizeText(
+            text
         );
 
-
-    const words = [
-
-        "kod",
+    const keywords = [
 
         "javascript",
 
@@ -7181,232 +4384,363 @@ function looksLikeCodingQuestion(
 
         "c#",
 
+        "node",
+
         "node.js",
 
-        "nodejs",
-
         "express",
+
+        "react",
+
+        "kod yaz",
+
+        "kodunu yaz",
+
+        "kodu düzelt",
+
+        "hata veriyor",
+
+        "bug",
 
         "api",
 
         "server.js",
 
-        "index.html",
-
-        "bug",
-
-        "hata",
-        
-        "console.log",
-
-        "fonksiyon",
-
-        "değişken"
+        "index.html"
     ];
 
 
-    return words.some(
-        word =>
-            lower.includes(
-                word
+    return keywords.some(
+        keyword =>
+            value.includes(
+                keyword
             )
     );
 }
 
 
-/* ================================================================
-   143 — LOCAL + AI KARAR
-================================================================ */
+/* =========================================================
+   75. GÜNCEL SORU ALGILAMA
+========================================================= */
 
-async function generateAIAnswer(
-    user,
-    chatId,
-    message
+function looksLikeCurrentQuestion(
+    text
 ) {
 
-    const knowledge =
-        findKnowledgeAnswer(
+    const value =
+        normalizeText(
+            text
+        );
+
+    const keywords = [
+
+        "bugün",
+
+        "şimdi",
+
+        "şu an",
+
+        "son dakika",
+
+        "güncel",
+
+        "en son",
+
+        "2026",
+
+        "hava",
+
+        "hava durumu",
+
+        "döviz",
+
+        "dolar",
+
+        "euro",
+
+        "altın",
+
+        "haber",
+
+        "kim kazandı",
+
+        "maç",
+
+        "maç sonucu"
+    ];
+
+
+    return keywords.some(
+        keyword =>
+            value.includes(
+                keyword
+            )
+    );
+}
+
+
+/* =========================================================
+   76. AI CEVAP ÜRETİCİ
+========================================================= */
+
+async function generateAIAnswer(
+    options = {}
+) {
+
+    const message =
+        cleanText(
+            options.message,
+            20000
+        );
+
+    const chatId =
+        cleanText(
+            options.chatId,
+            300
+        );
+
+    const preferredProvider =
+        cleanText(
+            options.provider,
+            100
+        ) || null;
+
+
+    if (!message) {
+
+        return {
+
+            ok:
+                true,
+
+            provider:
+                "local",
+
+            model:
+                "local",
+
+            text:
+                "Bir mesaj yaz knk."
+        };
+    }
+
+
+    /* -----------------------------------------
+       LOCAL RESPONSE
+    ----------------------------------------- */
+
+    const local =
+        localResponse(
             message
         );
 
 
-    /* ------------------------------------------------------------
-       KNOWLEDGE ÖNCELİĞİ
-    ------------------------------------------------------------ */
+    if (
+        local.handled
+    ) {
+
+        AI_STATUS.provider =
+            "local";
+
+        AI_STATUS.successCount++;
+
+        return {
+
+            ok:
+                true,
+
+            provider:
+                "local",
+
+            model:
+                "local",
+
+            text:
+                local.text,
+
+            local:
+                true
+        };
+    }
+
+
+    /* -----------------------------------------
+       CHAT GEÇMİŞİ
+    ----------------------------------------- */
+
+    let history = [];
+
+
+    if (chatId) {
+
+        history =
+            getChatMessages(
+                chatId,
+                30
+            );
+    }
+
+
+    const aiMessages =
+        buildAIMessageList(
+            history,
+            message
+        );
+
+
+    /* -----------------------------------------
+       AI PROVIDERLARI
+    ----------------------------------------- */
+
+    const providerResult =
+        await callAIProviders(
+            aiMessages,
+            preferredProvider
+        );
+
 
     if (
-        knowledge &&
-        !looksLikeCurrentQuestion(
+        providerResult.ok &&
+        providerResult.text
+    ) {
+
+        return {
+
+            ok:
+                true,
+
+            provider:
+                providerResult.provider,
+
+            model:
+                AI_CONFIG.models[
+                    providerResult.provider
+                ] ||
+                providerResult.provider,
+
+            text:
+                providerResult.text,
+
+            local:
+                false
+        };
+    }
+
+
+    /* -----------------------------------------
+       SON FALLBACK
+    ----------------------------------------- */
+
+    const coding =
+        looksLikeCodingQuestion(
+            message
+        );
+
+
+    if (coding) {
+
+        return {
+
+            ok:
+                true,
+
+            provider:
+                "local",
+
+            model:
+                "local-fallback",
+
+            text:
+                "AI sağlayıcılarına şu anda ulaşılamıyor. Kodunu buraya gönderirsen mevcut kod üzerinden hatayı inceleyebilirim.",
+
+            fallback:
+                true
+        };
+    }
+
+
+    if (
+        looksLikeCurrentQuestion(
             message
         )
     ) {
 
-        markKnowledgeUsed(
-            knowledge.id
-        );
-
         return {
 
-            answer:
-                knowledge.answer,
-
-            provider:
-                "knowledge",
-
-            model:
-                "knowledge",
-
-            source:
-                "knowledge",
-
-            fallback:
-                false
-        };
-    }
-
-
-    /* ------------------------------------------------------------
-       LOCAL BASİT CEVAP
-    ------------------------------------------------------------ */
-
-    const local =
-        localResponse(
-            message,
-            {
-                user
-            }
-        );
-
-
-    /*
-       Yerel motorun gerçek cevap ürettiğini anlamak için
-       generic fallback olup olmadığını kontrol ediyoruz.
-    */
-
-    const localIsGeneric =
-        local.startsWith(
-            "Bu soruyu yerel bilgi motorumla"
-        );
-
-
-    if (
-        !localIsGeneric
-    ) {
-
-        return {
-
-            answer:
-                local,
+            ok:
+                true,
 
             provider:
                 "local",
 
             model:
-                "local",
+                "local-fallback",
 
-            source:
-                "local",
+            text:
+                "Bu soru güncel bilgi gerektiriyor. Araştırma sistemiyle kontrol edilmesi gerekiyor.",
+
+            requiresResearch:
+                true,
 
             fallback:
-                false
+                true
         };
     }
 
-
-    /* ------------------------------------------------------------
-       AI CONTEXT
-    ------------------------------------------------------------ */
-
-    const messages =
-        buildAIMessageList(
-            user,
-            chatId,
-            message
-        );
-
-
-    /* ------------------------------------------------------------
-       AI PROVIDERLARI
-    ------------------------------------------------------------ */
-
-    const ai =
-        await callAIProviders(
-            messages
-        );
-
-
-    if (
-        ai.answer
-    ) {
-
-        return {
-
-            answer:
-                ai.answer,
-
-            provider:
-                ai.provider,
-
-            model:
-                ai.model,
-
-            source:
-                "ai",
-
-            fallback:
-                ai.fallback,
-
-            providerErrors:
-                ai.errors || []
-        };
-    }
-
-
-    /* ------------------------------------------------------------
-       SON FALLBACK
-    ------------------------------------------------------------ */
 
     return {
 
-        answer:
-            local,
+        ok:
+            true,
 
         provider:
             "local",
 
         model:
-            "local",
-
-        source:
             "local-fallback",
 
-        fallback:
-            true,
+        text:
+            "Şu anda uzak AI sağlayıcılarına ulaşılamıyor. Biraz sonra tekrar deneyebilirsin.",
 
-        providerErrors:
-            ai.errors || []
+        fallback:
+            true
     };
 }
 
 
-/* ================================================================
-   144 — CHAT REQUEST VALIDATION
-================================================================ */
+/* =========================================================
+   77. CHAT VALIDATION
+========================================================= */
 
 function validateChatRequest(
     body
 ) {
 
+    if (
+        !body ||
+        typeof body !==
+        "object"
+    ) {
+
+        return {
+
+            valid:
+                false,
+
+            error:
+                "Geçersiz istek."
+        };
+    }
+
+
     const message =
         cleanText(
-            body?.message,
-            50000
+            body.message,
+            20000
         );
 
 
-    if (
-        !message
-    ) {
+    if (!message) {
 
         return {
 
@@ -7419,37 +4753,57 @@ function validateChatRequest(
     }
 
 
+    if (
+        message.length >
+        20000
+    ) {
+
+        return {
+
+            valid:
+                false,
+
+            error:
+                "Mesaj çok uzun."
+        };
+    }
+
+
     return {
 
         valid:
             true,
 
-        message
+        message,
+
+        chatId:
+            cleanText(
+                body.chatId,
+                300
+            ),
+
+        model:
+            cleanText(
+                body.model,
+                100
+            ) || "fast",
+
+        provider:
+            cleanText(
+                body.provider,
+                100
+            ) || null
     };
 }
 
 
-/* ================================================================
-   145 — CHAT API
-================================================================ */
+/* =========================================================
+   78. CHAT ENDPOINT
+========================================================= */
 
 app.post(
     "/api/chat",
-    simpleRateLimit({
-        limit: 120,
-        windowMs:
-            15 *
-            60 *
-            1000
-    }),
-    async (
-        req,
-        res
-    ) => {
-
-        const started =
-            Date.now();
-
+    async (req, res) => {
 
         try {
 
@@ -7463,167 +4817,59 @@ app.post(
                 !validation.valid
             ) {
 
-                return res.status(400)
+                return res
+                    .status(400)
                     .json({
 
                         ok:
                             false,
 
+                        success:
+                            false,
+
                         error:
-                            validation.error,
-
-                        code:
-                            "INVALID_MESSAGE",
-
-                        requestId:
-                            req.requestId
+                            validation.error
                     });
             }
-
-
-            const message =
-                validation.message;
 
 
             const user =
                 req.user ||
-                getGuestUser(
-                    req
-                );
+                getGuestUser();
 
 
-            /* ----------------------------------------------------
-               LIMIT
-            ---------------------------------------------------- */
-
-            const permission =
-                canSendMessage(
-                    user
-                );
+            let chatId =
+                validation.chatId;
 
 
-            if (
-                !permission.allowed
-            ) {
-
-                return res.status(429)
-                    .json({
-
-                        ok:
-                            false,
-
-                        error:
-                            permission.reason,
-
-                        code:
-                            "MESSAGE_LIMIT",
-
-                        used:
-                            permission.used,
-
-                        limit:
-                            permission.limit,
-
-                        requestId:
-                            req.requestId
-                    });
-            }
-
-
-            /* ----------------------------------------------------
-               CHAT
-            ---------------------------------------------------- */
-
-            let chat = null;
-
-
-            if (
-                req.body?.chatId
-            ) {
-
-                chat =
-                    findChatById(
-                        cleanText(
-                            req.body.chatId,
-                            200
-                        )
-                    );
-
-
-                if (
-                    chat &&
-                    !userOwnsChat(
-                        user,
-                        chat
+            let chat =
+                chatId
+                    ? findChatById(
+                        chatId
                     )
-                ) {
-
-                    chat =
-                        null;
-                }
-            }
+                    : null;
 
 
-            if (
-                !chat
-            ) {
-
-                const chatPermission =
-                    canCreateChat(
-                        user
-                    );
-
-
-                if (
-                    !chatPermission.allowed
-                ) {
-
-                    return res.status(403)
-                        .json({
-
-                            ok:
-                                false,
-
-                            error:
-                                chatPermission.reason,
-
-                            code:
-                                "CHAT_LIMIT",
-
-                            used:
-                                chatPermission.used,
-
-                            limit:
-                                chatPermission.limit
-                        });
-                }
-
+            if (!chat) {
 
                 chat =
                     createChat(
                         user.id,
-                        {
-                            title:
-                                generateChatTitle(
-                                    message
-                                ),
-
-                            model:
-                                req.body?.model ||
-                                "fast"
-                        }
+                        validation.message
+                            .slice(
+                                0,
+                                60
+                            )
                     );
+
+                chatId =
+                    chat.id;
             }
 
 
-            /* ----------------------------------------------------
-               USER MESSAGE
-            ---------------------------------------------------- */
+            addMessage({
 
-            createMessage({
-
-                chatId:
-                    chat.id,
+                chatId,
 
                 userId:
                     user.id,
@@ -7632,195 +4878,110 @@ app.post(
                     "user",
 
                 content:
-                    message,
+                    validation.message,
 
                 model:
-                    req.body?.model ||
-                    "fast",
-
-                metadata: {
-
-                    requestId:
-                        req.requestId
-                }
+                    validation.model
             });
 
 
-            updateChatTitle(
-                chat,
-                message
-            );
+            const answer =
+                await generateAIAnswer({
 
+                    message:
+                        validation.message,
 
-            /* ----------------------------------------------------
-               AUTO MEMORY
-            ---------------------------------------------------- */
+                    chatId,
 
-            try {
-
-                autoRemember(
-                    user,
-                    message
-                );
-
-            } catch (
-                memoryError
-            ) {
-
-                logWarn(
-                    "Auto memory hatası",
-                    {
-                        message:
-                            memoryError.message
-                    }
-                );
-            }
-
-
-            /* ----------------------------------------------------
-               AI
-            ---------------------------------------------------- */
-
-            const result =
-                await generateAIAnswer(
-                    user,
-                    chat.id,
-                    message
-                );
-
-
-            /* ----------------------------------------------------
-               ASSISTANT MESSAGE
-            ---------------------------------------------------- */
-
-            createMessage({
-
-                chatId:
-                    chat.id,
-
-                userId:
-                    user.id,
-
-                role:
-                    "assistant",
-
-                content:
-                    result.answer,
-
-                model:
-                    result.model,
-
-                metadata: {
+                    model:
+                        validation.model,
 
                     provider:
-                        result.provider,
-
-                    source:
-                        result.source,
-
-                    fallback:
-                        Boolean(
-                            result.fallback
-                        ),
-
-                    requestId:
-                        req.requestId
-                }
-            });
+                        validation.provider
+                });
 
 
-            /* ----------------------------------------------------
-               USAGE
-            ---------------------------------------------------- */
+            const assistantMessage =
+                addMessage({
 
-            if (
-                !user.guest
-            ) {
+                    chatId,
 
-                incrementUsage(
-                    user.id,
-                    "messages"
+                    userId:
+                        user.id,
+
+                    role:
+                        "assistant",
+
+                    content:
+                        answer.text,
+
+                    model:
+                        answer.model,
+
+                    provider:
+                        answer.provider,
+
+                    metadata: {
+
+                        fallback:
+                            Boolean(
+                                answer.fallback
+                            ),
+
+                        requiresResearch:
+                            Boolean(
+                                answer.requiresResearch
+                            )
+                    }
+                });
+
+
+            const chats =
+                getChats();
+
+
+            const chatIndex =
+                chats.findIndex(
+                    item =>
+                        item.id ===
+                        chatId
                 );
 
 
-                if (
-                    result.source ===
-                    "ai"
-                ) {
+            if (
+                chatIndex !==
+                -1
+            ) {
 
-                    user.stats.totalMessages =
-                        Number(
-                            user.stats.totalMessages
-                        ) + 1;
-
-                } else {
-
-                    user.stats.totalMessages =
-                        Number(
-                            user.stats.totalMessages
-                        ) + 1;
-                }
-
-
-                user.updatedAt =
+                chats[
+                    chatIndex
+                ].updatedAt =
                     nowISO();
 
+                chats[
+                    chatIndex
+                ].messageCount =
+                    getChatMessages(
+                        chatId,
+                        1000
+                    ).length;
 
-                saveDatabase(
-                    "users"
+                saveChats(
+                    chats
                 );
             }
 
 
-            /* ----------------------------------------------------
-               KNOWLEDGE AUTO SAVE
-            ---------------------------------------------------- */
+            io.emit(
+                "turkai:message",
+                {
 
-            if (
-                result.answer &&
-                result.source ===
-                "ai" &&
-                !looksLikeCurrentQuestion(
-                    message
-                )
-            ) {
+                    chatId,
 
-                try {
-
-                    saveKnowledge(
-                        message,
-                        result.answer,
-                        {
-                            source:
-                                result.provider,
-
-                            auto:
-                                true
-                        }
-                    );
-
-                } catch (
-                    knowledgeError
-                ) {
-
-                    logWarn(
-                        "Knowledge auto save başarısız",
-                        {
-                            message:
-                                knowledgeError.message
-                        }
-                    );
+                    message:
+                        assistantMessage
                 }
-            }
-
-
-            /* ----------------------------------------------------
-               RESPONSE
-            ---------------------------------------------------- */
-
-            const duration =
-                Date.now() -
-                started;
+            );
 
 
             return res.json({
@@ -7828,146 +4989,94 @@ app.post(
                 ok:
                     true,
 
+                success:
+                    true,
+
+                chatId,
+
                 reply:
-                    result.answer,
+                    answer.text,
 
                 response:
-                    result.answer,
+                    answer.text,
 
                 message:
-                    result.answer,
+                    answer.text,
 
                 text:
-                    result.answer,
-
-                chatId:
-                    chat.id,
-
-                chat: {
-
-                    id:
-                        chat.id,
-
-                    title:
-                        chat.title,
-
-                    updatedAt:
-                        chat.updatedAt
-                },
+                    answer.text,
 
                 provider:
-                    result.provider,
+                    answer.provider,
 
                 model:
-                    result.model,
-
-                source:
-                    result.source,
+                    answer.model,
 
                 fallback:
                     Boolean(
-                        result.fallback
+                        answer.fallback
                     ),
 
-                duration,
+                requiresResearch:
+                    Boolean(
+                        answer.requiresResearch
+                    ),
 
-                requestId:
-                    req.requestId
+                messageId:
+                    assistantMessage.id
             });
 
-
-        } catch (
-            error
-        ) {
+        } catch (error) {
 
             logError(
-                "CHAT API HATASI",
-                {
-                    message:
-                        error.message,
-
-                    stack:
-                        error.stack,
-
-                    requestId:
-                        req.requestId
-                }
+                "POST /api/chat hatası",
+                error
             );
 
-
-            return res.status(500)
+            return res
+                .status(500)
                 .json({
 
                     ok:
                         false,
 
-                    error:
-                        "TürkAI cevap oluştururken bir hata oluştu.",
+                    success:
+                        false,
 
-                    details:
+                    error:
+                        "Chat işlemi sırasında bir hata oluştu.",
+
+                    detail:
                         IS_PRODUCTION
                             ? undefined
-                            : error.message,
-
-                    code:
-                        "CHAT_ERROR",
-
-                    requestId:
-                        req.requestId
+                            : error.message
                 });
         }
     }
 );
 
 
-/* ================================================================
-   146 — CHAT STREAM TEST
-================================================================ */
+/* =========================================================
+   79. CHAT TEST
+========================================================= */
 
 app.get(
     "/api/chat/test",
-    (
-        req,
-        res
-    ) => {
+    (req, res) => {
 
         res.json({
 
             ok:
                 true,
 
+            success:
+                true,
+
+            message:
+                "Chat endpoint aktif.",
+
             endpoint:
-                "/api/chat",
-
-            method:
-                "POST",
-
-            required: {
-
-                message:
-                    "string"
-            },
-
-            optional: {
-
-                chatId:
-                    "string",
-
-                model:
-                    "string",
-
-                guestId:
-                    "string"
-            },
-
-            example: {
-
-                message:
-                    "Merhaba TürkAI",
-
-                model:
-                    "fast"
-            },
+                "POST /api/chat",
 
             timestamp:
                 nowISO()
@@ -7976,78 +5085,30 @@ app.get(
 );
 
 
-/* ================================================================
-   147 — AI STATUS
-================================================================ */
+/* =========================================================
+   80. AI STATUS
+========================================================= */
 
 app.get(
     "/api/ai/status",
-    (
-        req,
-        res
-    ) => {
+    (req, res) => {
 
         res.json({
 
             ok:
                 true,
 
-            local:
-                {
-                    enabled:
-                        true
-                },
+            success:
+                true,
 
-            providers: {
+            ai:
+                AI_STATUS,
 
-                groq: {
+            providers:
+                AI_PROVIDERS,
 
-                    enabled:
-                        AI_STATUS.groq.enabled,
-
-                    failures:
-                        AI_STATUS.groq.failures,
-
-                    lastFailure:
-                        AI_STATUS.groq.lastFailure
-                },
-
-                cerebras: {
-
-                    enabled:
-                        AI_STATUS.cerebras.enabled,
-
-                    failures:
-                        AI_STATUS.cerebras.failures,
-
-                    lastFailure:
-                        AI_STATUS.cerebras.lastFailure
-                },
-
-                openrouter: {
-
-                    enabled:
-                        AI_STATUS.openrouter.enabled,
-
-                    failures:
-                        AI_STATUS.openrouter.failures,
-
-                    lastFailure:
-                        AI_STATUS.openrouter.lastFailure
-                },
-
-                gemini: {
-
-                    enabled:
-                        AI_STATUS.gemini.enabled,
-
-                    failures:
-                        AI_STATUS.gemini.failures,
-
-                    lastFailure:
-                        AI_STATUS.gemini.lastFailure
-                }
-            },
+            models:
+                AI_CONFIG.models,
 
             timestamp:
                 nowISO()
@@ -8056,16 +5117,13 @@ app.get(
 );
 
 
-/* ================================================================
-   148 — MODEL LISTESİ
-================================================================ */
+/* =========================================================
+   81. MODEL LİSTESİ
+========================================================= */
 
 app.get(
     "/api/models",
-    (
-        req,
-        res
-    ) => {
+    (req, res) => {
 
         res.json({
 
@@ -8075,84 +5133,48 @@ app.get(
             models: [
 
                 {
+
                     id:
                         "fast",
 
                     name:
                         "TürkAI Fast",
 
+                    provider:
+                        "auto",
+
                     description:
                         "Hızlı otomatik model seçimi"
                 },
 
                 {
+
                     id:
-                        "groq",
+                        "smart",
 
                     name:
-                        "Groq",
+                        "TürkAI Smart",
+
+                    provider:
+                        "auto",
 
                     description:
-                        AI_CONFIG.groqModel,
-
-                    available:
-                        AI_STATUS.groq.enabled
+                        "Daha kapsamlı otomatik cevap"
                 },
 
                 {
-                    id:
-                        "cerebras",
 
-                    name:
-                        "Cerebras",
-
-                    description:
-                        AI_CONFIG.cerebrasModel,
-
-                    available:
-                        AI_STATUS.cerebras.enabled
-                },
-
-                {
-                    id:
-                        "openrouter",
-
-                    name:
-                        "OpenRouter",
-
-                    description:
-                        AI_CONFIG.openRouterModel,
-
-                    available:
-                        AI_STATUS.openrouter.enabled
-                },
-
-                {
-                    id:
-                        "gemini",
-
-                    name:
-                        "Gemini",
-
-                    description:
-                        AI_CONFIG.geminiModel,
-
-                    available:
-                        AI_STATUS.gemini.enabled
-                },
-
-                {
                     id:
                         "local",
 
                     name:
                         "TürkAI Local",
 
-                    description:
-                        "Harici API olmadan yerel cevap motoru",
+                    provider:
+                        "local",
 
-                    available:
-                        true
+                    description:
+                        "Yerel fallback sistemi"
                 }
             ]
         });
@@ -8160,8468 +5182,5226 @@ app.get(
 );
 
 
-/* ================================================================
-   149 — SIMPLE MESSAGE API
-================================================================ */
-
-const simpleMessages = {
-
-    "merhaba":
-        "Merhaba! Ben TürkAI. Nasıl yardımcı olabilirim?",
-
-    "selam":
-        "Selam! TürkAI burada.",
-
-    "iyi misin":
-        "İyiyim, teşekkürler. Sen nasılsın?",
-
-    "teşekkürler":
-        "Rica ederim!",
-
-    "sağ ol":
-        "Rica ederim!",
-
-    "en hızlı kim":
-        "TürkAI"
-};
-
-
-/* ================================================================
-   150 — SIMPLE MESSAGE TEST
-================================================================ */
+/* =========================================================
+   82. BASİT CEVAP TESTİ
+========================================================= */
 
 app.get(
     "/api/simple/:message",
-    (
-        req,
-        res
-    ) => {
+    (req, res) => {
 
-        const key =
+        const message =
             cleanText(
                 req.params.message,
-                200
-            )
-            .toLocaleLowerCase(
-                "tr-TR"
+                5000
             );
 
-        const answer =
-            simpleMessages[key];
 
-        if (
-            !answer
-        ) {
+        const result =
+            localResponse(
+                message
+            );
 
-            return res.status(404)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "Basit cevap bulunamadı."
-                });
-        }
 
         res.json({
 
             ok:
                 true,
 
-            reply:
-                answer
+            handled:
+                result.handled,
+
+            text:
+                result.text,
+
+            timestamp:
+                nowISO()
         });
     }
 );
 
 
-/* ================================================================
-   151 — PARÇA 3 SONU
-================================================================ */
-
-/*
-    ARTIK GERÇEK:
-
-        POST /api/chat
-
-    VAR.
-
-    Frontend'in gönderdiği:
-
-        {
-            message,
-            chatId,
-            model
-        }
-
-    kabul ediliyor.
-
-    Response içinde:
-
-        reply
-        response
-        message
-        text
-        chatId
-        provider
-        model
-        source
-        fallback
-
-    alanları dönüyor.
-
-    Yani mevcut index.html ile uyumlu.
-
-    SONRAKİ:
-
-    PARÇA 4
-    ---------------------------------------------------------------
-    - /api/upload
-    - dosya yönetimi
-    - research
-    - weather
-    - döviz
-    - projects
-    - notifications
-    - feedback
-    - admin
-    - güvenlik
-    - dosya metadata sistemi
-    ---------------------------------------------------------------
-*/
+/* =========================================================
+   PART 2 SONU
+========================================================= */
 // ============================================================
 // TÜRKAI 11.0.0
-// SERVER.JS — PARÇA 4 / 5
-// ============================================================
-// Bu bölüm:
-// - Dosya yükleme
-// - Dosya listeleme / indirme / silme
-// - İnternet araştırması
-// - Hava durumu
-// - Döviz
-// - Projeler
-// - Bildirimler
-// - Feedback
-// - Admin panel API
-// - Güvenlik API
-// - Sistem istatistikleri
-// - Health endpoint
+// SERVER.JS — 3/5
+// MEMORY + KNOWLEDGE + RESEARCH + FILES + PROJECTS
 // ============================================================
 
+"use strict";
 
 // ============================================================
-// 400 — DOSYA / STORAGE YARDIMCILARI
+// 3.1 — MEMORY SYSTEM
 // ============================================================
 
-const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
+function getMemories() {
+  return readJSONSafe(DB_FILES.memories, []);
+}
 
-const ALLOWED_UPLOAD_TYPES = [
-    "text/plain",
-    "text/html",
-    "text/css",
-    "text/javascript",
-    "application/javascript",
-    "application/json",
-    "application/xml",
-    "image/png",
-    "image/jpeg",
-    "image/webp",
-    "image/gif",
-    "application/pdf",
-    "text/markdown",
-    "text/csv",
-    "application/zip"
-];
+function saveMemories(memories) {
+  return writeJSONSafe(DB_FILES.memories, Array.isArray(memories) ? memories : []);
+}
 
-const BLOCKED_EXTENSIONS = [
-    ".exe",
-    ".dll",
-    ".scr",
-    ".bat",
-    ".cmd",
-    ".com",
-    ".msi",
-    ".vbs",
-    ".vbe",
-    ".ps1"
-];
+function getUserMemories(userId) {
+  const memories = getMemories();
 
-function safeFileName(fileName) {
-    let value = String(fileName || "dosya");
+  return memories
+    .filter(item => item && item.userId === userId)
+    .sort((a, b) => {
+      return String(b.createdAt || "").localeCompare(
+        String(a.createdAt || "")
+      );
+    });
+}
 
-    value = value
-        .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
-        .replace(/\.\./g, "_")
-        .trim();
+function createMemory(userId, text, category = "general", importance = 1) {
+  const clean = cleanText(text, 2000);
+
+  if (!clean) {
+    return null;
+  }
+
+  const memories = getMemories();
+
+  const normalized = normalizeText(clean);
+
+  const existing = memories.find(item => {
+    return (
+      item.userId === userId &&
+      normalizeText(item.text) === normalized
+    );
+  });
+
+  if (existing) {
+    existing.updatedAt = nowISO();
+    existing.importance = Math.max(
+      Number(existing.importance || 1),
+      Number(importance || 1)
+    );
+
+    saveMemories(memories);
+
+    return existing;
+  }
+
+  const memory = {
+    id: createId("mem"),
+    userId,
+    text: clean,
+    category: cleanText(category, 100) || "general",
+    importance: Math.min(
+      Math.max(Number(importance) || 1, 1),
+      10
+    ),
+    createdAt: nowISO(),
+    updatedAt: nowISO()
+  };
+
+  memories.push(memory);
+  saveMemories(memories);
+
+  appendLog(LOG_FILES.ai, {
+    event: "memory_created",
+    userId,
+    memoryId: memory.id
+  });
+
+  return memory;
+}
+
+function deleteMemory(memoryId, userId) {
+  const memories = getMemories();
+
+  const index = memories.findIndex(item => {
+    return item.id === memoryId && item.userId === userId;
+  });
+
+  if (index === -1) {
+    return false;
+  }
+
+  memories.splice(index, 1);
+  saveMemories(memories);
+
+  return true;
+}
+
+function clearUserMemories(userId) {
+  const memories = getMemories();
+
+  const remaining = memories.filter(item => item.userId !== userId);
+
+  saveMemories(remaining);
+
+  return memories.length - remaining.length;
+}
+
+function extractMemoryCandidates(message) {
+  const text = cleanText(message, 4000);
+
+  if (!text) {
+    return [];
+  }
+
+  const results = [];
+
+  const patterns = [
+    {
+      regex: /benim adım\s+(.{1,80})/i,
+      category: "personal"
+    },
+    {
+      regex: /ben\s+(.{1,80})\s+seviyorum/i,
+      category: "preference"
+    },
+    {
+      regex: /en sevdiğim\s+(.{1,100})/i,
+      category: "preference"
+    },
+    {
+      regex: /ben\s+(.{1,100})\s+öğreniyorum/i,
+      category: "education"
+    },
+    {
+      regex: /projem\s+(.{1,150})/i,
+      category: "project"
+    }
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern.regex);
+
+    if (!match || !match[1]) {
+      continue;
+    }
+
+    const value = cleanText(match[1], 300);
 
     if (!value) {
-        value = "dosya";
+      continue;
     }
 
-    if (value.length > 180) {
-        value = value.slice(0, 180);
-    }
+    results.push({
+      text: value,
+      category: pattern.category,
+      importance: pattern.category === "personal" ? 8 : 5
+    });
+  }
 
-    return value;
+  return results;
 }
 
-function getFileExtension(fileName) {
-    const value = String(fileName || "");
-    const index = value.lastIndexOf(".");
+function automaticallySaveMemories(userId, message) {
+  const candidates = extractMemoryCandidates(message);
 
-    if (index === -1) {
-        return "";
-    }
+  const saved = [];
 
-    return value.slice(index).toLowerCase();
-}
-
-function isBlockedExtension(fileName) {
-    return BLOCKED_EXTENSIONS.includes(
-        getFileExtension(fileName)
-    );
-}
-
-function detectMimeType(fileName) {
-    const ext = getFileExtension(fileName);
-
-    const map = {
-        ".txt": "text/plain",
-        ".html": "text/html",
-        ".htm": "text/html",
-        ".css": "text/css",
-        ".js": "application/javascript",
-        ".mjs": "application/javascript",
-        ".json": "application/json",
-        ".xml": "application/xml",
-        ".md": "text/markdown",
-        ".csv": "text/csv",
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".webp": "image/webp",
-        ".gif": "image/gif",
-        ".pdf": "application/pdf",
-        ".zip": "application/zip"
-    };
-
-    return map[ext] || "application/octet-stream";
-}
-
-function formatBytes(bytes) {
-    const value = Number(bytes) || 0;
-
-    if (value < 1024) {
-        return `${value} B`;
-    }
-
-    if (value < 1024 * 1024) {
-        return `${(value / 1024).toFixed(1)} KB`;
-    }
-
-    if (value < 1024 * 1024 * 1024) {
-        return `${(value / 1024 / 1024).toFixed(1)} MB`;
-    }
-
-    return `${(value / 1024 / 1024 / 1024).toFixed(1)} GB`;
-}
-
-function getUserStorageDirectory(userId) {
-    const cleanId = String(userId || "guest")
-        .replace(/[^a-zA-Z0-9_-]/g, "_");
-
-    const directory = path.join(
-        USERS_DIR,
-        cleanId
+  for (const candidate of candidates) {
+    const memory = createMemory(
+      userId,
+      candidate.text,
+      candidate.category,
+      candidate.importance
     );
 
-    fs.mkdirSync(directory, {
-        recursive: true
+    if (memory) {
+      saved.push(memory);
+    }
+  }
+
+  return saved;
+}
+
+function buildMemoryContext(userId) {
+  const memories = getUserMemories(userId);
+
+  if (!memories.length) {
+    return "";
+  }
+
+  const important = memories
+    .sort((a, b) => {
+      return Number(b.importance || 1) - Number(a.importance || 1);
+    })
+    .slice(0, 20);
+
+  return important
+    .map(item => {
+      return `- ${item.category}: ${item.text}`;
+    })
+    .join("\n");
+}
+
+
+// ============================================================
+// 3.2 — MEMORY API
+// ============================================================
+
+app.get("/api/memory", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
+
+    const memories = getUserMemories(user.id);
+
+    res.json({
+      success: true,
+      memories
+    });
+  } catch (error) {
+    logError("memory_get_error", {
+      error: error.message
     });
 
-    return directory;
-}
+    res.status(500).json({
+      success: false,
+      error: "Hafıza alınamadı."
+    });
+  }
+});
 
-function getUserUploadDirectory(userId) {
-    const directory = path.join(
-        getUserStorageDirectory(userId),
-        "uploads"
+app.post("/api/memory", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
+
+    const text = cleanText(req.body?.text, 2000);
+    const category = cleanText(
+      req.body?.category || "general",
+      100
     );
 
-    fs.mkdirSync(directory, {
-        recursive: true
+    if (!text) {
+      return res.status(400).json({
+        success: false,
+        error: "Hafıza metni gerekli."
+      });
+    }
+
+    const memory = createMemory(
+      user.id,
+      text,
+      category,
+      5
+    );
+
+    res.json({
+      success: true,
+      memory
+    });
+  } catch (error) {
+    logError("memory_create_error", {
+      error: error.message
     });
 
-    return directory;
-}
-
-function getFileDatabase() {
-    return readJSONSafe(
-        DB_FILES.files,
-        []
-    );
-}
-
-function saveFileDatabase(files) {
-    writeJSONSafe(
-        DB_FILES.files,
-        Array.isArray(files) ? files : []
-    );
-}
-
-function createFileRecord(data) {
-    return {
-        id: crypto.randomUUID(),
-        userId: data.userId || "guest",
-        originalName: data.originalName || "dosya",
-        storedName: data.storedName || "file",
-        path: data.path || "",
-        mimeType: data.mimeType || "application/octet-stream",
-        size: Number(data.size) || 0,
-        sizeText: formatBytes(data.size),
-        extension: getFileExtension(data.originalName),
-        createdAt: nowISO(),
-        updatedAt: nowISO(),
-        status: "ready"
-    };
-}
-
-
-// ============================================================
-// 401 — RAW REQUEST BODY
-// ============================================================
-
-function readRawRequestBody(req, maxBytes) {
-    return new Promise((resolve, reject) => {
-        let total = 0;
-        const chunks = [];
-
-        const limit = Number(maxBytes) || MAX_UPLOAD_SIZE;
-
-        req.on("data", chunk => {
-            total += chunk.length;
-
-            if (total > limit) {
-                reject(
-                    new Error("UPLOAD_TOO_LARGE")
-                );
-
-                req.destroy();
-                return;
-            }
-
-            chunks.push(chunk);
-        });
-
-        req.on("end", () => {
-            resolve(
-                Buffer.concat(chunks)
-            );
-        });
-
-        req.on("error", error => {
-            reject(error);
-        });
+    res.status(500).json({
+      success: false,
+      error: "Hafıza oluşturulamadı."
     });
-}
+  }
+});
 
+app.delete("/api/memory/:id", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
 
-// ============================================================
-// 402 — MULTIPART PARSER
-// ============================================================
-
-function parseMultipartBody(buffer, boundary) {
-    const result = [];
-
-    if (!buffer || !boundary) {
-        return result;
-    }
-
-    const separator = Buffer.from(
-        `--${boundary}`
+    const deleted = deleteMemory(
+      req.params.id,
+      user.id
     );
 
-    let start = 0;
-
-    while (true) {
-        const boundaryIndex = buffer.indexOf(
-            separator,
-            start
-        );
-
-        if (boundaryIndex === -1) {
-            break;
-        }
-
-        const nextStart = boundaryIndex + separator.length;
-
-        if (
-            buffer[nextStart] === 45 &&
-            buffer[nextStart + 1] === 45
-        ) {
-            break;
-        }
-
-        let partStart = nextStart;
-
-        if (
-            buffer[partStart] === 13 &&
-            buffer[partStart + 1] === 10
-        ) {
-            partStart += 2;
-        }
-
-        const nextBoundary = buffer.indexOf(
-            separator,
-            partStart
-        );
-
-        if (nextBoundary === -1) {
-            break;
-        }
-
-        let partEnd = nextBoundary;
-
-        if (
-            buffer[partEnd - 2] === 13 &&
-            buffer[partEnd - 1] === 10
-        ) {
-            partEnd -= 2;
-        }
-
-        const part = buffer.slice(
-            partStart,
-            partEnd
-        );
-
-        const headerEnd = part.indexOf(
-            Buffer.from("\r\n\r\n")
-        );
-
-        if (headerEnd === -1) {
-            start = nextBoundary;
-            continue;
-        }
-
-        const headerBuffer = part.slice(
-            0,
-            headerEnd
-        );
-
-        const body = part.slice(
-            headerEnd + 4
-        );
-
-        const headerText = headerBuffer.toString(
-            "utf8"
-        );
-
-        const headers = {};
-
-        for (const line of headerText.split("\r\n")) {
-            const separatorIndex = line.indexOf(":");
-
-            if (separatorIndex === -1) {
-                continue;
-            }
-
-            const key = line
-                .slice(0, separatorIndex)
-                .trim()
-                .toLowerCase();
-
-            const value = line
-                .slice(separatorIndex + 1)
-                .trim();
-
-            headers[key] = value;
-        }
-
-        const disposition =
-            headers["content-disposition"] || "";
-
-        const nameMatch =
-            disposition.match(
-                /name="([^"]*)"/i
-            );
-
-        const fileMatch =
-            disposition.match(
-                /filename="([^"]*)"/i
-            );
-
-        result.push({
-            headers,
-            name: nameMatch
-                ? nameMatch[1]
-                : null,
-            filename: fileMatch
-                ? fileMatch[1]
-                : null,
-            data: body
-        });
-
-        start = nextBoundary;
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: "Hafıza bulunamadı."
+      });
     }
 
-    return result;
+    res.json({
+      success: true
+    });
+  } catch (error) {
+    logError("memory_delete_error", {
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      error: "Hafıza silinemedi."
+    });
+  }
+});
+
+app.delete("/api/memory", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
+
+    const count = clearUserMemories(user.id);
+
+    res.json({
+      success: true,
+      deleted: count
+    });
+  } catch (error) {
+    logError("memory_clear_error", {
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      error: "Hafıza temizlenemedi."
+    });
+  }
+});
+
+
+// ============================================================
+// 3.3 — KNOWLEDGE SYSTEM
+// ============================================================
+
+function getKnowledge() {
+  return readJSONSafe(DB_FILES.knowledge, []);
+}
+
+function saveKnowledge(items) {
+  return writeJSONSafe(
+    DB_FILES.knowledge,
+    Array.isArray(items) ? items : []
+  );
+}
+
+function normalizeKnowledgeItem(item) {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+
+  return {
+    id: item.id || createId("knowledge"),
+    question: cleanText(item.question, 2000),
+    answer: cleanText(item.answer, 6000),
+    keywords: Array.isArray(item.keywords)
+      ? item.keywords
+          .map(x => cleanText(x, 100))
+          .filter(Boolean)
+      : [],
+    category: cleanText(
+      item.category || "general",
+      100
+    ),
+    source: cleanText(
+      item.source || "TürkAI",
+      200
+    ),
+    confidence: Number(item.confidence || 1),
+    createdAt: item.createdAt || nowISO(),
+    updatedAt: item.updatedAt || nowISO()
+  };
+}
+
+function addKnowledge(question, answer, options = {}) {
+  const cleanQuestion = cleanText(question, 2000);
+  const cleanAnswer = cleanText(answer, 6000);
+
+  if (!cleanQuestion || !cleanAnswer) {
+    return null;
+  }
+
+  const knowledge = getKnowledge();
+
+  const normalizedQuestion = normalizeText(cleanQuestion);
+
+  const existing = knowledge.find(item => {
+    return (
+      normalizeText(item.question) === normalizedQuestion
+    );
+  });
+
+  if (existing) {
+    existing.answer = cleanAnswer;
+    existing.updatedAt = nowISO();
+
+    if (options.category) {
+      existing.category = cleanText(
+        options.category,
+        100
+      );
+    }
+
+    if (Array.isArray(options.keywords)) {
+      existing.keywords = options.keywords
+        .map(x => cleanText(x, 100))
+        .filter(Boolean);
+    }
+
+    saveKnowledge(knowledge);
+
+    return existing;
+  }
+
+  const item = normalizeKnowledgeItem({
+    question: cleanQuestion,
+    answer: cleanAnswer,
+    category: options.category || "general",
+    keywords: options.keywords || [],
+    source: options.source || "TürkAI",
+    confidence: options.confidence || 1
+  });
+
+  knowledge.push(item);
+  saveKnowledge(knowledge);
+
+  return item;
+}
+
+function calculateKnowledgeScore(query, item) {
+  const normalizedQuery = normalizeText(query);
+
+  const question = normalizeText(item.question);
+  const keywords = Array.isArray(item.keywords)
+    ? item.keywords.map(normalizeText)
+    : [];
+
+  let score = 0;
+
+  if (!normalizedQuery) {
+    return 0;
+  }
+
+  if (normalizedQuery === question) {
+    score += 100;
+  }
+
+  if (
+    question.includes(normalizedQuery) ||
+    normalizedQuery.includes(question)
+  ) {
+    score += 50;
+  }
+
+  const queryWords = normalizedQuery
+    .split(/\s+/)
+    .filter(word => word.length > 2);
+
+  for (const word of queryWords) {
+    if (question.includes(word)) {
+      score += 8;
+    }
+
+    for (const keyword of keywords) {
+      if (
+        keyword.includes(word) ||
+        word.includes(keyword)
+      ) {
+        score += 5;
+      }
+    }
+  }
+
+  return score;
+}
+
+function findKnowledgeAnswer(query) {
+  const knowledge = getKnowledge();
+
+  if (!knowledge.length) {
+    return null;
+  }
+
+  let best = null;
+  let bestScore = 0;
+
+  for (const item of knowledge) {
+    const normalized = normalizeKnowledgeItem(item);
+
+    if (!normalized) {
+      continue;
+    }
+
+    const score = calculateKnowledgeScore(
+      query,
+      normalized
+    );
+
+    if (score > bestScore) {
+      bestScore = score;
+      best = normalized;
+    }
+  }
+
+  if (!best || bestScore < 15) {
+    return null;
+  }
+
+  return {
+    answer: best.answer,
+    score: bestScore,
+    item: best
+  };
+}
+
+function learnFromConversation(question, answer) {
+  const cleanQuestion = cleanText(question, 2000);
+  const cleanAnswer = cleanText(answer, 6000);
+
+  if (!cleanQuestion || !cleanAnswer) {
+    return null;
+  }
+
+  if (cleanAnswer.length < 5) {
+    return null;
+  }
+
+  if (
+    cleanAnswer.includes("API anahtarı") &&
+    cleanAnswer.length < 150
+  ) {
+    return null;
+  }
+
+  return addKnowledge(
+    cleanQuestion,
+    cleanAnswer,
+    {
+      source: "conversation",
+      confidence: 0.8
+    }
+  );
 }
 
 
 // ============================================================
-// 403 — UPLOAD ENDPOINT
+// 3.4 — KNOWLEDGE API
 // ============================================================
 
-app.post(
-    "/api/upload",
-    async (req, res) => {
-        const requestId =
-            req.requestId || crypto.randomUUID();
+app.get("/api/knowledge", optionalAuth, (req, res) => {
+  try {
+    const knowledge = getKnowledge();
 
-        try {
-            const contentType =
-                String(
-                    req.headers["content-type"] || ""
-                );
+    const safe = knowledge.map(item => ({
+      id: item.id,
+      question: item.question,
+      category: item.category,
+      source: item.source,
+      confidence: item.confidence,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt
+    }));
 
-            if (
-                !contentType
-                    .toLowerCase()
-                    .startsWith("multipart/form-data")
-            ) {
-                return res.status(415).json({
-                    ok: false,
-                    error: "MULTIPART_REQUIRED",
-                    message:
-                        "Dosya yüklemek için multipart/form-data kullanın.",
-                    requestId
-                });
-            }
+    res.json({
+      success: true,
+      count: safe.length,
+      knowledge: safe
+    });
+  } catch (error) {
+    logError("knowledge_get_error", {
+      error: error.message
+    });
 
-            const boundaryMatch =
-                contentType.match(
-                    /boundary=(?:"([^"]+)"|([^;]+))/i
-                );
+    res.status(500).json({
+      success: false,
+      error: "Bilgi tabanı alınamadı."
+    });
+  }
+});
 
-            if (!boundaryMatch) {
-                return res.status(400).json({
-                    ok: false,
-                    error: "BOUNDARY_MISSING",
-                    message: "Multipart boundary bulunamadı.",
-                    requestId
-                });
-            }
+app.post("/api/knowledge", optionalAuth, (req, res) => {
+  try {
+    const question = cleanText(
+      req.body?.question,
+      2000
+    );
 
-            const boundary =
-                boundaryMatch[1] ||
-                boundaryMatch[2];
+    const answer = cleanText(
+      req.body?.answer,
+      6000
+    );
 
-            const rawBody =
-                await readRawRequestBody(
-                    req,
-                    MAX_UPLOAD_SIZE + 1024 * 1024
-                );
-
-            const parts =
-                parseMultipartBody(
-                    rawBody,
-                    boundary
-                );
-
-            const fileParts =
-                parts.filter(
-                    part => Boolean(part.filename)
-                );
-
-            if (!fileParts.length) {
-                return res.status(400).json({
-                    ok: false,
-                    error: "FILE_MISSING",
-                    message: "Dosya bulunamadı.",
-                    requestId
-                });
-            }
-
-            const uploadedFiles = [];
-
-            const userId =
-                req.user?.id || "guest";
-
-            const uploadDirectory =
-                getUserUploadDirectory(userId);
-
-            for (const part of fileParts) {
-                const originalName =
-                    safeFileName(
-                        part.filename
-                    );
-
-                if (
-                    isBlockedExtension(
-                        originalName
-                    )
-                ) {
-                    continue;
-                }
-
-                if (
-                    part.data.length >
-                    MAX_UPLOAD_SIZE
-                ) {
-                    continue;
-                }
-
-                const mimeType =
-                    part.headers[
-                        "content-type"
-                    ] ||
-                    detectMimeType(
-                        originalName
-                    );
-
-                const fileId =
-                    crypto.randomUUID();
-
-                const storedName =
-                    `${fileId}${getFileExtension(originalName)}`;
-
-                const targetPath =
-                    path.join(
-                        uploadDirectory,
-                        storedName
-                    );
-
-                fs.writeFileSync(
-                    targetPath,
-                    part.data
-                );
-
-                const record =
-                    createFileRecord({
-                        userId,
-                        originalName,
-                        storedName,
-                        path: targetPath,
-                        mimeType,
-                        size: part.data.length
-                    });
-
-                const files =
-                    getFileDatabase();
-
-                files.push(record);
-
-                saveFileDatabase(files);
-
-                uploadedFiles.push({
-                    id: record.id,
-                    name: record.originalName,
-                    originalName:
-                        record.originalName,
-                    size: record.size,
-                    sizeText:
-                        record.sizeText,
-                    mimeType:
-                        record.mimeType,
-                    createdAt:
-                        record.createdAt
-                });
-            }
-
-            if (!uploadedFiles.length) {
-                return res.status(400).json({
-                    ok: false,
-                    error: "UPLOAD_REJECTED",
-                    message:
-                        "Yüklenen dosyaların hiçbiri kabul edilmedi.",
-                    requestId
-                });
-            }
-
-            res.json({
-                ok: true,
-                message:
-                    "Dosya başarıyla yüklendi.",
-                files: uploadedFiles,
-                file: uploadedFiles[0],
-                requestId
-            });
-        } catch (error) {
-            logError(
-                "UPLOAD_ERROR",
-                error
-            );
-
-            if (
-                error.message ===
-                "UPLOAD_TOO_LARGE"
-            ) {
-                return res.status(413).json({
-                    ok: false,
-                    error: "UPLOAD_TOO_LARGE",
-                    message:
-                        "Dosya boyutu çok büyük.",
-                    requestId
-                });
-            }
-
-            res.status(500).json({
-                ok: false,
-                error: "UPLOAD_FAILED",
-                message:
-                    "Dosya yüklenirken hata oluştu.",
-                requestId
-            });
-        }
+    if (!question || !answer) {
+      return res.status(400).json({
+        success: false,
+        error: "Soru ve cevap gerekli."
+      });
     }
-);
 
+    const item = addKnowledge(
+      question,
+      answer,
+      {
+        category: req.body?.category,
+        keywords: req.body?.keywords,
+        source: "manual",
+        confidence: 1
+      }
+    );
 
-// ============================================================
-// 404 — FILE LIST
-// ============================================================
+    res.json({
+      success: true,
+      item
+    });
+  } catch (error) {
+    logError("knowledge_create_error", {
+      error: error.message
+    });
 
-app.get(
-    "/api/files",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
+    res.status(500).json({
+      success: false,
+      error: "Bilgi eklenemedi."
+    });
+  }
+});
 
-        const files =
-            getFileDatabase()
-                .filter(
-                    file =>
-                        file.userId === userId
-                )
-                .map(file => ({
-                    id: file.id,
-                    name: file.originalName,
-                    originalName:
-                        file.originalName,
-                    mimeType:
-                        file.mimeType,
-                    size:
-                        file.size,
-                    sizeText:
-                        file.sizeText,
-                    extension:
-                        file.extension,
-                    createdAt:
-                        file.createdAt,
-                    status:
-                        file.status
-                }));
+app.get("/api/knowledge/search", optionalAuth, (req, res) => {
+  try {
+    const query = cleanText(
+      req.query?.q,
+      1000
+    );
 
-        res.json({
-            ok: true,
-            files
-        });
+    if (!query) {
+      return res.json({
+        success: true,
+        results: []
+      });
     }
-);
+
+    const knowledge = getKnowledge();
+
+    const results = knowledge
+      .map(item => ({
+        item,
+        score: calculateKnowledgeScore(query, item)
+      }))
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 20);
+
+    res.json({
+      success: true,
+      query,
+      results
+    });
+  } catch (error) {
+    logError("knowledge_search_error", {
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      error: "Arama yapılamadı."
+    });
+  }
+});
 
 
 // ============================================================
-// 405 — FILE DETAIL
+// 3.5 — RESEARCH SYSTEM
 // ============================================================
 
-app.get(
-    "/api/files/:id",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
+const RESEARCH_CONFIG = {
+  timeout: 15000,
+  maxResults: 8,
+  maxTextLength: 12000
+};
 
-        const files =
-            getFileDatabase();
+function createResearchId() {
+  return createId("research");
+}
 
-        const file =
-            files.find(
-                item =>
-                    item.id === req.params.id &&
-                    item.userId === userId
-            );
+function cleanResearchText(text) {
+  return cleanText(
+    String(text || "")
+      .replace(/\s+/g, " ")
+      .trim(),
+    RESEARCH_CONFIG.maxTextLength
+  );
+}
 
-        if (!file) {
-            return res.status(404).json({
-                ok: false,
-                error: "FILE_NOT_FOUND"
-            });
-        }
+function extractUrls(text) {
+  if (!text) {
+    return [];
+  }
 
-        res.json({
-            ok: true,
-            file: {
-                id: file.id,
-                name: file.originalName,
-                mimeType: file.mimeType,
-                size: file.size,
-                sizeText: file.sizeText,
-                createdAt: file.createdAt,
-                status: file.status
-            }
-        });
+  const matches = String(text).match(
+    /https?:\/\/[^\s"'<>]+/gi
+  );
+
+  return Array.isArray(matches)
+    ? [...new Set(matches)]
+    : [];
+}
+
+function isValidHttpUrl(value) {
+  try {
+    const url = new URL(value);
+
+    return (
+      url.protocol === "http:" ||
+      url.protocol === "https:"
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function fetchResearchUrl(url) {
+  if (!isValidHttpUrl(url)) {
+    throw new Error("Geçersiz URL.");
+  }
+
+  const response = await fetchWithTimeout(
+    url,
+    {
+      headers: {
+        "User-Agent":
+          "TurkAIResearchBot/11.0"
+      }
+    },
+    RESEARCH_CONFIG.timeout
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `HTTP ${response.status}`
+    );
+  }
+
+  const contentType =
+    response.headers.get("content-type") || "";
+
+  const text = await response.text();
+
+  let clean = text
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  clean = cleanResearchText(clean);
+
+  return {
+    url,
+    contentType,
+    status: response.status,
+    text: clean
+  };
+}
+
+function createResearchRecord(userId, query) {
+  return {
+    id: createResearchId(),
+    userId,
+    query: cleanText(query, 2000),
+    status: "started",
+    results: [],
+    createdAt: nowISO(),
+    updatedAt: nowISO()
+  };
+}
+
+function getResearchRecords() {
+  return readJSONSafe(DB_FILES.research, []);
+}
+
+function saveResearchRecords(records) {
+  return writeJSONSafe(
+    DB_FILES.research,
+    Array.isArray(records) ? records : []
+  );
+}
+
+function saveResearchRecord(record) {
+  const records = getResearchRecords();
+
+  const index = records.findIndex(
+    item => item.id === record.id
+  );
+
+  if (index === -1) {
+    records.push(record);
+  } else {
+    records[index] = record;
+  }
+
+  saveResearchRecords(records);
+
+  return record;
+}
+
+function getUserResearch(userId) {
+  return getResearchRecords()
+    .filter(item => item.userId === userId)
+    .sort((a, b) => {
+      return String(b.createdAt || "").localeCompare(
+        String(a.createdAt || "")
+      );
+    })
+    .slice(0, 50);
+}
+
+
+// ============================================================
+// 3.6 — RESEARCH SEARCH ENGINE
+// ============================================================
+
+function buildSearchUrl(query) {
+  const encoded = encodeURIComponent(
+    cleanText(query, 500)
+  );
+
+  return `https://www.google.com/search?q=${encoded}`;
+}
+
+async function performResearch(query, userId) {
+  const cleanQuery = cleanText(query, 2000);
+
+  if (!cleanQuery) {
+    throw new Error("Araştırma sorgusu boş.");
+  }
+
+  const record = createResearchRecord(
+    userId,
+    cleanQuery
+  );
+
+  saveResearchRecord(record);
+
+  const urls = [];
+
+  if (isValidHttpUrl(cleanQuery)) {
+    urls.push(cleanQuery);
+  }
+
+  const directUrls = extractUrls(cleanQuery);
+
+  for (const url of directUrls) {
+    if (!urls.includes(url)) {
+      urls.push(url);
     }
-);
+  }
 
+  if (!urls.length) {
+    urls.push(buildSearchUrl(cleanQuery));
+  }
 
-// ============================================================
-// 406 — FILE DOWNLOAD
-// ============================================================
+  const results = [];
 
-app.get(
-    "/api/files/:id/download",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const files =
-            getFileDatabase();
-
-        const file =
-            files.find(
-                item =>
-                    item.id === req.params.id &&
-                    item.userId === userId
-            );
-
-        if (!file) {
-            return res.status(404).json({
-                ok: false,
-                error: "FILE_NOT_FOUND"
-            });
-        }
-
-        if (
-            !file.path ||
-            !fs.existsSync(file.path)
-        ) {
-            return res.status(404).json({
-                ok: false,
-                error: "FILE_STORAGE_MISSING"
-            });
-        }
-
-        res.download(
-            file.path,
-            file.originalName
-        );
-    }
-);
-
-
-// ============================================================
-// 407 — FILE DELETE
-// ============================================================
-
-app.delete(
-    "/api/files/:id",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const files =
-            getFileDatabase();
-
-        const index =
-            files.findIndex(
-                item =>
-                    item.id === req.params.id &&
-                    item.userId === userId
-            );
-
-        if (index === -1) {
-            return res.status(404).json({
-                ok: false,
-                error: "FILE_NOT_FOUND"
-            });
-        }
-
-        const file =
-            files[index];
-
-        try {
-            if (
-                file.path &&
-                fs.existsSync(file.path)
-            ) {
-                fs.unlinkSync(
-                    file.path
-                );
-            }
-        } catch (error) {
-            logWarn(
-                "FILE_DELETE_STORAGE_WARNING",
-                error.message
-            );
-        }
-
-        files.splice(index, 1);
-
-        saveFileDatabase(files);
-
-        res.json({
-            ok: true,
-            message:
-                "Dosya silindi.",
-            id: file.id
-        });
-    }
-);
-
-
-// ============================================================
-// 408 — FILE SEARCH
-// ============================================================
-
-app.get(
-    "/api/files/search",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const query =
-            cleanText(
-                req.query.q || ""
-            ).toLowerCase();
-
-        const files =
-            getFileDatabase()
-                .filter(
-                    file =>
-                        file.userId === userId
-                )
-                .filter(file => {
-                    if (!query) {
-                        return true;
-                    }
-
-                    return String(
-                        file.originalName
-                    )
-                        .toLowerCase()
-                        .includes(query);
-                });
-
-        res.json({
-            ok: true,
-            query,
-            count: files.length,
-            files
-        });
-    }
-);
-
-
-// ============================================================
-// 409 — RESEARCH HELPERS
-// ============================================================
-
-const RESEARCH_TIMEOUT =
-    20000;
-
-function normalizeResearchQuery(query) {
-    return cleanText(
-        query || ""
+  for (
+    const url of urls.slice(
+      0,
+      RESEARCH_CONFIG.maxResults
     )
-        .replace(/\s+/g, " ")
-        .slice(0, 500);
-}
+  ) {
+    try {
+      const result = await fetchResearchUrl(url);
 
-function buildResearchPrompt(query, sources) {
-    const sourceText =
-        sources
-            .slice(0, 8)
-            .map(
-                (item, index) =>
-                    `${index + 1}. ${item.title}\n${item.url}\n${item.content}`
-            )
-            .join("\n\n");
-
-    return [
-        "Aşağıdaki internet araştırma sonuçlarını Türkçe olarak özetle.",
-        "Kesin olmayan bilgileri kesin gerçek gibi sunma.",
-        "Kaynakları ayrı listele.",
-        "",
-        `SORU: ${query}`,
-        "",
-        "SONUÇLAR:",
-        sourceText
-    ].join("\n");
-}
-
-async function researchWithTavily(query) {
-    const apiKey =
-        process.env.TAVILY_API_KEY;
-
-    if (!apiKey) {
-        return null;
+      results.push({
+        url: result.url,
+        status: result.status,
+        contentType: result.contentType,
+        text: result.text
+      });
+    } catch (error) {
+      results.push({
+        url,
+        error: error.message
+      });
     }
+  }
 
-    const response =
-        await fetchWithTimeout(
-            "https://api.tavily.com/search",
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-                body: JSON.stringify({
-                    api_key: apiKey,
-                    query,
-                    search_depth: "advanced",
-                    include_answer: true,
-                    include_raw_content: false,
-                    max_results: 8
-                })
-            },
-            RESEARCH_TIMEOUT
-        );
+  record.status = "completed";
+  record.results = results;
+  record.updatedAt = nowISO();
 
-    if (!response.ok) {
-        throw new Error(
-            `TAVILY_HTTP_${response.status}`
-        );
-    }
+  saveResearchRecord(record);
 
-    const data =
-        await response.json();
-
-    return {
-        provider: "tavily",
-        answer:
-            data.answer || null,
-        sources:
-            Array.isArray(data.results)
-                ? data.results.map(item => ({
-                    title:
-                        item.title || "",
-                    url:
-                        item.url || "",
-                    content:
-                        item.content || ""
-                }))
-                : []
-    };
-}
-
-async function researchWithBingLikeProvider(query) {
-    const apiKey =
-        process.env.BRAVE_SEARCH_API_KEY;
-
-    if (!apiKey) {
-        return null;
-    }
-
-    const url =
-        `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}`;
-
-    const response =
-        await fetchWithTimeout(
-            url,
-            {
-                method: "GET",
-                headers: {
-                    "Accept":
-                        "application/json",
-                    "X-Subscription-Token":
-                        apiKey
-                }
-            },
-            RESEARCH_TIMEOUT
-        );
-
-    if (!response.ok) {
-        throw new Error(
-            `BRAVE_HTTP_${response.status}`
-        );
-    }
-
-    const data =
-        await response.json();
-
-    const results =
-        data?.web?.results || [];
-
-    return {
-        provider: "brave",
-        answer: null,
-        sources:
-            results
-                .slice(0, 8)
-                .map(item => ({
-                    title:
-                        item.title || "",
-                    url:
-                        item.url || "",
-                    content:
-                        item.description || ""
-                }))
-    };
-}
-
-async function performResearch(query) {
-    const cleanQuery =
-        normalizeResearchQuery(
-            query
-        );
-
-    if (!cleanQuery) {
-        return {
-            ok: false,
-            error: "QUERY_REQUIRED"
-        };
-    }
-
-    const providers = [
-        researchWithTavily,
-        researchWithBingLikeProvider
-    ];
-
-    for (const provider of providers) {
-        try {
-            const result =
-                await provider(
-                    cleanQuery
-                );
-
-            if (
-                result &&
-                result.sources &&
-                result.sources.length
-            ) {
-                return {
-                    ok: true,
-                    query: cleanQuery,
-                    provider:
-                        result.provider,
-                    directAnswer:
-                        result.answer,
-                    sources:
-                        result.sources
-                };
-            }
-        } catch (error) {
-            logWarn(
-                "RESEARCH_PROVIDER_ERROR",
-                error.message
-            );
-        }
-    }
-
-    return {
-        ok: false,
-        error:
-            "RESEARCH_PROVIDER_UNAVAILABLE",
-        query: cleanQuery
-    };
+  return record;
 }
 
 
 // ============================================================
-// 410 — RESEARCH ENDPOINT
+// 3.7 — RESEARCH API
+// ============================================================
+
+app.get("/api/research/history", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
+
+    res.json({
+      success: true,
+      history: getUserResearch(user.id)
+    });
+  } catch (error) {
+    logError("research_history_error", {
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      error: "Araştırma geçmişi alınamadı."
+    });
+  }
+});
+
+app.post("/api/research", optionalAuth, async (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
+
+    const query = cleanText(
+      req.body?.query ||
+      req.body?.message ||
+      req.body?.q,
+      2000
+    );
+
+    if (!query) {
+      return res.status(400).json({
+        success: false,
+        error: "Araştırma sorgusu gerekli."
+      });
+    }
+
+    const result = await performResearch(
+      query,
+      user.id
+    );
+
+    res.json({
+      success: true,
+      research: result
+    });
+  } catch (error) {
+    logError("research_error", {
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      error:
+        error.message ||
+        "Araştırma sırasında hata oluştu."
+    });
+  }
+});
+
+
+// ============================================================
+// 3.8 — FILE STORAGE
+// ============================================================
+
+function getFileRecords() {
+  return readJSONSafe(DB_FILES.files, []);
+}
+
+function saveFileRecords(files) {
+  return writeJSONSafe(
+    DB_FILES.files,
+    Array.isArray(files) ? files : []
+  );
+}
+
+function sanitizeFileName(name) {
+  return String(name || "file")
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
+    .replace(/\s+/g, "_")
+    .slice(0, 150);
+}
+
+function getUserFiles(userId) {
+  return getFileRecords()
+    .filter(file => file.userId === userId)
+    .sort((a, b) => {
+      return String(b.createdAt || "").localeCompare(
+        String(a.createdAt || "")
+      );
+    });
+}
+
+function registerFile({
+  userId,
+  originalName,
+  storedName,
+  mimeType,
+  size,
+  path: filePath
+}) {
+  const files = getFileRecords();
+
+  const record = {
+    id: createId("file"),
+    userId,
+    originalName: sanitizeFileName(originalName),
+    storedName: sanitizeFileName(storedName),
+    mimeType: cleanText(mimeType, 200),
+    size: Number(size || 0),
+    path: filePath,
+    createdAt: nowISO()
+  };
+
+  files.push(record);
+
+  saveFileRecords(files);
+
+  return record;
+}
+
+function deleteFileRecord(fileId, userId) {
+  const files = getFileRecords();
+
+  const index = files.findIndex(
+    file =>
+      file.id === fileId &&
+      file.userId === userId
+  );
+
+  if (index === -1) {
+    return null;
+  }
+
+  const file = files[index];
+
+  files.splice(index, 1);
+  saveFileRecords(files);
+
+  return file;
+}
+
+
+// ============================================================
+// 3.9 — SIMPLE UPLOAD ENDPOINT
 // ============================================================
 
 app.post(
-    "/api/research",
-    async (req, res) => {
-        const requestId =
-            req.requestId ||
-            crypto.randomUUID();
+  "/api/upload",
+  optionalAuth,
+  async (req, res) => {
+    try {
+      const user = req.user || getGuestUser();
 
-        try {
-            const query =
-                normalizeResearchQuery(
-                    req.body?.query ||
-                    req.body?.message ||
-                    req.body?.q
-                );
+      const rawName = cleanText(
+        req.body?.name ||
+        req.body?.fileName ||
+        "upload.txt",
+        150
+      );
 
-            if (!query) {
-                return res.status(400).json({
-                    ok: false,
-                    error: "QUERY_REQUIRED",
-                    requestId
-                });
-            }
+      const content = String(
+        req.body?.content || ""
+      );
 
-            const result =
-                await performResearch(
-                    query
-                );
+      if (!content) {
+        return res.status(400).json({
+          success: false,
+          error: "Dosya içeriği boş."
+        });
+      }
 
-            if (!result.ok) {
-                return res.status(503).json({
-                    ...result,
-                    message:
-                        "Araştırma servisi şu anda kullanılamıyor.",
-                    requestId
-                });
-            }
+      const safeName =
+        `${Date.now()}-${createId("f")}-${sanitizeFileName(rawName)}`;
 
-            res.json({
-                ...result,
-                requestId,
-                completedAt: nowISO()
-            });
-        } catch (error) {
-            logError(
-                "RESEARCH_ROUTE_ERROR",
-                error
-            );
+      const targetPath = path.join(
+        UPLOADS_DIR,
+        safeName
+      );
 
-            res.status(500).json({
-                ok: false,
-                error: "RESEARCH_FAILED",
-                requestId
-            });
+      fs.writeFileSync(
+        targetPath,
+        content,
+        "utf8"
+      );
+
+      const record = registerFile({
+        userId: user.id,
+        originalName: rawName,
+        storedName: safeName,
+        mimeType:
+          req.body?.mimeType ||
+          "text/plain",
+        size: Buffer.byteLength(
+          content,
+          "utf8"
+        ),
+        path: targetPath
+      });
+
+      res.json({
+        success: true,
+        file: {
+          id: record.id,
+          name: record.originalName,
+          size: record.size,
+          mimeType: record.mimeType,
+          createdAt: record.createdAt
         }
+      });
+    } catch (error) {
+      logError("upload_error", {
+        error: error.message
+      });
+
+      res.status(500).json({
+        success: false,
+        error: "Dosya yüklenemedi."
+      });
     }
+  }
 );
 
 
 // ============================================================
-// 411 — RESEARCH GET
+// 3.10 — FILE API
 // ============================================================
 
-app.get(
-    "/api/research",
-    async (req, res) => {
-        const query =
-            normalizeResearchQuery(
-                req.query.q ||
-                req.query.query
-            );
+app.get("/api/files", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
 
-        if (!query) {
-            return res.status(400).json({
-                ok: false,
-                error: "QUERY_REQUIRED"
-            });
-        }
+    const files = getUserFiles(user.id)
+      .map(file => ({
+        id: file.id,
+        name: file.originalName,
+        size: file.size,
+        mimeType: file.mimeType,
+        createdAt: file.createdAt
+      }));
 
-        try {
-            const result =
-                await performResearch(
-                    query
-                );
+    res.json({
+      success: true,
+      files
+    });
+  } catch (error) {
+    logError("files_get_error", {
+      error: error.message
+    });
 
-            res.json(result);
-        } catch (error) {
-            logError(
-                "RESEARCH_GET_ERROR",
-                error
-            );
+    res.status(500).json({
+      success: false,
+      error: "Dosyalar alınamadı."
+    });
+  }
+});
 
-            res.status(500).json({
-                ok: false,
-                error: "RESEARCH_FAILED"
-            });
-        }
-    }
-);
+app.delete("/api/files/:id", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
 
-
-// ============================================================
-// 412 — WEATHER HELPERS
-// ============================================================
-
-async function geocodeCity(city) {
-    const name =
-        cleanText(city || "");
-
-    if (!name) {
-        return null;
-    }
-
-    const url =
-        "https://geocoding-api.open-meteo.com/v1/search" +
-        `?name=${encodeURIComponent(name)}` +
-        "&count=1" +
-        "&language=tr" +
-        "&format=json";
-
-    const response =
-        await fetchWithTimeout(
-            url,
-            {
-                method: "GET"
-            },
-            10000
-        );
-
-    if (!response.ok) {
-        throw new Error(
-            `GEOCODING_HTTP_${response.status}`
-        );
-    }
-
-    const data =
-        await response.json();
-
-    if (
-        !data.results ||
-        !data.results.length
-    ) {
-        return null;
-    }
-
-    return data.results[0];
-}
-
-async function getWeatherData(city) {
-    const location =
-        await geocodeCity(city);
-
-    if (!location) {
-        return {
-            ok: false,
-            error: "CITY_NOT_FOUND"
-        };
-    }
-
-    const url =
-        "https://api.open-meteo.com/v1/forecast" +
-        `?latitude=${encodeURIComponent(location.latitude)}` +
-        `&longitude=${encodeURIComponent(location.longitude)}` +
-        "&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,weather_code,wind_speed_10m" +
-        "&hourly=temperature_2m,precipitation_probability,weather_code" +
-        "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset" +
-        "&timezone=auto";
-
-    const response =
-        await fetchWithTimeout(
-            url,
-            {
-                method: "GET"
-            },
-            10000
-        );
-
-    if (!response.ok) {
-        throw new Error(
-            `WEATHER_HTTP_${response.status}`
-        );
-    }
-
-    const data =
-        await response.json();
-
-    return {
-        ok: true,
-        location: {
-            name:
-                location.name,
-            country:
-                location.country,
-            latitude:
-                location.latitude,
-            longitude:
-                location.longitude,
-            timezone:
-                location.timezone
-        },
-        current:
-            data.current || null,
-        hourly:
-            data.hourly || null,
-        daily:
-            data.daily || null,
-        fetchedAt:
-            nowISO()
-    };
-}
-
-
-// ============================================================
-// 413 — WEATHER ENDPOINT
-// ============================================================
-
-app.get(
-    "/api/weather",
-    async (req, res) => {
-        const city =
-            cleanText(
-                req.query.city ||
-                req.query.q ||
-                "Konya"
-            );
-
-        try {
-            const result =
-                await getWeatherData(
-                    city
-                );
-
-            if (!result.ok) {
-                return res.status(404).json(
-                    result
-                );
-            }
-
-            res.json(result);
-        } catch (error) {
-            logError(
-                "WEATHER_ERROR",
-                error
-            );
-
-            res.status(503).json({
-                ok: false,
-                error: "WEATHER_UNAVAILABLE",
-                message:
-                    "Hava durumu servisine ulaşılamadı."
-            });
-        }
-    }
-);
-
-
-// ============================================================
-// 414 — CURRENCY HELPERS
-// ============================================================
-
-async function getCurrencyRates(base) {
-    const normalizedBase =
-        cleanText(
-            base || "USD"
-        )
-            .toUpperCase()
-            .slice(0, 10);
-
-    const url =
-        `https://open.er-api.com/v6/latest/${encodeURIComponent(normalizedBase)}`;
-
-    const response =
-        await fetchWithTimeout(
-            url,
-            {
-                method: "GET"
-            },
-            10000
-        );
-
-    if (!response.ok) {
-        throw new Error(
-            `CURRENCY_HTTP_${response.status}`
-        );
-    }
-
-    const data =
-        await response.json();
-
-    if (
-        data.result !== "success"
-    ) {
-        throw new Error(
-            "CURRENCY_API_FAILED"
-        );
-    }
-
-    return {
-        ok: true,
-        base:
-            data.base_code,
-        rates:
-            data.rates || {},
-        timeLastUpdate:
-            data.time_last_update_utc,
-        timeNextUpdate:
-            data.time_next_update_utc,
-        provider:
-            "open.er-api.com"
-    };
-}
-
-
-// ============================================================
-// 415 — CURRENCY ENDPOINT
-// ============================================================
-
-app.get(
-    "/api/currency",
-    async (req, res) => {
-        const base =
-            cleanText(
-                req.query.base ||
-                "USD"
-            ).toUpperCase();
-
-        try {
-            const result =
-                await getCurrencyRates(
-                    base
-                );
-
-            const selected = {};
-
-            const wanted = [
-                "TRY",
-                "USD",
-                "EUR",
-                "GBP",
-                "JPY",
-                "CHF",
-                "CAD",
-                "AUD"
-            ];
-
-            for (const code of wanted) {
-                if (
-                    result.rates[code] !==
-                    undefined
-                ) {
-                    selected[code] =
-                        result.rates[code];
-                }
-            }
-
-            res.json({
-                ...result,
-                selected
-            });
-        } catch (error) {
-            logError(
-                "CURRENCY_ERROR",
-                error
-            );
-
-            res.status(503).json({
-                ok: false,
-                error:
-                    "CURRENCY_UNAVAILABLE"
-            });
-        }
-    }
-);
-
-
-// ============================================================
-// 416 — PROJECT DATABASE
-// ============================================================
-
-const PROJECTS_DB_FILE =
-    path.join(
-        DB_DIR,
-        "projects.json"
+    const record = deleteFileRecord(
+      req.params.id,
+      user.id
     );
 
-const NOTIFICATIONS_DB_FILE =
-    path.join(
-        DB_DIR,
-        "notifications.json"
-    );
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        error: "Dosya bulunamadı."
+      });
+    }
+
+    try {
+      if (
+        record.path &&
+        fs.existsSync(record.path)
+      ) {
+        fs.unlinkSync(record.path);
+      }
+    } catch (fileError) {
+      logWarn("file_delete_physical_error", {
+        error: fileError.message
+      });
+    }
+
+    res.json({
+      success: true
+    });
+  } catch (error) {
+    logError("file_delete_error", {
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      error: "Dosya silinemedi."
+    });
+  }
+});
+
+
+// ============================================================
+// 3.11 — PROJECT SYSTEM
+// ============================================================
 
 function getProjects() {
-    return readJSONSafe(
-        PROJECTS_DB_FILE,
-        []
-    );
+  return readJSONSafe(
+    DB_FILES.projects,
+    []
+  );
 }
 
 function saveProjects(projects) {
-    writeJSONSafe(
-        PROJECTS_DB_FILE,
-        Array.isArray(projects)
-            ? projects
-            : []
-    );
+  return writeJSONSafe(
+    DB_FILES.projects,
+    Array.isArray(projects) ? projects : []
+  );
 }
 
-function createProjectRecord(data) {
-    return {
-        id: crypto.randomUUID(),
-        userId:
-            data.userId || "guest",
-        name:
-            cleanText(
-                data.name ||
-                "Yeni Proje"
-            ).slice(0, 120),
-        description:
-            cleanText(
-                data.description || ""
-            ).slice(0, 1000),
-        language:
-            cleanText(
-                data.language ||
-                "javascript"
-            ).slice(0, 40),
-        code:
-            String(
-                data.code || ""
-            ).slice(0, 500000),
-        status:
-            "active",
-        createdAt:
-            nowISO(),
-        updatedAt:
-            nowISO()
-    };
+function getUserProjects(userId) {
+  return getProjects()
+    .filter(project => project.userId === userId)
+    .sort((a, b) => {
+      return String(b.updatedAt || "").localeCompare(
+        String(a.updatedAt || "")
+      );
+    });
 }
 
+function createProject(userId, data = {}) {
+  const projects = getProjects();
 
-// ============================================================
-// 417 — PROJECT LIST
-// ============================================================
-
-app.get(
-    "/api/projects",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const projects =
-            getProjects()
-                .filter(
-                    project =>
-                        project.userId === userId
-                );
-
-        res.json({
-            ok: true,
-            projects,
-            count:
-                projects.length
-        });
-    }
-);
-
-
-// ============================================================
-// 418 — PROJECT CREATE
-// ============================================================
-
-app.post(
-    "/api/projects",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const name =
-            cleanText(
-                req.body?.name ||
-                "Yeni Proje"
-            );
-
-        if (!name) {
-            return res.status(400).json({
-                ok: false,
-                error: "PROJECT_NAME_REQUIRED"
-            });
-        }
-
-        const projects =
-            getProjects();
-
-        const project =
-            createProjectRecord({
-                ...req.body,
-                userId,
-                name
-            });
-
-        projects.push(project);
-
-        saveProjects(
-            projects
-        );
-
-        res.status(201).json({
-            ok: true,
-            project
-        });
-    }
-);
-
-
-// ============================================================
-// 419 — PROJECT DETAIL
-// ============================================================
-
-app.get(
-    "/api/projects/:id",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const project =
-            getProjects().find(
-                item =>
-                    item.id ===
-                        req.params.id &&
-                    item.userId === userId
-            );
-
-        if (!project) {
-            return res.status(404).json({
-                ok: false,
-                error:
-                    "PROJECT_NOT_FOUND"
-            });
-        }
-
-        res.json({
-            ok: true,
-            project
-        });
-    }
-);
-
-
-// ============================================================
-// 420 — PROJECT UPDATE
-// ============================================================
-
-app.patch(
-    "/api/projects/:id",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const projects =
-            getProjects();
-
-        const index =
-            projects.findIndex(
-                project =>
-                    project.id ===
-                        req.params.id &&
-                    project.userId === userId
-            );
-
-        if (index === -1) {
-            return res.status(404).json({
-                ok: false,
-                error:
-                    "PROJECT_NOT_FOUND"
-            });
-        }
-
-        const current =
-            projects[index];
-
-        if (
-            req.body.name !==
-            undefined
-        ) {
-            current.name =
-                cleanText(
-                    req.body.name
-                ).slice(0, 120);
-        }
-
-        if (
-            req.body.description !==
-            undefined
-        ) {
-            current.description =
-                cleanText(
-                    req.body.description
-                ).slice(0, 1000);
-        }
-
-        if (
-            req.body.language !==
-            undefined
-        ) {
-            current.language =
-                cleanText(
-                    req.body.language
-                ).slice(0, 40);
-        }
-
-        if (
-            req.body.code !==
-            undefined
-        ) {
-            current.code =
-                String(
-                    req.body.code
-                ).slice(0, 500000);
-        }
-
-        current.updatedAt =
-            nowISO();
-
-        projects[index] =
-            current;
-
-        saveProjects(
-            projects
-        );
-
-        res.json({
-            ok: true,
-            project: current
-        });
-    }
-);
-
-
-// ============================================================
-// 421 — PROJECT DELETE
-// ============================================================
-
-app.delete(
-    "/api/projects/:id",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const projects =
-            getProjects();
-
-        const index =
-            projects.findIndex(
-                project =>
-                    project.id ===
-                        req.params.id &&
-                    project.userId === userId
-            );
-
-        if (index === -1) {
-            return res.status(404).json({
-                ok: false,
-                error:
-                    "PROJECT_NOT_FOUND"
-            });
-        }
-
-        const deleted =
-            projects.splice(
-                index,
-                1
-            )[0];
-
-        saveProjects(
-            projects
-        );
-
-        res.json({
-            ok: true,
-            deletedId:
-                deleted.id
-        });
-    }
-);
-
-
-// ============================================================
-// 422 — PROJECT SEARCH
-// ============================================================
-
-app.get(
-    "/api/projects/search",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const query =
-            cleanText(
-                req.query.q || ""
-            ).toLowerCase();
-
-        const projects =
-            getProjects()
-                .filter(
-                    project =>
-                        project.userId === userId
-                )
-                .filter(project => {
-                    if (!query) {
-                        return true;
-                    }
-
-                    return [
-                        project.name,
-                        project.description,
-                        project.language
-                    ]
-                        .join(" ")
-                        .toLowerCase()
-                        .includes(query);
-                });
-
-        res.json({
-            ok: true,
-            projects
-        });
-    }
-);
-
-
-// ============================================================
-// 423 — NOTIFICATION HELPERS
-// ============================================================
-
-function getNotifications() {
-    return readJSONSafe(
-        NOTIFICATIONS_DB_FILE,
-        []
-    );
-}
-
-function saveNotifications(
-    notifications
-) {
-    writeJSONSafe(
-        NOTIFICATIONS_DB_FILE,
-        Array.isArray(
-            notifications
-        )
-            ? notifications
-            : []
-    );
-}
-
-function createNotification(
+  const project = {
+    id: createId("project"),
     userId,
-    data
-) {
-    return {
-        id: crypto.randomUUID(),
-        userId:
-            userId || "guest",
-        type:
-            data.type || "info",
-        title:
-            cleanText(
-                data.title ||
-                "TürkAI"
-            ).slice(0, 160),
-        message:
-            cleanText(
-                data.message || ""
-            ).slice(0, 1000),
-        read: false,
-        createdAt:
-            nowISO()
-    };
+    name: cleanText(
+      data.name || "Yeni Proje",
+      120
+    ),
+    description: cleanText(
+      data.description || "",
+      1000
+    ),
+    language: cleanText(
+      data.language || "javascript",
+      50
+    ),
+    code: String(
+      data.code || ""
+    ).slice(0, 500000),
+    files: Array.isArray(data.files)
+      ? data.files.slice(0, 100)
+      : [],
+    createdAt: nowISO(),
+    updatedAt: nowISO()
+  };
+
+  projects.push(project);
+  saveProjects(projects);
+
+  return project;
 }
 
+function findProject(projectId, userId) {
+  return getProjects().find(
+    project =>
+      project.id === projectId &&
+      project.userId === userId
+  ) || null;
+}
 
-// ============================================================
-// 424 — NOTIFICATION LIST
-// ============================================================
+function updateProject(projectId, userId, data) {
+  const projects = getProjects();
 
-app.get(
-    "/api/notifications",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
+  const project = projects.find(
+    item =>
+      item.id === projectId &&
+      item.userId === userId
+  );
 
-        const notifications =
-            getNotifications()
-                .filter(
-                    item =>
-                        item.userId === userId
-                )
-                .sort(
-                    (a, b) =>
-                        String(
-                            b.createdAt
-                        ).localeCompare(
-                            String(
-                                a.createdAt
-                            )
-                        )
-                )
-                .slice(0, 100);
+  if (!project) {
+    return null;
+  }
 
-        res.json({
-            ok: true,
-            notifications,
-            unread:
-                notifications.filter(
-                    item =>
-                        !item.read
-                ).length
-        });
-    }
-);
-
-
-// ============================================================
-// 425 — NOTIFICATION CREATE
-// ============================================================
-
-app.post(
-    "/api/notifications",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const notification =
-            createNotification(
-                userId,
-                req.body || {}
-            );
-
-        const notifications =
-            getNotifications();
-
-        notifications.push(
-            notification
-        );
-
-        saveNotifications(
-            notifications
-        );
-
-        res.status(201).json({
-            ok: true,
-            notification
-        });
-    }
-);
-
-
-// ============================================================
-// 426 — NOTIFICATION READ
-// ============================================================
-
-app.patch(
-    "/api/notifications/:id/read",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const notifications =
-            getNotifications();
-
-        const notification =
-            notifications.find(
-                item =>
-                    item.id ===
-                        req.params.id &&
-                    item.userId === userId
-            );
-
-        if (!notification) {
-            return res.status(404).json({
-                ok: false,
-                error:
-                    "NOTIFICATION_NOT_FOUND"
-            });
-        }
-
-        notification.read =
-            true;
-
-        saveNotifications(
-            notifications
-        );
-
-        res.json({
-            ok: true,
-            notification
-        });
-    }
-);
-
-
-// ============================================================
-// 427 — NOTIFICATION READ ALL
-// ============================================================
-
-app.post(
-    "/api/notifications/read-all",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const notifications =
-            getNotifications();
-
-        let changed = 0;
-
-        for (const item of notifications) {
-            if (
-                item.userId === userId &&
-                !item.read
-            ) {
-                item.read = true;
-                changed++;
-            }
-        }
-
-        saveNotifications(
-            notifications
-        );
-
-        res.json({
-            ok: true,
-            changed
-        });
-    }
-);
-
-
-// ============================================================
-// 428 — FEEDBACK
-// ============================================================
-
-app.post(
-    "/api/feedback",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const rating =
-            Number(
-                req.body?.rating
-            );
-
-        const message =
-            cleanText(
-                req.body?.message ||
-                req.body?.text ||
-                ""
-            ).slice(0, 3000);
-
-        if (
-            !message &&
-            !Number.isFinite(rating)
-        ) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "FEEDBACK_REQUIRED"
-            });
-        }
-
-        const feedback =
-            readJSONSafe(
-                DB_FILES.feedback,
-                []
-            );
-
-        const record = {
-            id: crypto.randomUUID(),
-            userId,
-            rating:
-                Number.isFinite(rating)
-                    ? Math.max(
-                        1,
-                        Math.min(
-                            5,
-                            rating
-                        )
-                    )
-                    : null,
-            message,
-            page:
-                cleanText(
-                    req.body?.page ||
-                    ""
-                ).slice(0, 300),
-            createdAt:
-                nowISO()
-        };
-
-        feedback.push(
-            record
-        );
-
-        writeJSONSafe(
-            DB_FILES.feedback,
-            feedback
-        );
-
-        res.status(201).json({
-            ok: true,
-            feedback: record
-        });
-    }
-);
-
-
-// ============================================================
-// 429 — USER FEEDBACK
-// ============================================================
-
-app.get(
-    "/api/feedback",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const feedback =
-            readJSONSafe(
-                DB_FILES.feedback,
-                []
-            )
-                .filter(
-                    item =>
-                        item.userId === userId
-                )
-                .slice(-100);
-
-        res.json({
-            ok: true,
-            feedback
-        });
-    }
-);
-
-
-// ============================================================
-// 430 — ADMIN HELPERS
-// ============================================================
-
-function getAdminCode() {
-    return String(
-        process.env.TURKAI_PRO_CODE ||
-        ""
+  if (data.name !== undefined) {
+    project.name = cleanText(
+      data.name,
+      120
     );
-}
+  }
 
-function getAuthorizationToken(req) {
-    const header =
-        String(
-            req.headers.authorization ||
-            ""
-        );
-
-    if (
-        header
-            .toLowerCase()
-            .startsWith("bearer ")
-    ) {
-        return header.slice(7).trim();
-    }
-
-    return "";
-}
-
-function isAdminRequest(req) {
-    if (
-        req.user &&
-        (
-            req.user.role === "admin" ||
-            req.user.role === "developer"
-        )
-    ) {
-        return true;
-    }
-
-    const adminHeader =
-        String(
-            req.headers[
-                "x-admin-code"
-            ] || ""
-        );
-
-    const bearer =
-        getAuthorizationToken(
-            req
-        );
-
-    const configured =
-        getAdminCode();
-
-    if (!configured) {
-        return false;
-    }
-
-    return (
-        adminHeader === configured ||
-        bearer === configured
+  if (data.description !== undefined) {
+    project.description = cleanText(
+      data.description,
+      1000
     );
-}
+  }
 
-function requireAdmin(req, res, next) {
-    if (!isAdminRequest(req)) {
-        return res.status(403).json({
-            ok: false,
-            error: "ADMIN_REQUIRED",
-            message:
-                "Bu işlem yönetici yetkisi gerektiriyor."
-        });
-    }
-
-    next();
-}
-
-
-// ============================================================
-// 431 — ADMIN STATS
-// ============================================================
-
-app.get(
-    "/api/admin/stats",
-    requireAdmin,
-    (req, res) => {
-        const users =
-            readJSONSafe(
-                DB_FILES.users,
-                []
-            );
-
-        const chats =
-            readJSONSafe(
-                DB_FILES.chats,
-                []
-            );
-
-        const messages =
-            readJSONSafe(
-                DB_FILES.messages,
-                []
-            );
-
-        const memories =
-            readJSONSafe(
-                DB_FILES.memories,
-                []
-            );
-
-        const files =
-            readJSONSafe(
-                DB_FILES.files,
-                []
-            );
-
-        const feedback =
-            readJSONSafe(
-                DB_FILES.feedback,
-                []
-            );
-
-        const usage =
-            readJSONSafe(
-                DB_FILES.usage,
-                {}
-            );
-
-        res.json({
-            ok: true,
-            stats: {
-                users:
-                    users.length,
-                chats:
-                    chats.length,
-                messages:
-                    messages.length,
-                memories:
-                    memories.length,
-                files:
-                    files.length,
-                feedback:
-                    feedback.length,
-                usageEntries:
-                    Object.keys(
-                        usage
-                    ).length,
-                uptime:
-                    process.uptime(),
-                memory:
-                    process.memoryUsage(),
-                node:
-                    process.version,
-                platform:
-                    process.platform,
-                version:
-                    APP_VERSION
-            }
-        });
-    }
-);
-
-
-// ============================================================
-// 432 — ADMIN USERS
-// ============================================================
-
-app.get(
-    "/api/admin/users",
-    requireAdmin,
-    (req, res) => {
-        const users =
-            readJSONSafe(
-                DB_FILES.users,
-                []
-            );
-
-        const safeUsers =
-            users.map(
-                user => ({
-                    id:
-                        user.id,
-                    name:
-                        user.name,
-                    email:
-                        user.email,
-                    role:
-                        user.role ||
-                        "user",
-                    plan:
-                        user.plan ||
-                        "free",
-                    createdAt:
-                        user.createdAt,
-                    updatedAt:
-                        user.updatedAt
-                })
-            );
-
-        res.json({
-            ok: true,
-            users:
-                safeUsers,
-            count:
-                safeUsers.length
-        });
-    }
-);
-
-
-// ============================================================
-// 433 — ADMIN FILES
-// ============================================================
-
-app.get(
-    "/api/admin/files",
-    requireAdmin,
-    (req, res) => {
-        const files =
-            getFileDatabase();
-
-        res.json({
-            ok: true,
-            files,
-            count:
-                files.length
-        });
-    }
-);
-
-
-// ============================================================
-// 434 — ADMIN FEEDBACK
-// ============================================================
-
-app.get(
-    "/api/admin/feedback",
-    requireAdmin,
-    (req, res) => {
-        const feedback =
-            readJSONSafe(
-                DB_FILES.feedback,
-                []
-            );
-
-        res.json({
-            ok: true,
-            feedback,
-            count:
-                feedback.length
-        });
-    }
-);
-
-
-// ============================================================
-// 435 — ADMIN LOG
-// ============================================================
-
-app.get(
-    "/api/admin/logs",
-    requireAdmin,
-    (req, res) => {
-        let files = [];
-
-        try {
-            files =
-                fs.readdirSync(
-                    LOGS_DIR
-                );
-        } catch {
-            files = [];
-        }
-
-        res.json({
-            ok: true,
-            logs:
-                files.slice(-100)
-        });
-    }
-);
-
-
-// ============================================================
-// 436 — SECURITY STATUS
-// ============================================================
-
-function getSecurityStatus() {
-    return {
-        helmet: true,
-        cors: true,
-        rateLimit:
-            true,
-        requestId:
-            true,
-        uploadLimit:
-            MAX_UPLOAD_SIZE,
-        blockedExtensions:
-            BLOCKED_EXTENSIONS,
-        production:
-            IS_PRODUCTION,
-        node:
-            process.version,
-        uptime:
-            process.uptime()
-    };
-}
-
-app.get(
-    "/api/security/status",
-    (req, res) => {
-        res.json({
-            ok: true,
-            security:
-                getSecurityStatus()
-        });
-    }
-);
-
-
-// ============================================================
-// 437 — SECURITY EVENTS
-// ============================================================
-
-function getSecurityEvents() {
-    return readJSONSafe(
-        DB_FILES.security,
-        []
+  if (data.language !== undefined) {
+    project.language = cleanText(
+      data.language,
+      50
     );
+  }
+
+  if (data.code !== undefined) {
+    project.code = String(
+      data.code
+    ).slice(0, 500000);
+  }
+
+  if (Array.isArray(data.files)) {
+    project.files = data.files.slice(0, 100);
+  }
+
+  project.updatedAt = nowISO();
+
+  saveProjects(projects);
+
+  return project;
 }
 
-function saveSecurityEvents(
-    events
-) {
-    writeJSONSafe(
-        DB_FILES.security,
-        events
-    );
+function deleteProject(projectId, userId) {
+  const projects = getProjects();
+
+  const index = projects.findIndex(
+    project =>
+      project.id === projectId &&
+      project.userId === userId
+  );
+
+  if (index === -1) {
+    return false;
+  }
+
+  projects.splice(index, 1);
+
+  saveProjects(projects);
+
+  return true;
 }
 
-function recordSecurityEvent(
-    type,
-    data
-) {
-    const events =
-        getSecurityEvents();
 
-    events.push({
-        id:
-            crypto.randomUUID(),
-        type,
-        ip:
-            data.ip || null,
-        userId:
-            data.userId || null,
-        path:
-            data.path || null,
-        method:
-            data.method || null,
-        message:
-            data.message || "",
-        createdAt:
-            nowISO()
+// ============================================================
+// 3.12 — PROJECT API
+// ============================================================
+
+app.get("/api/projects", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
+
+    res.json({
+      success: true,
+      projects: getUserProjects(user.id)
+    });
+  } catch (error) {
+    logError("projects_get_error", {
+      error: error.message
     });
 
-    if (events.length > 5000) {
-        events.splice(
-            0,
-            events.length - 5000
-        );
+    res.status(500).json({
+      success: false,
+      error: "Projeler alınamadı."
+    });
+  }
+});
+
+app.post("/api/projects", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
+
+    const project = createProject(
+      user.id,
+      req.body || {}
+    );
+
+    res.json({
+      success: true,
+      project
+    });
+  } catch (error) {
+    logError("project_create_error", {
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      error: "Proje oluşturulamadı."
+    });
+  }
+});
+
+app.get("/api/projects/:id", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
+
+    const project = findProject(
+      req.params.id,
+      user.id
+    );
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        error: "Proje bulunamadı."
+      });
     }
 
-    saveSecurityEvents(
-        events
+    res.json({
+      success: true,
+      project
+    });
+  } catch (error) {
+    logError("project_get_error", {
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      error: "Proje alınamadı."
+    });
+  }
+});
+
+app.put("/api/projects/:id", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
+
+    const project = updateProject(
+      req.params.id,
+      user.id,
+      req.body || {}
     );
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        error: "Proje bulunamadı."
+      });
+    }
+
+    res.json({
+      success: true,
+      project
+    });
+  } catch (error) {
+    logError("project_update_error", {
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      error: "Proje güncellenemedi."
+    });
+  }
+});
+
+app.delete("/api/projects/:id", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
+
+    const deleted = deleteProject(
+      req.params.id,
+      user.id
+    );
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: "Proje bulunamadı."
+      });
+    }
+
+    res.json({
+      success: true
+    });
+  } catch (error) {
+    logError("project_delete_error", {
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      error: "Proje silinemedi."
+    });
+  }
+});
+
+
+// ============================================================
+// 3.13 — AI CONTEXT BUILDER
+// ============================================================
+
+function buildUserContext(userId) {
+  const memoryContext =
+    buildMemoryContext(userId);
+
+  if (!memoryContext) {
+    return "";
+  }
+
+  return [
+    "Kullanıcı hakkında hatırlanan bilgiler:",
+    memoryContext
+  ].join("\n");
+}
+
+function buildEnhancedAIContext(userId, message) {
+  const parts = [];
+
+  const memory = buildUserContext(userId);
+
+  if (memory) {
+    parts.push(memory);
+  }
+
+  const knowledge = findKnowledgeAnswer(message);
+
+  if (knowledge) {
+    parts.push(
+      [
+        "Bilgi tabanından ilgili bilgi:",
+        knowledge.answer
+      ].join("\n")
+    );
+  }
+
+  return parts.join("\n\n");
 }
 
 
 // ============================================================
-// 438 — SECURITY EVENT LIST
+// 3.14 — CHAT MEMORY ENTEGRASYONU
 // ============================================================
 
-app.get(
-    "/api/security/events",
-    requireAdmin,
-    (req, res) => {
-        const events =
-            getSecurityEvents();
-
-        res.json({
-            ok: true,
-            events:
-                events.slice(-200)
-        });
-    }
-);
-
-
-// ============================================================
-// 439 — SYSTEM INFO
-// ============================================================
-
-app.get(
-    "/api/system",
-    (req, res) => {
-        res.json({
-            ok: true,
-            app: {
-                name:
-                    APP_NAME,
-                version:
-                    APP_VERSION,
-                environment:
-                    NODE_ENV
-            },
-            runtime: {
-                node:
-                    process.version,
-                platform:
-                    process.platform,
-                arch:
-                    process.arch,
-                uptime:
-                    process.uptime()
-            },
-            memory:
-                process.memoryUsage(),
-            time:
-                nowISO()
-        });
-    }
-);
-
-
-// ============================================================
-// 440 — HEALTH CHECK
-// ============================================================
-
-app.get(
-    "/api/health",
-    (req, res) => {
-        const memory =
-            process.memoryUsage();
-
-        const health = {
-            ok: true,
-            status: "healthy",
-            service:
-                APP_NAME,
-            version:
-                APP_VERSION,
-            timestamp:
-                nowISO(),
-            uptime:
-                process.uptime(),
-            node:
-                process.version,
-            memory: {
-                rss:
-                    memory.rss,
-                heapUsed:
-                    memory.heapUsed,
-                heapTotal:
-                    memory.heapTotal,
-                external:
-                    memory.external
-            },
-            ai: {
-                groq:
-                    AI_STATUS.groq,
-                cerebras:
-                    AI_STATUS.cerebras,
-                openrouter:
-                    AI_STATUS.openrouter,
-                gemini:
-                    AI_STATUS.gemini
-            }
-        };
-
-        res.status(200).json(
-            health
-        );
-    }
-);
-
-
-// ============================================================
-// 441 — PING
-// ============================================================
-
-app.get(
-    "/api/ping",
-    (req, res) => {
-        res.json({
-            ok: true,
-            pong: true,
-            timestamp:
-                nowISO()
-        });
-    }
-);
-
-
-// ============================================================
-// 442 — VERSION
-// ============================================================
-
-app.get(
-    "/api/version",
-    (req, res) => {
-        res.json({
-            ok: true,
-            name:
-                APP_NAME,
-            version:
-                APP_VERSION,
-            node:
-                process.version,
-            api:
-                "v1"
-        });
-    }
-);
-
-
-// ============================================================
-// 443 — DEBUG INFO
-// ============================================================
-
-app.get(
-    "/api/debug",
-    requireAdmin,
-    (req, res) => {
-        res.json({
-            ok: true,
-            env:
-                NODE_ENV,
-            cwd:
-                process.cwd(),
-            root:
-                ROOT_DIR,
-            data:
-                DATA_DIR,
-            storage:
-                STORAGE_DIR,
-            public:
-                PUBLIC_DIR,
-            memory:
-                process.memoryUsage(),
-            uptime:
-                process.uptime()
-        });
-    }
-);
-
-
-// ============================================================
-// 444 — MEMORY API
-// ============================================================
-
-app.get(
-    "/api/memory",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const memories =
-            readJSONSafe(
-                DB_FILES.memories,
-                []
-            )
-                .filter(
-                    item =>
-                        item.userId === userId
-                );
-
-        res.json({
-            ok: true,
-            memories
-        });
-    }
-);
-
-
-// ============================================================
-// 445 — MEMORY CREATE
-// ============================================================
-
-app.post(
-    "/api/memory",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const text =
-            cleanText(
-                req.body?.text ||
-                req.body?.memory ||
-                ""
-            ).slice(0, 2000);
-
-        if (!text) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "MEMORY_TEXT_REQUIRED"
-            });
-        }
-
-        const memories =
-            readJSONSafe(
-                DB_FILES.memories,
-                []
-            );
-
-        const record = {
-            id:
-                crypto.randomUUID(),
-            userId,
-            text,
-            source:
-                "manual",
-            createdAt:
-                nowISO(),
-            updatedAt:
-                nowISO()
-        };
-
-        memories.push(
-            record
-        );
-
-        writeJSONSafe(
-            DB_FILES.memories,
-            memories
-        );
-
-        res.status(201).json({
-            ok: true,
-            memory:
-                record
-        });
-    }
-);
-
-
-// ============================================================
-// 446 — MEMORY DELETE
-// ============================================================
-
-app.delete(
-    "/api/memory/:id",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const memories =
-            readJSONSafe(
-                DB_FILES.memories,
-                []
-            );
-
-        const index =
-            memories.findIndex(
-                item =>
-                    item.id ===
-                        req.params.id &&
-                    item.userId ===
-                        userId
-            );
-
-        if (index === -1) {
-            return res.status(404).json({
-                ok: false,
-                error:
-                    "MEMORY_NOT_FOUND"
-            });
-        }
-
-        memories.splice(
-            index,
-            1
-        );
-
-        writeJSONSafe(
-            DB_FILES.memories,
-            memories
-        );
-
-        res.json({
-            ok: true
-        });
-    }
-);
-
-
-// ============================================================
-// 447 — MEMORY CLEAR
-// ============================================================
-
-app.delete(
-    "/api/memory",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const memories =
-            readJSONSafe(
-                DB_FILES.memories,
-                []
-            );
-
-        const remaining =
-            memories.filter(
-                item =>
-                    item.userId !==
-                    userId
-            );
-
-        writeJSONSafe(
-            DB_FILES.memories,
-            remaining
-        );
-
-        res.json({
-            ok: true,
-            deleted:
-                memories.length -
-                remaining.length
-        });
-    }
-);
-
-
-// ============================================================
-// 448 — SETTINGS DATABASE
-// ============================================================
-
-function getSettings() {
-    return readJSONSafe(
-        DB_FILES.settings,
-        {}
+function processConversationMemory(
+  userId,
+  userMessage,
+  assistantAnswer
+) {
+  try {
+    automaticallySaveMemories(
+      userId,
+      userMessage
     );
-}
 
-function saveSettings(settings) {
-    writeJSONSafe(
-        DB_FILES.settings,
-        settings || {}
-    );
+    if (
+      userMessage &&
+      assistantAnswer &&
+      !looksLikeCurrentQuestion(userMessage)
+    ) {
+      learnFromConversation(
+        userMessage,
+        assistantAnswer
+      );
+    }
+  } catch (error) {
+    logWarn("conversation_memory_error", {
+      error: error.message
+    });
+  }
 }
 
 
 // ============================================================
-// 449 — USER SETTINGS
+// 3.15 — GELİŞMİŞ CHAT CONTEXT ROUTE
 // ============================================================
 
-app.get(
-    "/api/settings",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
+app.get("/api/context", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
 
-        const settings =
-            getSettings();
+    res.json({
+      success: true,
+      context: {
+        memory: buildUserContext(user.id),
+        memories: getUserMemories(user.id).slice(0, 20),
+        projects: getUserProjects(user.id).slice(0, 20)
+      }
+    });
+  } catch (error) {
+    logError("context_error", {
+      error: error.message
+    });
 
-        res.json({
-            ok: true,
-            settings:
-                settings[userId] ||
-                {}
-        });
-    }
-);
-
-
-// ============================================================
-// 450 — UPDATE SETTINGS
-// ============================================================
-
-app.patch(
-    "/api/settings",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const settings =
-            getSettings();
-
-        const current =
-            settings[userId] || {};
-
-        const incoming =
-            req.body || {};
-
-        const allowedKeys = [
-            "theme",
-            "language",
-            "model",
-            "fontSize",
-            "sound",
-            "voice",
-            "research",
-            "memory",
-            "compactMode",
-            "animations"
-        ];
-
-        for (const key of allowedKeys) {
-            if (
-                incoming[key] !==
-                undefined
-            ) {
-                current[key] =
-                    incoming[key];
-            }
-        }
-
-        current.updatedAt =
-            nowISO();
-
-        settings[userId] =
-            current;
-
-        saveSettings(
-            settings
-        );
-
-        res.json({
-            ok: true,
-            settings:
-                current
-        });
-    }
-);
+    res.status(500).json({
+      success: false,
+      error: "Bağlam alınamadı."
+    });
+  }
+});
 
 
 // ============================================================
-// 451 — USAGE STATUS
+// 3.16 — RESEARCH + KNOWLEDGE + MEMORY STATUS
 // ============================================================
 
-app.get(
-    "/api/usage",
-    (req, res) => {
-        const user =
-            req.user ||
-            getGuestUser();
+app.get("/api/intelligence/status", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
 
-        let usage = {};
+    const memories = getUserMemories(user.id);
+    const knowledge = getKnowledge();
+    const research = getUserResearch(user.id);
 
-        try {
-            usage =
-                readJSONSafe(
-                    DB_FILES.usage,
-                    {}
-                );
-        } catch {
-            usage = {};
-        }
+    res.json({
+      success: true,
+      intelligence: {
+        memory: {
+          enabled: true,
+          count: memories.length
+        },
+        knowledge: {
+          enabled: true,
+          count: knowledge.length
+        },
+        research: {
+          enabled: true,
+          count: research.length
+        },
+        localFallback: true,
+        aiProviders: AI_PROVIDERS
+      }
+    });
+  } catch (error) {
+    logError("intelligence_status_error", {
+      error: error.message
+    });
 
-        const userUsage =
-            usage[user.id] || {};
-
-        res.json({
-            ok: true,
-            userId:
-                user.id,
-            plan:
-                user.plan ||
-                "free",
-            usage:
-                userUsage
-        });
-    }
-);
-
-
-// ============================================================
-// 452 — USAGE RESET ADMIN
-// ============================================================
-
-app.post(
-    "/api/admin/usage/reset",
-    requireAdmin,
-    (req, res) => {
-        const usage =
-            readJSONSafe(
-                DB_FILES.usage,
-                {}
-            );
-
-        const userId =
-            cleanText(
-                req.body?.userId ||
-                ""
-            );
-
-        if (userId) {
-            delete usage[userId];
-        }
-
-        writeJSONSafe(
-            DB_FILES.usage,
-            usage
-        );
-
-        res.json({
-            ok: true,
-            resetUser:
-                userId || null
-        });
-    }
-);
+    res.status(500).json({
+      success: false,
+      error: "Zekâ sistemi durumu alınamadı."
+    });
+  }
+});
 
 
 // ============================================================
-// 453 — CHAT LIST
+// 3.17 — EXPORTS FOR NEXT PART
 // ============================================================
 
-app.get(
-    "/api/chats",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const chats =
-            readJSONSafe(
-                DB_FILES.chats,
-                []
-            )
-                .filter(
-                    chat =>
-                        chat.userId === userId
-                )
-                .sort(
-                    (a, b) =>
-                        String(
-                            b.updatedAt ||
-                            b.createdAt ||
-                            ""
-                        ).localeCompare(
-                            String(
-                                a.updatedAt ||
-                                a.createdAt ||
-                                ""
-                            )
-                        )
-                );
-
-        res.json({
-            ok: true,
-            chats
-        });
-    }
-);
-
-
-// ============================================================
-// 454 — CHAT DELETE
-// ============================================================
-
-app.delete(
-    "/api/chats/:id",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const chats =
-            readJSONSafe(
-                DB_FILES.chats,
-                []
-            );
-
-        const index =
-            chats.findIndex(
-                chat =>
-                    chat.id ===
-                        req.params.id &&
-                    chat.userId === userId
-            );
-
-        if (index === -1) {
-            return res.status(404).json({
-                ok: false,
-                error:
-                    "CHAT_NOT_FOUND"
-            });
-        }
-
-        chats.splice(
-            index,
-            1
-        );
-
-        writeJSONSafe(
-            DB_FILES.chats,
-            chats
-        );
-
-        const messages =
-            readJSONSafe(
-                DB_FILES.messages,
-                []
-            );
-
-        const remainingMessages =
-            messages.filter(
-                message =>
-                    message.chatId !==
-                    req.params.id
-            );
-
-        writeJSONSafe(
-            DB_FILES.messages,
-            remainingMessages
-        );
-
-        res.json({
-            ok: true,
-            deletedChat:
-                req.params.id
-        });
-    }
-);
-
-
-// ============================================================
-// 455 — CHAT CLEAR ALL
-// ============================================================
-
-app.delete(
-    "/api/chats",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const chats =
-            readJSONSafe(
-                DB_FILES.chats,
-                []
-            );
-
-        const userChats =
-            chats.filter(
-                chat =>
-                    chat.userId === userId
-            );
-
-        const chatIds =
-            new Set(
-                userChats.map(
-                    chat => chat.id
-                )
-            );
-
-        const remainingChats =
-            chats.filter(
-                chat =>
-                    chat.userId !== userId
-            );
-
-        writeJSONSafe(
-            DB_FILES.chats,
-            remainingChats
-        );
-
-        const messages =
-            readJSONSafe(
-                DB_FILES.messages,
-                []
-            );
-
-        const remainingMessages =
-            messages.filter(
-                message =>
-                    !chatIds.has(
-                        message.chatId
-                    )
-            );
-
-        writeJSONSafe(
-            DB_FILES.messages,
-            remainingMessages
-        );
-
-        res.json({
-            ok: true,
-            deletedChats:
-                userChats.length
-        });
-    }
-);
-
-
-// ============================================================
-// 456 — ADMIN CHAT INSPECTION
-// ============================================================
-
-app.get(
-    "/api/admin/chats",
-    requireAdmin,
-    (req, res) => {
-        const chats =
-            readJSONSafe(
-                DB_FILES.chats,
-                []
-            );
-
-        res.json({
-            ok: true,
-            chats,
-            count:
-                chats.length
-        });
-    }
-);
-
-
-// ============================================================
-// 457 — ADMIN MESSAGES
-// ============================================================
-
-app.get(
-    "/api/admin/messages",
-    requireAdmin,
-    (req, res) => {
-        const messages =
-            readJSONSafe(
-                DB_FILES.messages,
-                []
-            );
-
-        res.json({
-            ok: true,
-            messages:
-                messages.slice(-1000)
-        });
-    }
-);
-
-
-// ============================================================
-// 458 — KNOWLEDGE API
-// ============================================================
-
-app.get(
-    "/api/knowledge",
-    requireAdmin,
-    (req, res) => {
-        const knowledge =
-            readJSONSafe(
-                DB_FILES.knowledge,
-                []
-            );
-
-        res.json({
-            ok: true,
-            knowledge
-        });
-    }
-);
-
-
-// ============================================================
-// 459 — KNOWLEDGE CREATE
-// ============================================================
-
-app.post(
-    "/api/knowledge",
-    requireAdmin,
-    (req, res) => {
-        const question =
-            cleanText(
-                req.body?.question ||
-                ""
-            ).slice(0, 1000);
-
-        const answer =
-            cleanText(
-                req.body?.answer ||
-                ""
-            ).slice(0, 5000);
-
-        if (!question || !answer) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "QUESTION_AND_ANSWER_REQUIRED"
-            });
-        }
-
-        const knowledge =
-            readJSONSafe(
-                DB_FILES.knowledge,
-                []
-            );
-
-        const record = {
-            id:
-                crypto.randomUUID(),
-            question,
-            answer,
-            source:
-                "admin",
-            createdAt:
-                nowISO(),
-            updatedAt:
-                nowISO()
-        };
-
-        knowledge.push(
-            record
-        );
-
-        writeJSONSafe(
-            DB_FILES.knowledge,
-            knowledge
-        );
-
-        res.status(201).json({
-            ok: true,
-            knowledge:
-                record
-        });
-    }
-);
-
-
-// ============================================================
-// 460 — CORRECTIONS API
-// ============================================================
-
-app.get(
-    "/api/corrections",
-    requireAdmin,
-    (req, res) => {
-        const corrections =
-            readJSONSafe(
-                DB_FILES.corrections,
-                []
-            );
-
-        res.json({
-            ok: true,
-            corrections
-        });
-    }
-);
-
-
-// ============================================================
-// 461 — CREATE CORRECTION
-// ============================================================
-
-app.post(
-    "/api/corrections",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const wrong =
-            cleanText(
-                req.body?.wrong ||
-                ""
-            ).slice(0, 2000);
-
-        const correct =
-            cleanText(
-                req.body?.correct ||
-                ""
-            ).slice(0, 5000);
-
-        if (!wrong || !correct) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "CORRECTION_REQUIRED"
-            });
-        }
-
-        const corrections =
-            readJSONSafe(
-                DB_FILES.corrections,
-                []
-            );
-
-        const record = {
-            id:
-                crypto.randomUUID(),
-            userId,
-            wrong,
-            correct,
-            createdAt:
-                nowISO()
-        };
-
-        corrections.push(
-            record
-        );
-
-        writeJSONSafe(
-            DB_FILES.corrections,
-            corrections
-        );
-
-        res.status(201).json({
-            ok: true,
-            correction:
-                record
-        });
-    }
-);
-
-
-// ============================================================
-// 462 — DATABASE STATUS
-// ============================================================
-
-app.get(
-    "/api/database/status",
-    requireAdmin,
-    (req, res) => {
-        const result = {};
-
-        for (
-            const [
-                key,
-                file
-            ] of Object.entries(
-                DB_FILES
-            )
-        ) {
-            let exists = false;
-            let size = 0;
-
-            try {
-                exists =
-                    fs.existsSync(
-                        file
-                    );
-
-                if (exists) {
-                    size =
-                        fs.statSync(
-                            file
-                        ).size;
-                }
-            } catch {
-                exists = false;
-            }
-
-            result[key] = {
-                exists,
-                size,
-                sizeText:
-                    formatBytes(
-                        size
-                    )
-            };
-        }
-
-        res.json({
-            ok: true,
-            database:
-                result
-        });
-    }
-);
-
-
-// ============================================================
-// 463 — STORAGE STATUS
-// ============================================================
-
-app.get(
-    "/api/storage/status",
-    requireAdmin,
-    (req, res) => {
-        function directorySize(
-            directory
-        ) {
-            let total = 0;
-
-            if (
-                !fs.existsSync(
-                    directory
-                )
-            ) {
-                return 0;
-            }
-
-            const entries =
-                fs.readdirSync(
-                    directory,
-                    {
-                        withFileTypes:
-                            true
-                    }
-                );
-
-            for (
-                const entry of entries
-            ) {
-                const full =
-                    path.join(
-                        directory,
-                        entry.name
-                    );
-
-                if (
-                    entry.isDirectory()
-                ) {
-                    total +=
-                        directorySize(
-                            full
-                        );
-                } else {
-                    try {
-                        total +=
-                            fs.statSync(
-                                full
-                            ).size;
-                    } catch {
-                        // ignore
-                    }
-                }
-            }
-
-            return total;
-        }
-
-        const size =
-            directorySize(
-                STORAGE_DIR
-            );
-
-        res.json({
-            ok: true,
-            storage: {
-                directory:
-                    STORAGE_DIR,
-                bytes:
-                    size,
-                sizeText:
-                    formatBytes(
-                        size
-                    )
-            }
-        });
-    }
-);
-
-
-// ============================================================
-// 464 — PUBLIC CONFIG
-// ============================================================
-
-app.get(
-    "/api/config",
-    (req, res) => {
-        res.json({
-            ok: true,
-            app: {
-                name:
-                    APP_NAME,
-                version:
-                    APP_VERSION
-            },
-            features: {
-                chat: true,
-                research:
-                    Boolean(
-                        process.env.TAVILY_API_KEY ||
-                        process.env.BRAVE_SEARCH_API_KEY
-                    ),
-                weather: true,
-                currency: true,
-                uploads: true,
-                memory: true,
-                projects: true,
-                notifications:
-                    true,
-                feedback: true,
-                socket: true
-            },
-            limits: {
-                maxUpload:
-                    MAX_UPLOAD_SIZE,
-                maxUploadText:
-                    formatBytes(
-                        MAX_UPLOAD_SIZE
-                    )
-            }
-        });
-    }
-);
-
-
-// ============================================================
-// 465 — SERVICE CHECK
-// ============================================================
-
-app.get(
-    "/api/services",
-    async (req, res) => {
-        const services = {
-            server: {
-                ok: true
-            },
-            weather: {
-                ok: false
-            },
-            currency: {
-                ok: false
-            },
-            research: {
-                ok: false
-            }
-        };
-
-        try {
-            await getWeatherData(
-                "Konya"
-            );
-
-            services.weather.ok =
-                true;
-        } catch {
-            services.weather.ok =
-                false;
-        }
-
-        try {
-            await getCurrencyRates(
-                "USD"
-            );
-
-            services.currency.ok =
-                true;
-        } catch {
-            services.currency.ok =
-                false;
-        }
-
-        services.research.ok =
-            Boolean(
-                process.env.TAVILY_API_KEY ||
-                process.env.BRAVE_SEARCH_API_KEY
-            );
-
-        res.json({
-            ok: true,
-            services,
-            checkedAt:
-                nowISO()
-        });
-    }
-);
-
-
-// ============================================================
-// 466 — REQUEST METRICS
-// ============================================================
-
-const REQUEST_METRICS = {
-    total: 0,
-    successful: 0,
-    failed: 0,
-    byMethod: {},
-    byPath: {},
-    startedAt: nowISO()
+module.exports.turkaiMemory = {
+  getMemories,
+  saveMemories,
+  getUserMemories,
+  createMemory,
+  deleteMemory,
+  clearUserMemories,
+  extractMemoryCandidates,
+  automaticallySaveMemories,
+  buildMemoryContext
 };
 
-function registerMetric(
-    req,
-    statusCode
-) {
-    REQUEST_METRICS.total++;
+module.exports.turkaiKnowledge = {
+  getKnowledge,
+  saveKnowledge,
+  addKnowledge,
+  calculateKnowledgeScore,
+  findKnowledgeAnswer,
+  learnFromConversation
+};
 
-    if (
-        statusCode >= 200 &&
-        statusCode < 400
-    ) {
-        REQUEST_METRICS.successful++;
-    } else {
-        REQUEST_METRICS.failed++;
-    }
+module.exports.turkaiResearch = {
+  getResearchRecords,
+  saveResearchRecords,
+  saveResearchRecord,
+  getUserResearch,
+  performResearch,
+  fetchResearchUrl
+};
 
-    const method =
-        req.method || "UNKNOWN";
+module.exports.turkaiFiles = {
+  getFileRecords,
+  saveFileRecords,
+  getUserFiles,
+  registerFile,
+  deleteFileRecord
+};
 
-    const route =
-        req.route?.path ||
-        req.path ||
-        "unknown";
+module.exports.turkaiProjects = {
+  getProjects,
+  saveProjects,
+  getUserProjects,
+  createProject,
+  findProject,
+  updateProject,
+  deleteProject
+};
 
-    REQUEST_METRICS.byMethod[
-        method
-    ] =
-        (
-            REQUEST_METRICS.byMethod[
-                method
-            ] || 0
-        ) + 1;
-
-    REQUEST_METRICS.byPath[
-        route
-    ] =
-        (
-            REQUEST_METRICS.byPath[
-                route
-            ] || 0
-        ) + 1;
-}
-
-
-// ============================================================
-// 467 — METRICS ENDPOINT
-// ============================================================
-
-app.get(
-    "/api/metrics",
-    requireAdmin,
-    (req, res) => {
-        res.json({
-            ok: true,
-            metrics:
-                REQUEST_METRICS
-        });
-    }
-);
+module.exports.turkaiContext = {
+  buildUserContext,
+  buildEnhancedAIContext,
+  processConversationMemory
+};
 
 
 // ============================================================
-// 468 — EXPORT DATA
-// ============================================================
-
-app.get(
-    "/api/admin/export",
-    requireAdmin,
-    (req, res) => {
-        const exportData = {
-            exportedAt:
-                nowISO(),
-            version:
-                APP_VERSION,
-            users:
-                readJSONSafe(
-                    DB_FILES.users,
-                    []
-                ),
-            chats:
-                readJSONSafe(
-                    DB_FILES.chats,
-                    []
-                ),
-            messages:
-                readJSONSafe(
-                    DB_FILES.messages,
-                    []
-                ),
-            memories:
-                readJSONSafe(
-                    DB_FILES.memories,
-                    []
-                ),
-            knowledge:
-                readJSONSafe(
-                    DB_FILES.knowledge,
-                    []
-                ),
-            feedback:
-                readJSONSafe(
-                    DB_FILES.feedback,
-                    []
-                ),
-            projects:
-                getProjects()
-        };
-
-        res.json({
-            ok: true,
-            export:
-                exportData
-        });
-    }
-);
-
-
-// ============================================================
-// 469 — BACKUP DATABASE
-// ============================================================
-
-app.post(
-    "/api/admin/backup",
-    requireAdmin,
-    (req, res) => {
-        const backupDirectory =
-            path.join(
-                DATA_DIR,
-                "backups"
-            );
-
-        fs.mkdirSync(
-            backupDirectory,
-            {
-                recursive: true
-            }
-        );
-
-        const backupId =
-            new Date()
-                .toISOString()
-                .replace(
-                    /[:.]/g,
-                    "-"
-                );
-
-        const target =
-            path.join(
-                backupDirectory,
-                `backup-${backupId}.json`
-            );
-
-        const payload = {
-            createdAt:
-                nowISO(),
-            files: {}
-        };
-
-        for (
-            const [
-                key,
-                file
-            ] of Object.entries(
-                DB_FILES
-            )
-        ) {
-            payload.files[key] =
-                readJSONSafe(
-                    file,
-                    []
-                );
-        }
-
-        payload.files.projects =
-            getProjects();
-
-        payload.files.notifications =
-            getNotifications();
-
-        fs.writeFileSync(
-            target,
-            JSON.stringify(
-                payload,
-                null,
-                2
-            ),
-            "utf8"
-        );
-
-        res.json({
-            ok: true,
-            backup: {
-                id:
-                    backupId,
-                path:
-                    target,
-                size:
-                    fs.statSync(
-                        target
-                    ).size
-            }
-        });
-    }
-);
-
-
-// ============================================================
-// 470 — BACKUP LIST
-// ============================================================
-
-app.get(
-    "/api/admin/backups",
-    requireAdmin,
-    (req, res) => {
-        const directory =
-            path.join(
-                DATA_DIR,
-                "backups"
-            );
-
-        if (
-            !fs.existsSync(
-                directory
-            )
-        ) {
-            return res.json({
-                ok: true,
-                backups: []
-            });
-        }
-
-        const backups =
-            fs.readdirSync(
-                directory
-            )
-                .filter(
-                    name =>
-                        name.endsWith(
-                            ".json"
-                        )
-                )
-                .map(
-                    name => {
-                        const full =
-                            path.join(
-                                directory,
-                                name
-                            );
-
-                        let size = 0;
-
-                        try {
-                            size =
-                                fs.statSync(
-                                    full
-                                ).size;
-                        } catch {
-                            size = 0;
-                        }
-
-                        return {
-                            name,
-                            size,
-                            sizeText:
-                                formatBytes(
-                                    size
-                                )
-                        };
-                    }
-                );
-
-        res.json({
-            ok: true,
-            backups
-        });
-    }
-);
-
-
-// ============================================================
-// 471 — LOGGING MIDDLEWARE
-// ============================================================
-
-app.use(
-    (req, res, next) => {
-        const start =
-            Date.now();
-
-        res.on(
-            "finish",
-            () => {
-                const duration =
-                    Date.now() -
-                    start;
-
-                registerMetric(
-                    req,
-                    res.statusCode
-                );
-
-                if (
-                    res.statusCode >= 400
-                ) {
-                    recordSecurityEvent(
-                        "http_error",
-                        {
-                            ip:
-                                req.ip,
-                            userId:
-                                req.user?.id ||
-                                null,
-                            path:
-                                req.path,
-                            method:
-                                req.method,
-                            message:
-                                `${res.statusCode} ${duration}ms`
-                        }
-                    );
-                }
-            }
-        );
-
-        next();
-    }
-);
-
-
-// ============================================================
-// 472 — SOCKET.IO AUTH / EVENTS
-// ============================================================
-
-io.on(
-    "connection",
-    socket => {
-        socket.emit(
-            "turkai:connected",
-            {
-                ok: true,
-                id:
-                    socket.id,
-                serverTime:
-                    nowISO(),
-                version:
-                    APP_VERSION
-            }
-        );
-
-        socket.on(
-            "turkai:ping",
-            payload => {
-                socket.emit(
-                    "turkai:pong",
-                    {
-                        ok: true,
-                        received:
-                            payload || null,
-                        serverTime:
-                            nowISO()
-                    }
-                );
-            }
-        );
-
-        socket.on(
-            "chat:typing",
-            payload => {
-                socket.broadcast.emit(
-                    "chat:typing",
-                    {
-                        userId:
-                            payload?.userId ||
-                            null,
-                        typing:
-                            Boolean(
-                                payload?.typing
-                            )
-                    }
-                );
-            }
-        );
-
-        socket.on(
-            "chat:message",
-            payload => {
-                if (!payload) {
-                    return;
-                }
-
-                socket.broadcast.emit(
-                    "chat:new",
-                    {
-                        message:
-                            payload.message ||
-                            "",
-                        chatId:
-                            payload.chatId ||
-                            null,
-                        createdAt:
-                            nowISO()
-                    }
-                );
-            }
-        );
-
-        socket.on(
-            "disconnect",
-            reason => {
-                logWarn(
-                    "SOCKET_DISCONNECTED",
-                    {
-                        id:
-                            socket.id,
-                        reason
-                    }
-                );
-            }
-        );
-    }
-);
-
-
-// ============================================================
-// 473 — SOCKET HEALTH
-// ============================================================
-
-app.get(
-    "/api/socket/status",
-    (req, res) => {
-        res.json({
-            ok: true,
-            socket: {
-                connectedClients:
-                    io.engine?.clientsCount ||
-                    0,
-                transport:
-                    "socket.io"
-            }
-        });
-    }
-);
-
-
-// ============================================================
-// 474 — STATIC PUBLIC FILES
-// ============================================================
-
-if (
-    fs.existsSync(
-        PUBLIC_DIR
-    )
-) {
-    app.use(
-        express.static(
-            PUBLIC_DIR,
-            {
-                extensions: [
-                    "html"
-                ],
-                index:
-                    "index.html"
-            }
-        )
-    );
-}
-
-
-// ============================================================
-// 475 — ROOT ROUTE
-// ============================================================
-
-app.get(
-    "/",
-    (req, res) => {
-        const indexFile =
-            path.join(
-                PUBLIC_DIR,
-                "index.html"
-            );
-
-        if (
-            fs.existsSync(
-                indexFile
-            )
-        ) {
-            return res.sendFile(
-                indexFile
-            );
-        }
-
-        res.type(
-            "html"
-        ).send(`
-            <!DOCTYPE html>
-            <html lang="tr">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport"
-                    content="width=device-width,initial-scale=1">
-                <title>${APP_NAME}</title>
-            </head>
-            <body>
-                <h1>${APP_NAME}</h1>
-                <p>API aktif.</p>
-                <p>Sunucu sürümü: ${APP_VERSION}</p>
-            </body>
-            </html>
-        `);
-    }
-);
-
-
-// ============================================================
-// 476 — API 404 HANDLER
-// ============================================================
-
-app.use(
-    "/api",
-    (req, res) => {
-        res.status(404).json({
-            ok: false,
-            error:
-                "API_ENDPOINT_NOT_FOUND",
-            message:
-                "İstenen API endpoint bulunamadı.",
-            path:
-                req.originalUrl,
-            method:
-                req.method,
-            requestId:
-                req.requestId ||
-                null
-        });
-    }
-);
-
-
-// ============================================================
-// 477 — GLOBAL ERROR HANDLER
-// ============================================================
-
-app.use(
-    (
-        error,
-        req,
-        res,
-        next
-    ) => {
-        logError(
-            "GLOBAL_SERVER_ERROR",
-            error
-        );
-
-        if (
-            res.headersSent
-        ) {
-            return next(
-                error
-            );
-        }
-
-        const status =
-            Number(
-                error.status ||
-                error.statusCode
-            ) || 500;
-
-        res.status(
-            status
-        ).json({
-            ok: false,
-            error:
-                IS_PRODUCTION
-                    ? "INTERNAL_SERVER_ERROR"
-                    : (
-                        error.message ||
-                        "INTERNAL_SERVER_ERROR"
-                    ),
-            requestId:
-                req.requestId ||
-                null
-        });
-    }
-);
-
-
-// ============================================================
-// 478 — PROCESS ERROR HANDLERS
-// ============================================================
-
-process.on(
-    "uncaughtException",
-    error => {
-        logError(
-            "UNCAUGHT_EXCEPTION",
-            error
-        );
-    }
-);
-
-process.on(
-    "unhandledRejection",
-    reason => {
-        logError(
-            "UNHANDLED_REJECTION",
-            reason
-        );
-    }
-);
-
-
-// ============================================================
-// 479 — GRACEFUL SHUTDOWN
-// ============================================================
-
-let shuttingDown =
-    false;
-
-async function shutdown(
-    signal
-) {
-    if (shuttingDown) {
-        return;
-    }
-
-    shuttingDown =
-        true;
-
-    logWarn(
-        "SERVER_SHUTDOWN",
-        signal
-    );
-
-    try {
-        await new Promise(
-            resolve => {
-                httpServer.close(
-                    () => resolve()
-                );
-            }
-        );
-    } catch (error) {
-        logError(
-            "HTTP_CLOSE_ERROR",
-            error
-        );
-    }
-
-    process.exit(0);
-}
-
-process.on(
-    "SIGTERM",
-    () => {
-        shutdown(
-            "SIGTERM"
-        );
-    }
-);
-
-process.on(
-    "SIGINT",
-    () => {
-        shutdown(
-            "SIGINT"
-        );
-    }
-);
-
-
-// ============================================================
-// 480 — STARTUP CHECK
-// ============================================================
-
-function startupCheck() {
-    const checks = {
-        data:
-            fs.existsSync(
-                DATA_DIR
-            ),
-        database:
-            fs.existsSync(
-                DB_DIR
-            ),
-        storage:
-            fs.existsSync(
-                STORAGE_DIR
-            ),
-        uploads:
-            fs.existsSync(
-                UPLOADS_DIR
-            ),
-        public:
-            fs.existsSync(
-                PUBLIC_DIR
-            )
-    };
-
-    logWarn(
-        "STARTUP_CHECK",
-        checks
-    );
-
-    return checks;
-}
-
-startupCheck();
-
-
-// ============================================================
-// 481 — DATABASE INITIALIZATION
-// ============================================================
-
-function initializeDatabase() {
-    const defaults = {
-        [DB_FILES.users]:
-            [],
-        [DB_FILES.sessions]:
-            [],
-        [DB_FILES.chats]:
-            [],
-        [DB_FILES.messages]:
-            [],
-        [DB_FILES.memories]:
-            [],
-        [DB_FILES.knowledge]:
-            [],
-        [DB_FILES.feedback]:
-            [],
-        [DB_FILES.corrections]:
-            [],
-        [DB_FILES.usage]:
-            {},
-        [DB_FILES.audit]:
-            [],
-        [DB_FILES.security]:
-            [],
-        [DB_FILES.settings]:
-            {},
-        [DB_FILES.files]:
-            []
-    };
-
-    for (
-        const [
-            file,
-            defaultValue
-        ] of Object.entries(
-            defaults
-        )
-    ) {
-        if (
-            !fs.existsSync(
-                file
-            )
-        ) {
-            writeJSONSafe(
-                file,
-                defaultValue
-            );
-        }
-    }
-
-    if (
-        !fs.existsSync(
-            PROJECTS_DB_FILE
-        )
-    ) {
-        saveProjects([]);
-    }
-
-    if (
-        !fs.existsSync(
-            NOTIFICATIONS_DB_FILE
-        )
-    ) {
-        saveNotifications([]);
-    }
-}
-
-initializeDatabase();
-
-
-// ============================================================
-// 482 — STARTUP MESSAGE
-// ============================================================
-
-function printStartupBanner() {
-    const lines = [
-        "",
-        "============================================================",
-        "                     TÜRKAI SERVER",
-        "============================================================",
-        ` Uygulama      : ${APP_NAME}`,
-        ` Sürüm         : ${APP_VERSION}`,
-        ` Node          : ${process.version}`,
-        ` Ortam         : ${NODE_ENV}`,
-        ` Host          : ${HOST}`,
-        ` Port          : ${PORT}`,
-        ` AI Groq       : ${AI_STATUS.groq.configured ? "HAZIR" : "YOK"}`,
-        ` AI Cerebras   : ${AI_STATUS.cerebras.configured ? "HAZIR" : "YOK"}`,
-        ` AI OpenRouter : ${AI_STATUS.openrouter.configured ? "HAZIR" : "YOK"}`,
-        ` AI Gemini     : ${AI_STATUS.gemini.configured ? "HAZIR" : "YOK"}`,
-        ` Research      : ${
-            process.env.TAVILY_API_KEY ||
-            process.env.BRAVE_SEARCH_API_KEY
-                ? "HAZIR"
-                : "LOCAL / KEY YOK"
-        }`,
-        "============================================================",
-        ""
-    ];
-
-    console.log(
-        lines.join("\n")
-    );
-}
-
-
-// ============================================================
-// 483 — SERVER START
-// ============================================================
-
-httpServer.listen(
-    PORT,
-    HOST,
-    () => {
-        printStartupBanner();
-
-        logWarn(
-            "SERVER_STARTED",
-            {
-                url:
-                    `http://${HOST}:${PORT}`,
-                port:
-                    PORT,
-                version:
-                    APP_VERSION
-            }
-        );
-    }
-);
-
-
-// ============================================================
-// 484 — FINAL INTERNAL CHECK
-// ============================================================
-
-function finalInternalCheck() {
-    const required = [
-        "APP_NAME",
-        "APP_VERSION",
-        "PORT",
-        "HOST",
-        "DATA_DIR",
-        "DB_DIR",
-        "STORAGE_DIR"
-    ];
-
-    const result = {};
-
-    for (
-        const name of required
-    ) {
-        result[name] =
-            typeof globalThis[
-                name
-            ] !== "undefined";
-    }
-
-    return result;
-}
-
-finalInternalCheck();
-
-
-// ============================================================
-// 485 — SERVER READY
-// ============================================================
-
-console.log(
-    `[${APP_NAME}] API sistemi yükleniyor...`
-);
-
-console.log(
-    `[${APP_NAME}] /api/health hazır.`
-);
-
-console.log(
-    `[${APP_NAME}] /api/chat hazır.`
-);
-
-console.log(
-    `[${APP_NAME}] /api/upload hazır.`
-);
-
-console.log(
-    `[${APP_NAME}] /api/research hazır.`
-);
-
-console.log(
-    `[${APP_NAME}] /api/weather hazır.`
-);
-
-console.log(
-    `[${APP_NAME}] /api/currency hazır.`
-);
-
-console.log(
-    `[${APP_NAME}] /api/projects hazır.`
-);
-
-console.log(
-    `[${APP_NAME}] Socket.IO hazır.`
-);
-
-
-// ============================================================
-// PARÇA 4 SONU
-// ============================================================
-//
-// Sonraki PARÇA 5 / 5:
-//
-// - Pro / Plus / Ultra sistemleri
-// - Iyzico entegrasyon hazırlığı
-// - Kullanıcı planları
-// - Günlük kullanım limitleri
-// - Admin araçları
-// - Gelişmiş auth/session
-// - Audit sistemi
-// - Daha gelişmiş AI router
-// - Otomatik knowledge öğrenme
-// - AI model seçimi
-// - Chat export
-// - JSON/Markdown export
-// - Sistem bakım araçları
-// - Cache
-// - gelişmiş rate-limit
-// - final middleware
-// - final server kapanışı
-//
+// 3/5 SONU
 // ============================================================
 // ============================================================
 // TÜRKAI 11.0.0
-// SERVER.JS — PARÇA 5 / 5
-// ============================================================
-// FINAL ENGINE
-// ============================================================
-
-
-// ============================================================
-// 500 — PLAN SİSTEMİ
+// SERVER.JS — 4/5
+// PLANS + USAGE + SECURITY + PAYMENTS + ADMIN + NOTIFICATIONS
 // ============================================================
 
-const PLAN_CONFIG = {
-    free: {
-        id: "free",
-        name: "Free",
-        dailyMessages: 50,
-        dailyResearch: 5,
-        dailyImages: 0,
-        dailyVideos: 0,
-        maxChats: 20,
-        maxFiles: 20,
-        maxFileSize:
-            10 * 1024 * 1024,
-        models: [
-            "fast"
-        ],
-        features: [
-            "chat",
-            "memory",
-            "weather",
-            "currency"
-        ],
-        priceMonthly: 0
-    },
-
-    pro: {
-        id: "pro",
-        name: "Pro",
-        dailyMessages: 100,
-        dailyResearch: 20,
-        dailyImages: 2,
-        dailyVideos: 0,
-        maxChats: 100,
-        maxFiles: 100,
-        maxFileSize:
-            20 * 1024 * 1024,
-        models: [
-            "fast",
-            "balanced",
-            "smart"
-        ],
-        features: [
-            "chat",
-            "memory",
-            "research",
-            "weather",
-            "currency",
-            "projects",
-            "image"
-        ],
-        priceMonthly: 250
-    },
-
-    plus: {
-        id: "plus",
-        name: "Plus",
-        dailyMessages: 200,
-        dailyResearch: 50,
-        dailyImages: 4,
-        dailyVideos: 5,
-        maxChats: 300,
-        maxFiles: 300,
-        maxFileSize:
-            30 * 1024 * 1024,
-        models: [
-            "fast",
-            "balanced",
-            "smart",
-            "reasoning"
-        ],
-        features: [
-            "chat",
-            "memory",
-            "research",
-            "weather",
-            "currency",
-            "projects",
-            "image",
-            "video"
-        ],
-        priceMonthly: 500
-    },
-
-    ultra: {
-        id: "ultra",
-        name: "Ultra",
-        dailyMessages: 1000,
-        dailyResearch: 200,
-        dailyImages: 10,
-        dailyVideos: 20,
-        maxChats: 1000,
-        maxFiles: 1000,
-        maxFileSize:
-            50 * 1024 * 1024,
-        models: [
-            "fast",
-            "balanced",
-            "smart",
-            "reasoning",
-            "ultra"
-        ],
-        features: [
-            "chat",
-            "memory",
-            "research",
-            "weather",
-            "currency",
-            "projects",
-            "image",
-            "video",
-            "advanced",
-            "priority"
-        ],
-        priceMonthly: 1000
-    },
-
-    developer: {
-        id: "developer",
-        name: "Developer",
-        dailyMessages: 400,
-        dailyResearch: 500,
-        dailyImages: 20,
-        dailyVideos: 50,
-        maxChats: 5000,
-        maxFiles: 5000,
-        maxFileSize:
-            100 * 1024 * 1024,
-        models: [
-            "fast",
-            "balanced",
-            "smart",
-            "reasoning",
-            "ultra"
-        ],
-        features: [
-            "all"
-        ],
-        priceMonthly: 0
-    }
-};
-
+"use strict";
 
 // ============================================================
-// 501 — PLAN DATABASE
+// 4.1 — USAGE DATABASE
 // ============================================================
 
-const USER_PLANS_FILE =
-    path.join(
-        DB_DIR,
-        "user_plans.json"
-    );
-
-function getUserPlans() {
-    return readJSONSafe(
-        USER_PLANS_FILE,
-        {}
-    );
+function getUsageRecords() {
+  return readJSONSafe(DB_FILES.usage, []);
 }
 
-function saveUserPlans(plans) {
-    writeJSONSafe(
-        USER_PLANS_FILE,
-        plans || {}
+function saveUsageRecords(records) {
+  return writeJSONSafe(
+    DB_FILES.usage,
+    Array.isArray(records) ? records : []
+  );
+}
+
+function getUsageDayKey() {
+  return getTodayKey();
+}
+
+function getUserUsage(userId, day = getUsageDayKey()) {
+  const records = getUsageRecords();
+
+  let record = records.find(item => {
+    return (
+      item.userId === userId &&
+      item.day === day
     );
-}
+  });
 
-
-// ============================================================
-// 502 — USER PLAN
-// ============================================================
-
-function getUserPlan(userId) {
-    const plans =
-        getUserPlans();
-
-    const plan =
-        plans[userId];
-
-    if (
-        plan &&
-        PLAN_CONFIG[plan.plan]
-    ) {
-        return plan;
-    }
-
-    return {
-        userId,
-        plan: "free",
-        active: true,
-        createdAt:
-            nowISO(),
-        updatedAt:
-            nowISO()
-    };
-}
-
-
-// ============================================================
-// 503 — SET USER PLAN
-// ============================================================
-
-function setUserPlan(
-    userId,
-    plan,
-    extra = {}
-) {
-    if (
-        !PLAN_CONFIG[plan]
-    ) {
-        throw new Error(
-            "INVALID_PLAN"
-        );
-    }
-
-    const plans =
-        getUserPlans();
-
-    plans[userId] = {
-        userId,
-        plan,
-        active:
-            extra.active !== false,
-        expiresAt:
-            extra.expiresAt ||
-            null,
-        paymentId:
-            extra.paymentId ||
-            null,
-        source:
-            extra.source ||
-            "system",
-        createdAt:
-            plans[userId]?.createdAt ||
-            nowISO(),
-        updatedAt:
-            nowISO()
+  if (!record) {
+    record = {
+      id: createId("usage"),
+      userId,
+      day,
+      messages: 0,
+      research: 0,
+      images: 0,
+      videos: 0,
+      uploads: 0,
+      tokens: 0,
+      requests: 0,
+      errors: 0,
+      createdAt: nowISO(),
+      updatedAt: nowISO()
     };
 
-    saveUserPlans(
-        plans
+    records.push(record);
+    saveUsageRecords(records);
+  }
+
+  return record;
+}
+
+function updateUsage(userId, type, amount = 1) {
+  const records = getUsageRecords();
+  const day = getUsageDayKey();
+
+  let record = records.find(item => {
+    return (
+      item.userId === userId &&
+      item.day === day
     );
+  });
 
-    return plans[userId];
-}
-
-
-// ============================================================
-// 504 — PLAN LIST
-// ============================================================
-
-app.get(
-    "/api/plans",
-    (req, res) => {
-        res.json({
-            ok: true,
-            plans:
-                Object.values(
-                    PLAN_CONFIG
-                )
-        });
-    }
-);
-
-
-// ============================================================
-// 505 — MY PLAN
-// ============================================================
-
-app.get(
-    "/api/me/plan",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const plan =
-            getUserPlan(
-                userId
-            );
-
-        const config =
-            PLAN_CONFIG[
-                plan.plan
-            ] ||
-            PLAN_CONFIG.free;
-
-        res.json({
-            ok: true,
-            subscription:
-                plan,
-            config
-        });
-    }
-);
-
-
-// ============================================================
-// 506 — ADMIN PLAN UPDATE
-// ============================================================
-
-app.post(
-    "/api/admin/plan",
-    requireAdmin,
-    (req, res) => {
-        const userId =
-            cleanText(
-                req.body?.userId ||
-                ""
-            );
-
-        const plan =
-            cleanText(
-                req.body?.plan ||
-                ""
-            ).toLowerCase();
-
-        if (!userId) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "USER_ID_REQUIRED"
-            });
-        }
-
-        if (
-            !PLAN_CONFIG[plan]
-        ) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "INVALID_PLAN"
-            });
-        }
-
-        try {
-            const subscription =
-                setUserPlan(
-                    userId,
-                    plan,
-                    {
-                        source:
-                            "admin"
-                    }
-                );
-
-            res.json({
-                ok: true,
-                subscription
-            });
-        } catch (error) {
-            res.status(400).json({
-                ok: false,
-                error:
-                    error.message
-            });
-        }
-    }
-);
-
-
-// ============================================================
-// 507 — USAGE ENGINE
-// ============================================================
-
-function getUsageDate() {
-    return new Date()
-        .toISOString()
-        .slice(0, 10);
-}
-
-function getUsageDatabase() {
-    return readJSONSafe(
-        DB_FILES.usage,
-        {}
-    );
-}
-
-function saveUsageDatabase(
-    usage
-) {
-    writeJSONSafe(
-        DB_FILES.usage,
-        usage || {}
-    );
-}
-
-function getUserDailyUsage(
-    userId
-) {
-    const usage =
-        getUsageDatabase();
-
-    const date =
-        getUsageDate();
-
-    if (
-        !usage[userId] ||
-        usage[userId].date !== date
-    ) {
-        return {
-            date,
-            messages: 0,
-            research: 0,
-            images: 0,
-            videos: 0,
-            files: 0
-        };
-    }
-
-    return {
-        date,
-        messages:
-            Number(
-                usage[userId].messages
-            ) || 0,
-        research:
-            Number(
-                usage[userId].research
-            ) || 0,
-        images:
-            Number(
-                usage[userId].images
-            ) || 0,
-        videos:
-            Number(
-                usage[userId].videos
-            ) || 0,
-        files:
-            Number(
-                usage[userId].files
-            ) || 0
-    };
-}
-
-
-// ============================================================
-// 508 — USAGE SAVE
-// ============================================================
-
-function saveUserDailyUsage(
-    userId,
-    data
-) {
-    const usage =
-        getUsageDatabase();
-
-    usage[userId] = {
-        date:
-            getUsageDate(),
-        messages:
-            Number(
-                data.messages
-            ) || 0,
-        research:
-            Number(
-                data.research
-            ) || 0,
-        images:
-            Number(
-                data.images
-            ) || 0,
-        videos:
-            Number(
-                data.videos
-            ) || 0,
-        files:
-            Number(
-                data.files
-            ) || 0,
-        updatedAt:
-            nowISO()
+  if (!record) {
+    record = {
+      id: createId("usage"),
+      userId,
+      day,
+      messages: 0,
+      research: 0,
+      images: 0,
+      videos: 0,
+      uploads: 0,
+      tokens: 0,
+      requests: 0,
+      errors: 0,
+      createdAt: nowISO(),
+      updatedAt: nowISO()
     };
 
-    saveUsageDatabase(
-        usage
-    );
+    records.push(record);
+  }
 
-    return usage[userId];
+  const numericAmount =
+    Number(amount) || 1;
+
+  if (
+    Object.prototype.hasOwnProperty.call(
+      record,
+      type
+    )
+  ) {
+    record[type] += numericAmount;
+  }
+
+  record.updatedAt = nowISO();
+
+  saveUsageRecords(records);
+
+  return record;
+}
+
+function getUsageSummary(userId) {
+  const record = getUserUsage(userId);
+
+  return {
+    day: record.day,
+    messages: Number(record.messages || 0),
+    research: Number(record.research || 0),
+    images: Number(record.images || 0),
+    videos: Number(record.videos || 0),
+    uploads: Number(record.uploads || 0),
+    tokens: Number(record.tokens || 0),
+    requests: Number(record.requests || 0),
+    errors: Number(record.errors || 0)
+  };
 }
 
 
 // ============================================================
-// 509 — CHECK LIMIT
+// 4.2 — PLAN HELPERS
 // ============================================================
 
-function checkUsageLimit(
-    userId,
+function getPlanInfo(planName) {
+  const normalized = normalizePlan(planName);
+
+  return {
+    name: normalized,
+    ...(PLANS[normalized] || PLANS.free)
+  };
+}
+
+function getUserPlan(user) {
+  if (!user) {
+    return "free";
+  }
+
+  return normalizePlan(
+    user.plan || "free"
+  );
+}
+
+function getUserPlanInfo(user) {
+  return getPlanInfo(
+    getUserPlan(user)
+  );
+}
+
+function getPlanLimit(user, type) {
+  const plan = getUserPlanInfo(user);
+
+  const value = Number(
+    plan[type]
+  );
+
+  return Number.isFinite(value)
+    ? value
+    : 0;
+}
+
+function getUsageValue(userId, type) {
+  const usage = getUserUsage(userId);
+
+  return Number(
+    usage[type] || 0
+  );
+}
+
+function hasUsageAvailable(
+  user,
+  type,
+  amount = 1
+) {
+  const limit = getPlanLimit(
+    user,
     type
-) {
-    const subscription =
-        getUserPlan(
-            userId
-        );
+  );
 
-    const plan =
-        PLAN_CONFIG[
-            subscription.plan
-        ] ||
-        PLAN_CONFIG.free;
-
-    const usage =
-        getUserDailyUsage(
-            userId
-        );
-
-    const field =
-        type === "message"
-            ? "messages"
-            : type === "research"
-                ? "research"
-                : type === "image"
-                    ? "images"
-                    : type === "video"
-                        ? "videos"
-                        : type === "file"
-                            ? "files"
-                            : null;
-
-    if (!field) {
-        return {
-            allowed: true,
-            usage,
-            limit: null
-        };
-    }
-
-    const limit =
-        type === "message"
-            ? plan.dailyMessages
-            : type === "research"
-                ? plan.dailyResearch
-                : type === "image"
-                    ? plan.dailyImages
-                    : type === "video"
-                        ? plan.dailyVideos
-                        : plan.maxFiles;
-
-    return {
-        allowed:
-            usage[field] < limit,
-        usage,
-        limit,
-        remaining:
-            Math.max(
-                0,
-                limit -
-                    usage[field]
-            ),
-        plan:
-            subscription.plan
-    };
-}
-
-
-// ============================================================
-// 510 — INCREMENT DAILY USAGE
-// ============================================================
-
-function incrementDailyUsage(
-    userId,
+  const used = getUsageValue(
+    user.id,
     type
+  );
+
+  // Developer / sınırsız benzeri yüksek limit.
+  if (limit >= 1000000) {
+    return true;
+  }
+
+  return used + amount <= limit;
+}
+
+function consumeUsage(
+  user,
+  type,
+  amount = 1
 ) {
-    const usage =
-        getUserDailyUsage(
-            userId
-        );
+  if (
+    !user ||
+    !type
+  ) {
+    return false;
+  }
 
-    if (
-        type === "message"
-    ) {
-        usage.messages++;
-    }
+  if (
+    !hasUsageAvailable(
+      user,
+      type,
+      amount
+    )
+  ) {
+    return false;
+  }
 
-    if (
-        type === "research"
-    ) {
-        usage.research++;
-    }
+  updateUsage(
+    user.id,
+    type,
+    amount
+  );
 
-    if (
-        type === "image"
-    ) {
-        usage.images++;
-    }
-
-    if (
-        type === "video"
-    ) {
-        usage.videos++;
-    }
-
-    if (
-        type === "file"
-    ) {
-        usage.files++;
-    }
-
-    return saveUserDailyUsage(
-        userId,
-        usage
-    );
+  return true;
 }
 
 
 // ============================================================
-// 511 — USAGE API
+// 4.3 — PLAN API
 // ============================================================
 
-app.get(
-    "/api/limits",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const subscription =
-            getUserPlan(
-                userId
-            );
-
-        const config =
-            PLAN_CONFIG[
-                subscription.plan
-            ] ||
-            PLAN_CONFIG.free;
-
-        const usage =
-            getUserDailyUsage(
-                userId
-            );
-
-        res.json({
-            ok: true,
-            plan:
-                subscription.plan,
-            usage,
-            limits: {
-                messages:
-                    config.dailyMessages,
-                research:
-                    config.dailyResearch,
-                images:
-                    config.dailyImages,
-                videos:
-                    config.dailyVideos,
-                files:
-                    config.maxFiles
-            }
-        });
-    }
-);
-
-
-// ============================================================
-// 512 — PRO CODE
-// ============================================================
-
-const TURKAI_PRO_CODE =
-    process.env.TURKAI_PRO_CODE ||
-    "";
-
-app.post(
-    "/api/pro/activate",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const code =
-            String(
-                req.body?.code ||
-                req.body?.proCode ||
-                ""
-            ).trim();
-
-        if (!code) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "PRO_CODE_REQUIRED"
-            });
-        }
-
-        if (
-            !TURKAI_PRO_CODE ||
-            code !==
-                TURKAI_PRO_CODE
-        ) {
-            return res.status(403).json({
-                ok: false,
-                error:
-                    "INVALID_PRO_CODE"
-            });
-        }
-
-        const subscription =
-            setUserPlan(
-                userId,
-                "pro",
-                {
-                    source:
-                        "pro_code"
-                }
-            );
-
-        res.json({
-            ok: true,
-            message:
-                "Pro plan aktif edildi.",
-            subscription
-        });
-    }
-);
-
-
-// ============================================================
-// 513 — PAYMENT TEST
-// ============================================================
-
-app.post(
-    "/api/test-payment",
-    requireAdmin,
-    (req, res) => {
-        const userId =
-            cleanText(
-                req.body?.userId ||
-                ""
-            );
-
-        const plan =
-            cleanText(
-                req.body?.plan ||
-                "pro"
-            ).toLowerCase();
-
-        if (!userId) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "USER_ID_REQUIRED"
-            });
-        }
-
-        if (
-            !PLAN_CONFIG[plan]
-        ) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "INVALID_PLAN"
-            });
-        }
-
-        const paymentId =
-            `TEST-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
-
-        const subscription =
-            setUserPlan(
-                userId,
-                plan,
-                {
-                    source:
-                        "test_payment",
-                    paymentId
-                }
-            );
-
-        res.json({
-            ok: true,
-            payment: {
-                id:
-                    paymentId,
-                status:
-                    "success",
-                test:
-                    true
-            },
-            subscription
-        });
-    }
-);
-
-
-// ============================================================
-// 514 — IYZICO STATUS
-// ============================================================
-
-app.get(
-    "/api/payment/status",
-    (req, res) => {
-        res.json({
-            ok: true,
-            provider:
-                "iyzico",
-            configured:
-                Boolean(
-                    process.env.IYZICO_API_KEY &&
-                    process.env.IYZICO_SECRET_KEY
-                ),
-            mode:
-                process.env.IYZICO_MODE ||
-                "sandbox",
-            message:
-                "Gerçek ödeme için Iyzico hesap ve API bilgileri gerekir."
-        });
-    }
-);
-
-
-// ============================================================
-// 515 — PAYMENT CALLBACK
-// ============================================================
-
-app.post(
-    "/api/payment/callback",
-    (req, res) => {
-        const payment =
-            req.body || {};
-
-        const userId =
-            cleanText(
-                payment.userId ||
-                ""
-            );
-
-        const plan =
-            cleanText(
-                payment.plan ||
-                "pro"
-            ).toLowerCase();
-
-        if (
-            !userId ||
-            !PLAN_CONFIG[plan]
-        ) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "INVALID_PAYMENT_CALLBACK"
-            });
-        }
-
-        const paymentId =
-            cleanText(
-                payment.paymentId ||
-                payment.id ||
-                ""
-            );
-
-        const subscription =
-            setUserPlan(
-                userId,
-                plan,
-                {
-                    source:
-                        "payment_callback",
-                    paymentId
-                }
-            );
-
-        res.json({
-            ok: true,
-            subscription
-        });
-    }
-);
-
-
-// ============================================================
-// 516 — MODEL ROUTER
-// ============================================================
-
-const MODEL_ROUTER = {
-    fast: {
-        name:
-            "TürkAI Fast",
-        providerOrder: [
-            "groq",
-            "cerebras",
-            "openrouter",
-            "gemini"
-        ]
-    },
-
-    balanced: {
-        name:
-            "TürkAI Balanced",
-        providerOrder: [
-            "cerebras",
-            "groq",
-            "openrouter",
-            "gemini"
-        ]
-    },
-
-    smart: {
-        name:
-            "TürkAI Smart",
-        providerOrder: [
-            "openrouter",
-            "groq",
-            "cerebras",
-            "gemini"
-        ]
-    },
-
-    reasoning: {
-        name:
-            "TürkAI Reasoning",
-        providerOrder: [
-            "cerebras",
-            "openrouter",
-            "groq",
-            "gemini"
-        ]
-    },
-
-    ultra: {
-        name:
-            "TürkAI Ultra",
-        providerOrder: [
-            "cerebras",
-            "openrouter",
-            "gemini",
-            "groq"
-        ]
-    }
-};
-
-
-// ============================================================
-// 517 — MODEL ACCESS
-// ============================================================
-
-function canUseModel(
-    userId,
-    model
-) {
-    const subscription =
-        getUserPlan(
-            userId
-        );
-
-    const config =
-        PLAN_CONFIG[
-            subscription.plan
-        ] ||
-        PLAN_CONFIG.free;
-
-    return config.models.includes(
-        model
-    );
-}
-
-
-// ============================================================
-// 518 — MODEL ENDPOINT
-// ============================================================
-
-app.get(
-    "/api/models",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const subscription =
-            getUserPlan(
-                userId
-            );
-
-        const config =
-            PLAN_CONFIG[
-                subscription.plan
-            ] ||
-            PLAN_CONFIG.free;
-
-        const models =
-            Object.entries(
-                MODEL_ROUTER
-            ).map(
-                ([id, item]) => ({
-                    id,
-                    name:
-                        item.name,
-                    available:
-                        config.models.includes(
-                            id
-                        )
-                })
-            );
-
-        res.json({
-            ok: true,
-            plan:
-                subscription.plan,
-            models
-        });
-    }
-);
-
-
-// ============================================================
-// 519 — AI REQUEST PREPARATION
-// ============================================================
-
-function selectAIModel(
-    requestedModel,
-    userId
-) {
-    let model =
-        cleanText(
-            requestedModel ||
-            "fast"
-        ).toLowerCase();
-
-    if (
-        !MODEL_ROUTER[model]
-    ) {
-        model = "fast";
-    }
-
-    if (
-        !canUseModel(
-            userId,
-            model
-        )
-    ) {
-        model = "fast";
-    }
-
-    return model;
-}
-
-
-// ============================================================
-// 520 — ADVANCED AI ANSWER
-// ============================================================
-
-async function generateAdvancedAIAnswer(
-    params
-) {
-    const userId =
-        params.userId ||
-        "guest";
-
-    const message =
-        cleanText(
-            params.message ||
-            ""
-        );
-
-    const model =
-        selectAIModel(
-            params.model,
-            userId
-        );
-
-    const config =
-        MODEL_ROUTER[
-            model
-        ] ||
-        MODEL_ROUTER.fast;
-
-    const originalStatus = {
-        groq:
-            AI_STATUS.groq,
-        cerebras:
-            AI_STATUS.cerebras,
-        openrouter:
-            AI_STATUS.openrouter,
-        gemini:
-            AI_STATUS.gemini
-    };
-
-    const result =
-        await callAIProviders(
-            params.messages ||
-            [
-                {
-                    role:
-                        "user",
-                    content:
-                        message
-                }
-            ]
-        );
-
-    return {
-        ...result,
-        model,
-        modelName:
-            config.name,
-        providers:
-            config.providerOrder,
-        status:
-            originalStatus
-    };
-}
-
-
-// ============================================================
-// 521 — CHAT ADVANCED ROUTE
-// ============================================================
-
-app.post(
-    "/api/chat/advanced",
-    async (req, res) => {
-        const requestId =
-            req.requestId ||
-            crypto.randomUUID();
-
-        const userId =
-            req.user?.id || "guest";
-
-        const message =
-            cleanText(
-                req.body?.message ||
-                ""
-            ).slice(0, 12000);
-
-        if (!message) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "MESSAGE_REQUIRED",
-                requestId
-            });
-        }
-
-        const limit =
-            checkUsageLimit(
-                userId,
-                "message"
-            );
-
-        if (!limit.allowed) {
-            return res.status(429).json({
-                ok: false,
-                error:
-                    "DAILY_LIMIT_REACHED",
-                message:
-                    "Günlük mesaj limitine ulaştınız.",
-                usage:
-                    limit.usage,
-                limit:
-                    limit.limit,
-                plan:
-                    limit.plan,
-                requestId
-            });
-        }
-
-        try {
-            const answer =
-                await generateAdvancedAIAnswer({
-                    userId,
-                    message,
-                    model:
-                        req.body?.model,
-                    messages:
-                        Array.isArray(
-                            req.body?.messages
-                        )
-                            ? req.body.messages
-                            : [
-                                {
-                                    role:
-                                        "user",
-                                    content:
-                                        message
-                                }
-                            ]
-                });
-
-            incrementDailyUsage(
-                userId,
-                "message"
-            );
-
-            res.json({
-                ok: true,
-                ...answer,
-                requestId
-            });
-        } catch (error) {
-            logError(
-                "ADVANCED_CHAT_ERROR",
-                error
-            );
-
-            res.status(500).json({
-                ok: false,
-                error:
-                    "ADVANCED_CHAT_FAILED",
-                requestId
-            });
-        }
-    }
-);
-
-
-// ============================================================
-// 522 — RESEARCH LIMIT WRAPPER
-// ============================================================
-
-app.post(
-    "/api/research/limited",
-    async (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const limit =
-            checkUsageLimit(
-                userId,
-                "research"
-            );
-
-        if (!limit.allowed) {
-            return res.status(429).json({
-                ok: false,
-                error:
-                    "RESEARCH_LIMIT_REACHED",
-                usage:
-                    limit.usage,
-                limit:
-                    limit.limit,
-                plan:
-                    limit.plan
-            });
-        }
-
-        const query =
-            cleanText(
-                req.body?.query ||
-                ""
-            );
-
-        if (!query) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "QUERY_REQUIRED"
-            });
-        }
-
-        try {
-            const result =
-                await performResearch(
-                    query
-                );
-
-            if (result.ok) {
-                incrementDailyUsage(
-                    userId,
-                    "research"
-                );
-            }
-
-            res.json(
-                result
-            );
-        } catch (error) {
-            logError(
-                "LIMITED_RESEARCH_ERROR",
-                error
-            );
-
-            res.status(500).json({
-                ok: false,
-                error:
-                    "RESEARCH_FAILED"
-            });
-        }
-    }
-);
-
-
-// ============================================================
-// 523 — IMAGE USAGE
-// ============================================================
-
-app.post(
-    "/api/image/usage",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const limit =
-            checkUsageLimit(
-                userId,
-                "image"
-            );
-
-        if (!limit.allowed) {
-            return res.status(429).json({
-                ok: false,
-                error:
-                    "IMAGE_LIMIT_REACHED",
-                usage:
-                    limit.usage,
-                limit:
-                    limit.limit,
-                plan:
-                    limit.plan
-            });
-        }
-
-        incrementDailyUsage(
-            userId,
-            "image"
-        );
-
-        res.json({
-            ok: true,
-            usage:
-                getUserDailyUsage(
-                    userId
-                )
-        });
-    }
-);
-
-
-// ============================================================
-// 524 — VIDEO USAGE
-// ============================================================
-
-app.post(
-    "/api/video/usage",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const limit =
-            checkUsageLimit(
-                userId,
-                "video"
-            );
-
-        if (!limit.allowed) {
-            return res.status(429).json({
-                ok: false,
-                error:
-                    "VIDEO_LIMIT_REACHED",
-                usage:
-                    limit.usage,
-                limit:
-                    limit.limit,
-                plan:
-                    limit.plan
-            });
-        }
-
-        incrementDailyUsage(
-            userId,
-            "video"
-        );
-
-        res.json({
-            ok: true,
-            usage:
-                getUserDailyUsage(
-                    userId
-                )
-        });
-    }
-);
-
-
-// ============================================================
-// 525 — CHAT EXPORT
-// ============================================================
-
-app.get(
-    "/api/chats/:id/export",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const chat =
-            readJSONSafe(
-                DB_FILES.chats,
-                []
-            ).find(
-                item =>
-                    item.id ===
-                        req.params.id &&
-                    item.userId === userId
-            );
-
-        if (!chat) {
-            return res.status(404).json({
-                ok: false,
-                error:
-                    "CHAT_NOT_FOUND"
-            });
-        }
-
-        const messages =
-            readJSONSafe(
-                DB_FILES.messages,
-                []
-            )
-                .filter(
-                    item =>
-                        item.chatId ===
-                        chat.id
-                )
-                .sort(
-                    (a, b) =>
-                        String(
-                            a.createdAt ||
-                            ""
-                        ).localeCompare(
-                            String(
-                                b.createdAt ||
-                                ""
-                            )
-                        )
-                );
-
-        const lines = [
-            `# ${chat.title || "TürkAI Sohbeti"}`,
-            "",
-            `Oluşturulma: ${chat.createdAt || ""}`,
-            "",
-            "---",
-            ""
-        ];
-
-        for (
-            const message of messages
-        ) {
-            const role =
-                message.role ===
-                "user"
-                    ? "Sen"
-                    : "TürkAI";
-
-            lines.push(
-                `## ${role}`,
-                "",
-                String(
-                    message.content ||
-                    message.text ||
-                    ""
-                ),
-                "",
-                "---",
-                ""
-            );
-        }
-
-        res.type(
-            "text/markdown"
-        ).send(
-            lines.join("\n")
-        );
-    }
-);
-
-
-// ============================================================
-// 526 — CHAT EXPORT JSON
-// ============================================================
-
-app.get(
-    "/api/chats/:id/export.json",
-    (req, res) => {
-        const userId =
-            req.user?.id || "guest";
-
-        const chat =
-            readJSONSafe(
-                DB_FILES.chats,
-                []
-            ).find(
-                item =>
-                    item.id ===
-                        req.params.id &&
-                    item.userId === userId
-            );
-
-        if (!chat) {
-            return res.status(404).json({
-                ok: false,
-                error:
-                    "CHAT_NOT_FOUND"
-            });
-        }
-
-        const messages =
-            readJSONSafe(
-                DB_FILES.messages,
-                []
-            )
-                .filter(
-                    item =>
-                        item.chatId ===
-                        chat.id
-                );
-
-        res.json({
-            ok: true,
-            export: {
-                chat,
-                messages,
-                exportedAt:
-                    nowISO()
-            }
-        });
-    }
-);
-
-
-// ============================================================
-// 527 — KNOWLEDGE AUTO SAVE
-// ============================================================
-
-function autoSaveKnowledge(
-    question,
-    answer,
-    source = "ai"
-) {
-    const cleanQuestion =
-        cleanText(
-            question || ""
-        ).slice(0, 1000);
-
-    const cleanAnswer =
-        cleanText(
-            answer || ""
-        ).slice(0, 5000);
-
-    if (
-        !cleanQuestion ||
-        !cleanAnswer
-    ) {
-        return null;
-    }
-
-    const knowledge =
-        readJSONSafe(
-            DB_FILES.knowledge,
-            []
-        );
-
-    const normalized =
-        cleanQuestion
-            .toLowerCase();
-
-    const existing =
-        knowledge.find(
-            item =>
-                cleanText(
-                    item.question ||
-                    ""
-                )
-                    .toLowerCase() ===
-                normalized
-        );
-
-    if (existing) {
-        existing.answer =
-            cleanAnswer;
-
-        existing.updatedAt =
-            nowISO();
-
-        existing.source =
-            source;
-
-        writeJSONSafe(
-            DB_FILES.knowledge,
-            knowledge
-        );
-
-        return existing;
-    }
-
-    const record = {
-        id:
-            crypto.randomUUID(),
-        question:
-            cleanQuestion,
-        answer:
-            cleanAnswer,
-        source,
-        createdAt:
-            nowISO(),
-        updatedAt:
-            nowISO(),
-        uses:
-            0
-    };
-
-    knowledge.push(
-        record
-    );
-
-    if (
-        knowledge.length >
-        10000
-    ) {
-        knowledge.splice(
-            0,
-            knowledge.length -
-                10000
-        );
-    }
-
-    writeJSONSafe(
-        DB_FILES.knowledge,
-        knowledge
-    );
-
-    return record;
-}
-
-
-// ============================================================
-// 528 — KNOWLEDGE AUTO API
-// ============================================================
-
-app.post(
-    "/api/knowledge/learn",
-    requireAdmin,
-    (req, res) => {
-        const question =
-            req.body?.question;
-
-        const answer =
-            req.body?.answer;
-
-        const record =
-            autoSaveKnowledge(
-                question,
-                answer,
-                "admin"
-            );
-
-        if (!record) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "INVALID_KNOWLEDGE"
-            });
-        }
-
-        res.json({
-            ok: true,
-            record
-        });
-    }
-);
-
-
-// ============================================================
-// 529 — AUDIT ENGINE
-// ============================================================
-
-function getAuditLogs() {
-    return readJSONSafe(
-        DB_FILES.audit,
-        []
-    );
-}
-
-function saveAuditLogs(
-    logs
-) {
-    writeJSONSafe(
-        DB_FILES.audit,
-        logs || []
-    );
-}
-
-function createAuditLog(
-    req,
-    action,
-    details = {}
-) {
-    const logs =
-        getAuditLogs();
-
-    logs.push({
-        id:
-            crypto.randomUUID(),
-        action,
-        userId:
-            req.user?.id ||
-            "guest",
-        ip:
-            req.ip ||
-            null,
-        path:
-            req.originalUrl ||
-            req.path ||
-            null,
-        method:
-            req.method ||
-            null,
-        details,
-        createdAt:
-            nowISO()
+app.get("/api/plans/details", (req, res) => {
+  try {
+    const plans = Object.entries(PLANS)
+      .map(([name, data]) => ({
+        name,
+        ...data
+      }));
+
+    res.json({
+      success: true,
+      plans
+    });
+  } catch (error) {
+    logError("plans_details_error", {
+      error: error.message
     });
 
+    res.status(500).json({
+      success: false,
+      error: "Planlar alınamadı."
+    });
+  }
+});
+
+app.get("/api/usage", optionalAuth, (req, res) => {
+  try {
+    const user = req.user || getGuestUser();
+
+    const plan = getUserPlanInfo(user);
+    const usage = getUsageSummary(user.id);
+
+    res.json({
+      success: true,
+      plan,
+      usage,
+      remaining: {
+        messages: Math.max(
+          0,
+          Number(plan.messageLimit || 0) -
+          usage.messages
+        ),
+        research: Math.max(
+          0,
+          Number(plan.researchLimit || 0) -
+          usage.research
+        ),
+        images: Math.max(
+          0,
+          Number(plan.imageLimit || 0) -
+          usage.images
+        ),
+        videos: Math.max(
+          0,
+          Number(plan.videoLimit || 0) -
+          usage.videos
+        )
+      }
+    });
+  } catch (error) {
+    logError("usage_api_error", {
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      error: "Kullanım bilgisi alınamadı."
+    });
+  }
+});
+
+
+// ============================================================
+// 4.4 — MESSAGE LIMIT MIDDLEWARE
+// ============================================================
+
+function messageLimitMiddleware(
+  req,
+  res,
+  next
+) {
+  try {
+    const user =
+      req.user ||
+      getGuestUser();
+
     if (
-        logs.length >
-        20000
+      hasUsageAvailable(
+        user,
+        "messages",
+        1
+      )
     ) {
-        logs.splice(
-            0,
-            logs.length -
-                20000
-        );
+      return next();
     }
 
-    saveAuditLogs(
-        logs
+    return res.status(429).json({
+      success: false,
+      code: "MESSAGE_LIMIT",
+      error:
+        "Günlük mesaj limitine ulaştın.",
+      plan: getUserPlan(user)
+    });
+  } catch (error) {
+    logError(
+      "message_limit_middleware_error",
+      {
+        error: error.message
+      }
     );
+
+    return res.status(500).json({
+      success: false,
+      error: "Kullanım kontrolü yapılamadı."
+    });
+  }
 }
 
 
 // ============================================================
-// 530 — AUDIT ENDPOINT
+// 4.5 — PRO CODE SYSTEM
 // ============================================================
 
-app.get(
-    "/api/admin/audit",
-    requireAdmin,
-    (req, res) => {
-        const logs =
-            getAuditLogs();
+function getConfiguredProCode() {
+  return cleanText(
+    process.env.TURKAI_PRO_CODE || "",
+    200
+  );
+}
 
-        res.json({
-            ok: true,
-            logs:
-                logs.slice(-500)
+function isValidProCode(code) {
+  const input = cleanText(
+    code,
+    200
+  );
+
+  const configured =
+    getConfiguredProCode();
+
+  if (
+    !input ||
+    !configured
+  ) {
+    return false;
+  }
+
+  return input === configured;
+}
+
+function activatePlanForUser(
+  userId,
+  planName,
+  source = "system"
+) {
+  const users = getUsers();
+
+  const user = users.find(
+    item => item.id === userId
+  );
+
+  if (!user) {
+    return null;
+  }
+
+  const plan = normalizePlan(
+    planName
+  );
+
+  user.plan = plan;
+  user.planSource = source;
+  user.planActivatedAt = nowISO();
+  user.planUpdatedAt = nowISO();
+
+  saveUsers(users);
+
+  return user;
+}
+
+
+// ============================================================
+// 4.6 — PRO ACTIVATION API
+// ============================================================
+
+app.post(
+  "/api/pro/activate",
+  optionalAuth,
+  (req, res) => {
+    try {
+      const user =
+        req.user ||
+        getGuestUser();
+
+      const code = cleanText(
+        req.body?.code,
+        200
+      );
+
+      if (!isValidProCode(code)) {
+        logSecurity(
+          "invalid_pro_code",
+          {
+            userId: user.id
+          }
+        );
+
+        return res.status(403).json({
+          success: false,
+          error: "Geçersiz aktivasyon kodu."
         });
-    }
-);
+      }
 
-
-// ============================================================
-// 531 — CACHE ENGINE
-// ============================================================
-
-const MEMORY_CACHE =
-    new Map();
-
-const CACHE_DEFAULT_TTL =
-    60 * 1000;
-
-function cacheGet(
-    key
-) {
-    const item =
-        MEMORY_CACHE.get(
-            key
+      const updated =
+        activatePlanForUser(
+          user.id,
+          "pro",
+          "pro_code"
         );
 
-    if (!item) {
-        return null;
-    }
+      if (!updated) {
+        return res.status(404).json({
+          success: false,
+          error: "Kullanıcı bulunamadı."
+        });
+      }
 
-    if (
-        Date.now() >
-        item.expiresAt
-    ) {
-        MEMORY_CACHE.delete(
-            key
-        );
-
-        return null;
-    }
-
-    return item.value;
-}
-
-function cacheSet(
-    key,
-    value,
-    ttl =
-        CACHE_DEFAULT_TTL
-) {
-    MEMORY_CACHE.set(
-        key,
+      res.json({
+        success: true,
+        message:
+          "TürkAI Pro başarıyla aktif edildi.",
+        plan: "pro"
+      });
+    } catch (error) {
+      logError(
+        "pro_activation_error",
         {
-            value,
-            expiresAt:
-                Date.now() +
-                Math.max(
-                    1000,
-                    Number(ttl) ||
-                        CACHE_DEFAULT_TTL
-                )
+          error: error.message
         }
-    );
+      );
 
-    if (
-        MEMORY_CACHE.size >
-        500
-    ) {
-        const first =
-            MEMORY_CACHE.keys()
-                .next()
-                .value;
-
-        if (first) {
-            MEMORY_CACHE.delete(
-                first
-            );
-        }
+      res.status(500).json({
+        success: false,
+        error: "Pro aktivasyonu başarısız."
+      });
     }
-
-    return value;
-}
-
-function cacheDelete(
-    key
-) {
-    return MEMORY_CACHE.delete(
-        key
-    );
-}
+  }
+);
 
 
 // ============================================================
-// 532 — CACHE STATUS
+// 4.7 — TEST PAYMENT ENDPOINT
 // ============================================================
+
+app.post(
+  "/api/test-payment",
+  optionalAuth,
+  (req, res) => {
+    try {
+      const user =
+        req.user ||
+        getGuestUser();
+
+      const plan = normalizePlan(
+        req.body?.plan || "pro"
+      );
+
+      if (
+        !PLANS[plan]
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: "Geçersiz plan."
+        });
+      }
+
+      const paymentId =
+        createId("payment");
+
+      const payments =
+        readJSONSafe(
+          DB_FILES.payments,
+          []
+        );
+
+      const payment = {
+        id: paymentId,
+        userId: user.id,
+        plan,
+        amount:
+          Number(
+            PLANS[plan].price || 0
+          ),
+        currency: "TRY",
+        status: "test_success",
+        provider: "test",
+        createdAt: nowISO()
+      };
+
+      payments.push(payment);
+
+      writeJSONSafe(
+        DB_FILES.payments,
+        payments
+      );
+
+      activatePlanForUser(
+        user.id,
+        plan,
+        "test_payment"
+      );
+
+      res.json({
+        success: true,
+        payment
+      });
+    } catch (error) {
+      logError(
+        "test_payment_error",
+        {
+          error: error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Test ödeme işlemi başarısız."
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// 4.8 — PAYMENT HISTORY
+// ============================================================
+
+function getPayments() {
+  return readJSONSafe(
+    DB_FILES.payments,
+    []
+  );
+}
+
+function getUserPayments(userId) {
+  return getPayments()
+    .filter(
+      payment =>
+        payment.userId === userId
+    )
+    .sort((a, b) => {
+      return String(
+        b.createdAt || ""
+      ).localeCompare(
+        String(
+          a.createdAt || ""
+        )
+      );
+    });
+}
 
 app.get(
-    "/api/cache/status",
-    requireAdmin,
-    (req, res) => {
-        res.json({
-            ok: true,
-            size:
-                MEMORY_CACHE.size
-        });
+  "/api/payments",
+  optionalAuth,
+  (req, res) => {
+    try {
+      const user =
+        req.user ||
+        getGuestUser();
+
+      res.json({
+        success: true,
+        payments:
+          getUserPayments(user.id)
+      });
+    } catch (error) {
+      logError(
+        "payments_get_error",
+        {
+          error: error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Ödeme geçmişi alınamadı."
+      });
     }
+  }
 );
 
 
 // ============================================================
-// 533 — CACHE CLEAR
+// 4.9 — NOTIFICATION SYSTEM
 // ============================================================
 
-app.delete(
-    "/api/cache",
-    requireAdmin,
-    (req, res) => {
-        const before =
-            MEMORY_CACHE.size;
+function getNotifications() {
+  return readJSONSafe(
+    DB_FILES.notifications,
+    []
+  );
+}
 
-        MEMORY_CACHE.clear();
+function saveNotifications(
+  notifications
+) {
+  return writeJSONSafe(
+    DB_FILES.notifications,
+    Array.isArray(notifications)
+      ? notifications
+      : []
+  );
+}
 
-        res.json({
-            ok: true,
-            deleted:
-                before
-        });
+function createNotification(
+  userId,
+  title,
+  message,
+  type = "info"
+) {
+  const notifications =
+    getNotifications();
+
+  const notification = {
+    id: createId("notification"),
+    userId,
+    title: cleanText(
+      title,
+      200
+    ),
+    message: cleanText(
+      message,
+      1000
+    ),
+    type: cleanText(
+      type,
+      50
+    ),
+    read: false,
+    createdAt: nowISO()
+  };
+
+  notifications.push(
+    notification
+  );
+
+  saveNotifications(
+    notifications
+  );
+
+  return notification;
+}
+
+function getUserNotifications(
+  userId
+) {
+  return getNotifications()
+    .filter(
+      item =>
+        item.userId === userId
+    )
+    .sort((a, b) => {
+      return String(
+        b.createdAt || ""
+      ).localeCompare(
+        String(
+          a.createdAt || ""
+        )
+      );
+    })
+    .slice(0, 100);
+}
+
+function markNotificationRead(
+  notificationId,
+  userId
+) {
+  const notifications =
+    getNotifications();
+
+  const notification =
+    notifications.find(
+      item =>
+        item.id === notificationId &&
+        item.userId === userId
+    );
+
+  if (!notification) {
+    return null;
+  }
+
+  notification.read = true;
+  notification.readAt = nowISO();
+
+  saveNotifications(
+    notifications
+  );
+
+  return notification;
+}
+
+app.get(
+  "/api/notifications",
+  optionalAuth,
+  (req, res) => {
+    try {
+      const user =
+        req.user ||
+        getGuestUser();
+
+      const notifications =
+        getUserNotifications(
+          user.id
+        );
+
+      const unread =
+        notifications.filter(
+          item => !item.read
+        ).length;
+
+      res.json({
+        success: true,
+        notifications,
+        unread
+      });
+    } catch (error) {
+      logError(
+        "notifications_get_error",
+        {
+          error: error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Bildirimler alınamadı."
+      });
     }
+  }
+);
+
+app.post(
+  "/api/notifications/:id/read",
+  optionalAuth,
+  (req, res) => {
+    try {
+      const user =
+        req.user ||
+        getGuestUser();
+
+      const notification =
+        markNotificationRead(
+          req.params.id,
+          user.id
+        );
+
+      if (!notification) {
+        return res.status(404).json({
+          success: false,
+          error:
+            "Bildirim bulunamadı."
+        });
+      }
+
+      res.json({
+        success: true,
+        notification
+      });
+    } catch (error) {
+      logError(
+        "notification_read_error",
+        {
+          error: error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Bildirim güncellenemedi."
+      });
+    }
+  }
 );
 
 
 // ============================================================
-// 534 — ADVANCED RATE LIMIT
+// 4.10 — RATE LIMIT SYSTEM
 // ============================================================
 
 const RATE_LIMIT_STORE =
-    new Map();
+  new Map();
 
-const RATE_LIMIT_WINDOW =
-    60 * 1000;
+const RATE_LIMIT_CONFIG = {
+  windowMs: 60 * 1000,
+  maxRequests: 120
+};
 
-const RATE_LIMIT_MAX =
-    120;
-
-function advancedRateLimit(
-    req,
-    res,
-    next
+function getClientIdentifier(
+  req
 ) {
-    const ip =
-        req.ip ||
-        req.socket?.remoteAddress ||
-        "unknown";
+  const forwarded =
+    req.headers["x-forwarded-for"];
 
-    const now =
-        Date.now();
+  if (forwarded) {
+    return String(
+      forwarded
+    )
+      .split(",")[0]
+      .trim();
+  }
 
-    let item =
-        RATE_LIMIT_STORE.get(
-            ip
-        );
+  return (
+    req.ip ||
+    req.socket?.remoteAddress ||
+    "unknown"
+  );
+}
 
+function cleanupRateLimitStore() {
+  const now = Date.now();
+
+  for (
+    const [
+      key,
+      value
+    ] of RATE_LIMIT_STORE.entries()
+  ) {
     if (
-        !item ||
-        now - item.startedAt >
-            RATE_LIMIT_WINDOW
+      now - value.startedAt >
+      RATE_LIMIT_CONFIG.windowMs
     ) {
-        item = {
-            startedAt:
-                now,
-            count:
-                0
-        };
+      RATE_LIMIT_STORE.delete(
+        key
+      );
     }
+  }
+}
 
-    item.count++;
+function rateLimitMiddleware(
+  req,
+  res,
+  next
+) {
+  const identifier =
+    getClientIdentifier(req);
 
-    RATE_LIMIT_STORE.set(
-        ip,
-        item
+  const now = Date.now();
+
+  let record =
+    RATE_LIMIT_STORE.get(
+      identifier
     );
 
-    res.setHeader(
-        "X-RateLimit-Limit",
-        RATE_LIMIT_MAX
+  if (
+    !record ||
+    now - record.startedAt >
+      RATE_LIMIT_CONFIG.windowMs
+  ) {
+    record = {
+      startedAt: now,
+      count: 0
+    };
+  }
+
+  record.count += 1;
+
+  RATE_LIMIT_STORE.set(
+    identifier,
+    record
+  );
+
+  if (
+    record.count >
+    RATE_LIMIT_CONFIG.maxRequests
+  ) {
+    logSecurity(
+      "rate_limit",
+      {
+        identifier
+      }
     );
 
-    res.setHeader(
-        "X-RateLimit-Remaining",
-        Math.max(
-            0,
-            RATE_LIMIT_MAX -
-                item.count
-        )
+    return res.status(429).json({
+      success: false,
+      code: "RATE_LIMIT",
+      error:
+        "Çok fazla istek gönderildi. Lütfen biraz bekle."
+    });
+  }
+
+  next();
+}
+
+app.use(
+  "/api",
+  rateLimitMiddleware
+);
+
+
+// ============================================================
+// 4.11 — SECURITY AUDIT
+// ============================================================
+
+function getSecurityRecords() {
+  return readJSONSafe(
+    DB_FILES.security,
+    []
+  );
+}
+
+function saveSecurityRecords(
+  records
+) {
+  return writeJSONSafe(
+    DB_FILES.security,
+    Array.isArray(records)
+      ? records
+      : []
+  );
+}
+
+function addSecurityRecord(
+  data = {}
+) {
+  const records =
+    getSecurityRecords();
+
+  const record = {
+    id: createId("security"),
+    event: cleanText(
+      data.event ||
+      "unknown",
+      150
+    ),
+    userId:
+      data.userId || null,
+    ip:
+      cleanText(
+        data.ip || "",
+        100
+      ),
+    userAgent:
+      cleanText(
+        data.userAgent || "",
+        500
+      ),
+    details:
+      data.details || {},
+    createdAt: nowISO()
+  };
+
+  records.push(record);
+
+  if (
+    records.length > 10000
+  ) {
+    records.splice(
+      0,
+      records.length - 10000
+    );
+  }
+
+  saveSecurityRecords(
+    records
+  );
+
+  return record;
+}
+
+app.get(
+  "/api/security/status",
+  optionalAuth,
+  (req, res) => {
+    try {
+      const user =
+        req.user ||
+        getGuestUser();
+
+      const plan =
+        getUserPlan(user);
+
+      res.json({
+        success: true,
+        security: {
+          https:
+            IS_PRODUCTION,
+          helmet: true,
+          rateLimit: true,
+          audit: true,
+          sessionProtection: true,
+          currentPlan: plan
+        }
+      });
+    } catch (error) {
+      logError(
+        "security_status_error",
+        {
+          error: error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Güvenlik durumu alınamadı."
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// 4.12 — AUDIT LOG SYSTEM
+// ============================================================
+
+function getAuditRecords() {
+  return readJSONSafe(
+    DB_FILES.audit,
+    []
+  );
+}
+
+function saveAuditRecords(
+  records
+) {
+  return writeJSONSafe(
+    DB_FILES.audit,
+    Array.isArray(records)
+      ? records
+      : []
+  );
+}
+
+function createAuditLog(
+  event,
+  data = {}
+) {
+  const records =
+    getAuditRecords();
+
+  const item = {
+    id: createId("audit"),
+    event: cleanText(
+      event,
+      150
+    ),
+    userId:
+      data.userId || null,
+    ip:
+      cleanText(
+        data.ip || "",
+        100
+      ),
+    metadata:
+      data.metadata || {},
+    createdAt: nowISO()
+  };
+
+  records.push(item);
+
+  if (
+    records.length > 20000
+  ) {
+    records.splice(
+      0,
+      records.length - 20000
+    );
+  }
+
+  saveAuditRecords(
+    records
+  );
+
+  return item;
+}
+
+
+// ============================================================
+// 4.13 — ADMIN AUTHORIZATION
+// ============================================================
+
+function isAdminUser(user) {
+  if (!user) {
+    return false;
+  }
+
+  if (
+    user.role === "admin" ||
+    user.role === "developer"
+  ) {
+    return true;
+  }
+
+  const adminEmail =
+    cleanText(
+      process.env.TURKAI_ADMIN_EMAIL ||
+      "",
+      200
     );
 
-    if (
-        item.count >
-        RATE_LIMIT_MAX
-    ) {
-        recordSecurityEvent(
-            "rate_limit",
-            {
-                ip,
-                path:
-                    req.path,
-                method:
-                    req.method,
-                message:
-                    "Advanced rate limit exceeded."
-            }
+  if (
+    adminEmail &&
+    user.email &&
+    normalizeText(
+      user.email
+    ) ===
+      normalizeText(
+        adminEmail
+      )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function requireAdmin(
+  req,
+  res,
+  next
+) {
+  const user =
+    req.user;
+
+  if (!isAdminUser(user)) {
+    logSecurity(
+      "admin_access_denied",
+      {
+        userId:
+          user?.id || null
+      }
+    );
+
+    return res.status(403).json({
+      success: false,
+      error:
+        "Bu işlem için yönetici yetkisi gerekiyor."
+    });
+  }
+
+  next();
+}
+
+
+// ============================================================
+// 4.14 — ADMIN STATUS
+// ============================================================
+
+app.get(
+  "/api/admin/status",
+  optionalAuth,
+  requireAdmin,
+  (req, res) => {
+    try {
+      const users =
+        getUsers();
+
+      const payments =
+        getPayments();
+
+      const knowledge =
+        getKnowledge();
+
+      const memories =
+        getMemories();
+
+      res.json({
+        success: true,
+        admin: {
+          users:
+            users.length,
+          payments:
+            payments.length,
+          knowledge:
+            knowledge.length,
+          memories:
+            memories.length,
+          uptime:
+            Math.floor(
+              (Date.now() -
+                START_TIME) /
+              1000
+            ),
+          ai:
+            AI_STATUS
+        }
+      });
+    } catch (error) {
+      logError(
+        "admin_status_error",
+        {
+          error: error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Admin durumu alınamadı."
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// 4.15 — ADMIN USERS
+// ============================================================
+
+app.get(
+  "/api/admin/users",
+  optionalAuth,
+  requireAdmin,
+  (req, res) => {
+    try {
+      const users =
+        getUsers();
+
+      const safeUsers =
+        users.map(user => ({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          plan: user.plan,
+          role: user.role,
+          createdAt:
+            user.createdAt,
+          lastLoginAt:
+            user.lastLoginAt
+        }));
+
+      res.json({
+        success: true,
+        users: safeUsers
+      });
+    } catch (error) {
+      logError(
+        "admin_users_error",
+        {
+          error: error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Kullanıcılar alınamadı."
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// 4.16 — ADMIN PLAN UPDATE
+// ============================================================
+
+app.post(
+  "/api/admin/users/:id/plan",
+  optionalAuth,
+  requireAdmin,
+  (req, res) => {
+    try {
+      const plan =
+        normalizePlan(
+          req.body?.plan
         );
 
-        return res.status(429).json({
-            ok: false,
-            error:
-                "RATE_LIMIT_EXCEEDED",
-            message:
-                "Çok fazla istek gönderildi."
+      if (
+        !PLANS[plan]
+      ) {
+        return res.status(400).json({
+          success: false,
+          error:
+            "Geçersiz plan."
         });
+      }
+
+      const user =
+        activatePlanForUser(
+          req.params.id,
+          plan,
+          "admin"
+        );
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error:
+            "Kullanıcı bulunamadı."
+        });
+      }
+
+      createAuditLog(
+        "admin_plan_update",
+        {
+          userId:
+            req.user?.id,
+          metadata: {
+            targetUserId:
+              req.params.id,
+            plan
+          }
+        }
+      );
+
+      createNotification(
+        user.id,
+        "Plan güncellendi",
+        `TürkAI planın ${plan} olarak güncellendi.`,
+        "system"
+      );
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          plan: user.plan
+        }
+      });
+    } catch (error) {
+      logError(
+        "admin_plan_update_error",
+        {
+          error: error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Plan güncellenemedi."
+      });
     }
+  }
+);
+
+
+// ============================================================
+// 4.17 — ADMIN KNOWLEDGE
+// ============================================================
+
+app.get(
+  "/api/admin/knowledge",
+  optionalAuth,
+  requireAdmin,
+  (req, res) => {
+    try {
+      res.json({
+        success: true,
+        knowledge:
+          getKnowledge()
+      });
+    } catch (error) {
+      logError(
+        "admin_knowledge_error",
+        {
+          error: error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Bilgi tabanı alınamadı."
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// 4.18 — SYSTEM SETTINGS
+// ============================================================
+
+function getPublicSettings() {
+  const settings =
+    getSettings();
+
+  return {
+    appName:
+      settings.appName ||
+      APP_NAME,
+    version:
+      settings.version ||
+      APP_VERSION,
+    maintenance:
+      Boolean(
+        settings.maintenance
+      ),
+    registration:
+      settings.registration !== false,
+    research:
+      settings.research !== false,
+    memory:
+      settings.memory !== false,
+    uploads:
+      settings.uploads !== false
+  };
+}
+
+app.get(
+  "/api/settings/public",
+  (req, res) => {
+    try {
+      res.json({
+        success: true,
+        settings:
+          getPublicSettings()
+      });
+    } catch (error) {
+      logError(
+        "public_settings_error",
+        {
+          error: error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Ayarlar alınamadı."
+      });
+    }
+  }
+);
+
+app.post(
+  "/api/admin/settings",
+  optionalAuth,
+  requireAdmin,
+  (req, res) => {
+    try {
+      const current =
+        getSettings();
+
+      const allowed = [
+        "maintenance",
+        "registration",
+        "research",
+        "memory",
+        "uploads"
+      ];
+
+      for (
+        const key of allowed
+      ) {
+        if (
+          req.body &&
+          Object.prototype.hasOwnProperty.call(
+            req.body,
+            key
+          )
+        ) {
+          current[key] =
+            Boolean(
+              req.body[key]
+            );
+        }
+      }
+
+      current.updatedAt =
+        nowISO();
+
+      saveSettings(
+        current
+      );
+
+      createAuditLog(
+        "settings_updated",
+        {
+          userId:
+            req.user?.id,
+          metadata: {
+            changed:
+              allowed.filter(
+                key =>
+                  Object.prototype.hasOwnProperty.call(
+                    req.body || {},
+                    key
+                  )
+              )
+          }
+        }
+      );
+
+      res.json({
+        success: true,
+        settings:
+          getPublicSettings()
+      });
+    } catch (error) {
+      logError(
+        "admin_settings_error",
+        {
+          error: error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Ayarlar güncellenemedi."
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// 4.19 — MAINTENANCE CHECK
+// ============================================================
+
+function maintenanceMiddleware(
+  req,
+  res,
+  next
+) {
+  if (
+    !req.path.startsWith(
+      "/api"
+    )
+  ) {
+    return next();
+  }
+
+  const settings =
+    getSettings();
+
+  if (
+    settings.maintenance &&
+    !req.path.includes(
+      "/health"
+    ) &&
+    !req.path.includes(
+      "/status"
+    )
+  ) {
+    return res.status(503).json({
+      success: false,
+      code: "MAINTENANCE",
+      error:
+        "TürkAI şu anda bakım modunda."
+    });
+  }
+
+  next();
+}
+
+app.use(
+  maintenanceMiddleware
+);
+
+
+// ============================================================
+// 4.20 — REQUEST AUDIT
+// ============================================================
+
+app.use(
+  "/api",
+  (req, res, next) => {
+    const started =
+      Date.now();
+
+    res.on(
+      "finish",
+      () => {
+        const duration =
+          Date.now() -
+          started;
+
+        REQUEST_METRICS.total += 1;
+
+        if (
+          res.statusCode >= 400
+        ) {
+          REQUEST_METRICS.errors += 1;
+        }
+
+        createAuditLog(
+          "api_request",
+          {
+            userId:
+              req.user?.id ||
+              null,
+            ip:
+              getClientIdentifier(
+                req
+              ),
+            metadata: {
+              method:
+                req.method,
+              path:
+                req.path,
+              status:
+                res.statusCode,
+              duration
+            }
+          }
+        );
+      }
+    );
 
     next();
-}
+  }
+);
 
 
 // ============================================================
-// 535 — RATE LIMIT CLEANUP
+// 4.21 — SYSTEM DIAGNOSTICS
 // ============================================================
 
-setInterval(
-    () => {
-        const now =
-            Date.now();
+function getSystemDiagnostics() {
+  const memory =
+    process.memoryUsage();
 
-        for (
-            const [
-                key,
-                item
-            ] of RATE_LIMIT_STORE
-        ) {
-            if (
-                now -
-                    item.startedAt >
-                RATE_LIMIT_WINDOW * 2
-            ) {
-                RATE_LIMIT_STORE.delete(
-                    key
-                );
-            }
-        }
+  return {
+    app:
+      APP_NAME,
+    version:
+      APP_VERSION,
+    node:
+      process.version,
+    platform:
+      process.platform,
+    architecture:
+      process.arch,
+    uptime:
+      process.uptime(),
+    memory: {
+      rss:
+        memory.rss,
+      heapUsed:
+        memory.heapUsed,
+      heapTotal:
+        memory.heapTotal,
+      external:
+        memory.external
     },
-    5 * 60 * 1000
-);
-
-
-// ============================================================
-// 536 — APPLY API RATE LIMIT
-// ============================================================
-
-app.use(
-    "/api",
-    advancedRateLimit
-);
-
-
-// ============================================================
-// 537 — AUDIT IMPORTANT REQUESTS
-// ============================================================
-
-app.use(
-    "/api",
-    (req, res, next) => {
-        const importantMethods = [
-            "POST",
-            "PATCH",
-            "PUT",
-            "DELETE"
-        ];
-
-        if (
-            importantMethods.includes(
-                req.method
-            )
-        ) {
-            createAuditLog(
-                req,
-                "api_request",
-                {
-                    bodyKeys:
-                        req.body &&
-                        typeof req.body ===
-                            "object"
-                            ? Object.keys(
-                                req.body
-                            ).slice(0, 50)
-                            : []
-                }
-            );
-        }
-
-        next();
-    }
-);
-
-
-// ============================================================
-// 538 — AI PROVIDER STATUS
-// ============================================================
-
-app.get(
-    "/api/ai/providers",
-    requireAdmin,
-    (req, res) => {
-        res.json({
-            ok: true,
-            providers: {
-                groq:
-                    AI_STATUS.groq,
-                cerebras:
-                    AI_STATUS.cerebras,
-                openrouter:
-                    AI_STATUS.openrouter,
-                gemini:
-                    AI_STATUS.gemini
-            }
-        });
-    }
-);
-
-
-// ============================================================
-// 539 — AI RESET FAILURES
-// ============================================================
-
-app.post(
-    "/api/admin/ai/reset",
-    requireAdmin,
-    (req, res) => {
-        for (
-            const key of [
-                "groq",
-                "cerebras",
-                "openrouter",
-                "gemini"
-            ]
-        ) {
-            if (
-                AI_STATUS[key]
-            ) {
-                AI_STATUS[key]
-                    .failures = 0;
-
-                AI_STATUS[key]
-                    .lastError = null;
-
-                AI_STATUS[key]
-                    .lastFailureAt =
-                    null;
-            }
-        }
-
-        res.json({
-            ok: true,
-            status:
-                AI_STATUS
-        });
-    }
-);
-
-
-// ============================================================
-// 540 — SYSTEM CLEANUP
-// ============================================================
-
-function cleanupOldData() {
-    const now =
-        Date.now();
-
-    const oneDay =
-        24 * 60 * 60 * 1000;
-
-    const security =
-        getSecurityEvents()
-            .filter(item => {
-                const time =
-                    Date.parse(
-                        item.createdAt ||
-                        ""
-                    );
-
-                if (
-                    !Number.isFinite(
-                        time
-                    )
-                ) {
-                    return true;
-                }
-
-                return (
-                    now - time <
-                    oneDay * 30
-                );
-            });
-
-    saveSecurityEvents(
-        security
-    );
-
-    const audit =
-        getAuditLogs()
-            .filter(item => {
-                const time =
-                    Date.parse(
-                        item.createdAt ||
-                        ""
-                    );
-
-                if (
-                    !Number.isFinite(
-                        time
-                    )
-                ) {
-                    return true;
-                }
-
-                return (
-                    now - time <
-                    oneDay * 90
-                );
-            });
-
-    saveAuditLogs(
-        audit
-    );
+    metrics:
+      REQUEST_METRICS,
+    ai:
+      AI_STATUS
+  };
 }
 
-
-// ============================================================
-// 541 — PERIODIC CLEANUP
-// ============================================================
-
-setInterval(
-    () => {
-        try {
-            cleanupOldData();
-        } catch (error) {
-            logError(
-                "CLEANUP_ERROR",
-                error
-            );
-        }
-    },
-    6 * 60 * 60 * 1000
-);
-
-
-// ============================================================
-// 542 — AI HEALTH SCORE
-// ============================================================
-
-function calculateAIHealth() {
-    const providers = [
-        "groq",
-        "cerebras",
-        "openrouter",
-        "gemini"
-    ];
-
-    let available = 0;
-
-    for (
-        const provider of providers
-    ) {
-        const status =
-            AI_STATUS[
-                provider
-            ];
-
-        if (
-            status &&
-            status.configured &&
-            status.failures <
-                5
-        ) {
-            available++;
-        }
-    }
-
-    return {
-        available,
-        total:
-            providers.length,
-        percentage:
-            Math.round(
-                (
-                    available /
-                    providers.length
-                ) * 100
-            )
-    };
-}
-
-
-// ============================================================
-// 543 — AI HEALTH
-// ============================================================
-
 app.get(
-    "/api/ai/health",
-    (req, res) => {
-        res.json({
-            ok: true,
-            health:
-                calculateAIHealth(),
-            providers:
-                AI_STATUS
-        });
-    }
-);
-
-
-// ============================================================
-// 544 — LOCAL AI TEST
-// ============================================================
-
-app.post(
-    "/api/ai/test",
-    requireAdmin,
-    async (req, res) => {
-        const message =
-            cleanText(
-                req.body?.message ||
-                "Merhaba TürkAI"
-            );
-
-        try {
-            const answer =
-                await generateAIAnswer(
-                    message,
-                    []
-                );
-
-            res.json({
-                ok: true,
-                answer
-            });
-        } catch (error) {
-            logError(
-                "AI_TEST_ERROR",
-                error
-            );
-
-            res.status(500).json({
-                ok: false,
-                error:
-                    "AI_TEST_FAILED"
-            });
-        }
-    }
-);
-
-
-// ============================================================
-// 545 — SEARCH CACHE
-// ============================================================
-
-async function cachedResearch(
-    query
-) {
-    const key =
-        `research:${query.toLowerCase()}`;
-
-    const cached =
-        cacheGet(
-            key
-        );
-
-    if (cached) {
-        return {
-            ...cached,
-            cached: true
-        };
-    }
-
-    const result =
-        await performResearch(
-            query
-        );
-
-    if (result.ok) {
-        cacheSet(
-            key,
-            result,
-            2 * 60 * 1000
-        );
-    }
-
-    return {
-        ...result,
-        cached: false
-    };
-}
-
-
-// ============================================================
-// 546 — CACHED RESEARCH API
-// ============================================================
-
-app.get(
-    "/api/research/cached",
-    async (req, res) => {
-        const query =
-            normalizeResearchQuery(
-                req.query.q ||
-                req.query.query
-            );
-
-        if (!query) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "QUERY_REQUIRED"
-            });
-        }
-
-        try {
-            const result =
-                await cachedResearch(
-                    query
-                );
-
-            res.json(
-                result
-            );
-        } catch (error) {
-            logError(
-                "CACHED_RESEARCH_ERROR",
-                error
-            );
-
-            res.status(500).json({
-                ok: false,
-                error:
-                    "RESEARCH_FAILED"
-            });
-        }
-    }
-);
-
-
-// ============================================================
-// 547 — USER PROFILE
-// ============================================================
-
-app.get(
-    "/api/me",
-    (req, res) => {
-        const user =
-            req.user ||
-            getGuestUser();
-
-        const subscription =
-            getUserPlan(
-                user.id
-            );
-
-        res.json({
-            ok: true,
-            user: {
-                id:
-                    user.id,
-                name:
-                    user.name ||
-                    "Misafir",
-                email:
-                    user.email ||
-                    null,
-                role:
-                    user.role ||
-                    "user",
-                plan:
-                    subscription.plan
-            }
-        });
-    }
-);
-
-
-// ============================================================
-// 548 — USER PROFILE UPDATE
-// ============================================================
-
-app.patch(
-    "/api/me",
-    (req, res) => {
-        const userId =
-            req.user?.id ||
-            "guest";
-
-        const users =
-            readJSONSafe(
-                DB_FILES.users,
-                []
-            );
-
-        const index =
-            users.findIndex(
-                user =>
-                    user.id ===
-                    userId
-            );
-
-        if (index === -1) {
-            return res.status(404).json({
-                ok: false,
-                error:
-                    "USER_NOT_FOUND"
-            });
-        }
-
-        const user =
-            users[index];
-
-        if (
-            req.body?.name !==
-            undefined
-        ) {
-            user.name =
-                cleanText(
-                    req.body.name
-                ).slice(0, 100);
-        }
-
-        user.updatedAt =
-            nowISO();
-
-        users[index] =
-            user;
-
-        writeJSONSafe(
-            DB_FILES.users,
-            users
-        );
-
-        res.json({
-            ok: true,
-            user
-        });
-    }
-);
-
-
-// ============================================================
-// 549 — SESSION STATUS
-// ============================================================
-
-app.get(
-    "/api/session",
-    (req, res) => {
-        const user =
-            req.user ||
-            getGuestUser();
-
-        res.json({
-            ok: true,
-            authenticated:
-                Boolean(
-                    user &&
-                    user.id !==
-                        "guest"
-                ),
-            user: {
-                id:
-                    user.id,
-                name:
-                    user.name ||
-                    "Misafir",
-                role:
-                    user.role ||
-                    "user"
-            }
-        });
-    }
-);
-
-
-// ============================================================
-// 550 — SERVER FINAL STATUS
-// ============================================================
-
-app.get(
-    "/api/status",
-    (req, res) => {
-        const ai =
-            calculateAIHealth();
-
-        res.json({
-            ok: true,
-            status:
-                "online",
-            app:
-                APP_NAME,
-            version:
-                APP_VERSION,
-            serverTime:
-                nowISO(),
-            uptime:
-                process.uptime(),
-            ai,
-            socket:
-                io.engine?.clientsCount ||
-                0,
-            cache:
-                MEMORY_CACHE.size,
-            rateLimitEntries:
-                RATE_LIMIT_STORE.size
-        });
-    }
-);
-
-
-// ============================================================
-// 551 — ADMIN MAINTENANCE
-// ============================================================
-
-let MAINTENANCE_MODE =
-    false;
-
-app.get(
-    "/api/maintenance",
-    (req, res) => {
-        res.json({
-            ok: true,
-            maintenance:
-                MAINTENANCE_MODE
-        });
-    }
-);
-
-app.post(
-    "/api/admin/maintenance",
-    requireAdmin,
-    (req, res) => {
-        MAINTENANCE_MODE =
-            Boolean(
-                req.body?.enabled
-            );
-
-        res.json({
-            ok: true,
-            maintenance:
-                MAINTENANCE_MODE
-        });
-    }
-);
-
-
-// ============================================================
-// 552 — MAINTENANCE GUARD
-// ============================================================
-
-app.use(
-    "/api",
-    (req, res, next) => {
-        const allowedPaths = [
-            "/health",
-            "/ping",
-            "/status",
-            "/maintenance",
-            "/config"
-        ];
-
-        if (
-            MAINTENANCE_MODE &&
-            !allowedPaths.includes(
-                req.path
-            ) &&
-            !isAdminRequest(req)
-        ) {
-            return res.status(503).json({
-                ok: false,
-                error:
-                    "MAINTENANCE_MODE",
-                message:
-                    "TürkAI bakım modunda."
-            });
-        }
-
-        next();
-    }
-);
-
-
-// ============================================================
-// 553 — ERROR SAFE RESPONSE
-// ============================================================
-
-app.use(
-    (
-        error,
-        req,
-        res,
-        next
-    ) => {
-        if (
-            res.headersSent
-        ) {
-            return next(
-                error
-            );
-        }
-
-        const requestId =
-            req.requestId ||
-            crypto.randomUUID();
-
-        logError(
-            "FINAL_ERROR_HANDLER",
-            {
-                requestId,
-                error:
-                    error?.stack ||
-                    error?.message ||
-                    String(error)
-            }
-        );
-
-        res.status(500).json({
-            ok: false,
-            error:
-                "SERVER_ERROR",
-            requestId,
-            message:
-                IS_PRODUCTION
-                    ? "Sunucu hatası oluştu."
-                    : (
-                        error?.message ||
-                        "Sunucu hatası oluştu."
-                    )
-        });
-    }
-);
-
-
-// ============================================================
-// 554 — PROCESS MEMORY WATCH
-// ============================================================
-
-setInterval(
-    () => {
-        try {
-            const memory =
-                process.memoryUsage();
-
-            const heapLimit =
-                512 * 1024 * 1024;
-
-            if (
-                memory.rss >
-                heapLimit
-            ) {
-                logWarn(
-                    "HIGH_MEMORY_USAGE",
-                    {
-                        rss:
-                            memory.rss,
-                        heapUsed:
-                            memory.heapUsed,
-                        heapTotal:
-                            memory.heapTotal
-                    }
-                );
-            }
-        } catch {
-            // ignore
-        }
-    },
-    60 * 1000
-);
-
-
-// ============================================================
-// 555 — SOCKET BROADCAST HELPER
-// ============================================================
-
-function broadcastSystemEvent(
-    event,
-    payload
-) {
+  "/api/system/diagnostics",
+  optionalAuth,
+  requireAdmin,
+  (req, res) => {
     try {
-        io.emit(
-            event,
-            {
-                ...payload,
-                timestamp:
-                    nowISO()
-            }
-        );
+      res.json({
+        success: true,
+        diagnostics:
+          getSystemDiagnostics()
+      });
     } catch (error) {
+      logError(
+        "diagnostics_error",
+        {
+          error: error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Diagnostik alınamadı."
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// 4.22 — CLEANUP TASKS
+// ============================================================
+
+function cleanupOldUsageRecords() {
+  const records =
+    getUsageRecords();
+
+  const cutoff =
+    Date.now() -
+    1000 *
+    60 *
+    60 *
+    24 *
+    45;
+
+  const filtered =
+    records.filter(
+      record => {
+        const time =
+          Date.parse(
+            record.updatedAt ||
+            record.createdAt ||
+            ""
+          );
+
+        if (
+          Number.isNaN(time)
+        ) {
+          return true;
+        }
+
+        return time >= cutoff;
+      }
+    );
+
+  if (
+    filtered.length !==
+    records.length
+  ) {
+    saveUsageRecords(
+      filtered
+    );
+  }
+}
+
+function cleanupOldAuditRecords() {
+  const records =
+    getAuditRecords();
+
+  if (
+    records.length > 20000
+  ) {
+    saveAuditRecords(
+      records.slice(
+        -20000
+      )
+    );
+  }
+}
+
+function cleanupOldSecurityRecords() {
+  const records =
+    getSecurityRecords();
+
+  if (
+    records.length > 10000
+  ) {
+    saveSecurityRecords(
+      records.slice(
+        -10000
+      )
+    );
+  }
+}
+
+
+// ============================================================
+// 4.23 — PERIODIC MAINTENANCE
+// ============================================================
+
+const TURKAI_MAINTENANCE_INTERVAL =
+  setInterval(
+    () => {
+      try {
+        cleanupRateLimitStore();
+        cleanupOldUsageRecords();
+        cleanupOldAuditRecords();
+        cleanupOldSecurityRecords();
+      } catch (error) {
         logError(
-            "SOCKET_BROADCAST_ERROR",
-            error
+          "maintenance_task_error",
+          {
+            error: error.message
+          }
         );
-    }
-}
+      }
+    },
+    10 * 60 * 1000
+  );
 
-
-// ============================================================
-// 556 — ADMIN BROADCAST
-// ============================================================
-
-app.post(
-    "/api/admin/broadcast",
-    requireAdmin,
-    (req, res) => {
-        const event =
-            cleanText(
-                req.body?.event ||
-                "turkai:announcement"
-            ).slice(0, 100);
-
-        const message =
-            cleanText(
-                req.body?.message ||
-                ""
-            ).slice(0, 2000);
-
-        if (!message) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    "MESSAGE_REQUIRED"
-            });
-        }
-
-        broadcastSystemEvent(
-            event,
-            {
-                message,
-                source:
-                    "admin"
-            }
-        );
-
-        res.json({
-            ok: true,
-            event
-        });
-    }
-);
-
-
-// ============================================================
-// 557 — CHAT STREAM EVENT
-// ============================================================
-
-function broadcastChatUpdate(
-    chatId,
-    data
+if (
+  typeof TURKAI_MAINTENANCE_INTERVAL
+    ?.unref === "function"
 ) {
-    broadcastSystemEvent(
-        "chat:update",
-        {
-            chatId,
-            ...data
-        }
-    );
+  TURKAI_MAINTENANCE_INTERVAL.unref();
 }
 
 
 // ============================================================
-// 558 — FILE EVENT
-// ============================================================
-
-function broadcastFileUpdate(
-    userId,
-    file
-) {
-    io.emit(
-        "file:update",
-        {
-            userId,
-            file,
-            timestamp:
-                nowISO()
-        }
-    );
-}
-
-
-// ============================================================
-// 559 — APP CONFIG CACHE
-// ============================================================
-
-function getCachedPublicConfig() {
-    const key =
-        "public-config";
-
-    const cached =
-        cacheGet(
-            key
-        );
-
-    if (cached) {
-        return cached;
-    }
-
-    const config = {
-        app: {
-            name:
-                APP_NAME,
-            version:
-                APP_VERSION
-        },
-        plans:
-            Object.values(
-                PLAN_CONFIG
-            ).map(
-                plan => ({
-                    id:
-                        plan.id,
-                    name:
-                        plan.name,
-                    price:
-                        plan.priceMonthly,
-                    messages:
-                        plan.dailyMessages
-                })
-            ),
-        features: {
-            chat: true,
-            memory: true,
-            research: true,
-            weather: true,
-            currency: true,
-            upload: true,
-            projects: true,
-            socket: true
-        }
-    };
-
-    return cacheSet(
-        key,
-        config,
-        5 * 60 * 1000
-    );
-}
-
-
-// ============================================================
-// 560 — CONFIG CACHE ENDPOINT
+// 4.24 — FEATURE STATUS
 // ============================================================
 
 app.get(
-    "/api/config/cached",
-    (req, res) => {
-        res.json({
-            ok: true,
-            config:
-                getCachedPublicConfig()
-        });
-    }
-);
-
-
-// ============================================================
-// 561 — SERVER STATISTICS
-// ============================================================
-
-function getServerStatistics() {
-    const users =
-        readJSONSafe(
-            DB_FILES.users,
-            []
-        );
-
-    const chats =
-        readJSONSafe(
-            DB_FILES.chats,
-            []
-        );
-
-    const messages =
-        readJSONSafe(
-            DB_FILES.messages,
-            []
-        );
-
-    const projects =
-        getProjects();
-
-    const files =
-        getFileDatabase();
-
-    return {
-        users:
-            users.length,
-        chats:
-            chats.length,
-        messages:
-            messages.length,
-        projects:
-            projects.length,
-        files:
-            files.length,
-        uptime:
-            process.uptime(),
-        memory:
-            process.memoryUsage(),
-        requests:
-            REQUEST_METRICS.total
-    };
-}
-
-
-// ============================================================
-// 562 — SERVER STATISTICS ENDPOINT
-// ============================================================
-
-app.get(
-    "/api/statistics",
-    requireAdmin,
-    (req, res) => {
-        res.json({
-            ok: true,
-            statistics:
-                getServerStatistics()
-        });
-    }
-);
-
-
-// ============================================================
-// 563 — LOG ROTATION
-// ============================================================
-
-function rotateLogFiles() {
+  "/api/features",
+  optionalAuth,
+  (req, res) => {
     try {
-        const files =
-            fs.readdirSync(
-                LOGS_DIR
-            );
+      const user =
+        req.user ||
+        getGuestUser();
 
-        if (
-            files.length <=
-            20
-        ) {
-            return;
+      const plan =
+        getUserPlanInfo(user);
+
+      res.json({
+        success: true,
+        plan:
+          plan.name,
+        features: {
+          chat:
+            true,
+          memory:
+            true,
+          research:
+            true,
+          fileUpload:
+            Number(
+              plan.fileLimitMB ||
+              0
+            ) > 0,
+          imageGeneration:
+            Number(
+              plan.imageLimit ||
+              0
+            ) > 0,
+          videoGeneration:
+            Number(
+              plan.videoLimit ||
+              0
+            ) > 0,
+          projects:
+            true,
+          notifications:
+            true,
+          security:
+            true
         }
+      });
+    } catch (error) {
+      logError(
+        "features_error",
+        {
+          error: error.message
+        }
+      );
 
-        files
-            .sort()
-            .slice(
-                0,
-                files.length -
-                    20
-            )
-            .forEach(
-                file => {
-                    try {
-                        fs.unlinkSync(
-                            path.join(
-                                LOGS_DIR,
-                                file
-                            )
-                        );
-                    } catch {
-                        // ignore
-                    }
-                }
-            );
-    } catch {
-        // ignore
+      res.status(500).json({
+        success: false,
+        error:
+          "Özellikler alınamadı."
+      });
     }
-}
-
-
-// ============================================================
-// 564 — PERIODIC LOG ROTATION
-// ============================================================
-
-setInterval(
-    () => {
-        rotateLogFiles();
-    },
-    60 * 60 * 1000
+  }
 );
 
 
 // ============================================================
-// 565 — FINAL DATABASE CHECK
-// ============================================================
-
-function finalDatabaseCheck() {
-    const files =
-        Object.values(
-            DB_FILES
-        );
-
-    let missing = 0;
-
-    for (
-        const file of files
-    ) {
-        if (
-            !fs.existsSync(
-                file
-            )
-        ) {
-            missing++;
-        }
-    }
-
-    return {
-        total:
-            files.length,
-        missing
-    };
-}
-
-
-// ============================================================
-// 566 — FINAL STORAGE CHECK
-// ============================================================
-
-function finalStorageCheck() {
-    const directories = [
-        DATA_DIR,
-        DB_DIR,
-        STORAGE_DIR,
-        USERS_DIR,
-        GENERATED_DIR,
-        UPLOADS_DIR,
-        LOGS_DIR,
-        PUBLIC_DIR
-    ];
-
-    return directories.map(
-        directory => ({
-            directory,
-            exists:
-                fs.existsSync(
-                    directory
-                )
-        })
-    );
-}
-
-
-// ============================================================
-// 567 — FINAL STARTUP REPORT
-// ============================================================
-
-function finalStartupReport() {
-    const database =
-        finalDatabaseCheck();
-
-    const storage =
-        finalStorageCheck();
-
-    console.log(
-        "============================================================"
-    );
-
-    console.log(
-        "TÜRKAI FINAL STARTUP REPORT"
-    );
-
-    console.log(
-        "============================================================"
-    );
-
-    console.log(
-        `Database files : ${database.total}`
-    );
-
-    console.log(
-        `Missing files  : ${database.missing}`
-    );
-
-    console.log(
-        `Storage checks : ${storage.length}`
-    );
-
-    console.log(
-        `AI health      : ${JSON.stringify(calculateAIHealth())}`
-    );
-
-    console.log(
-        `Port           : ${PORT}`
-    );
-
-    console.log(
-        `Environment    : ${NODE_ENV}`
-    );
-
-    console.log(
-        `Version        : ${APP_VERSION}`
-    );
-
-    console.log(
-        "============================================================"
-    );
-}
-
-finalStartupReport();
-
-
-// ============================================================
-// 568 — READY EVENT
-// ============================================================
-
-setTimeout(
-    () => {
-        broadcastSystemEvent(
-            "turkai:ready",
-            {
-                app:
-                    APP_NAME,
-                version:
-                    APP_VERSION,
-                status:
-                    "ready"
-            }
-        );
-    },
-    1000
-);
-
-
-// ============================================================
-// 569 — DAILY USAGE CLEANER
-// ============================================================
-
-function cleanOldUsage() {
-    const usage =
-        getUsageDatabase();
-
-    const today =
-        getUsageDate();
-
-    let changed = false;
-
-    for (
-        const [
-            userId,
-            data
-        ] of Object.entries(
-            usage
-        )
-    ) {
-        if (
-            data &&
-            data.date &&
-            data.date !== today
-        ) {
-            delete usage[userId];
-            changed = true;
-        }
-    }
-
-    if (changed) {
-        saveUsageDatabase(
-            usage
-        );
-    }
-}
-
-
-// ============================================================
-// 570 — DAILY CLEANUP TIMER
-// ============================================================
-
-setInterval(
-    () => {
-        try {
-            cleanOldUsage();
-        } catch (error) {
-            logError(
-                "USAGE_CLEANUP_ERROR",
-                error
-            );
-        }
-    },
-    60 * 60 * 1000
-);
-
-
-// ============================================================
-// 571 — KNOWLEDGE LIMITER
-// ============================================================
-
-function limitKnowledgeSize() {
-    const knowledge =
-        readJSONSafe(
-            DB_FILES.knowledge,
-            []
-        );
-
-    if (
-        knowledge.length <=
-        10000
-    ) {
-        return;
-    }
-
-    knowledge.splice(
-        0,
-        knowledge.length -
-            10000
-    );
-
-    writeJSONSafe(
-        DB_FILES.knowledge,
-        knowledge
-    );
-}
-
-
-// ============================================================
-// 572 — KNOWLEDGE CLEANUP
-// ============================================================
-
-setInterval(
-    () => {
-        try {
-            limitKnowledgeSize();
-        } catch (error) {
-            logError(
-                "KNOWLEDGE_CLEANUP_ERROR",
-                error
-            );
-        }
-    },
-    12 * 60 * 60 * 1000
-);
-
-
-// ============================================================
-// 573 — PROJECT LIMITER
-// ============================================================
-
-function limitProjectSize() {
-    const projects =
-        getProjects();
-
-    if (
-        projects.length <=
-        20000
-    ) {
-        return;
-    }
-
-    projects.splice(
-        0,
-        projects.length -
-            20000
-    );
-
-    saveProjects(
-        projects
-    );
-}
-
-
-// ============================================================
-// 574 — PROJECT CLEANUP
-// ============================================================
-
-setInterval(
-    () => {
-        try {
-            limitProjectSize();
-        } catch (error) {
-            logError(
-                "PROJECT_CLEANUP_ERROR",
-                error
-            );
-        }
-    },
-    12 * 60 * 60 * 1000
-);
-
-
-// ============================================================
-// 575 — NOTIFICATION LIMITER
-// ============================================================
-
-function limitNotificationSize() {
-    const notifications =
-        getNotifications();
-
-    if (
-        notifications.length <=
-        50000
-    ) {
-        return;
-    }
-
-    notifications.splice(
-        0,
-        notifications.length -
-            50000
-    );
-
-    saveNotifications(
-        notifications
-    );
-}
-
-
-// ============================================================
-// 576 — NOTIFICATION CLEANUP
-// ============================================================
-
-setInterval(
-    () => {
-        try {
-            limitNotificationSize();
-        } catch (error) {
-            logError(
-                "NOTIFICATION_CLEANUP_ERROR",
-                error
-            );
-        }
-    },
-    12 * 60 * 60 * 1000
-);
-
-
-// ============================================================
-// 577 — FINAL API MAP
-// ============================================================
-
-const TURKAI_API_MAP = [
-    "/api/health",
-    "/api/ping",
-    "/api/status",
-    "/api/system",
-    "/api/config",
-    "/api/config/cached",
-
-    "/api/chat",
-    "/api/chat/advanced",
-    "/api/chats",
-    "/api/chats/:id",
-    "/api/chats/:id/export",
-    "/api/chats/:id/export.json",
-
-    "/api/research",
-    "/api/research/limited",
-    "/api/research/cached",
-
-    "/api/weather",
-    "/api/currency",
-
-    "/api/upload",
-    "/api/files",
-    "/api/files/:id",
-    "/api/files/:id/download",
-
-    "/api/projects",
-    "/api/projects/:id",
-    "/api/projects/search",
-
-    "/api/memory",
-    "/api/memory/:id",
-
-    "/api/notifications",
-    "/api/feedback",
-
-    "/api/plans",
-    "/api/me",
-    "/api/me/plan",
-    "/api/limits",
-
-    "/api/pro/activate",
-    "/api/test-payment",
-    "/api/payment/status",
-
-    "/api/models",
-    "/api/ai/status",
-    "/api/ai/health",
-    "/api/ai/providers",
-
-    "/api/socket/status"
-];
-
-
-// ============================================================
-// 578 — API MAP ENDPOINT
+// 4.25 — QUICK SYSTEM TEST
 // ============================================================
 
 app.get(
-    "/api",
-    (req, res) => {
-        res.json({
-            ok: true,
-            name:
-                APP_NAME,
-            version:
-                APP_VERSION,
-            endpoints:
-                TURKAI_API_MAP
-        });
-    }
+  "/api/test-payment",
+  (req, res) => {
+    res.json({
+      success: true,
+      mode: "GET",
+      message:
+        "TürkAI ödeme test sistemi hazır."
+    });
+  }
 );
 
 
 // ============================================================
-// 579 — API DOCUMENTATION
+// 4.26 — 4/5 EXPORTS
 // ============================================================
 
-app.get(
-    "/api/docs",
-    (req, res) => {
-        res.json({
-            ok: true,
-            name:
-                APP_NAME,
-            version:
-                APP_VERSION,
-            description:
-                "TürkAI API",
-            endpoints:
-                TURKAI_API_MAP.map(
-                    endpoint => ({
-                        path:
-                            endpoint,
-                        methods:
-                            endpoint.includes(
-                                ":"
-                            )
-                                ? [
-                                    "GET",
-                                    "PATCH",
-                                    "DELETE"
-                                ]
-                                : [
-                                    "GET",
-                                    "POST"
-                                ]
-                    })
-                )
-        });
-    }
-);
+module.exports.turkaiUsage = {
+  getUsageRecords,
+  saveUsageRecords,
+  getUserUsage,
+  updateUsage,
+  getUsageSummary,
+  getPlanInfo,
+  getUserPlan,
+  getUserPlanInfo,
+  getPlanLimit,
+  getUsageValue,
+  hasUsageAvailable,
+  consumeUsage
+};
 
+module.exports.turkaiPayments = {
+  getPayments,
+  getUserPayments,
+  activatePlanForUser,
+  isValidProCode
+};
 
-// ============================================================
-// 580 — FINAL HEALTH CACHE
-// ============================================================
+module.exports.turkaiNotifications = {
+  getNotifications,
+  saveNotifications,
+  createNotification,
+  getUserNotifications,
+  markNotificationRead
+};
 
-function getCachedHealth() {
-    const key =
-        "health";
-
-    const cached =
-        cacheGet(
-            key
-        );
-
-    if (cached) {
-        return cached;
-    }
-
-    const health = {
-        ok: true,
-        status:
-            "healthy",
-        app:
-            APP_NAME,
-        version:
-            APP_VERSION,
-        uptime:
-            process.uptime(),
-        ai:
-            calculateAIHealth(),
-        timestamp:
-            nowISO()
-    };
-
-    return cacheSet(
-        key,
-        health,
-        5000
-    );
-}
-
-
-// ============================================================
-// 581 — FAST HEALTH
-// ============================================================
-
-app.get(
-    "/api/health/fast",
-    (req, res) => {
-        res.json(
-            getCachedHealth()
-        );
-    }
-);
-
-
-// ============================================================
-// 582 — ADMIN RELOAD
-// ============================================================
-
-app.post(
-    "/api/admin/reload",
-    requireAdmin,
-    (req, res) => {
-        initializeDatabase();
-        cleanupOldData();
-        cleanOldUsage();
-        limitKnowledgeSize();
-        limitProjectSize();
-        limitNotificationSize();
-
-        res.json({
-            ok: true,
-            message:
-                "TürkAI veri sistemleri yeniden yüklendi.",
-            timestamp:
-                nowISO()
-        });
-    }
-);
-
-
-// ============================================================
-// 583 — ADMIN CLEAR CACHE
-// ============================================================
-
-app.post(
-    "/api/admin/cache/clear",
-    requireAdmin,
-    (req, res) => {
-        const before =
-            MEMORY_CACHE.size;
-
-        MEMORY_CACHE.clear();
-
-        res.json({
-            ok: true,
-            cleared:
-                before
-        });
-    }
-);
-
-
-// ============================================================
-// 584 — ADMIN SYSTEM CHECK
-// ============================================================
-
-app.get(
-    "/api/admin/system-check",
-    requireAdmin,
-    (req, res) => {
-        const checks = {
-            database:
-                finalDatabaseCheck(),
-            storage:
-                finalStorageCheck(),
-            ai:
-                calculateAIHealth(),
-            memory:
-                process.memoryUsage(),
-            uptime:
-                process.uptime(),
-            requests:
-                REQUEST_METRICS
-        };
-
-        res.json({
-            ok: true,
-            checks
-        });
-    }
-);
-
-
-// ============================================================
-// 585 — FINAL EXPORT
-// ============================================================
-
-module.exports = {
-    app,
-    httpServer,
-    io,
-    APP_NAME,
-    APP_VERSION,
-    PLAN_CONFIG,
-    MODEL_ROUTER,
-    getUserPlan,
-    setUserPlan,
-    checkUsageLimit,
-    incrementDailyUsage,
-    getServerStatistics
+module.exports.turkaiSecurity = {
+  getSecurityRecords,
+  saveSecurityRecords,
+  addSecurityRecord,
+  createAuditLog,
+  isAdminUser,
+  getSystemDiagnostics
 };
 
 
 // ============================================================
-// 586 — FINAL MESSAGE
+// 4/5 SONU
+// ============================================================
+// ============================================================
+// TÜRKAI 11.0.0
+// SERVER.JS — 5/5
+// FINAL INTEGRATION + SOCKET.IO + STATIC + STARTUP
 // ============================================================
 
-console.log(
-    ""
-);
-
-console.log(
-    "============================================================"
-);
-
-console.log(
-    " TÜRKAI SERVER TAMAMLANDI"
-);
-
-console.log(
-    "============================================================"
-);
-
-console.log(
-    ` ${APP_NAME} ${APP_VERSION}`
-);
-
-console.log(
-    " Chat API       : AKTİF"
-);
-
-console.log(
-    " AI Router      : AKTİF"
-);
-
-console.log(
-    " Memory         : AKTİF"
-);
-
-console.log(
-    " Knowledge      : AKTİF"
-);
-
-console.log(
-    " Research       : AKTİF"
-);
-
-console.log(
-    " Weather        : AKTİF"
-);
-
-console.log(
-    " Currency       : AKTİF"
-);
-
-console.log(
-    " Upload         : AKTİF"
-);
-
-console.log(
-    " Projects       : AKTİF"
-);
-
-console.log(
-    " Plans          : AKTİF"
-);
-
-console.log(
-    " Pro / Plus     : AKTİF"
-);
-
-console.log(
-    " Socket.IO      : AKTİF"
-);
-
-console.log(
-    " Security       : AKTİF"
-);
-
-console.log(
-    " Admin API      : AKTİF"
-);
-
-console.log(
-    " Health API     : AKTİF"
-);
-
-console.log(
-    "============================================================"
-);
-
-console.log(
-    ""
-);
+"use strict";
 
 
 // ============================================================
-// TÜRKAI SERVER.JS — END
+// 5.1 — ADVANCED CHAT ENGINE
 // ============================================================
+
+function buildConversationContext(
+  userId,
+  chatId,
+  currentMessage
+) {
+  const parts = [];
+
+  const memoryContext =
+    buildUserContext(userId);
+
+  if (memoryContext) {
+    parts.push(memoryContext);
+  }
+
+  const knowledge =
+    findKnowledgeAnswer(
+      currentMessage
+    );
+
+  if (knowledge) {
+    parts.push(
+      [
+        "İlgili yerel bilgi:",
+        knowledge.answer
+      ].join("\n")
+    );
+  }
+
+  if (chatId) {
+    const history =
+      getChatMessages(chatId);
+
+    if (history.length) {
+      const recent =
+        history.slice(-12);
+
+      parts.push(
+        recent
+          .map(item => {
+            const role =
+              item.role === "user"
+                ? "Kullanıcı"
+                : "TürkAI";
+
+            return `${role}: ${item.content}`;
+          })
+          .join("\n")
+      );
+    }
+  }
+
+  return parts.join("\n\n");
+}
+
+
+function buildFinalAIRequest(
+  userId,
+  chatId,
+  message
+) {
+  const context =
+    buildConversationContext(
+      userId,
+      chatId,
+      message
+    );
+
+  const messages = [
+    {
+      role: "system",
+      content:
+        TURKAI_SYSTEM_PROMPT
+    }
+  ];
+
+  if (context) {
+    messages.push({
+      role: "system",
+      content:
+        "Ek bağlam:\n" +
+        context
+    });
+  }
+
+  messages.push({
+    role: "user",
+    content: message
+  });
+
+  return messages;
+}
+
+
+async function generateFinalChatAnswer({
+  user,
+  chatId,
+  message,
+  model
+}) {
+  const cleanMessage =
+    cleanText(
+      message,
+      12000
+    );
+
+  if (!cleanMessage) {
+    return {
+      answer:
+        "Bir mesaj yazmalısın.",
+      provider:
+        "local",
+      model:
+        "local"
+    };
+  }
+
+
+  // ----------------------------------------------------------
+  // 1. Basit cevap kontrolü
+  // ----------------------------------------------------------
+
+  const simple =
+    localResponse(
+      cleanMessage
+    );
+
+  if (simple) {
+    return {
+      answer: simple,
+      provider:
+        "local",
+      model:
+        "local"
+    };
+  }
+
+
+  // ----------------------------------------------------------
+  // 2. Knowledge kontrolü
+  // ----------------------------------------------------------
+
+  const knowledge =
+    findKnowledgeAnswer(
+      cleanMessage
+    );
+
+  if (
+    knowledge &&
+    knowledge.score >= 35
+  ) {
+    return {
+      answer:
+        knowledge.answer,
+      provider:
+        "knowledge",
+      model:
+        "local-knowledge"
+    };
+  }
+
+
+  // ----------------------------------------------------------
+  // 3. AI
+  // ----------------------------------------------------------
+
+  const messages =
+    buildFinalAIRequest(
+      user.id,
+      chatId,
+      cleanMessage
+    );
+
+  const result =
+    await callAIProviders(
+      messages,
+      {
+        preferredModel:
+          model || "fast"
+      }
+    );
+
+  if (
+    result &&
+    result.text
+  ) {
+    return {
+      answer:
+        normalizeAIText(
+          result.text
+        ),
+      provider:
+        result.provider ||
+        "unknown",
+      model:
+        result.model ||
+        model ||
+        "default"
+    };
+  }
+
+
+  // ----------------------------------------------------------
+  // 4. Son yerel fallback
+  // ----------------------------------------------------------
+
+  return {
+    answer:
+      "Şu anda yapay zekâ servislerine bağlanamıyorum. Biraz sonra tekrar deneyebilirsin.",
+    provider:
+      "local-fallback",
+    model:
+      "local"
+  };
+}
+
+
+// ============================================================
+// 5.2 — CHAT ROUTE OVERRIDE
+// ============================================================
+//
+// 2/5'te /api/chat zaten tanımlandıysa bu route,
+// Express sıralaması nedeniyle ona ek olarak çalışmaz.
+// Bu nedenle mevcut route'un yerine kullanılacak gelişmiş
+// sürümü kullanmak için 2/5'teki eski /api/chat route'unu
+// kaldırıp bunu kullanabilirsin.
+// ============================================================
+
+
+// ============================================================
+// 5.3 — CHAT HEALTH
+// ============================================================
+
+app.get(
+  "/api/chat/health",
+  (req, res) => {
+    res.json({
+      success: true,
+      chat: true,
+      memory: true,
+      knowledge: true,
+      research: true,
+      projects: true,
+      timestamp:
+        nowISO()
+    });
+  }
+);
+
+
+// ============================================================
+// 5.4 — CONVERSATION EXPORT
+// ============================================================
+
+app.get(
+  "/api/chat/:chatId/export",
+  optionalAuth,
+  (req, res) => {
+    try {
+      const user =
+        req.user ||
+        getGuestUser();
+
+      const chat =
+        findChatById(
+          req.params.chatId
+        );
+
+      if (!chat) {
+        return res.status(404).json({
+          success: false,
+          error:
+            "Sohbet bulunamadı."
+        });
+      }
+
+      if (
+        chat.userId &&
+        chat.userId !== user.id
+      ) {
+        return res.status(403).json({
+          success: false,
+          error:
+            "Bu sohbete erişim iznin yok."
+        });
+      }
+
+      const messages =
+        getChatMessages(
+          chat.id
+        );
+
+      res.json({
+        success: true,
+        export: {
+          app:
+            APP_NAME,
+          version:
+            APP_VERSION,
+          chat: {
+            id:
+              chat.id,
+            title:
+              chat.title,
+            createdAt:
+              chat.createdAt,
+            updatedAt:
+              chat.updatedAt
+          },
+          messages
+        }
+      });
+    } catch (error) {
+      logError(
+        "chat_export_error",
+        {
+          error:
+            error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Sohbet dışa aktarılamadı."
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// 5.5 — CHAT DELETE
+// ============================================================
+
+app.delete(
+  "/api/chat/:chatId",
+  optionalAuth,
+  (req, res) => {
+    try {
+      const user =
+        req.user ||
+        getGuestUser();
+
+      const chats =
+        getChats();
+
+      const index =
+        chats.findIndex(
+          chat =>
+            chat.id ===
+              req.params.chatId &&
+            chat.userId ===
+              user.id
+        );
+
+      if (index === -1) {
+        return res.status(404).json({
+          success: false,
+          error:
+            "Sohbet bulunamadı."
+        });
+      }
+
+      const chat =
+        chats[index];
+
+      chats.splice(
+        index,
+        1
+      );
+
+      saveChats(chats);
+
+      const messages =
+        getMessages();
+
+      const remaining =
+        messages.filter(
+          message =>
+            message.chatId !==
+            chat.id
+        );
+
+      saveMessages(
+        remaining
+      );
+
+      createAuditLog(
+        "chat_deleted",
+        {
+          userId:
+            user.id,
+          metadata: {
+            chatId:
+              chat.id
+          }
+        }
+      );
+
+      res.json({
+        success: true
+      });
+    } catch (error) {
+      logError(
+        "chat_delete_error",
+        {
+          error:
+            error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Sohbet silinemedi."
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// 5.6 — CHAT RENAME
+// ============================================================
+
+app.patch(
+  "/api/chat/:chatId",
+  optionalAuth,
+  (req, res) => {
+    try {
+      const user =
+        req.user ||
+        getGuestUser();
+
+      const chats =
+        getChats();
+
+      const chat =
+        chats.find(
+          item =>
+            item.id ===
+              req.params.chatId &&
+            item.userId ===
+              user.id
+        );
+
+      if (!chat) {
+        return res.status(404).json({
+          success: false,
+          error:
+            "Sohbet bulunamadı."
+        });
+      }
+
+      if (
+        req.body &&
+        req.body.title !==
+          undefined
+      ) {
+        chat.title =
+          cleanText(
+            req.body.title,
+            150
+          ) ||
+          "Yeni Sohbet";
+      }
+
+      chat.updatedAt =
+        nowISO();
+
+      saveChats(chats);
+
+      res.json({
+        success: true,
+        chat
+      });
+    } catch (error) {
+      logError(
+        "chat_rename_error",
+        {
+          error:
+            error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Sohbet güncellenemedi."
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// 5.7 — SEARCH CHAT HISTORY
+// ============================================================
+
+app.get(
+  "/api/chats/search",
+  optionalAuth,
+  (req, res) => {
+    try {
+      const user =
+        req.user ||
+        getGuestUser();
+
+      const query =
+        normalizeText(
+          cleanText(
+            req.query?.q,
+            500
+          )
+        );
+
+      if (!query) {
+        return res.json({
+          success: true,
+          results: []
+        });
+      }
+
+      const chats =
+        getChats().filter(
+          chat =>
+            chat.userId ===
+            user.id
+        );
+
+      const messages =
+        getMessages().filter(
+          message =>
+            message.userId ===
+            user.id
+        );
+
+      const results = [];
+
+      for (
+        const message of messages
+      ) {
+        const content =
+          normalizeText(
+            message.content
+          );
+
+        if (
+          content.includes(
+            query
+          )
+        ) {
+          const chat =
+            chats.find(
+              item =>
+                item.id ===
+                message.chatId
+            );
+
+          results.push({
+            chatId:
+              message.chatId,
+            chatTitle:
+              chat?.title ||
+              "Sohbet",
+            messageId:
+              message.id,
+            role:
+              message.role,
+            content:
+              message.content,
+            createdAt:
+              message.createdAt
+          });
+        }
+      }
+
+      res.json({
+        success: true,
+        results:
+          results
+            .slice(
+              -100
+            )
+            .reverse()
+      });
+    } catch (error) {
+      logError(
+        "chat_search_error",
+        {
+          error:
+            error.message
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        error:
+          "Sohbetlerde arama yapılamadı."
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// 5.8 — SOCKET.IO
+// ============================================================
+
+io.on(
+  "connection",
+  socket => {
+    const connectedAt =
+      nowISO();
+
+    logInfo(
+      "socket_connected",
+      {
+        socketId:
+          socket.id,
+        connectedAt
+      }
+    );
+
+
+    socket.emit(
+      "turkai:ready",
+      {
+        success: true,
+        app:
+          APP_NAME,
+        version:
+          APP_VERSION,
+        socketId:
+          socket.id,
+        timestamp:
+          connectedAt
+      }
+    );
+
+
+    socket.on(
+      "turkai:ping",
+      payload => {
+        socket.emit(
+          "turkai:pong",
+          {
+            success: true,
+            received:
+              payload || null,
+            timestamp:
+              nowISO()
+          }
+        );
+      }
+    );
+
+
+    socket.on(
+      "chat:join",
+      chatId => {
+        const cleanChatId =
+          cleanText(
+            chatId,
+            150
+          );
+
+        if (!cleanChatId) {
+          return;
+        }
+
+        socket.join(
+          `chat:${cleanChatId}`
+        );
+
+        socket.emit(
+          "chat:joined",
+          {
+            chatId:
+              cleanChatId
+          }
+        );
+      }
+    );
+
+
+    socket.on(
+      "chat:leave",
+      chatId => {
+        const cleanChatId =
+          cleanText(
+            chatId,
+            150
+          );
+
+        if (!cleanChatId) {
+          return;
+        }
+
+        socket.leave(
+          `chat:${cleanChatId}`
+        );
+
+        socket.emit(
+          "chat:left",
+          {
+            chatId:
+              cleanChatId
+          }
+        );
+      }
+    );
+
+
+    socket.on(
+      "chat:typing",
+      payload => {
+        const chatId =
+          cleanText(
+            payload?.chatId,
+            150
+          );
+
+        if (!chatId) {
+          return;
+        }
+
+        socket
+          .to(`chat:${chatId}`)
+          .emit(
+            "chat:typing",
+            {
+              chatId,
+              typing:
+                Boolean(
+                  payload?.typing
+                )
+            }
+          );
+      }
+    );
+
+
+    socket.on(
+      "disconnect",
+      reason => {
+        logInfo(
+          "socket_disconnected",
+          {
+            socketId:
+              socket.id,
+            reason
+          }
+        );
+      }
+    );
+  }
+);
+
+
+// ============================================================
+// 5.9 — SOCKET STATUS
+// ============================================================
+
+app.get(
+  "/api/socket/status",
+  (req, res) => {
+    res.json({
+      success: true,
+      socketIO:
+        true,
+      connected:
+        io.engine
+          ? io.engine.clientsCount
+          : 0,
+      timestamp:
+        nowISO()
+    });
+  }
+);
+
+
+// ============================================================
+// 5.10 — SERVER INFO
+// ============================================================
+
+app.get(
+  "/api/server/info",
+  (req, res) => {
+    res.json({
+      success: true,
+      server: {
+        name:
+          APP_NAME,
+        version:
+          APP_VERSION,
+        description:
+          APP_DESCRIPTION,
+        environment:
+          NODE_ENV,
+        production:
+          IS_PRODUCTION,
+        node:
+          process.version,
+        platform:
+          process.platform,
+        architecture:
+          process.arch,
+        uptime:
+          process.uptime(),
+        startedAt:
+          new Date(
+            START_TIME
+          ).toISOString(),
+        serverId:
+          SERVER_ID
+      }
+    });
+  }
+);
+
+
+// ============================================================
+// 5.11 — API SUMMARY
+// ============================================================
+
+app.get(
+  "/api",
+  (req, res) => {
+    res.json({
+      success: true,
+      name:
+        APP_NAME,
+      version:
+        APP_VERSION,
+      message:
+        "TürkAI API aktif.",
+      endpoints: {
+        health:
+          "/api/health",
+        status:
+          "/api/status",
+        chat:
+          "/api/chat",
+        memory:
+          "/api/memory",
+        knowledge:
+          "/api/knowledge",
+        research:
+          "/api/research",
+        files:
+          "/api/files",
+        projects:
+          "/api/projects",
+        plans:
+          "/api/plans",
+        usage:
+          "/api/usage",
+        notifications:
+          "/api/notifications",
+        features:
+          "/api/features"
+      }
+    });
+  }
+);
+
+
+// ============================================================
+// 5.12 — STATIC FRONTEND
+// ============================================================
+
+if (
+  fs.existsSync(
+    PUBLIC_DIR
+  )
+) {
+  app.use(
+    express.static(
+      PUBLIC_DIR,
+      {
+        index:
+          false,
+        maxAge:
+          IS_PRODUCTION
+            ? "1h"
+            : 0
+      }
+    )
+  );
+}
+
+
+// ============================================================
+// 5.13 — COMMON STATIC LOCATIONS
+// ============================================================
+
+const possibleFrontendFiles = [
+  path.join(
+    ROOT_DIR,
+    "index.html"
+  ),
+  path.join(
+    ROOT_DIR,
+    "public",
+    "index.html"
+  )
+];
+
+function findFrontendFile() {
+  for (
+    const file of
+    possibleFrontendFiles
+  ) {
+    if (
+      fs.existsSync(file)
+    ) {
+      return file;
+    }
+  }
+
+  return null;
+}
+
+
+// ============================================================
+// 5.14 — ROOT PAGE
+// ============================================================
+
+app.get(
+  "/",
+  (req, res) => {
+    const frontend =
+      findFrontendFile();
+
+    if (
+      frontend
+    ) {
+      return res.sendFile(
+        frontend
+      );
+    }
+
+    res.type(
+      "html"
+    ).send(`
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${APP_NAME}</title>
+<style>
+body{
+  margin:0;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#090b10;
+  color:#fff;
+  font-family:Arial,sans-serif;
+}
+.box{
+  max-width:600px;
+  padding:40px;
+  text-align:center;
+}
+h1{
+  font-size:42px;
+  margin-bottom:12px;
+}
+p{
+  color:#aab0c0;
+}
+.status{
+  display:inline-block;
+  margin-top:20px;
+  padding:10px 16px;
+  border-radius:12px;
+  background:#151923;
+  border:1px solid #272d3b;
+}
+</style>
+</head>
+<body>
+<div class="box">
+<h1>TürkAI</h1>
+<p>TürkAI sunucusu çalışıyor.</p>
+<div class="status">API aktif • v${APP_VERSION}</div>
+</div>
+</body>
+</html>
+`);
+  }
+);
+
+
+// ============================================================
+// 5.15 — FRONTEND SPA FALLBACK
+// ============================================================
+
+app.get(
+  "*",
+  (req, res, next) => {
+    if (
+      req.path.startsWith(
+        "/api/"
+      )
+    ) {
+      return next();
+    }
+
+    const frontend =
+      findFrontendFile();
+
+    if (
+      frontend &&
+      (
+        req.method ===
+        "GET"
+      )
+    ) {
+      return res.sendFile(
+        frontend
+      );
+    }
+
+    next();
+  }
+);
+
+
+// ============================================================
+// 5.16 — FINAL API 404
+// ============================================================
+
+app.use(
+  "/api",
+  (req, res) => {
+    res.status(404).json({
+      success: false,
+      error:
+        "API endpoint bulunamadı.",
+      path:
+        req.originalUrl
+    });
+  }
+);
+
+
+// ============================================================
+// 5.17 — GLOBAL 404
+// ============================================================
+
+app.use(
+  (req, res) => {
+    if (
+      req.accepts(
+        "html"
+      )
+    ) {
+      return res.status(404)
+        .send(`
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>404 — TürkAI</title>
+<style>
+body{
+  margin:0;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#090b10;
+  color:#fff;
+  font-family:Arial,sans-serif;
+}
+main{
+  text-align:center;
+}
+h1{
+  font-size:80px;
+  margin:0;
+}
+p{
+  color:#9ca3b5;
+}
+a{
+  color:#7c5cff;
+  text-decoration:none;
+}
+</style>
+</head>
+<body>
+<main>
+<h1>404</h1>
+<p>Bu sayfa bulunamadı.</p>
+<a href="/">TürkAI'ye dön</a>
+</main>
+</body>
+</html>
+`);
+    }
+
+    res.status(404).json({
+      success: false,
+      error:
+        "İstek yapılan kaynak bulunamadı."
+    });
+  }
+);
+
+
+// ============================================================
+// 5.18 — GLOBAL ERROR HANDLER
+// ============================================================
+
+app.use(
+  (
+    error,
+    req,
+    res,
+    next
+  ) => {
+    logError(
+      "global_error",
+      {
+        error:
+          error?.message ||
+          "Unknown error",
+        stack:
+          error?.stack ||
+          null,
+        method:
+          req?.method,
+        path:
+          req?.path
+      }
+    );
+
+    if (
+      res.headersSent
+    ) {
+      return next(
+        error
+      );
+    }
+
+    const status =
+      Number(
+        error?.status ||
+        error?.statusCode
+      ) || 500;
+
+    res.status(
+      status
+    ).json({
+      success: false,
+      error:
+        IS_PRODUCTION
+          ? "Sunucu hatası oluştu."
+          : (
+              error?.message ||
+              "Sunucu hatası."
+            )
+    });
+  }
+);
+
+
+// ============================================================
+// 5.19 — SERVER START
+// ============================================================
+
+let SERVER_INSTANCE = null;
+
+function startServer() {
+  if (
+    SERVER_INSTANCE
+  ) {
+    return SERVER_INSTANCE;
+  }
+
+  SERVER_INSTANCE =
+    httpServer.listen(
+      PORT,
+      HOST,
+      () => {
+        const address =
+          httpServer.address();
+
+        const actualPort =
+          typeof address ===
+          "object" &&
+          address
+            ? address.port
+            : PORT;
+
+        logInfo(
+          "server_started",
+          {
+            app:
+              APP_NAME,
+            version:
+              APP_VERSION,
+            port:
+              actualPort,
+            host:
+              HOST,
+            environment:
+              NODE_ENV,
+            serverId:
+              SERVER_ID
+          }
+        );
+
+        console.log("");
+        console.log(
+          "=============================================="
+        );
+        console.log(
+          "             TÜRKAI SERVER"
+        );
+        console.log(
+          "=============================================="
+        );
+        console.log(
+          `App        : ${APP_NAME}`
+        );
+        console.log(
+          `Version    : ${APP_VERSION}`
+        );
+        console.log(
+          `Environment: ${NODE_ENV}`
+        );
+        console.log(
+          `Port       : ${actualPort}`
+        );
+        console.log(
+          `Server ID  : ${SERVER_ID}`
+        );
+        console.log(
+          "Status     : ONLINE"
+        );
+        console.log(
+          "=============================================="
+        );
+        console.log("");
+      }
+    );
+
+  return SERVER_INSTANCE;
+}
+
+
+// ============================================================
+// 5.20 — GRACEFUL SHUTDOWN
+// ============================================================
+
+let shuttingDown =
+  false;
+
+async function shutdown(
+  signal
+) {
+  if (
+    shuttingDown
+  ) {
+    return;
+  }
+
+  shuttingDown =
+    true;
+
+  console.log(
+    `\n[TürkAI] ${signal} alındı. Sunucu kapatılıyor...`
+  );
+
+  logInfo(
+    "server_shutdown_start",
+    {
+      signal
+    }
+  );
+
+  try {
+    clearInterval(
+      TURKAI_MAINTENANCE_INTERVAL
+    );
+  } catch {}
+
+  try {
+    io.close();
+  } catch (
+    socketError
+  ) {
+    logWarn(
+      "socket_shutdown_error",
+      {
+        error:
+          socketError.message
+      }
+    );
+  }
+
+  try {
+    if (
+      SERVER_INSTANCE
+    ) {
+      await new Promise(
+        resolve => {
+          SERVER_INSTANCE.close(
+            () => resolve()
+          );
+        }
+      );
+    }
+  } catch (
+    serverError
+  ) {
+    logError(
+      "server_shutdown_error",
+      {
+        error:
+          serverError.message
+      }
+    );
+  }
+
+  logInfo(
+    "server_shutdown_complete",
+    {
+      signal
+    }
+  );
+
+  process.exit(0);
+}
+
+
+// ============================================================
+// 5.21 — PROCESS ERROR HANDLERS
+// ============================================================
+
+process.on(
+  "SIGINT",
+  () => {
+    shutdown(
+      "SIGINT"
+    );
+  }
+);
+
+process.on(
+  "SIGTERM",
+  () => {
+    shutdown(
+      "SIGTERM"
+    );
+  }
+);
+
+process.on(
+  "uncaughtException",
+  error => {
+    logError(
+      "uncaught_exception",
+      {
+        error:
+          error.message,
+        stack:
+          error.stack
+      }
+    );
+
+    console.error(
+      "[TürkAI] Uncaught Exception:",
+      error
+    );
+  }
+);
+
+process.on(
+  "unhandledRejection",
+  reason => {
+    logError(
+      "unhandled_rejection",
+      {
+        error:
+          String(reason)
+      }
+    );
+
+    console.error(
+      "[TürkAI] Unhandled Rejection:",
+      reason
+    );
+  }
+);
+
+
+// ============================================================
+// 5.22 — FINAL SERVER STATE
+// ============================================================
+
+SERVER_STATE.started =
+  false;
+
+SERVER_STATE.startTime =
+  START_TIME;
+
+SERVER_STATE.serverId =
+  SERVER_ID;
+
+SERVER_STATE.version =
+  APP_VERSION;
+
+
+// ============================================================
+// 5.23 — FINAL EXPORTS
+// ============================================================
+
+module.exports = {
+  app,
+  httpServer,
+  io,
+
+  APP_NAME,
+  APP_VERSION,
+  APP_DESCRIPTION,
+
+  startServer,
+  shutdown,
+
+  getUsers,
+  saveUsers,
+  findUserById,
+  findUserByEmail,
+  createUser,
+
+  getSessions,
+  saveSessions,
+  createSession,
+  getSessionByToken,
+
+  getChats,
+  saveChats,
+  createChat,
+  findChatById,
+  getChatMessages,
+
+  getMemories,
+  saveMemories,
+  getUserMemories,
+  createMemory,
+
+  getKnowledge,
+  saveKnowledge,
+  addKnowledge,
+  findKnowledgeAnswer,
+
+  performResearch,
+
+  getUserFiles,
+  registerFile,
+
+  getUserProjects,
+  createProject,
+
+  getUsageSummary,
+  consumeUsage,
+
+  getPlanInfo,
+  getUserPlan,
+  getUserPlanInfo,
+
+  createNotification,
+  getUserNotifications,
+
+  createAuditLog,
+
+  isAdminUser,
+
+  getSystemDiagnostics
+};
+
+
+// ============================================================
+// 5.24 — START SERVER
+// ============================================================
+
+if (
+  require.main ===
+  module
+) {
+  startServer();
+}
+
+
+// ============================================================
+// TÜRKAI 11.0.0
+// SERVER.JS TAMAMLANDI
+// ============================================================
+
+console.log(
+  `[TürkAI] server.js ${APP_VERSION} hazır.`
+);
