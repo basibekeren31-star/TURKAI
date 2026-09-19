@@ -3509,3 +3509,187 @@ table {
 pre {
     max-width: 100%;
 }
+/* ============================================================
+   TÜRKAI — OPENING SCREEN FIX
+============================================================ */
+
+#openingScreen {
+    position: fixed !important;
+    inset: 0 !important;
+
+    width: 100vw !important;
+    height: 100vh !important;
+
+    display: flex !important;
+
+    align-items: center !important;
+    justify-content: center !important;
+
+    z-index: 99999 !important;
+
+    padding: 20px !important;
+
+    background:
+        radial-gradient(
+            circle at 50% 45%,
+            rgba(32,199,214,.10),
+            transparent 35%
+        ),
+        #07090d !important;
+}
+
+#openingScreen .opening-content {
+    width: min(92vw, 520px) !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+
+    align-items: center !important;
+    justify-content: center !important;
+
+    text-align: center !important;
+
+    margin: 0 auto !important;
+}
+
+#openingScreen h1,
+#openingScreen p,
+#openingScreen div {
+    text-align: center;
+}
+
+#openingScreen h1 {
+    margin: 20px 0 6px !important;
+
+    color: #f5f7fa !important;
+
+    font-size: clamp(28px, 6vw, 42px) !important;
+    font-weight: 800 !important;
+
+    letter-spacing: -.04em !important;
+}
+
+#openingScreen p {
+    margin: 0 !important;
+
+    color: #8993a3 !important;
+
+    font-size: 14px !important;
+}
+
+#openingScreen .opening-logo {
+    width: 76px !important;
+    height: 76px !important;
+
+    display: flex !important;
+
+    align-items: center !important;
+    justify-content: center !important;
+
+    margin: 0 auto !important;
+
+    border-radius: 22px !important;
+
+    background: rgba(32,199,214,.10) !important;
+
+    border: 1px solid rgba(32,199,214,.25) !important;
+
+    color: #20c7d6 !important;
+}
+
+#openingScreen .opening-logo svg {
+    width: 34px !important;
+    height: 34px !important;
+}
+
+/* Açılış ekranı JS ile kapatıldığında */
+#openingScreen.hidden,
+#openingScreen.is-hidden,
+#openingScreen.hide {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* ============================================================
+   AUTH CENTER FIX
+============================================================ */
+
+#authScreen {
+    position: fixed !important;
+    inset: 0 !important;
+
+    width: 100vw !important;
+    height: 100vh !important;
+
+    display: flex !important;
+
+    align-items: center !important;
+    justify-content: center !important;
+
+    padding: 20px !important;
+
+    overflow-y: auto !important;
+}
+
+#authScreen .auth-layout {
+    width: 100% !important;
+    min-height: 100% !important;
+
+    display: flex !important;
+
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#authScreen .auth-card-wrapper {
+    width: min(100%, 470px) !important;
+
+    margin: auto !important;
+}
+
+/* ============================================================
+   APP CENTER FIX
+============================================================ */
+
+#mainContent {
+    min-width: 0 !important;
+}
+
+.page-container {
+    width: 100% !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+
+.screen {
+    width: 100% !important;
+    max-width: 1180px !important;
+
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+#screen-chat,
+#chatView {
+    width: 100% !important;
+
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+#chatMessages {
+    width: min(100%, 900px) !important;
+
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+#welcomeState {
+    width: min(100%, 860px) !important;
+
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
