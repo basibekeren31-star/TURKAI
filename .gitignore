@@ -1,4 +1,14 @@
-node_modules/
-.env
-.env.*
-!.env.example
+(
+echo node_modules/
+echo .env
+echo .env.*
+echo !.env.example
+echo data/
+echo uploads/
+echo logs/
+echo *.log
+echo server.before-media-clean.js
+echo server.before-*.js
+echo .DS_Store
+echo Thumbs.db
+)> .gitignore
