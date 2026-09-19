@@ -1,0 +1,47 @@
+{
+  "name": "turkai",
+  "version": "10.0.0",
+  "description": "TürkAI - Türkçe odaklı, hafızalı, araştırma destekli yapay zeka platformu",
+  "main": "server.js",
+  "type": "commonjs",
+  "private": true,
+
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "check": "node --check server.js",
+    "check:app": "node --check app.js",
+    "check:all": "npm run check && npm run check:app",
+    "health": "node -e \"fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/system/health').then(r=>r.text()).then(console.log).catch(e=>{console.error(e);process.exit(1)})\""
+  },
+
+  "engines": {
+    "node": ">=20.0.0"
+  },
+
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "pdf-parse": "^1.1.1",
+    "socket.io": "^4.8.1"
+  },
+
+  "devDependencies": {},
+
+  "keywords": [
+    "turkai",
+    "ai",
+    "artificial-intelligence",
+    "turkish-ai",
+    "chatbot",
+    "research",
+    "memory",
+    "coding",
+    "education"
+  ],
+
+  "author": "TürkAI",
+  "license": "MIT"
+}
