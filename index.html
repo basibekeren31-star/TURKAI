@@ -1,1368 +1,281 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<meta name="theme-color" content="#090b10">
-<meta name="description" content="TürkAI - Türkçe yapay zeka platformu">
-
-<title>TürkAI</title>
-
-<style>
-:root{
-    --bg:#090b10;
-    --surface:#10131a;
-    --surface2:#151923;
-    --surface3:#1b1f2a;
-    --border:rgba(255,255,255,.075);
-    --border2:rgba(255,255,255,.12);
-    --text:#f4f5f7;
-    --soft:#b7bdc9;
-    --muted:#7d8491;
-    --accent:#7862e8;
-    --accent2:#8975ef;
-    --accentSoft:rgba(120,98,232,.13);
-    --success:#48c58a;
-    --danger:#e56b78;
-    --topbar:58px;
-    --chatWidth:820px;
-    --composerWidth:760px;
-}
-
-*{
-    box-sizing:border-box;
-    margin:0;
-    padding:0;
-}
-
-html,
-body{
-    width:100%;
-    height:100%;
-}
-
-body{
-    background:var(--bg);
-    color:var(--text);
-    font-family:
-        Inter,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
-    overflow:hidden;
-}
-
-button,
-input,
-textarea{
-    font:inherit;
-}
-
-button{
-    border:0;
-    cursor:pointer;
-}
-
-button:focus-visible,
-textarea:focus-visible,
-input:focus-visible{
-    outline:2px solid var(--accent);
-    outline-offset:2px;
-}
-
-/* TOPBAR */
-
-.topbar{
-    height:var(--topbar);
-    width:100%;
-    position:fixed;
-    top:0;
-    left:0;
-    z-index:50;
-
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-
-    padding:0 18px;
-
-    background:rgba(9,11,16,.88);
-    backdrop-filter:blur(18px);
-    -webkit-backdrop-filter:blur(18px);
-
-    border-bottom:1px solid var(--border);
-}
-
-.brand{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    min-width:0;
-}
-
-.brandIcon{
-    width:31px;
-    height:31px;
-    border-radius:9px;
-
-    display:grid;
-    place-items:center;
 
-    background:linear-gradient(
-        135deg,
-        var(--accent),
-        #5740bb
-    );
+    <!-- =====================================================
+         TÜRKAI — INDEX.HTML
+         PART 1 / 3
+         PREMIUM APP SHELL + HEADER + SIDEBAR
+         ===================================================== -->
+
+    <meta charset="UTF-8">
 
-    box-shadow:
-        0 5px 18px rgba(120,98,232,.22);
-}
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
+    >
 
-.brandIcon svg{
-    width:17px;
-    height:17px;
-}
+    <meta
+        name="theme-color"
+        content="#090b10"
+    >
 
-.brandText{
-    font-weight:750;
-    font-size:16px;
-    letter-spacing:-.3px;
-}
+    <meta
+        name="color-scheme"
+        content="dark light"
+    >
 
-.brandVersion{
-    color:var(--muted);
-    font-size:11px;
-    margin-left:2px;
-}
+    <meta
+        name="description"
+        content="TürkAI — Türkçe yapay zeka asistanı"
+    >
 
-.topActions{
-    display:flex;
-    align-items:center;
-    gap:7px;
-}
-
-.iconButton{
-    width:34px;
-    height:34px;
+    <meta
+        name="application-name"
+        content="TürkAI"
+    >
 
-    display:grid;
-    place-items:center;
+    <meta
+        name="mobile-web-app-capable"
+        content="yes"
+    >
 
-    border-radius:9px;
+    <meta
+        name="apple-mobile-web-app-capable"
+        content="yes"
+    >
 
-    color:var(--soft);
-    background:transparent;
-    border:1px solid transparent;
+    <meta
+        name="apple-mobile-web-app-status-bar-style"
+        content="black-translucent"
+    >
 
-    transition:.18s ease;
-}
+    <meta
+        name="apple-mobile-web-app-title"
+        content="TürkAI"
+    >
 
-.iconButton:hover{
-    color:var(--text);
-    background:var(--surface2);
-    border-color:var(--border);
-}
+    <title>TürkAI — Yapay Zeka Asistanı</title>
 
-.iconButton svg{
-    width:17px;
-    height:17px;
-}
 
-.newChatButton{
-    height:34px;
+    <!-- =====================================================
+         GOOGLE IDENTITY
+         ===================================================== -->
 
-    padding:0 11px;
+    <script
+        src="https://accounts.google.com/gsi/client"
+        async
+        defer
+    ></script>
 
-    display:flex;
-    align-items:center;
-    gap:7px;
 
-    border-radius:9px;
+    <!-- =====================================================
+         SOCKET.IO
+         ===================================================== -->
 
-    color:#fff;
-    background:var(--accent);
+    <script
+        src="/socket.io/socket.io.js"
+        defer
+    ></script>
 
-    font-size:12px;
-    font-weight:650;
 
-    transition:.18s ease;
-}
+    <!-- =====================================================
+         ICONS
+         ===================================================== -->
 
-.newChatButton:hover{
-    background:var(--accent2);
-}
+    <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com"
+    >
 
-.newChatButton svg{
-    width:15px;
-    height:15px;
-}
-
-/* MAIN */
-
-.app{
-    width:100%;
-    height:100%;
-    padding-top:var(--topbar);
-}
-
-.chatShell{
-    width:min(var(--chatWidth),100%);
-    height:100%;
-    margin:auto;
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    >
 
-    display:flex;
-    flex-direction:column;
-
-    position:relative;
-}
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+    >
 
-.messages{
-    flex:1;
-    min-height:0;
 
-    overflow-y:auto;
-    overflow-x:hidden;
+    <!-- =====================================================
+         APP CSS
+         ===================================================== -->
 
-    padding:
-        26px
-        20px
-        150px;
+    <link
+        rel="stylesheet"
+        href="/style.css"
+    >
 
-    scrollbar-width:thin;
-    scrollbar-color:#272c38 transparent;
-}
 
-.messages::-webkit-scrollbar{
-    width:6px;
-}
+    <!-- =====================================================
+         EARLY APP CONFIG
+         ===================================================== -->
 
-.messages::-webkit-scrollbar-thumb{
-    background:#272c38;
-    border-radius:20px;
-}
+    <script>
 
-/* WELCOME */
+        /*
+         * app.js yüklenmeden önce kullanılacak
+         * temel frontend ayarları.
+         */
 
-.welcome{
-    min-height:calc(100vh - 210px);
+        window.TURKAI_APP_CONFIG = {
 
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
+            apiBase:
+                "",
 
-    padding:35px 10px 20px;
-}
+            googleClientId:
+                "",
 
-.welcomeLogo{
-    width:54px;
-    height:54px;
+            appName:
+                "TürkAI",
 
-    display:grid;
-    place-items:center;
+            version:
+                "10.0.0",
 
-    border-radius:16px;
+            environment:
+                "production",
 
-    background:
-        linear-gradient(
-            135deg,
-            var(--accent),
-            #4f38ad
-        );
+            language:
+                "tr-TR",
 
-    box-shadow:
-        0 15px 40px rgba(120,98,232,.2);
+            defaultModel:
+                "auto",
 
-    margin-bottom:16px;
-}
+            defaultPlan:
+                "free",
 
-.welcomeLogo svg{
-    width:28px;
-    height:28px;
-}
+            maxMessageLength:
+                50000,
 
-.welcome h1{
-    font-size:30px;
-    line-height:1.1;
-    letter-spacing:-1px;
-    margin-bottom:8px;
-}
+            requestTimeout:
+                60000
+        };
 
-.welcome p{
-    color:var(--muted);
-    font-size:13px;
-    text-align:center;
-    max-width:480px;
-    line-height:1.6;
-}
+    </script>
 
-.suggestions{
-    width:min(700px,100%);
-
-    display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:9px;
-
-    margin-top:25px;
-}
-
-.suggestion{
-    min-height:72px;
-
-    display:flex;
-    align-items:flex-start;
-    gap:11px;
-
-    text-align:left;
-
-    padding:13px;
-
-    color:var(--soft);
-    background:var(--surface);
-
-    border:1px solid var(--border);
-    border-radius:12px;
-
-    transition:.18s ease;
-}
-
-.suggestion:hover{
-    background:var(--surface2);
-    border-color:var(--border2);
-    transform:translateY(-1px);
-}
-
-.suggestionIcon{
-    width:30px;
-    height:30px;
-
-    flex:0 0 30px;
-
-    display:grid;
-    place-items:center;
-
-    border-radius:8px;
-    background:var(--accentSoft);
-    color:#a99bf4;
-}
-
-.suggestionIcon svg{
-    width:16px;
-    height:16px;
-}
-
-.suggestionText{
-    min-width:0;
-}
-
-.suggestionTitle{
-    color:var(--text);
-    font-size:12px;
-    font-weight:650;
-    margin-bottom:3px;
-}
-
-.suggestionDesc{
-    color:var(--muted);
-    font-size:11px;
-    line-height:1.45;
-}
-
-/* MESSAGE */
-
-.message{
-    width:100%;
-    display:flex;
-    margin-bottom:22px;
-}
-
-.message.user{
-    justify-content:flex-end;
-}
-
-.message.assistant{
-    justify-content:flex-start;
-}
-
-.bubble{
-    max-width:76%;
-
-    border-radius:14px;
-
-    padding:11px 13px;
-
-    font-size:13px;
-    line-height:1.65;
-
-    overflow-wrap:anywhere;
-}
-
-.user .bubble{
-    color:#fff;
-    background:var(--accent);
-
-    border-bottom-right-radius:5px;
-}
-
-.assistant .bubble{
-    color:var(--text);
-    background:var(--surface);
-
-    border:1px solid var(--border);
-
-    border-bottom-left-radius:5px;
-}
-
-.messageMeta{
-    display:flex;
-    align-items:center;
-    gap:7px;
-
-    color:var(--muted);
-    font-size:10px;
-
-    margin-bottom:5px;
-}
-
-.messageActions{
-    display:flex;
-    gap:4px;
-
-    margin-top:7px;
-}
-
-.smallButton{
-    height:25px;
-
-    display:flex;
-    align-items:center;
-    gap:5px;
-
-    padding:0 7px;
-
-    color:var(--muted);
-    background:transparent;
-
-    border:1px solid var(--border);
-    border-radius:7px;
-
-    font-size:10px;
-}
-
-.smallButton:hover{
-    color:var(--text);
-    background:var(--surface2);
-}
-
-.smallButton svg{
-    width:12px;
-    height:12px;
-}
-
-/* MARKDOWN */
-
-.textContent p{
-    margin-bottom:8px;
-}
-
-.textContent p:last-child{
-    margin-bottom:0;
-}
-
-.textContent strong{
-    font-weight:700;
-}
-
-.textContent ul{
-    margin:7px 0 7px 18px;
-}
-
-.textContent li{
-    margin:3px 0;
-}
-
-.inlineCode{
-    padding:2px 5px;
-
-    border-radius:5px;
-
-    background:#090b10;
-    border:1px solid var(--border);
-
-    color:#d7cef9;
-
-    font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        Monaco,
-        Consolas,
-        monospace;
-
-    font-size:11px;
-}
-
-.codeBlock{
-    margin:10px 0;
-
-    overflow:hidden;
-
-    border:1px solid var(--border2);
-    border-radius:10px;
-
-    background:#090b10;
-}
-
-.codeHeader{
-    height:31px;
-
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-
-    padding:0 9px;
-
-    color:var(--muted);
-
-    border-bottom:1px solid var(--border);
-
-    font-size:10px;
-}
-
-.codeCopy{
-    color:var(--soft);
-    background:transparent;
-
-    display:flex;
-    align-items:center;
-    gap:4px;
-
-    font-size:10px;
-}
-
-.codeCopy svg{
-    width:12px;
-    height:12px;
-}
-
-.codeBlock pre{
-    margin:0;
-    padding:11px;
-
-    overflow:auto;
-
-    color:#dfe2ea;
-
-    font-size:11px;
-    line-height:1.55;
-
-    font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        Monaco,
-        Consolas,
-        monospace;
-}
-
-/* COMPOSER */
-
-.composerArea{
-    position:absolute;
-
-    left:50%;
-    bottom:17px;
-
-    transform:translateX(-50%);
-
-    width:min(var(--composerWidth),calc(100% - 30px));
-
-    z-index:20;
-}
-
-.composer{
-    position:relative;
-
-    display:flex;
-    align-items:flex-end;
-
-    min-height:54px;
-
-    padding:7px;
-
-    background:rgba(16,19,26,.96);
-
-    border:1px solid var(--border2);
-    border-radius:15px;
-
-    box-shadow:
-        0 15px 45px rgba(0,0,0,.35);
-
-    backdrop-filter:blur(20px);
-}
-
-.composer textarea{
-    flex:1;
-
-    min-width:0;
-    min-height:38px;
-    max-height:150px;
-
-    resize:none;
-
-    padding:10px 8px;
-
-    color:var(--text);
-    background:transparent;
-
-    border:0;
-    outline:0;
-
-    font-size:13px;
-    line-height:1.45;
-}
-
-.composer textarea::placeholder{
-    color:#686f7c;
-}
-
-.composerActions{
-    display:flex;
-    align-items:center;
-    gap:4px;
-
-    margin-left:5px;
-}
-
-.composerButton{
-    width:35px;
-    height:35px;
-
-    display:grid;
-    place-items:center;
-
-    border-radius:9px;
-
-    color:var(--muted);
-    background:transparent;
-}
-
-.composerButton:hover{
-    color:var(--text);
-    background:var(--surface2);
-}
-
-.composerButton svg{
-    width:17px;
-    height:17px;
-}
-
-.sendButton{
-    color:#fff;
-    background:var(--accent);
-}
-
-.sendButton:hover{
-    background:var(--accent2);
-}
-
-.sendButton:disabled{
-    opacity:.45;
-    cursor:not-allowed;
-}
-
-.filePreview{
-    display:none;
-
-    align-items:center;
-    gap:8px;
-
-    position:absolute;
-
-    left:10px;
-    right:10px;
-    bottom:61px;
-
-    padding:7px 9px;
-
-    background:var(--surface2);
-    border:1px solid var(--border);
-    border-radius:9px;
-
-    font-size:10px;
-}
-
-.filePreview.active{
-    display:flex;
-}
-
-.fileInfo{
-    flex:1;
-    min-width:0;
-
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-
-    color:var(--soft);
-}
-
-.removeFile{
-    width:25px;
-    height:25px;
-
-    display:grid;
-    place-items:center;
-
-    border-radius:7px;
-
-    color:var(--muted);
-    background:transparent;
-}
-
-.removeFile:hover{
-    color:var(--danger);
-    background:rgba(229,107,120,.1);
-}
-
-.composerHint{
-    text-align:center;
-
-    margin-top:7px;
-
-    color:#5e6470;
-    font-size:9px;
-}
-
-/* LOADING */
-
-.typing{
-    display:flex;
-    align-items:center;
-    gap:4px;
-    padding:4px 1px;
-}
-
-.typing span{
-    width:5px;
-    height:5px;
-
-    border-radius:50%;
-
-    background:#858b98;
-
-    animation:typing 1.2s infinite ease-in-out;
-}
-
-.typing span:nth-child(2){
-    animation-delay:.15s;
-}
-
-.typing span:nth-child(3){
-    animation-delay:.3s;
-}
-
-@keyframes typing{
-    0%,60%,100%{
-        opacity:.25;
-        transform:translateY(0);
-    }
-    30%{
-        opacity:1;
-        transform:translateY(-3px);
-    }
-}
-
-/* TOAST */
-
-.toast{
-    position:fixed;
-
-    left:50%;
-    bottom:86px;
-
-    transform:translateX(-50%) translateY(10px);
-
-    z-index:100;
-
-    max-width:calc(100% - 30px);
-
-    padding:9px 13px;
-
-    color:#fff;
-    background:#181c25;
-
-    border:1px solid var(--border2);
-    border-radius:9px;
-
-    font-size:11px;
-
-    opacity:0;
-    pointer-events:none;
-
-    transition:.2s ease;
-}
-
-.toast.show{
-    opacity:1;
-    transform:translateX(-50%) translateY(0);
-}
-
-/* MODAL */
-
-.modal{
-    position:fixed;
-    inset:0;
-
-    z-index:90;
-
-    display:none;
-    align-items:center;
-    justify-content:center;
-
-    padding:20px;
-
-    background:rgba(0,0,0,.55);
-    backdrop-filter:blur(8px);
-}
-
-.modal.active{
-    display:flex;
-}
-
-.modalBox{
-    width:min(430px,100%);
-
-    background:var(--surface);
-
-    border:1px solid var(--border2);
-    border-radius:15px;
-
-    overflow:hidden;
-
-    box-shadow:0 25px 80px rgba(0,0,0,.45);
-}
-
-.modalHeader{
-    height:52px;
-
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-
-    padding:0 15px;
-
-    border-bottom:1px solid var(--border);
-}
-
-.modalTitle{
-    font-size:14px;
-    font-weight:700;
-}
-
-.modalBody{
-    padding:15px;
-}
-
-.setting{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-
-    gap:15px;
-
-    padding:11px 0;
-
-    border-bottom:1px solid var(--border);
-}
-
-.setting:last-child{
-    border-bottom:0;
-}
-
-.settingText{
-    min-width:0;
-}
-
-.settingTitle{
-    font-size:12px;
-    font-weight:600;
-}
-
-.settingDesc{
-    color:var(--muted);
-    font-size:10px;
-    margin-top:3px;
-}
-
-.switch{
-    width:37px;
-    height:21px;
-
-    flex:0 0 37px;
-
-    position:relative;
-
-    border-radius:20px;
-
-    background:#292e39;
-
-    cursor:pointer;
-}
-
-.switch input{
-    display:none;
-}
-
-.switch span{
-    position:absolute;
-
-    top:3px;
-    left:3px;
-
-    width:15px;
-    height:15px;
-
-    border-radius:50%;
-
-    background:#a2a7b2;
-
-    transition:.18s;
-}
-
-.switch input:checked + span{
-    transform:translateX(16px);
-    background:#fff;
-}
-
-.switch:has(input:checked){
-    background:var(--accent);
-}
-
-/* RESPONSIVE */
-
-@media(max-width:600px){
-
-    :root{
-        --topbar:52px;
-    }
-
-    .topbar{
-        padding:0 11px;
-    }
-
-    .brandVersion{
-        display:none;
-    }
-
-    .brandText{
-        font-size:15px;
-    }
-
-    .newChatButton{
-        width:34px;
-        padding:0;
-        justify-content:center;
-    }
-
-    .newChatButton span{
-        display:none;
-    }
-
-    .messages{
-        padding:
-            18px
-            11px
-            125px;
-    }
-
-    .welcome{
-        min-height:calc(100vh - 170px);
-        padding:25px 4px 15px;
-    }
-
-    .welcomeLogo{
-        width:46px;
-        height:46px;
-        border-radius:13px;
-    }
-
-    .welcomeLogo svg{
-        width:23px;
-        height:23px;
-    }
-
-    .welcome h1{
-        font-size:25px;
-    }
-
-    .welcome p{
-        font-size:12px;
-    }
-
-    .suggestions{
-        grid-template-columns:1fr;
-        gap:7px;
-        margin-top:20px;
-    }
-
-    .suggestion{
-        min-height:61px;
-        padding:10px;
-    }
-
-    .suggestionIcon{
-        width:27px;
-        height:27px;
-        flex-basis:27px;
-    }
-
-    .suggestionDesc{
-        font-size:10px;
-    }
-
-    .bubble{
-        max-width:88%;
-        font-size:12px;
-        padding:9px 11px;
-    }
-
-    .composerArea{
-        width:calc(100% - 18px);
-        bottom:9px;
-    }
-
-    .composer{
-        min-height:48px;
-        border-radius:13px;
-    }
-
-    .composer textarea{
-        min-height:34px;
-        font-size:12px;
-        padding:8px 6px;
-    }
-
-    .composerButton{
-        width:32px;
-        height:32px;
-    }
-
-    .composerHint{
-        display:none;
-    }
-
-    .filePreview{
-        bottom:54px;
-    }
-}
-
-@media(max-width:380px){
-
-    .messages{
-        padding-left:8px;
-        padding-right:8px;
-    }
-
-    .composerArea{
-        width:calc(100% - 12px);
-    }
-
-    .topbar{
-        padding:0 8px;
-    }
-
-    .bubble{
-        max-width:92%;
-    }
-}
-
-@media(prefers-reduced-motion:reduce){
-
-    *,
-    *::before,
-    *::after{
-        animation-duration:.01ms!important;
-        animation-iteration-count:1!important;
-        transition-duration:.01ms!important;
-    }
-}
-</style>
 </head>
 
-<body>
 
-<!-- TOPBAR -->
-
-<header class="topbar">
-
-    <div class="brand">
-
-        <div class="brandIcon">
-
-            <svg viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2">
-
-                <path d="M12 3v3"/>
-                <path d="M7 7l-2-2"/>
-                <path d="M17 7l2-2"/>
-
-                <rect
-                    x="4"
-                    y="8"
-                    width="16"
-                    height="11"
-                    rx="4"/>
-
-                <circle cx="9" cy="13" r="1"/>
-                <circle cx="15" cy="13" r="1"/>
-
-                <path d="M9 16h6"/>
-
-            </svg>
-
-        </div>
-
-        <div class="brandText">
-            TürkAI
-        </div>
-
-        <div class="brandVersion">
-            11.0
-        </div>
-
-    </div>
-
-    <div class="topActions">
-
-        <button
-            class="iconButton"
-            id="settingsButton"
-            title="Ayarlar"
-            aria-label="Ayarlar">
-
-            <svg viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="1.8">
-
-                <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
-
-                <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.8 1.8-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20h-2.55v-.1a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-1.8-1.8.06-.06A1.7 1.7 0 0 0 8.1 15a1.7 1.7 0 0 0-1.56-1.03H6v-2.55h.1A1.7 1.7 0 0 0 7.66 10a1.7 1.7 0 0 0-.34-1.88l-.06-.06 1.8-1.8.06.06A1.7 1.7 0 0 0 11 6.66 1.7 1.7 0 0 0 12.03 5.1V5h2.55v.1A1.7 1.7 0 0 0 15.6 6.66a1.7 1.7 0 0 0 1.88-.34l.06-.06 1.8 1.8-.06.06A1.7 1.7 0 0 0 18.94 10a1.7 1.7 0 0 0 1.56 1.03h.1v2.55h-.1A1.7 1.7 0 0 0 19.4 15Z"/>
-
-            </svg>
-
-        </button>
-
-        <button
-            class="newChatButton"
-            id="newChatButton"
-            title="Yeni sohbet">
-
-            <svg viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2">
-
-                <path d="M12 5v14"/>
-                <path d="M5 12h14"/>
-
-            </svg>
-
-            <span>Yeni sohbet</span>
-
-        </button>
-
-    </div>
-
-</header>
+<body
+    class="turkai-app"
+    data-app="turkai"
+    data-version="10.0.0"
+>
 
 
-<!-- APP -->
+<!-- =========================================================
+     APP ROOT
+     ========================================================= -->
 
-<main class="app">
+<div
+    id="app"
+    class="turkai-app-shell"
+>
 
-    <section class="chatShell">
+
+    <!-- =====================================================
+         MOBILE SIDEBAR OVERLAY
+         ===================================================== -->
+
+    <div
+        id="sidebarOverlay"
+        class="turkai-sidebar-overlay"
+        aria-hidden="true"
+    ></div>
+
+
+    <!-- =====================================================
+         SIDEBAR
+         ===================================================== -->
+
+    <aside
+        id="sidebar"
+        class="turkai-sidebar"
+        aria-label="TürkAI menüsü"
+    >
+
+        <!-- =================================================
+             SIDEBAR HEADER
+             ================================================= -->
 
         <div
-            class="messages"
-            id="messages">
+            class="turkai-sidebar-header"
+        >
 
-            <!-- WELCOME -->
+            <button
+                id="sidebarClose"
+                class="turkai-icon-button"
+                type="button"
+                aria-label="Menüyü kapat"
+                data-action="sidebar"
+            >
+
+                <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <path d="M18 6 6 18"></path>
+                    <path d="m6 6 12 12"></path>
+                </svg>
+
+            </button>
+
 
             <div
-                class="welcome"
-                id="welcome">
+                class="turkai-brand"
+            >
 
-                <div class="welcomeLogo">
+                <div
+                    class="turkai-brand-mark"
+                    aria-hidden="true"
+                >
 
-                    <svg viewBox="0 0 24 24"
-                         fill="none"
-                         stroke="currentColor"
-                         stroke-width="1.8">
+                    <svg
+                        width="25"
+                        height="25"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                    >
 
-                        <path d="M12 3v3"/>
-                        <path d="M7 7 5 5"/>
-                        <path d="m17 7 2-2"/>
+                        <path
+                            d="M12 2.8 14.2 9.8 21.2 12l-7 2.2-2.2 7-2.2-7L2.8 12l7-2.2L12 2.8Z"
+                            stroke="currentColor"
+                            stroke-width="1.7"
+                            stroke-linejoin="round"
+                        ></path>
 
-                        <rect
-                            x="4"
-                            y="8"
-                            width="16"
-                            height="11"
-                            rx="4"/>
-
-                        <circle cx="9" cy="13" r="1"/>
-                        <circle cx="15" cy="13" r="1"/>
-
-                        <path d="M9 16h6"/>
+                        <path
+                            d="M19 3v4M17 5h4"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                        ></path>
 
                     </svg>
 
                 </div>
 
-                <h1>Merhaba, ben TürkAI</h1>
 
-                <p>
-                    Sorularını cevaplayabilir, kod yazabilir,
-                    dosyalarını inceleyebilir ve server üzerinden
-                    seninle çalışabilirim.
-                </p>
+                <div
+                    class="turkai-brand-text"
+                >
 
+                    <strong>
+                        TürkAI
+                    </strong>
 
-                <div class="suggestions">
-
-                    <button
-                        class="suggestion"
-                        data-prompt="JavaScript öğrenmeye başlamak istiyorum. Bana basit ve uygulamalı bir ders hazırla.">
-
-                        <div class="suggestionIcon">
-
-                            <svg viewBox="0 0 24 24"
-                                 fill="none"
-                                 stroke="currentColor"
-                                 stroke-width="1.8">
-
-                                <path d="M4 5h16v14H4z"/>
-                                <path d="m8 10 3 2-3 2"/>
-                                <path d="M13 16h4"/>
-
-                            </svg>
-
-                        </div>
-
-                        <div class="suggestionText">
-                            <div class="suggestionTitle">
-                                Kodlama öğren
-                            </div>
-
-                            <div class="suggestionDesc">
-                                Uygulamalı JavaScript dersi başlat
-                            </div>
-                        </div>
-
-                    </button>
-
-
-                    <button
-                        class="suggestion"
-                        data-prompt="TürkAI için modern ve güvenli bir Node.js backend mimarisi öner.">
-
-                        <div class="suggestionIcon">
-
-                            <svg viewBox="0 0 24 24"
-                                 fill="none"
-                                 stroke="currentColor"
-                                 stroke-width="1.8">
-
-                                <rect x="4" y="4" width="16" height="16" rx="3"/>
-                                <path d="M8 9h8"/>
-                                <path d="M8 13h5"/>
-                                <path d="M8 17h3"/>
-
-                            </svg>
-
-                        </div>
-
-                        <div class="suggestionText">
-                            <div class="suggestionTitle">
-                                Kod yaz
-                            </div>
-
-                            <div class="suggestionDesc">
-                                Backend veya frontend geliştirelim
-                            </div>
-                        </div>
-
-                    </button>
-
-
-                    <button
-                        class="suggestion"
-                        data-prompt="Yapay zekanın nasıl çalıştığını bana 6. sınıf seviyesinde ama sıkıcı olmadan anlat.">
-
-                        <div class="suggestionIcon">
-
-                            <svg viewBox="0 0 24 24"
-                                 fill="none"
-                                 stroke="currentColor"
-                                 stroke-width="1.8">
-
-                                <circle cx="12" cy="12" r="8"/>
-                                <path d="M12 8v5l3 2"/>
-
-                            </svg>
-
-                        </div>
-
-                        <div class="suggestionText">
-                            <div class="suggestionTitle">
-                                Bir şey öğren
-                            </div>
-
-                            <div class="suggestionDesc">
-                                Konuyu sade ve anlaşılır anlat
-                            </div>
-                        </div>
-
-                    </button>
-
-
-                    <button
-                        class="suggestion"
-                        data-prompt="TürkAI projemi daha profesyonel hale getirmek için bana özellik fikirleri ver.">
-
-                        <div class="suggestionIcon">
-
-                            <svg viewBox="0 0 24 24"
-                                 fill="none"
-                                 stroke="currentColor"
-                                 stroke-width="1.8">
-
-                                <path d="M12 3v18"/>
-                                <path d="M3 12h18"/>
-                                <path d="m5 5 14 14"/>
-                                <path d="m19 5-14 14"/>
-
-                            </svg>
-
-                        </div>
-
-                        <div class="suggestionText">
-                            <div class="suggestionTitle">
-                                TürkAI'yi geliştir
-                            </div>
-
-                            <div class="suggestionDesc">
-                                Yeni özellikler ve fikirler keşfet
-                            </div>
-                        </div>
-
-                    </button>
+                    <span>
+                        AI Assistant
+                    </span>
 
                 </div>
 
@@ -1371,235 +284,3066 @@ input:focus-visible{
         </div>
 
 
-        <!-- COMPOSER -->
+        <!-- =================================================
+             NEW CHAT
+             ================================================= -->
 
-        <div class="composerArea">
-
-            <div
-                class="filePreview"
-                id="filePreview">
-
-                <div class="fileInfo"
-                     id="fileInfo">
-                </div>
-
-                <button
-                    class="removeFile"
-                    id="removeFile"
-                    title="Dosyayı kaldır">
-
-                    ×
-
-                </button>
-
-            </div>
-
-
-            <form
-                class="composer"
-                id="composer">
-
-                <textarea
-                    id="messageInput"
-                    rows="1"
-                    maxlength="12000"
-                    placeholder="TürkAI'ye bir şey sor..."
-                    autocomplete="off"></textarea>
-
-
-                <div class="composerActions">
-
-                    <button
-                        type="button"
-                        class="composerButton"
-                        id="fileButton"
-                        title="Dosya ekle"
-                        aria-label="Dosya ekle">
-
-                        <svg viewBox="0 0 24 24"
-                             fill="none"
-                             stroke="currentColor"
-                             stroke-width="1.8">
-
-                            <path d="m21 11.5-8.4 8.4a5 5 0 0 1-7.1-7.1L14 4.3a3.5 3.5 0 0 1 5 5L10.6 17.7a2 2 0 0 1-2.8-2.8l7.7-7.7"/>
-
-                        </svg>
-
-                    </button>
-
-
-                    <button
-                        type="button"
-                        class="composerButton"
-                        id="voiceButton"
-                        title="Sesli yaz"
-                        aria-label="Sesli yaz">
-
-                        <svg viewBox="0 0 24 24"
-                             fill="none"
-                             stroke="currentColor"
-                             stroke-width="1.8">
-
-                            <rect x="9" y="3" width="6" height="11" rx="3"/>
-                            <path d="M5 11a7 7 0 0 0 14 0"/>
-                            <path d="M12 18v3"/>
-                            <path d="M9 21h6"/>
-
-                        </svg>
-
-                    </button>
-
-
-                    <button
-                        type="submit"
-                        class="composerButton sendButton"
-                        id="sendButton"
-                        title="Gönder"
-                        aria-label="Gönder">
-
-                        <svg viewBox="0 0 24 24"
-                             fill="none"
-                             stroke="currentColor"
-                             stroke-width="2">
-
-                            <path d="m4 4 16 8-16 8 3-8-3-8Z"/>
-                            <path d="M7 12h13"/>
-
-                        </svg>
-
-                    </button>
-
-                </div>
-
-            </form>
-
-            <div class="composerHint">
-                Enter gönderir · Shift + Enter yeni satır
-            </div>
-
-        </div>
-
-    </section>
-
-</main>
-
-
-<!-- FILE INPUT -->
-
-<input
-    type="file"
-    id="fileInput"
-    hidden
-    multiple>
-
-
-<!-- SETTINGS MODAL -->
-
-<div
-    class="modal"
-    id="settingsModal">
-
-    <div class="modalBox">
-
-        <div class="modalHeader">
-
-            <div class="modalTitle">
-                Ayarlar
-            </div>
+        <div
+            class="turkai-sidebar-create"
+        >
 
             <button
-                class="iconButton"
-                data-close-modal
-                aria-label="Kapat">
+                id="newChatButton"
+                class="turkai-new-chat-button"
+                type="button"
+                data-action="new-chat"
+            >
 
-                ×
+                <span
+                    class="turkai-button-icon"
+                    aria-hidden="true"
+                >
+
+                    <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+
+                        <path
+                            d="M12 5v14"
+                        ></path>
+
+                        <path
+                            d="M5 12h14"
+                        ></path>
+
+                    </svg>
+
+                </span>
+
+                <span>
+                    Yeni sohbet
+                </span>
 
             </button>
 
         </div>
 
-        <div class="modalBody">
 
-            <div class="setting">
+        <!-- =================================================
+             SIDEBAR NAVIGATION
+             ================================================= -->
 
-                <div class="settingText">
+        <nav
+            class="turkai-sidebar-nav"
+            aria-label="Ana menü"
+        >
 
-                    <div class="settingTitle">
-                        Enter ile gönder
-                    </div>
+            <!-- CHAT -->
 
-                    <div class="settingDesc">
-                        Enter mesajı gönderir.
-                    </div>
+            <button
+                class="turkai-nav-item active"
+                type="button"
+                data-action="chat"
+            >
 
-                </div>
+                <span
+                    class="turkai-nav-icon"
+                >
 
-                <label class="switch">
+                    <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
 
-                    <input
-                        type="checkbox"
-                        id="enterSetting"
-                        checked>
+                        <path
+                            d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 2v-4.5A7.5 7.5 0 1 1 20 11.5Z"
+                        ></path>
 
-                    <span></span>
+                    </svg>
 
-                </label>
+                </span>
+
+                <span>
+                    Sohbet
+                </span>
+
+            </button>
+
+
+            <!-- RESEARCH -->
+
+            <button
+                class="turkai-nav-item"
+                type="button"
+                data-action="research"
+            >
+
+                <span
+                    class="turkai-nav-icon"
+                >
+
+                    <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+
+                        <circle
+                            cx="11"
+                            cy="11"
+                            r="6.5"
+                        ></circle>
+
+                        <path
+                            d="m16 16 5 5"
+                        ></path>
+
+                        <path
+                            d="M11 7.5v7"
+                        ></path>
+
+                        <path
+                            d="M7.5 11h7"
+                        ></path>
+
+                    </svg>
+
+                </span>
+
+                <span>
+                    Araştır
+                </span>
+
+            </button>
+
+
+            <!-- FILES -->
+
+            <button
+                class="turkai-nav-item"
+                type="button"
+                data-action="files"
+            >
+
+                <span
+                    class="turkai-nav-icon"
+                >
+
+                    <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+
+                        <path
+                            d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"
+                        ></path>
+
+                        <path
+                            d="M14 2v6h6"
+                        ></path>
+
+                        <path
+                            d="M8 13h8"
+                        ></path>
+
+                        <path
+                            d="M8 17h6"
+                        ></path>
+
+                    </svg>
+
+                </span>
+
+                <span>
+                    Dosyalar
+                </span>
+
+            </button>
+
+
+            <!-- MEDIA -->
+
+            <button
+                class="turkai-nav-item"
+                type="button"
+                data-action="media"
+            >
+
+                <span
+                    class="turkai-nav-icon"
+                >
+
+                    <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+
+                        <rect
+                            x="3"
+                            y="3"
+                            width="18"
+                            height="18"
+                            rx="3"
+                        ></rect>
+
+                        <circle
+                            cx="8.5"
+                            cy="8.5"
+                            r="1.2"
+                        ></circle>
+
+                        <path
+                            d="m21 15-5-5L5 21"
+                        ></path>
+
+                    </svg>
+
+                </span>
+
+                <span>
+                    Medya
+                </span>
+
+            </button>
+
+
+            <!-- CODE -->
+
+            <button
+                class="turkai-nav-item"
+                type="button"
+                data-action="code"
+            >
+
+                <span
+                    class="turkai-nav-icon"
+                >
+
+                    <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+
+                        <path
+                            d="m8 9-4 3 4 3"
+                        ></path>
+
+                        <path
+                            d="m16 9 4 3-4 3"
+                        ></path>
+
+                        <path
+                            d="m14 5-4 14"
+                        ></path>
+
+                    </svg>
+
+                </span>
+
+                <span>
+                    Kodlama
+                </span>
+
+            </button>
+
+
+            <!-- =================================================
+                 NAV DIVIDER
+                 ================================================= -->
+
+            <div
+                class="turkai-nav-divider"
+            ></div>
+
+
+            <!-- NOTIFICATIONS -->
+
+            <button
+                id="notificationButton"
+                class="turkai-nav-item"
+                type="button"
+                data-action="notifications"
+            >
+
+                <span
+                    class="turkai-nav-icon turkai-notification-icon"
+                >
+
+                    <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+
+                        <path
+                            d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"
+                        ></path>
+
+                        <path
+                            d="M10 21h4"
+                        ></path>
+
+                    </svg>
+
+                    <span
+                        id="notificationBadge"
+                        class="turkai-badge"
+                        hidden
+                    >
+                        0
+                    </span>
+
+                </span>
+
+                <span>
+                    Bildirimler
+                </span>
+
+            </button>
+
+
+            <!-- SETTINGS -->
+
+            <button
+                id="settingsButton"
+                class="turkai-nav-item"
+                type="button"
+                data-action="settings"
+            >
+
+                <span
+                    class="turkai-nav-icon"
+                >
+
+                    <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+
+                        <circle
+                            cx="12"
+                            cy="12"
+                            r="3"
+                        ></circle>
+
+                        <path
+                            d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.8 1.8-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.04 1.56V22h-2.55v-.1a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-1.8-1.8.06-.06A1.7 1.7 0 0 0 8.1 17a1.7 1.7 0 0 0-1.56-1.04H6v-2.55h.54A1.7 1.7 0 0 0 8.1 12.4a1.7 1.7 0 0 0-.34-1.88l-.06-.06 1.8-1.8.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 12.48 7.5V7h2.55v.5a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 1.8 1.8-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.04H22v2.55h-.5A1.7 1.7 0 0 0 19.4 15Z"
+                        ></path>
+
+                    </svg>
+
+                </span>
+
+                <span>
+                    Ayarlar
+                </span>
+
+            </button>
+
+        </nav>
+
+
+        <!-- =================================================
+             SIDEBAR SPACER
+             ================================================= -->
+
+        <div
+            class="turkai-sidebar-spacer"
+        ></div>
+
+
+        <!-- =================================================
+             PLAN CARD
+             ================================================= -->
+
+        <div
+            class="turkai-sidebar-plan"
+        >
+
+            <div
+                class="turkai-plan-mini-icon"
+            >
+
+                <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+
+                    <path
+                        d="m12 2 2.8 6.2L21 11l-6.2 2.8L12 20l-2.8-6.2L3 11l6.2-2.8L12 2Z"
+                    ></path>
+
+                </svg>
 
             </div>
 
 
-            <div class="setting">
+            <div
+                class="turkai-plan-mini-content"
+            >
 
-                <div class="settingText">
+                <span>
+                    Mevcut plan
+                </span>
 
-                    <div class="settingTitle">
-                        Sohbet geçmişini kaydet
-                    </div>
-
-                    <div class="settingDesc">
-                        Tarayıcıdaki yerel geçmişi korur.
-                    </div>
-
-                </div>
-
-                <label class="switch">
-
-                    <input
-                        type="checkbox"
-                        id="historySetting"
-                        checked>
-
-                    <span></span>
-
-                </label>
+                <strong
+                    id="userPlan"
+                    data-user-plan
+                >
+                    FREE
+                </strong>
 
             </div>
 
 
-            <div class="setting">
+            <button
+                type="button"
+                data-action="plans"
+                aria-label="Planları görüntüle"
+            >
 
-                <div class="settingText">
+                <svg
+                    width="17"
+                    height="17"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
 
-                    <div class="settingTitle">
-                        Animasyonlar
+                    <path
+                        d="m9 18 6-6-6-6"
+                    ></path>
+
+                </svg>
+
+            </button>
+
+        </div>
+
+
+        <!-- =================================================
+             USER PROFILE
+             ================================================= -->
+
+        <div
+            class="turkai-sidebar-user"
+        >
+
+            <div
+                class="turkai-user-avatar"
+                id="userAvatar"
+            >
+
+                <span
+                    data-user-initial
+                >
+                    T
+                </span>
+
+            </div>
+
+
+            <div
+                class="turkai-user-info"
+            >
+
+                <strong
+                    id="profileName"
+                    data-user-name
+                >
+                    Kullanıcı
+                </strong>
+
+                <span
+                    data-online-status
+                >
+                    Çevrimiçi
+                </span>
+
+            </div>
+
+
+            <button
+                id="logoutButton"
+                class="turkai-icon-button"
+                type="button"
+                data-action="logout"
+                aria-label="Çıkış yap"
+            >
+
+                <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+
+                    <path
+                        d="M10 17l5-5-5-5"
+                    ></path>
+
+                    <path
+                        d="M15 12H3"
+                    ></path>
+
+                    <path
+                        d="M21 19V5a2 2 0 0 0-2-2h-6"
+                    ></path>
+
+                </svg>
+
+            </button>
+
+        </div>
+
+    </aside>
+
+
+    <!-- =====================================================
+         MAIN AREA
+         ===================================================== -->
+
+    <main
+        id="main"
+        class="turkai-main"
+    >
+
+
+        <!-- =================================================
+             TOP HEADER
+             ================================================= -->
+
+        <header
+            id="topbar"
+            class="turkai-topbar"
+        >
+
+            <div
+                class="turkai-topbar-left"
+            >
+
+                <!-- MOBILE MENU -->
+
+                <button
+                    id="sidebarToggle"
+                    class="turkai-icon-button turkai-mobile-menu"
+                    type="button"
+                    data-action="sidebar"
+                    aria-label="Menüyü aç"
+                >
+
+                    <svg
+                        width="21"
+                        height="21"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+
+                        <path
+                            d="M4 6h16"
+                        ></path>
+
+                        <path
+                            d="M4 12h16"
+                        ></path>
+
+                        <path
+                            d="M4 18h16"
+                        ></path>
+
+                    </svg>
+
+                </button>
+
+
+                <!-- PAGE TITLE -->
+
+                <div
+                    class="turkai-page-title"
+                >
+
+                    <strong>
+                        TürkAI
+                    </strong>
+
+                    <span
+                        data-online-status
+                    >
+                        Çevrimiçi
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div
+                class="turkai-topbar-center"
+            >
+
+                <!-- MODEL SELECTOR -->
+
+                <button
+                    id="modelButton"
+                    class="turkai-model-button"
+                    type="button"
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                >
+
+                    <span
+                        class="turkai-model-status"
+                    ></span>
+
+                    <span
+                        id="currentModelName"
+                    >
+                        Otomatik
+                    </span>
+
+                    <svg
+                        width="15"
+                        height="15"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+
+                        <path
+                            d="m6 9 6 6 6-6"
+                        ></path>
+
+                    </svg>
+
+                </button>
+
+
+                <!-- MODEL MENU -->
+
+                <div
+                    id="modelMenu"
+                    class="turkai-model-menu"
+                    role="menu"
+                    hidden
+                ></div>
+
+            </div>
+
+
+            <div
+                class="turkai-topbar-right"
+            >
+
+                <!-- STATUS -->
+
+                <div
+                    class="turkai-live-status"
+                    title="Sunucu bağlantısı"
+                >
+
+                    <span
+                        id="connectionDot"
+                        class="turkai-connection-dot"
+                    ></span>
+
+                    <span
+                        id="connectionText"
+                    >
+                        Hazır
+                    </span>
+
+                </div>
+
+
+                <!-- NOTIFICATIONS -->
+
+                <button
+                    id="topNotificationButton"
+                    class="turkai-icon-button"
+                    type="button"
+                    data-action="notifications"
+                    aria-label="Bildirimler"
+                >
+
+                    <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+
+                        <path
+                            d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"
+                        ></path>
+
+                        <path
+                            d="M10 21h4"
+                        ></path>
+
+                    </svg>
+
+                    <span
+                        id="topNotificationBadge"
+                        class="turkai-button-badge"
+                        hidden
+                    >
+                        0
+                    </span>
+
+                </button>
+
+
+                <!-- PROFILE -->
+
+                <button
+                    id="profileButton"
+                    class="turkai-profile-button"
+                    type="button"
+                    data-action="profile"
+                    aria-label="Profil"
+                >
+
+                    <span
+                        class="turkai-profile-avatar"
+                    >
+                        <span
+                            data-user-initial
+                        >
+                            T
+                        </span>
+                    </span>
+
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <!-- =================================================
+             CONTENT WRAPPER
+             ================================================= -->
+
+        <section
+            id="content"
+            class="turkai-content"
+        >
+
+            <!-- =================================================
+                 CHAT PAGE
+                 ================================================= -->
+
+            <section
+                id="chatPage"
+                class="turkai-chat-page active"
+                aria-label="TürkAI sohbet"
+            >
+
+
+                <!-- =================================================
+                     WELCOME AREA
+                     ================================================= -->
+
+                <div
+                    id="welcomeScreen"
+                    class="turkai-welcome"
+                >
+
+                    <div
+                        class="turkai-welcome-orb"
+                        aria-hidden="true"
+                    >
+
+                        <div
+                            class="turkai-orb-inner"
+                        >
+
+                            <svg
+                                width="42"
+                                height="42"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+
+                                <path
+                                    d="M12 2.8 14.2 9.8 21.2 12l-7 2.2-2.2 7-2.2-7L2.8 12l7-2.2L12 2.8Z"
+                                ></path>
+
+                                <path
+                                    d="M19 3v4"
+                                ></path>
+
+                                <path
+                                    d="M17 5h4"
+                                ></path>
+
+                            </svg>
+
+                        </div>
+
                     </div>
 
-                    <div class="settingDesc">
-                        Arayüz hareketlerini etkinleştirir.
+
+                    <h1>
+                        <span
+                            data-user-greeting
+                        >
+                            Merhaba
+                        </span>
+                    </h1>
+
+
+                    <p>
+                        Bugün ne yapmak istiyorsun?
+                    </p>
+
+
+                    <!-- QUICK ACTIONS -->
+
+                    <div
+                        class="turkai-quick-actions"
+                    >
+
+                        <button
+                            type="button"
+                            data-quick-action="research"
+                        >
+
+                            <span>
+
+                                <svg
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.8"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+
+                                    <circle
+                                        cx="11"
+                                        cy="11"
+                                        r="6.5"
+                                    ></circle>
+
+                                    <path
+                                        d="m16 16 5 5"
+                                    ></path>
+
+                                </svg>
+
+                            </span>
+
+                            Araştır
+
+                        </button>
+
+
+                        <button
+                            type="button"
+                            data-quick-action="code"
+                        >
+
+                            <span>
+
+                                <svg
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.8"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+
+                                    <path
+                                        d="m8 9-4 3 4 3"
+                                    ></path>
+
+                                    <path
+                                        d="m16 9 4 3-4 3"
+                                    ></path>
+
+                                    <path
+                                        d="m14 5-4 14"
+                                    ></path>
+
+                                </svg>
+
+                            </span>
+
+                            Kod yaz
+
+                        </button>
+
+
+                        <button
+                            type="button"
+                            data-quick-action="weather"
+                        >
+
+                            <span>
+
+                                <svg
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.8"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+
+                                    <circle
+                                        cx="12"
+                                        cy="12"
+                                        r="4"
+                                    ></circle>
+
+                                    <path
+                                        d="M12 2v2"
+                                    ></path>
+
+                                    <path
+                                        d="M12 20v2"
+                                    ></path>
+
+                                    <path
+                                        d="m4.93 4.93 1.42 1.42"
+                                    ></path>
+
+                                    <path
+                                        d="m17.65 17.65 1.42 1.42"
+                                    ></path>
+
+                                    <path
+                                        d="M2 12h2"
+                                    ></path>
+
+                                    <path
+                                        d="M20 12h2"
+                                    ></path>
+
+                                </svg>
+
+                            </span>
+
+                            Hava durumu
+
+                        </button>
+
+
+                        <button
+                            type="button"
+                            data-quick-action="explain"
+                        >
+
+                            <span>
+
+                                <svg
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.8"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+
+                                    <circle
+                                        cx="12"
+                                        cy="12"
+                                        r="9"
+                                    ></circle>
+
+                                    <path
+                                        d="M9.7 9a2.5 2.5 0 0 1 4.8 1c0 1.8-2.5 2-2.5 3.5"
+                                    ></path>
+
+                                    <path
+                                        d="M12 17h.01"
+                                    ></path>
+
+                                </svg>
+
+                            </span>
+
+                            Bir şey öğret
+
+                        </button>
+
                     </div>
 
                 </div>
 
-                <label class="switch">
+
+                <!-- =================================================
+                     MESSAGE AREA
+                     ================================================= -->
+
+                <div
+                    id="messages"
+                    class="turkai-messages"
+                    aria-live="polite"
+                    aria-label="Mesajlar"
+                ></div>
+
+
+                <!-- =================================================
+                     TYPING INDICATOR
+                     ================================================= -->
+
+                <div
+                    id="typingIndicator"
+                    class="turkai-typing-indicator"
+                    hidden
+                >
+
+                    <div
+                        class="turkai-typing-avatar"
+                    >
+
+                        <svg
+                            width="17"
+                            height="17"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.6"
+                        >
+
+                            <path
+                                d="M12 2.8 14.2 9.8 21.2 12l-7 2.2-2.2 7-2.2-7L2.8 12l7-2.2L12 2.8Z"
+                            ></path>
+
+                        </svg>
+
+                    </div>
+
+
+                    <div
+                        class="turkai-typing-dots"
+                    >
+
+                        <span></span>
+                        <span></span>
+                        <span></span>
+
+                    </div>
+
+                    <span>
+                        TürkAI düşünüyor
+                    </span>
+
+                </div>
+<!-- =========================================================
+     TÜRKAI — INDEX.HTML
+     PART 2 / 3
+     CHAT COMPOSER + TOOLS + FILES + WEATHER + RESEARCH
+     ========================================================= -->
+
+
+                <!-- =================================================
+                     COMPOSER AREA
+                     ================================================= -->
+
+                <div
+                    id="composerArea"
+                    class="turkai-composer-area"
+                >
+
+                    <!-- =================================================
+                         SELECTED FILE PREVIEW
+                         ================================================= -->
+
+                    <div
+                        id="filePreview"
+                        class="turkai-file-preview"
+                        hidden
+                    >
+
+                        <div
+                            class="turkai-file-preview-icon"
+                        >
+
+                            <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.7"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+
+                                <path
+                                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"
+                                ></path>
+
+                                <path
+                                    d="M14 2v6h6"
+                                ></path>
+
+                            </svg>
+
+                        </div>
+
+
+                        <div
+                            class="turkai-file-preview-info"
+                        >
+
+                            <strong
+                                id="filePreviewName"
+                            >
+                                Dosya
+                            </strong>
+
+                            <span
+                                id="filePreviewMeta"
+                            >
+                                Hazır
+                            </span>
+
+                        </div>
+
+
+                        <div
+                            class="turkai-file-progress"
+                            hidden
+                        >
+
+                            <div
+                                id="fileProgressBar"
+                            ></div>
+
+                        </div>
+
+
+                        <button
+                            id="removeFileButton"
+                            class="turkai-icon-button"
+                            type="button"
+                            aria-label="Dosyayı kaldır"
+                        >
+
+                            <svg
+                                width="17"
+                                height="17"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+
+                                <path
+                                    d="M18 6 6 18"
+                                ></path>
+
+                                <path
+                                    d="m6 6 12 12"
+                                ></path>
+
+                            </svg>
+
+                        </button>
+
+                    </div>
+
+
+                    <!-- =================================================
+                         RESEARCH STATUS
+                         ================================================= -->
+
+                    <div
+                        id="researchStatus"
+                        class="turkai-research-status"
+                        hidden
+                    >
+
+                        <div
+                            class="turkai-research-spinner"
+                        ></div>
+
+                        <span
+                            id="researchStatusText"
+                        >
+                            İnternette araştırılıyor...
+                        </span>
+
+                    </div>
+
+
+                    <!-- =================================================
+                         WEATHER RESULT
+                         ================================================= -->
+
+                    <div
+                        id="weatherResult"
+                        class="turkai-weather-result"
+                        hidden
+                    >
+
+                        <div
+                            class="turkai-weather-icon"
+                        ></div>
+
+                        <div
+                            class="turkai-weather-content"
+                        >
+
+                            <strong
+                                id="weatherLocation"
+                            >
+                                —
+                            </strong>
+
+                            <span
+                                id="weatherTemperature"
+                            >
+                                —
+                            </span>
+
+                            <small
+                                id="weatherDescription"
+                            >
+                                —
+                            </small>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- =================================================
+                         COMPOSER CARD
+                         ================================================= -->
+
+                    <div
+                        id="composer"
+                        class="turkai-composer"
+                    >
+
+                        <!-- TOP TOOL ROW -->
+
+                        <div
+                            class="turkai-composer-top"
+                        >
+
+                            <div
+                                class="turkai-composer-tools-left"
+                            >
+
+                                <!-- FILE -->
+
+                                <button
+                                    id="fileButton"
+                                    class="turkai-composer-tool"
+                                    type="button"
+                                    title="Dosya ekle"
+                                    aria-label="Dosya ekle"
+                                >
+
+                                    <svg
+                                        width="18"
+                                        height="18"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.8"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+
+                                        <path
+                                            d="M21.4 11.6 12 21a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 1 1-2.8-2.8l8.3-8.3"
+                                        ></path>
+
+                                    </svg>
+
+                                    <span>
+                                        Dosya
+                                    </span>
+
+                                </button>
+
+
+                                <!-- RESEARCH -->
+
+                                <button
+                                    id="researchButton"
+                                    class="turkai-composer-tool"
+                                    type="button"
+                                    title="İnternette araştır"
+                                    aria-label="İnternette araştır"
+                                >
+
+                                    <svg
+                                        width="18"
+                                        height="18"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.8"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+
+                                        <circle
+                                            cx="11"
+                                            cy="11"
+                                            r="6.5"
+                                        ></circle>
+
+                                        <path
+                                            d="m16 16 5 5"
+                                        ></path>
+
+                                    </svg>
+
+                                    <span>
+                                        Araştır
+                                    </span>
+
+                                </button>
+
+
+                                <!-- WEATHER -->
+
+                                <button
+                                    id="weatherButton"
+                                    class="turkai-composer-tool"
+                                    type="button"
+                                    title="Hava durumu"
+                                    aria-label="Hava durumu"
+                                >
+
+                                    <svg
+                                        width="18"
+                                        height="18"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.8"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+
+                                        <path
+                                            d="M17.5 19H8a5 5 0 1 1 1.4-9.8A6 6 0 0 1 21 11.5 3.5 3.5 0 0 1 17.5 19Z"
+                                        ></path>
+
+                                        <path
+                                            d="M8 5V3"
+                                        ></path>
+
+                                        <path
+                                            d="M4.5 6.5 3 5"
+                                        ></path>
+
+                                        <path
+                                            d="M15.5 6.5 17 5"
+                                        ></path>
+
+                                    </svg>
+
+                                    <span>
+                                        Hava
+                                    </span>
+
+                                </button>
+
+
+                                <!-- IMAGE -->
+
+                                <button
+                                    id="imageButton"
+                                    class="turkai-composer-tool"
+                                    type="button"
+                                    title="Görsel oluştur"
+                                    aria-label="Görsel oluştur"
+                                >
+
+                                    <svg
+                                        width="18"
+                                        height="18"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.8"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+
+                                        <rect
+                                            x="3"
+                                            y="3"
+                                            width="18"
+                                            height="18"
+                                            rx="3"
+                                        ></rect>
+
+                                        <circle
+                                            cx="8.5"
+                                            cy="8.5"
+                                            r="1.2"
+                                        ></circle>
+
+                                        <path
+                                            d="m21 15-5-5L5 21"
+                                        ></path>
+
+                                    </svg>
+
+                                    <span>
+                                        Görsel
+                                    </span>
+
+                                </button>
+
+
+                                <!-- VIDEO -->
+
+                                <button
+                                    id="videoButton"
+                                    class="turkai-composer-tool"
+                                    type="button"
+                                    title="Video oluştur"
+                                    aria-label="Video oluştur"
+                                >
+
+                                    <svg
+                                        width="18"
+                                        height="18"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.8"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+
+                                        <rect
+                                            x="3"
+                                            y="5"
+                                            width="13"
+                                            height="14"
+                                            rx="2"
+                                        ></rect>
+
+                                        <path
+                                            d="m16 10 5-3v10l-5-3"
+                                        ></path>
+
+                                    </svg>
+
+                                    <span>
+                                        Video
+                                    </span>
+
+                                </button>
+
+                            </div>
+
+
+                            <!-- MODEL SHORTCUT -->
+
+                            <div
+                                class="turkai-composer-model"
+                            >
+
+                                <button
+                                    type="button"
+                                    data-action="model"
+                                    aria-label="Model seç"
+                                >
+
+                                    <span
+                                        class="turkai-model-dot"
+                                    ></span>
+
+                                    <span
+                                        id="composerModelName"
+                                    >
+                                        Otomatik
+                                    </span>
+
+                                    <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+
+                                        <path
+                                            d="m6 9 6 6 6-6"
+                                        ></path>
+
+                                    </svg>
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- =================================================
+                             TEXT INPUT
+                             ================================================= -->
+
+                        <div
+                            class="turkai-composer-input-row"
+                        >
+
+                            <textarea
+                                id="messageInput"
+                                class="turkai-message-input"
+                                rows="1"
+                                maxlength="50000"
+                                autocomplete="off"
+                                autocorrect="on"
+                                spellcheck="true"
+                                placeholder="TürkAI'ye bir şey sor..."
+                                aria-label="Mesaj yaz"
+                            ></textarea>
+
+
+                            <!-- VOICE -->
+
+                            <button
+                                id="voiceButton"
+                                class="turkai-input-action"
+                                type="button"
+                                title="Sesli giriş"
+                                aria-label="Sesli giriş"
+                            >
+
+                                <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.8"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+
+                                    <rect
+                                        x="9"
+                                        y="3"
+                                        width="6"
+                                        height="11"
+                                        rx="3"
+                                    ></rect>
+
+                                    <path
+                                        d="M5 11a7 7 0 0 0 14 0"
+                                    ></path>
+
+                                    <path
+                                        d="M12 18v3"
+                                    ></path>
+
+                                    <path
+                                        d="M8 21h8"
+                                    ></path>
+
+                                </svg>
+
+                            </button>
+
+
+                            <!-- SEND -->
+
+                            <button
+                                id="sendButton"
+                                class="turkai-send-button"
+                                type="button"
+                                aria-label="Gönder"
+                            >
+
+                                <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+
+                                    <path
+                                        d="m22 2-7 20-4-9-9-4Z"
+                                    ></path>
+
+                                    <path
+                                        d="M22 2 11 13"
+                                    ></path>
+
+                                </svg>
+
+                            </button>
+
+                        </div>
+
+
+                        <!-- =================================================
+                             COMPOSER FOOTER
+                             ================================================= -->
+
+                        <div
+                            class="turkai-composer-footer"
+                        >
+
+                            <span>
+                                TürkAI hata yapabilir.
+                                Önemli bilgileri kontrol et.
+                            </span>
+
+
+                            <div
+                                class="turkai-composer-status"
+                            >
+
+                                <span
+                                    id="composerStatus"
+                                >
+                                    Hazır
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- =================================================
+                         FILE INPUT
+                         ================================================= -->
 
                     <input
-                        type="checkbox"
-                        id="animationSetting"
-                        checked>
+                        id="fileInput"
+                        type="file"
+                        hidden
+                        multiple="false"
+                        accept="
+                            .txt,
+                            .md,
+                            .json,
+                            .csv,
+                            .html,
+                            .css,
+                            .js,
+                            .ts,
+                            .jsx,
+                            .tsx,
+                            .py,
+                            .java,
+                            .c,
+                            .cpp,
+                            .h,
+                            .hpp,
+                            .cs,
+                            .php,
+                            .sql,
+                            .xml,
+                            .yaml,
+                            .yml,
+                            .log,
+                            .pdf
+                        "
+                    >
 
-                    <span></span>
+
+                    <!-- =================================================
+                         COMPOSER HINTS
+                         ================================================= -->
+
+                    <div
+                        class="turkai-composer-hints"
+                    >
+
+                        <span>
+                            <kbd>Enter</kbd>
+                            gönder
+                        </span>
+
+                        <span>
+                            <kbd>Shift</kbd>
+                            +
+                            <kbd>Enter</kbd>
+                            yeni satır
+                        </span>
+
+                        <span>
+                            Dosya sürükleyip bırakabilirsin
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- =================================================
+                 RESEARCH PAGE
+                 ================================================= -->
+
+            <section
+                id="researchPage"
+                class="turkai-page"
+                hidden
+            >
+
+                <div
+                    class="turkai-page-header"
+                >
+
+                    <div>
+
+                        <span
+                            class="turkai-page-eyebrow"
+                        >
+                            WEB INTELLIGENCE
+                        </span>
+
+                        <h2>
+                            İnternet araştırması
+                        </h2>
+
+                        <p>
+                            Güncel bilgileri web üzerinden
+                            araştır ve kaynakları incele.
+                        </p>
+
+                    </div>
+
+                    <button
+                        id="researchPageButton"
+                        class="turkai-primary-button"
+                        type="button"
+                    >
+
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+
+                            <circle
+                                cx="11"
+                                cy="11"
+                                r="6.5"
+                            ></circle>
+
+                            <path
+                                d="m16 16 5 5"
+                            ></path>
+
+                        </svg>
+
+                        Araştırmayı başlat
+
+                    </button>
+
+                </div>
+
+
+                <div
+                    id="researchResults"
+                    class="turkai-research-results"
+                ></div>
+
+            </section>
+
+
+            <!-- =================================================
+                 FILES PAGE
+                 ================================================= -->
+
+            <section
+                id="filesPage"
+                class="turkai-page"
+                hidden
+            >
+
+                <div
+                    class="turkai-page-header"
+                >
+
+                    <div>
+
+                        <span
+                            class="turkai-page-eyebrow"
+                        >
+                            DOCUMENT ENGINE
+                        </span>
+
+                        <h2>
+                            Dosyalarım
+                        </h2>
+
+                        <p>
+                            Belgelerini yükle, oku,
+                            analiz et ve TürkAI ile çalış.
+                        </p>
+
+                    </div>
+
+                    <button
+                        id="filesUploadButton"
+                        class="turkai-primary-button"
+                        type="button"
+                    >
+
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+
+                            <path
+                                d="M12 16V4"
+                            ></path>
+
+                            <path
+                                d="m7 9 5-5 5 5"
+                            ></path>
+
+                            <path
+                                d="M5 20h14"
+                            ></path>
+
+                        </svg>
+
+                        Dosya yükle
+
+                    </button>
+
+                </div>
+
+
+                <div
+                    id="filesList"
+                    class="turkai-files-grid"
+                ></div>
+
+            </section>
+
+
+            <!-- =================================================
+                 MEDIA PAGE
+                 ================================================= -->
+
+            <section
+                id="mediaPage"
+                class="turkai-page"
+                hidden
+            >
+
+                <div
+                    class="turkai-page-header"
+                >
+
+                    <div>
+
+                        <span
+                            class="turkai-page-eyebrow"
+                        >
+                            CREATIVE ENGINE
+                        </span>
+
+                        <h2>
+                            Medya oluştur
+                        </h2>
+
+                        <p>
+                            Görsel ve video üretim görevlerini
+                            buradan yönet.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="turkai-media-grid"
+                >
+
+                    <button
+                        type="button"
+                        class="turkai-media-card"
+                        data-media-action="image"
+                    >
+
+                        <div
+                            class="turkai-media-card-icon"
+                        >
+
+                            <svg
+                                width="28"
+                                height="28"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.7"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+
+                                <rect
+                                    x="3"
+                                    y="3"
+                                    width="18"
+                                    height="18"
+                                    rx="3"
+                                ></rect>
+
+                                <circle
+                                    cx="8.5"
+                                    cy="8.5"
+                                    r="1.2"
+                                ></circle>
+
+                                <path
+                                    d="m21 15-5-5L5 21"
+                                ></path>
+
+                            </svg>
+
+                        </div>
+
+                        <strong>
+                            Görsel oluştur
+                        </strong>
+
+                        <span>
+                            Yapay zeka ile görsel üret.
+                        </span>
+
+                    </button>
+
+
+                    <button
+                        type="button"
+                        class="turkai-media-card"
+                        data-media-action="video"
+                    >
+
+                        <div
+                            class="turkai-media-card-icon"
+                        >
+
+                            <svg
+                                width="28"
+                                height="28"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.7"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+
+                                <rect
+                                    x="3"
+                                    y="5"
+                                    width="13"
+                                    height="14"
+                                    rx="2"
+                                ></rect>
+
+                                <path
+                                    d="m16 10 5-3v10l-5-3"
+                                ></path>
+
+                            </svg>
+
+                        </div>
+
+                        <strong>
+                            Video oluştur
+                        </strong>
+
+                        <span>
+                            Video üretim görevlerini başlat.
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </section>
+
+
+            <!-- =================================================
+                 CODE PAGE
+                 ================================================= -->
+
+            <section
+                id="codePage"
+                class="turkai-page"
+                hidden
+            >
+
+                <div
+                    class="turkai-page-header"
+                >
+
+                    <div>
+
+                        <span
+                            class="turkai-page-eyebrow"
+                        >
+                            CODE INTELLIGENCE
+                        </span>
+
+                        <h2>
+                            Kodlama
+                        </h2>
+
+                        <p>
+                            JavaScript, Python, HTML, CSS,
+                            Java, C#, C++ ve daha fazlası.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="turkai-code-workspace"
+                >
+
+                    <div
+                        class="turkai-code-toolbar"
+                    >
+
+                        <span>
+                            TürkAI Code
+                        </span>
+
+                        <div>
+
+                            <button
+                                type="button"
+                                data-code-language="javascript"
+                            >
+                                JavaScript
+                            </button>
+
+                            <button
+                                type="button"
+                                data-code-language="python"
+                            >
+                                Python
+                            </button>
+
+                            <button
+                                type="button"
+                                data-code-language="html"
+                            >
+                                HTML
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                    <textarea
+                        id="codeEditor"
+                        class="turkai-code-editor"
+                        spellcheck="false"
+                        placeholder="// Kodunu buraya yaz..."
+                    ></textarea>
+
+
+                    <div
+                        class="turkai-code-footer"
+                    >
+
+                        <span
+                            id="codeLanguage"
+                        >
+                            JavaScript
+                        </span>
+
+                        <button
+                            id="runCodeButton"
+                            type="button"
+                        >
+
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+
+                                <path
+                                    d="m8 5 11 7-11 7V5Z"
+                                ></path>
+
+                            </svg>
+
+                            Çalıştır
+
+                        </button>
+
+                    </div>
+
+
+                    <pre
+                        id="codeOutput"
+                        class="turkai-code-output"
+                    ></pre>
+
+                </div>
+
+            </section>
+<!-- =========================================================
+     TÜRKAI — INDEX.HTML
+     PART 3 / 3
+     MODALS + SETTINGS + NOTIFICATIONS + PLANS + FINAL SCRIPTS
+     ========================================================= -->
+
+
+            <!-- =================================================
+                 SETTINGS PAGE
+                 ================================================= -->
+
+            <section
+                id="settingsPage"
+                class="turkai-page"
+                hidden
+            >
+
+                <div
+                    class="turkai-page-header"
+                >
+
+                    <div>
+
+                        <span
+                            class="turkai-page-eyebrow"
+                        >
+                            CONTROL CENTER
+                        </span>
+
+                        <h2>
+                            Ayarlar
+                        </h2>
+
+                        <p>
+                            TürkAI deneyimini kendine göre
+                            düzenle.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="turkai-settings-layout"
+                >
+
+                    <!-- ACCOUNT -->
+
+                    <div
+                        class="turkai-settings-section"
+                    >
+
+                        <div
+                            class="turkai-settings-section-title"
+                        >
+
+                            <div>
+
+                                <strong>
+                                    Hesap
+                                </strong>
+
+                                <span>
+                                    Hesap bilgilerin
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <div
+                            class="turkai-account-card"
+                        >
+
+                            <div
+                                id="settingsAvatar"
+                                class="turkai-settings-avatar"
+                            >
+
+                                <span
+                                    data-user-initial
+                                >
+                                    T
+                                </span>
+
+                            </div>
+
+
+                            <div
+                                class="turkai-account-info"
+                            >
+
+                                <strong
+                                    id="settingsUserName"
+                                    data-user-name
+                                >
+                                    Kullanıcı
+                                </strong>
+
+                                <span
+                                    id="settingsUserPlan"
+                                    data-user-plan
+                                >
+                                    FREE
+                                </span>
+
+                            </div>
+
+
+                            <button
+                                id="settingsLogoutButton"
+                                class="turkai-secondary-button"
+                                type="button"
+                                data-action="logout"
+                            >
+                                Çıkış yap
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- APPEARANCE -->
+
+                    <div
+                        class="turkai-settings-section"
+                    >
+
+                        <div
+                            class="turkai-settings-section-title"
+                        >
+
+                            <div>
+
+                                <strong>
+                                    Görünüm
+                                </strong>
+
+                                <span>
+                                    Arayüz tercihlerinin
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <div
+                            class="turkai-setting-row"
+                        >
+
+                            <div
+                                class="turkai-setting-info"
+                            >
+
+                                <strong>
+                                    Tema
+                                </strong>
+
+                                <span>
+                                    TürkAI görünümünü değiştir.
+                                </span>
+
+                            </div>
+
+
+                            <select
+                                id="themeSelect"
+                                class="turkai-select"
+                            >
+
+                                <option
+                                    value="dark"
+                                >
+                                    Koyu
+                                </option>
+
+                                <option
+                                    value="light"
+                                >
+                                    Açık
+                                </option>
+
+                                <option
+                                    value="system"
+                                >
+                                    Sistem
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <div
+                            class="turkai-setting-row"
+                        >
+
+                            <div
+                                class="turkai-setting-info"
+                            >
+
+                                <strong>
+                                    Kompakt görünüm
+                                </strong>
+
+                                <span>
+                                    Mesajlar ve paneller daha
+                                    sıkı görünsün.
+                                </span>
+
+                            </div>
+
+
+                            <label
+                                class="turkai-switch"
+                            >
+
+                                <input
+                                    id="compactToggle"
+                                    type="checkbox"
+                                >
+
+                                <span></span>
+
+                            </label>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- AI -->
+
+                    <div
+                        class="turkai-settings-section"
+                    >
+
+                        <div
+                            class="turkai-settings-section-title"
+                        >
+
+                            <div>
+
+                                <strong>
+                                    Yapay zeka
+                                </strong>
+
+                                <span>
+                                    TürkAI davranış seçenekleri
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <div
+                            class="turkai-setting-row"
+                        >
+
+                            <div
+                                class="turkai-setting-info"
+                            >
+
+                                <strong>
+                                    Hafıza
+                                </strong>
+
+                                <span>
+                                    Sohbet bağlamının
+                                    hatırlanmasına izin ver.
+                                </span>
+
+                            </div>
+
+
+                            <label
+                                class="turkai-switch"
+                            >
+
+                                <input
+                                    id="memoryToggle"
+                                    type="checkbox"
+                                    checked
+                                >
+
+                                <span></span>
+
+                            </label>
+
+                        </div>
+
+
+                        <div
+                            class="turkai-setting-row"
+                        >
+
+                            <div
+                                class="turkai-setting-info"
+                            >
+
+                                <strong>
+                                    Otomatik araştırma
+                                </strong>
+
+                                <span>
+                                    Güncel sorularda web
+                                    araştırmasını kullan.
+                                </span>
+
+                            </div>
+
+
+                            <label
+                                class="turkai-switch"
+                            >
+
+                                <input
+                                    id="autoResearchToggle"
+                                    type="checkbox"
+                                    checked
+                                >
+
+                                <span></span>
+
+                            </label>
+
+                        </div>
+
+
+                        <div
+                            class="turkai-setting-row"
+                        >
+
+                            <div
+                                class="turkai-setting-info"
+                            >
+
+                                <strong>
+                                    Ses
+                                </strong>
+
+                                <span>
+                                    Arayüz seslerini etkinleştir.
+                                </span>
+
+                            </div>
+
+
+                            <label
+                                class="turkai-switch"
+                            >
+
+                                <input
+                                    id="soundToggle"
+                                    type="checkbox"
+                                    checked
+                                >
+
+                                <span></span>
+
+                            </label>
+
+                        </div>
+
+
+                        <div
+                            class="turkai-setting-row"
+                        >
+
+                            <div
+                                class="turkai-setting-info"
+                            >
+
+                                <strong>
+                                    Enter ile gönder
+                                </strong>
+
+                                <span>
+                                    Enter'a basınca mesajı gönder.
+                                </span>
+
+                            </div>
+
+
+                            <label
+                                class="turkai-switch"
+                            >
+
+                                <input
+                                    id="enterToSendToggle"
+                                    type="checkbox"
+                                    checked
+                                >
+
+                                <span></span>
+
+                            </label>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- USAGE -->
+
+                    <div
+                        class="turkai-settings-section"
+                    >
+
+                        <div
+                            class="turkai-settings-section-title"
+                        >
+
+                            <div>
+
+                                <strong>
+                                    Kullanım
+                                </strong>
+
+                                <span>
+                                    Günlük TürkAI kullanımın
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <div
+                            id="usagePanel"
+                            class="turkai-usage-panel"
+                        >
+
+                            <div
+                                class="turkai-usage-title"
+                            >
+                                Günlük kullanım
+                            </div>
+
+                            <div
+                                class="turkai-usage-count"
+                            >
+                                —
+                            </div>
+
+                            <div
+                                class="turkai-usage-bar"
+                            >
+
+                                <div
+                                    style="width:0%"
+                                ></div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- GOOGLE LOGIN -->
+
+                    <div
+                        class="turkai-settings-section"
+                    >
+
+                        <div
+                            class="turkai-settings-section-title"
+                        >
+
+                            <div>
+
+                                <strong>
+                                    Google hesabı
+                                </strong>
+
+                                <span>
+                                    Hesabını Google ile bağla.
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <div
+                            id="googleLogin"
+                            class="turkai-google-login"
+                        ></div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- =================================================
+                 NOTIFICATION PAGE
+                 ================================================= -->
+
+            <section
+                id="notificationsPage"
+                class="turkai-page"
+                hidden
+            >
+
+                <div
+                    class="turkai-page-header"
+                >
+
+                    <div>
+
+                        <span
+                            class="turkai-page-eyebrow"
+                        >
+                            NOTIFICATIONS
+                        </span>
+
+                        <h2>
+                            Bildirimler
+                        </h2>
+
+                        <p>
+                            TürkAI sisteminden gelen
+                            bildirimler burada görünür.
+                        </p>
+
+                    </div>
+
+
+                    <button
+                        id="markAllNotificationsButton"
+                        class="turkai-secondary-button"
+                        type="button"
+                    >
+                        Tümünü okundu yap
+                    </button>
+
+                </div>
+
+
+                <div
+                    id="notificationsList"
+                    class="turkai-notifications-list"
+                ></div>
+
+            </section>
+
+
+            <!-- =================================================
+                 PLANS PAGE
+                 ================================================= -->
+
+            <section
+                id="plansPage"
+                class="turkai-page"
+                hidden
+            >
+
+                <div
+                    class="turkai-page-header"
+                >
+
+                    <div>
+
+                        <span
+                            class="turkai-page-eyebrow"
+                        >
+                            TÜRKAI PLANS
+                        </span>
+
+                        <h2>
+                            Planlar
+                        </h2>
+
+                        <p>
+                            TürkAI özelliklerini ve kullanım
+                            limitlerini incele.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="plansContainer"
+                    class="turkai-plans-grid"
+                ></div>
+
+            </section>
+
+
+        </section>
+
+    </main>
+
+
+    <!-- =========================================================
+         IMAGE GENERATION MODAL
+         ========================================================= -->
+
+    <div
+        id="imageCreateModal"
+        class="turkai-modal"
+        hidden
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="imageModalTitle"
+    >
+
+        <div
+            class="turkai-modal-backdrop"
+            data-close-modal="imageCreateModal"
+        ></div>
+
+
+        <div
+            class="turkai-modal-card"
+        >
+
+            <div
+                class="turkai-modal-header"
+            >
+
+                <div>
+
+                    <span
+                        class="turkai-modal-eyebrow"
+                    >
+                        CREATIVE ENGINE
+                    </span>
+
+                    <h3
+                        id="imageModalTitle"
+                    >
+                        Görsel oluştur
+                    </h3>
+
+                </div>
+
+
+                <button
+                    class="turkai-icon-button"
+                    type="button"
+                    data-close-modal="imageCreateModal"
+                    aria-label="Kapat"
+                >
+
+                    <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+
+                        <path
+                            d="M18 6 6 18"
+                        ></path>
+
+                        <path
+                            d="m6 6 12 12"
+                        ></path>
+
+                    </svg>
+
+                </button>
+
+            </div>
+
+
+            <div
+                class="turkai-modal-body"
+            >
+
+                <label
+                    class="turkai-field"
+                >
+
+                    <span>
+                        Prompt
+                    </span>
+
+                    <textarea
+                        id="imagePrompt"
+                        rows="5"
+                        maxlength="5000"
+                        placeholder="Nasıl bir görsel oluşturmak istiyorsun?"
+                    ></textarea>
 
                 </label>
+
+
+                <div
+                    class="turkai-field-grid"
+                >
+
+                    <label
+                        class="turkai-field"
+                    >
+
+                        <span>
+                            Boyut
+                        </span>
+
+                        <select
+                            id="imageSize"
+                        >
+
+                            <option
+                                value="square"
+                            >
+                                Kare
+                            </option>
+
+                            <option
+                                value="portrait"
+                            >
+                                Dikey
+                            </option>
+
+                            <option
+                                value="landscape"
+                            >
+                                Yatay
+                            </option>
+
+                            <option
+                                value="wide"
+                            >
+                                Geniş
+                            </option>
+
+                        </select>
+
+                    </label>
+
+
+                    <label
+                        class="turkai-field"
+                    >
+
+                        <span>
+                            Kalite
+                        </span>
+
+                        <select
+                            id="imageQuality"
+                        >
+
+                            <option
+                                value="standard"
+                            >
+                                Standart
+                            </option>
+
+                            <option
+                                value="high"
+                            >
+                                Yüksek
+                            </option>
+
+                        </select>
+
+                    </label>
+
+                </div>
+
+
+                <div
+                    id="imageGenerationStatus"
+                    class="turkai-generation-status"
+                    hidden
+                >
+
+                    <div
+                        class="turkai-generation-spinner"
+                    ></div>
+
+                    <span>
+                        Görsel görevi hazırlanıyor...
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div
+                class="turkai-modal-footer"
+            >
+
+                <button
+                    type="button"
+                    class="turkai-secondary-button"
+                    data-close-modal="imageCreateModal"
+                >
+                    Vazgeç
+                </button>
+
+                <button
+                    id="generateImageButton"
+                    type="button"
+                    class="turkai-primary-button"
+                >
+
+                    <svg
+                        width="17"
+                        height="17"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                    >
+
+                        <path
+                            d="M12 2.8 14.2 9.8 21.2 12l-7 2.2-2.2 7-2.2-7L2.8 12l7-2.2L12 2.8Z"
+                        ></path>
+
+                    </svg>
+
+                    Oluştur
+
+                </button>
 
             </div>
 
@@ -1607,1953 +3351,471 @@ input:focus-visible{
 
     </div>
 
-</div>
 
+    <!-- =========================================================
+         VIDEO GENERATION MODAL
+         ========================================================= -->
 
-<!-- TOAST -->
+    <div
+        id="videoCreateModal"
+        class="turkai-modal"
+        hidden
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="videoModalTitle"
+    >
 
-<div
-    class="toast"
-    id="toast"
-    aria-live="polite"></div>
+        <div
+            class="turkai-modal-backdrop"
+            data-close-modal="videoCreateModal"
+        ></div>
 
 
-<script>
-"use strict";
+        <div
+            class="turkai-modal-card"
+        >
 
-/* =========================================================
-   TÜRKAI CLIENT ENGINE
-   ========================================================= */
+            <div
+                class="turkai-modal-header"
+            >
 
-const TK = {
+                <div>
 
-    messages: [],
+                    <span
+                        class="turkai-modal-eyebrow"
+                    >
+                        VIDEO ENGINE
+                    </span>
 
-    currentChatId: null,
+                    <h3
+                        id="videoModalTitle"
+                    >
+                        Video oluştur
+                    </h3>
 
-    isGenerating: false,
+                </div>
 
-    selectedFiles: [],
-
-    recognition: null,
-
-    settings: {
-
-        enterToSend: true,
-
-        saveHistory: true,
-
-        animationsEnabled: true
-
-    }
-
-};
-
-
-/* =========================================================
-   DOM
-   ========================================================= */
-
-const messagesEl =
-    document.getElementById("messages");
-
-const welcomeEl =
-    document.getElementById("welcome");
-
-const composer =
-    document.getElementById("composer");
-
-const input =
-    document.getElementById("messageInput");
-
-const sendButton =
-    document.getElementById("sendButton");
-
-const fileButton =
-    document.getElementById("fileButton");
-
-const fileInput =
-    document.getElementById("fileInput");
-
-const voiceButton =
-    document.getElementById("voiceButton");
-
-const filePreview =
-    document.getElementById("filePreview");
-
-const fileInfo =
-    document.getElementById("fileInfo");
-
-const removeFile =
-    document.getElementById("removeFile");
-
-const toastEl =
-    document.getElementById("toast");
-
-const settingsButton =
-    document.getElementById("settingsButton");
-
-const settingsModal =
-    document.getElementById("settingsModal");
-
-const newChatButton =
-    document.getElementById("newChatButton");
-
-
-/* =========================================================
-   TOAST
-   ========================================================= */
-
-let toastTimer = null;
-
-function toast(message){
-
-    clearTimeout(toastTimer);
-
-    toastEl.textContent = message;
-
-    toastEl.classList.add("show");
-
-    toastTimer = setTimeout(() => {
-
-        toastEl.classList.remove("show");
-
-    }, 2600);
-}
-
-
-/* =========================================================
-   REQUEST HELPER
-   ========================================================= */
-
-async function requestJSON(
-    url,
-    options = {},
-    timeout = 60000
-){
-
-    const controller =
-        new AbortController();
-
-    const timer =
-        setTimeout(
-            () => controller.abort(),
-            timeout
-        );
-
-    try{
-
-        const response =
-            await fetch(
-                url,
-                {
-                    ...options,
-                    signal:
-                        controller.signal
-                }
-            );
-
-        const contentType =
-            response.headers.get(
-                "content-type"
-            ) || "";
-
-        let data;
-
-        if(
-            contentType.includes(
-                "application/json"
-            )
-        ){
-
-            data =
-                await response.json();
-
-        }else{
-
-            const text =
-                await response.text();
-
-            data = {
-                text
-            };
-
-        }
-
-        if(!response.ok){
-
-            const errorMessage =
-                data?.error ||
-                data?.message ||
-                data?.text ||
-                `Server hatası: ${response.status}`;
-
-            throw new Error(
-                errorMessage
-            );
-
-        }
-
-        return data;
-
-    }catch(error){
-
-        if(
-            error.name ===
-            "AbortError"
-        ){
-
-            throw new Error(
-                "Server yanıt vermedi veya bağlantı zaman aşımına uğradı."
-            );
-
-        }
-
-        throw error;
-
-    }finally{
-
-        clearTimeout(timer);
-
-    }
-
-}
-
-
-/* =========================================================
-   SERVER CHAT
-   ========================================================= */
-
-async function askBackend(text){
-
-    /*
-     * ÖNEMLİ:
-     *
-     * Bu istek aynı server'a gider.
-     *
-     * Örneğin:
-     *
-     * https://senin-domainin.com
-     *
-     * ise istek:
-     *
-     * https://senin-domainin.com/api/chat
-     *
-     * olur.
-     */
-
-    const data =
-        await requestJSON(
-            "/api/chat",
-            {
-                method:"POST",
-
-                headers:{
-                    "Content-Type":
-                        "application/json"
-                },
-
-                body:JSON.stringify({
-
-                    message:text,
-
-                    chatId:
-                        TK.currentChatId,
-
-                    model:"fast"
-
-                })
-            },
-            120000
-        );
-
-
-    const reply =
-        data.reply ??
-        data.response ??
-        data.message ??
-        data.text;
-
-
-    if(
-        !reply ||
-        typeof reply !== "string"
-    ){
-
-        throw new Error(
-            "Server geçerli bir TürkAI cevabı döndürmedi."
-        );
-
-    }
-
-
-    if(data.chatId){
-
-        TK.currentChatId =
-            data.chatId;
-
-    }
-
-
-    return reply;
-
-}
-
-
-/* =========================================================
-   FILE UPLOAD
-   ========================================================= */
-
-async function uploadFile(file){
-
-    const formData =
-        new FormData();
-
-    formData.append(
-        "file",
-        file
-    );
-
-
-    const data =
-        await requestJSON(
-            "/api/upload",
-            {
-                method:"POST",
-                body:formData
-            },
-            120000
-        );
-
-
-    return data;
-
-}
-
-
-/* =========================================================
-   ESCAPE HTML
-   ========================================================= */
-
-function escapeHTML(value){
-
-    return String(value)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-
-}
-
-
-/* =========================================================
-   TEXT RENDERER
-   ========================================================= */
-
-function renderText(text){
-
-    if(!text){
-        return "";
-    }
-
-
-    let safe =
-        escapeHTML(text);
-
-
-    /*
-     * Kod blokları
-     */
-
-    const codeBlocks = [];
-
-    safe =
-        safe.replace(
-            /```([a-zA-Z0-9_+-]*)\n?([\s\S]*?)```/g,
-            (
-                match,
-                language,
-                code
-            ) => {
-
-                const id =
-                    "code_" +
-                    Math.random()
-                        .toString(36)
-                        .slice(2);
-
-                codeBlocks.push({
-
-                    id,
-                    language:
-                        language || "code",
-                    code
-
-                });
-
-
-                return `
-
-                    <div
-                        class="codeBlock">
-
-                        <div
-                            class="codeHeader">
-
-                            <span>
-                                ${escapeHTML(
-                                    language ||
-                                    "code"
-                                )}
-                            </span>
-
-                            <button
-                                class="codeCopy"
-                                data-copy-code="${id}">
-
-                                <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.8">
-
-                                    <rect
-                                        x="9"
-                                        y="9"
-                                        width="11"
-                                        height="11"
-                                        rx="2"/>
-
-                                    <path
-                                        d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/>
-
-                                </svg>
-
-                                Kopyala
-
-                            </button>
-
-                        </div>
-
-                        <pre
-                            id="${id}">${code}</pre>
-
-                    </div>
-
-                `;
-
-            }
-        );
-
-
-    /*
-     * Satır yapısı
-     */
-
-    const lines =
-        safe.split("\n");
-
-
-    let html = "";
-
-    let paragraph = [];
-
-
-    function flushParagraph(){
-
-        if(!paragraph.length){
-            return;
-        }
-
-        let content =
-            paragraph.join("<br>");
-
-        content =
-            content.replace(
-                /\*\*(.*?)\*\*/g,
-                "<strong>$1</strong>"
-            );
-
-        content =
-            content.replace(
-                /`([^`]+)`/g,
-                '<span class="inlineCode">$1</span>'
-            );
-
-        html +=
-            `<p>${content}</p>`;
-
-        paragraph = [];
-
-    }
-
-
-    for(
-        const line of lines
-    ){
-
-        const trimmed =
-            line.trim();
-
-
-        if(!trimmed){
-
-            flushParagraph();
-
-            continue;
-
-        }
-
-
-        if(
-            /^[-*]\s+/.test(trimmed)
-        ){
-
-            flushParagraph();
-
-            html +=
-                `<ul><li>${
-                    trimmed.replace(
-                        /^[-*]\s+/,
-                        ""
-                    )
-                }</li></ul>`;
-
-            continue;
-
-        }
-
-
-        paragraph.push(line);
-
-    }
-
-
-    flushParagraph();
-
-
-    /*
-     * Kod bloklarının güvenli tutulması
-     */
-
-    for(
-        const block of codeBlocks
-    ){
-
-        /*
-         * Kod zaten HTML olarak
-         * escape edildi.
-         */
-
-    }
-
-
-    return html;
-
-}
-
-
-/* =========================================================
-   ADD MESSAGE
-   ========================================================= */
-
-function addMessage(
-    role,
-    content,
-    extra = {}
-){
-
-    const message = {
-
-        id:
-            cryptoRandomId(),
-
-        role,
-
-        content,
-
-        createdAt:
-            Date.now(),
-
-        ...extra
-
-    };
-
-
-    TK.messages.push(
-        message
-    );
-
-
-    renderMessage(
-        message
-    );
-
-
-    saveState();
-
-    scrollToBottom();
-
-
-    return message;
-
-}
-
-
-/* =========================================================
-   RANDOM ID
-   ========================================================= */
-
-function cryptoRandomId(){
-
-    if(
-        window.crypto &&
-        crypto.randomUUID
-    ){
-
-        return crypto.randomUUID();
-
-    }
-
-
-    return (
-        "msg_" +
-        Date.now() +
-        "_" +
-        Math.random()
-            .toString(36)
-            .slice(2)
-    );
-
-}
-
-
-/* =========================================================
-   RENDER MESSAGE
-   ========================================================= */
-
-function renderMessage(message){
-
-    if(welcomeEl){
-
-        welcomeEl.style.display =
-            "none";
-
-    }
-
-
-    const wrapper =
-        document.createElement(
-            "div"
-        );
-
-    wrapper.className =
-        `message ${message.role}`;
-
-
-    const bubble =
-        document.createElement(
-            "div"
-        );
-
-    bubble.className =
-        "bubble";
-
-
-    if(
-        message.role ===
-        "assistant"
-    ){
-
-        bubble.innerHTML =
-            `
-            <div class="messageMeta">
-                <span>TürkAI</span>
-            </div>
-
-            <div class="textContent">
-                ${renderText(
-                    message.content
-                )}
-            </div>
-
-            <div class="messageActions">
 
                 <button
-                    class="smallButton"
-                    data-copy-message="${message.id}">
+                    class="turkai-icon-button"
+                    type="button"
+                    data-close-modal="videoCreateModal"
+                    aria-label="Kapat"
+                >
 
                     <svg
+                        width="19"
+                        height="19"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
-                        stroke-width="1.8">
-
-                        <rect
-                            x="9"
-                            y="9"
-                            width="11"
-                            height="11"
-                            rx="2"/>
+                        stroke-width="2"
+                    >
 
                         <path
-                            d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/>
+                            d="M18 6 6 18"
+                        ></path>
+
+                        <path
+                            d="m6 6 12 12"
+                        ></path>
 
                     </svg>
-
-                    Kopyala
 
                 </button>
 
             </div>
-            `;
 
-    }else{
 
-        bubble.innerHTML =
-            `
-            <div class="textContent">
-                ${renderText(
-                    message.content
-                )}
-            </div>
-            `;
+            <div
+                class="turkai-modal-body"
+            >
 
-    }
+                <label
+                    class="turkai-field"
+                >
 
+                    <span>
+                        Video açıklaması
+                    </span>
 
-    wrapper.appendChild(
-        bubble
-    );
+                    <textarea
+                        id="videoPrompt"
+                        rows="5"
+                        maxlength="5000"
+                        placeholder="Nasıl bir video oluşturmak istiyorsun?"
+                    ></textarea>
 
-    messagesEl.appendChild(
-        wrapper
-    );
+                </label>
 
 
-    /*
-     * Mesaj içindeki kod kopyalama
-     */
+                <div
+                    class="turkai-field-grid"
+                >
 
-    wrapper
-        .querySelectorAll(
-            "[data-copy-code]"
-        )
-        .forEach(button => {
+                    <label
+                        class="turkai-field"
+                    >
 
-            button.addEventListener(
-                "click",
-                async () => {
+                        <span>
+                            Süre
+                        </span>
 
-                    const id =
-                        button.dataset
-                            .copyCode;
+                        <select
+                            id="videoDuration"
+                        >
 
-                    const code =
-                        document.getElementById(
-                            id
-                        );
+                            <option
+                                value="5"
+                            >
+                                5 saniye
+                            </option>
 
-                    if(!code){
-                        return;
-                    }
+                            <option
+                                value="10"
+                            >
+                                10 saniye
+                            </option>
 
-                    await copyText(
-                        code.textContent
-                    );
+                            <option
+                                value="15"
+                            >
+                                15 saniye
+                            </option>
 
-                    toast(
-                        "Kod kopyalandı."
-                    );
+                            <option
+                                value="20"
+                            >
+                                20 saniye
+                            </option>
 
-                }
-            );
+                        </select>
 
-        });
+                    </label>
 
 
-    /*
-     * Mesaj kopyalama
-     */
+                    <label
+                        class="turkai-field"
+                    >
 
-    wrapper
-        .querySelectorAll(
-            "[data-copy-message]"
-        )
-        .forEach(button => {
+                        <span>
+                            Çözünürlük
+                        </span>
 
-            button.addEventListener(
-                "click",
-                async () => {
+                        <select
+                            id="videoResolution"
+                        >
 
-                    await copyText(
-                        message.content
-                    );
+                            <option
+                                value="720p"
+                            >
+                                720p
+                            </option>
 
-                    toast(
-                        "Mesaj kopyalandı."
-                    );
+                            <option
+                                value="1080p"
+                            >
+                                1080p
+                            </option>
 
-                }
-            );
+                        </select>
 
-        });
+                    </label>
 
+                </div>
 
-    scrollToBottom();
 
-}
+                <div
+                    id="videoGenerationStatus"
+                    class="turkai-generation-status"
+                    hidden
+                >
 
+                    <div
+                        class="turkai-generation-spinner"
+                    ></div>
 
-/* =========================================================
-   COPY
-   ========================================================= */
+                    <span>
+                        Video görevi hazırlanıyor...
+                    </span>
 
-async function copyText(text){
+                </div>
 
-    try{
-
-        await navigator.clipboard.writeText(
-            text
-        );
-
-    }catch{
-
-        const area =
-            document.createElement(
-                "textarea"
-            );
-
-        area.value =
-            text;
-
-        document.body.appendChild(
-            area
-        );
-
-        area.select();
-
-        document.execCommand(
-            "copy"
-        );
-
-        area.remove();
-
-    }
-
-}
-
-
-/* =========================================================
-   RENDER ALL
-   ========================================================= */
-
-function renderAllMessages(){
-
-    messagesEl.innerHTML = "";
-
-    messagesEl.appendChild(
-        welcomeEl
-    );
-
-
-    if(!TK.messages.length){
-
-        welcomeEl.style.display =
-            "flex";
-
-        return;
-
-    }
-
-
-    welcomeEl.style.display =
-        "none";
-
-
-    for(
-        const message
-        of TK.messages
-    ){
-
-        renderMessage(
-            message
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   SCROLL
-   ========================================================= */
-
-function scrollToBottom(){
-
-    requestAnimationFrame(
-        () => {
-
-            messagesEl.scrollTo({
-
-                top:
-                    messagesEl.scrollHeight,
-
-                behavior:
-                    TK.settings
-                        .animationsEnabled
-                        ? "smooth"
-                        : "auto"
-
-            });
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   LOADING
-   ========================================================= */
-
-function addTyping(){
-
-    const wrapper =
-        document.createElement(
-            "div"
-        );
-
-    wrapper.className =
-        "message assistant";
-
-    wrapper.id =
-        "typingMessage";
-
-
-    wrapper.innerHTML = `
-
-        <div class="bubble">
-
-            <div class="messageMeta">
-                <span>TürkAI</span>
             </div>
 
-            <div class="typing">
 
-                <span></span>
-                <span></span>
-                <span></span>
+            <div
+                class="turkai-modal-footer"
+            >
+
+                <button
+                    type="button"
+                    class="turkai-secondary-button"
+                    data-close-modal="videoCreateModal"
+                >
+                    Vazgeç
+                </button>
+
+                <button
+                    id="generateVideoButton"
+                    type="button"
+                    class="turkai-primary-button"
+                >
+
+                    <svg
+                        width="17"
+                        height="17"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                    >
+
+                        <rect
+                            x="3"
+                            y="5"
+                            width="13"
+                            height="14"
+                            rx="2"
+                        ></rect>
+
+                        <path
+                            d="m16 10 5-3v10l-5-3"
+                        ></path>
+
+                    </svg>
+
+                    Video oluştur
+
+                </button>
 
             </div>
 
         </div>
 
-    `;
+    </div>
 
 
-    messagesEl.appendChild(
-        wrapper
-    );
+    <!-- =========================================================
+         NOTIFICATION DRAWER
+         ========================================================= -->
+
+    <aside
+        id="notificationPanel"
+        class="turkai-notification-panel"
+        hidden
+        aria-label="Bildirimler"
+    >
+
+        <div
+            class="turkai-panel-header"
+        >
+
+            <div>
+
+                <strong>
+                    Bildirimler
+                </strong>
+
+                <span>
+                    Son bildirimler
+                </span>
+
+            </div>
 
 
-    scrollToBottom();
+            <button
+                class="turkai-icon-button"
+                type="button"
+                data-action="close-notifications"
+                aria-label="Kapat"
+            >
 
-}
+                <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
 
+                    <path
+                        d="M18 6 6 18"
+                    ></path>
 
-function removeTyping(){
+                    <path
+                        d="m6 6 12 12"
+                    ></path>
 
-    document
-        .getElementById(
-            "typingMessage"
-        )
-        ?.remove();
+                </svg>
 
-}
+            </button>
 
-
-/* =========================================================
-   SEND MESSAGE
-   ========================================================= */
-
-async function sendMessage(){
-
-    if(
-        TK.isGenerating
-    ){
-
-        return;
-
-    }
-
-
-    const text =
-        input.value.trim();
+        </div>
 
 
-    if(
-        !text &&
-        !TK.selectedFiles.length
-    ){
+        <div
+            id="notificationPanelList"
+            class="turkai-panel-list"
+        ></div>
 
-        return;
-
-    }
+    </aside>
 
 
-    TK.isGenerating =
-        true;
+    <!-- =========================================================
+         TOAST CONTAINER
+         ========================================================= -->
 
-    sendButton.disabled =
-        true;
+    <div
+        id="toastContainer"
+        class="turkai-toast-container"
+        aria-live="polite"
+        aria-atomic="true"
+    ></div>
 
 
-    let finalText =
-        text;
+    <!-- =========================================================
+         GLOBAL LOADING
+         ========================================================= -->
 
+    <div
+        id="globalLoader"
+        class="turkai-global-loader"
+        hidden
+        aria-hidden="true"
+    >
+
+        <div
+            class="turkai-loader-orb"
+        >
+
+            <svg
+                width="30"
+                height="30"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+            >
+
+                <path
+                    d="M12 2.8 14.2 9.8 21.2 12l-7 2.2-2.2 7-2.2-7L2.8 12l7-2.2L12 2.8Z"
+                ></path>
+
+            </svg>
+
+        </div>
+
+
+        <span>
+            TürkAI hazırlanıyor...
+        </span>
+
+    </div>
+
+
+</div>
+
+
+<!-- =========================================================
+     INLINE FALLBACK HELPERS
+     ========================================================= -->
+
+<script>
 
     /*
-     * Dosyalar varsa önce server'a gönder.
+     * Bazı tarayıcılarda CSS.escape bulunmayabilir.
+     * Güvenli küçük bir fallback.
      */
 
-    if(
-        TK.selectedFiles.length
-    ){
+    if (
+        typeof window.CSS ===
+        "undefined"
+    ) {
 
-        try{
+        window.CSS = {};
 
-            for(
-                const file
-                of TK.selectedFiles
-            ){
+    }
 
-                const result =
-                    await uploadFile(
-                        file
+
+    if (
+        typeof window.CSS.escape !==
+        "function"
+    ) {
+
+        window.CSS.escape =
+            function(value) {
+
+                return String(value)
+                    .replace(
+                        /[^a-zA-Z0-9_\-]/g,
+                        "\\$&"
                     );
-
-
-                const fileName =
-                    result?.file?.name ||
-                    result?.name ||
-                    file.name;
-
-
-                finalText +=
-                    `\n\n[Dosya yüklendi: ${fileName}]`;
-
-            }
-
-        }catch(error){
-
-            toast(
-                "Dosya yüklenemedi: " +
-                error.message
-            );
-
-            TK.isGenerating =
-                false;
-
-            sendButton.disabled =
-                false;
-
-            return;
-
-        }
-
+            };
     }
 
 
     /*
-     * Kullanıcı mesajı
+     * User initial.
      */
 
-    addMessage(
-        "user",
-        finalText
-    );
-
-
-    input.value =
-        "";
-
-    autoResize();
-
-
-    clearFiles();
-
-
-    /*
-     * Server
-     */
-
-    addTyping();
-
-
-    try{
-
-        const reply =
-            await askBackend(
-                finalText
-            );
-
-
-        removeTyping();
-
-
-        addMessage(
-            "assistant",
-            reply
-        );
-
-
-    }catch(error){
-
-        removeTyping();
-
-
-        addMessage(
-            "assistant",
-            "Server bağlantısında bir sorun oluştu.\n\n" +
-            "**Hata:** " +
-            error.message
-        );
-
-
-        toast(
-            "Server bağlantısı başarısız."
-        );
-
-    }finally{
-
-        TK.isGenerating =
-            false;
-
-        sendButton.disabled =
-            false;
-
-        input.focus();
-
-    }
-
-}
-
-
-/* =========================================================
-   TEXTAREA
-   ========================================================= */
-
-function autoResize(){
-
-    input.style.height =
-        "auto";
-
-    input.style.height =
-        Math.min(
-            input.scrollHeight,
-            150
-        ) + "px";
-
-}
-
-
-/* =========================================================
-   NEW CHAT
-   ========================================================= */
-
-function newChat(){
-
-    TK.messages = [];
-
-    TK.currentChatId =
-        null;
-
-
-    localStorage.removeItem(
-        "turkai_messages"
-    );
-
-    localStorage.removeItem(
-        "turkai_chat_id"
-    );
-
-
-    renderAllMessages();
-
-    clearFiles();
-
-    input.value =
-        "";
-
-    autoResize();
-
-    toast(
-        "Yeni sohbet başlatıldı."
-    );
-
-    input.focus();
-
-}
-
-
-/* =========================================================
-   FILES
-   ========================================================= */
-
-function updateFilePreview(){
-
-    if(
-        !TK.selectedFiles.length
-    ){
-
-        filePreview.classList
-            .remove("active");
-
-        fileInfo.textContent =
-            "";
-
-        return;
-
-    }
-
-
-    filePreview.classList
-        .add("active");
-
-
-    if(
-        TK.selectedFiles.length === 1
-    ){
-
-        fileInfo.textContent =
-            TK.selectedFiles[0].name;
-
-    }else{
-
-        fileInfo.textContent =
-            `${TK.selectedFiles.length} dosya seçildi`;
-
-    }
-
-}
-
-
-function clearFiles(){
-
-    TK.selectedFiles =
-        [];
-
-    fileInput.value =
-        "";
-
-    updateFilePreview();
-
-}
-
-
-/* =========================================================
-   LOCAL STORAGE
-   ========================================================= */
-
-function saveState(){
-
-    if(
-        !TK.settings.saveHistory
-    ){
-
-        return;
-
-    }
-
-
-    try{
-
-        localStorage.setItem(
-            "turkai_messages",
-            JSON.stringify(
-                TK.messages
+    function updateTurkAIUserInitial() {
+
+        const name =
+            document.querySelector(
+                "[data-user-name]"
+            )?.textContent
+            ?.trim() ||
+            "T";
+
+        const initial =
+            name
+                .charAt(0)
+                .toUpperCase();
+
+
+        document
+            .querySelectorAll(
+                "[data-user-initial]"
             )
-        );
-
-
-        if(
-            TK.currentChatId
-        ){
-
-            localStorage.setItem(
-                "turkai_chat_id",
-                TK.currentChatId
-            );
-
-        }
-
-    }catch(error){
-
-        console.warn(
-            "Local kayıt başarısız:",
-            error
-        );
-
-    }
-
-}
-
-
-function loadState(){
-
-    try{
-
-        const raw =
-            localStorage.getItem(
-                "turkai_messages"
-            );
-
-
-        if(raw){
-
-            const parsed =
-                JSON.parse(raw);
-
-
-            if(
-                Array.isArray(parsed)
-            ){
-
-                TK.messages =
-                    parsed;
-
-            }
-
-        }
-
-
-        TK.currentChatId =
-            localStorage.getItem(
-                "turkai_chat_id"
-            ) || null;
-
-
-    }catch(error){
-
-        console.warn(
-            "Local geçmiş okunamadı:",
-            error
-        );
-
-        TK.messages = [];
-
-    }
-
-
-    renderAllMessages();
-
-}
-
-
-/* =========================================================
-   SETTINGS
-   ========================================================= */
-
-function openSettings(){
-
-    settingsModal.classList
-        .add("active");
-
-}
-
-
-function closeSettings(){
-
-    settingsModal.classList
-        .remove("active");
-
-}
-
-
-function loadSettings(){
-
-    try{
-
-        const raw =
-            localStorage.getItem(
-                "turkai_settings"
-            );
-
-
-        if(!raw){
-            return;
-        }
-
-
-        const settings =
-            JSON.parse(raw);
-
-
-        TK.settings = {
-
-            ...TK.settings,
-
-            ...settings
-
-        };
-
-
-    }catch{}
-
-}
-
-
-function saveSettings(){
-
-    localStorage.setItem(
-        "turkai_settings",
-        JSON.stringify(
-            TK.settings
-        )
-    );
-
-}
-
-
-/* =========================================================
-   VOICE INPUT
-   ========================================================= */
-
-function setupVoice(){
-
-    const Recognition =
-        window.SpeechRecognition ||
-        window.webkitSpeechRecognition;
-
-
-    if(!Recognition){
-
-        voiceButton.style.opacity =
-            ".45";
-
-        voiceButton.title =
-            "Bu tarayıcı sesli girişi desteklemiyor.";
-
-        return;
-
-    }
-
-
-    const recognition =
-        new Recognition();
-
-
-    recognition.lang =
-        "tr-TR";
-
-    recognition.interimResults =
-        true;
-
-    recognition.continuous =
-        false;
-
-
-    recognition.onstart = () => {
-
-        voiceButton.style
-            .color =
-            "var(--accent2)";
-
-        toast(
-            "Dinliyorum..."
-        );
-
-    };
-
-
-    recognition.onresult =
-        event => {
-
-            let transcript =
-                "";
-
-            for(
-                let i =
-                    event.resultIndex;
-                i <
-                    event.results.length;
-                i++
-            ){
-
-                transcript +=
-                    event.results[i][0]
-                        .transcript;
-
-            }
-
-
-            input.value =
-                transcript;
-
-            autoResize();
-
-        };
-
-
-    recognition.onerror =
-        event => {
-
-            toast(
-                "Sesli giriş hatası: " +
-                event.error
-            );
-
-        };
-
-
-    recognition.onend =
-        () => {
-
-            voiceButton.style
-                .color =
-                "";
-
-        };
-
-
-    TK.recognition =
-        recognition;
-
-
-    voiceButton.addEventListener(
-        "click",
-        () => {
-
-            try{
-
-                recognition.start();
-
-            }catch{
-
-                recognition.stop();
-
-            }
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   EVENTS
-   ========================================================= */
-
-composer.addEventListener(
-    "submit",
-    event => {
-
-        event.preventDefault();
-
-        sendMessage();
-
-    }
-);
-
-
-input.addEventListener(
-    "input",
-    autoResize
-);
-
-
-input.addEventListener(
-    "keydown",
-    event => {
-
-        if(
-            event.key ===
-            "Enter"
-        ){
-
-            if(
-                event.shiftKey
-            ){
-
-                return;
-
-            }
-
-
-            if(
-                TK.settings.enterToSend
-            ){
-
-                event.preventDefault();
-
-                sendMessage();
-
-            }
-
-        }
-
-    }
-);
-
-
-fileButton.addEventListener(
-    "click",
-    () => {
-
-        fileInput.click();
-
-    }
-);
-
-
-fileInput.addEventListener(
-    "change",
-    () => {
-
-        TK.selectedFiles =
-            Array.from(
-                fileInput.files || []
-            );
-
-
-        if(
-            TK.selectedFiles.length
-        ){
-
-            toast(
-                `${TK.selectedFiles.length} dosya seçildi.`
-            );
-
-        }
-
-
-        updateFilePreview();
-
-    }
-);
-
-
-removeFile.addEventListener(
-    "click",
-    clearFiles
-);
-
-
-newChatButton.addEventListener(
-    "click",
-    newChat
-);
-
-
-settingsButton.addEventListener(
-    "click",
-    openSettings
-);
-
-
-document
-    .querySelectorAll(
-        "[data-close-modal]"
-    )
-    .forEach(button => {
-
-        button.addEventListener(
-            "click",
-            closeSettings
-        );
-
-    });
-
-
-settingsModal.addEventListener(
-    "click",
-    event => {
-
-        if(
-            event.target ===
-            settingsModal
-        ){
-
-            closeSettings();
-
-        }
-
-    }
-);
-
-
-/*
- * Öneriler
- */
-
-document
-    .querySelectorAll(
-        ".suggestion"
-    )
-    .forEach(button => {
-
-        button.addEventListener(
-            "click",
-            () => {
-
-                input.value =
-                    button.dataset.prompt;
-
-                autoResize();
-
-                input.focus();
-
-            }
-        );
-
-    });
-
-
-/*
- * Escape
- */
-
-document.addEventListener(
-    "keydown",
-    event => {
-
-        if(
-            event.key ===
-            "Escape"
-        ){
-
-            closeSettings();
-
-        }
-
-
-        /*
-         * Ctrl/Cmd + K
-         */
-
-        if(
-            (event.ctrlKey ||
-             event.metaKey) &&
-            event.key.toLowerCase() ===
-            "k"
-        ){
-
-            event.preventDefault();
-
-            input.focus();
-
-        }
-
-
-        /*
-         * Ctrl/Cmd + N
-         */
-
-        if(
-            (event.ctrlKey ||
-             event.metaKey) &&
-            event.key.toLowerCase() ===
-            "n"
-        ){
-
-            event.preventDefault();
-
-            newChat();
-
-        }
-
-    }
-);
-
-
-/* =========================================================
-   SETTINGS CONTROLS
-   ========================================================= */
-
-document
-    .getElementById(
-        "enterSetting"
-    )
-    .addEventListener(
-        "change",
-        event => {
-
-            TK.settings.enterToSend =
-                event.target.checked;
-
-            saveSettings();
-
-        }
-    );
-
-
-document
-    .getElementById(
-        "historySetting"
-    )
-    .addEventListener(
-        "change",
-        event => {
-
-            TK.settings.saveHistory =
-                event.target.checked;
-
-            if(
-                !TK.settings.saveHistory
-            ){
-
-                localStorage.removeItem(
-                    "turkai_messages"
-                );
-
-                localStorage.removeItem(
-                    "turkai_chat_id"
-                );
-
-            }else{
-
-                saveState();
-
-            }
-
-        }
-    );
-
-
-document
-    .getElementById(
-        "animationSetting"
-    )
-    .addEventListener(
-        "change",
-        event => {
-
-            TK.settings.animationsEnabled =
-                event.target.checked;
-
-            saveSettings();
-
-        }
-    );
-
-
-/* =========================================================
-   INIT SETTINGS UI
-   ========================================================= */
-
-function syncSettingsUI(){
-
-    document
-        .getElementById(
-            "enterSetting"
-        )
-        .checked =
-        TK.settings.enterToSend;
-
-
-    document
-        .getElementById(
-            "historySetting"
-        )
-        .checked =
-        TK.settings.saveHistory;
-
-
-    document
-        .getElementById(
-            "animationSetting"
-        )
-        .checked =
-        TK.settings.animationsEnabled;
-
-}
-
-
-/* =========================================================
-   SERVER HEALTH CHECK
-   ========================================================= */
-
-async function checkServer(){
-
-    /*
-     * /api/chat POST endpointini
-     * burada çağırmıyoruz.
-     *
-     * Server'da /api/health varsa
-     * otomatik kontrol ediyoruz.
-     */
-
-    try{
-
-        const response =
-            await fetch(
-                "/api/health",
-                {
-                    method:"GET",
-                    cache:"no-store"
+            .forEach(
+                element => {
+
+                    element.textContent =
+                        initial;
                 }
             );
-
-
-        if(
-            response.ok
-        ){
-
-            console.log(
-                "[TürkAI] Server bağlantısı aktif."
-            );
-
-        }else{
-
-            console.warn(
-                "[TürkAI] Health endpoint hata döndürdü."
-            );
-
-        }
-
-    }catch{
-
-        console.warn(
-            "[TürkAI] Health endpoint bulunamadı veya server erişilemiyor."
-        );
-
     }
 
-}
+
+    document.addEventListener(
+        "turkai:ready",
+        updateTurkAIUserInitial
+    );
 
 
-/* =========================================================
-   START
-   ========================================================= */
-
-loadSettings();
-
-syncSettingsUI();
-
-loadState();
-
-setupVoice();
-
-checkServer();
-
-autoResize();
-
-input.focus();
-
-
-console.log(
-    "%cTürkAI client başlatıldı.",
-    "color:#8975ef;font-weight:bold;"
-);
-
-console.log(
-    "[TürkAI] API:",
-    window.location.origin
-);
+    document.addEventListener(
+        "DOMContentLoaded",
+        updateTurkAIUserInitial
+    );
 
 </script>
+
+
+<!-- =========================================================
+     APP.JS
+     ========================================================= -->
+
+<script
+    src="/app.js"
+    defer
+></script>
+
+
+<!-- =========================================================
+     FINAL
+     ========================================================= -->
 
 </body>
 </html>
