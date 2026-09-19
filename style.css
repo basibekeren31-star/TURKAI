@@ -3689,3 +3689,865 @@ textarea {
 /* ============================================================
    TÜRKAI STYLE END
    ============================================================ */
+<style>
+/* =========================================================
+   TÜRKAI — COMPACT + ORDERED UI
+   ========================================================= */
+
+:root {
+    --tk-content: 1120px;
+    --tk-chat: 980px;
+    --tk-composer: 900px;
+    --tk-gap: 16px;
+}
+
+/* ANA YAPI */
+html,
+body {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    overflow-x: hidden;
+}
+
+#app {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* =========================================================
+   1. ÜST BAR
+   ========================================================= */
+
+.topbar {
+    width: 100%;
+    height: 64px;
+    min-height: 64px;
+    box-sizing: border-box;
+
+    padding: 0 24px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    background: rgba(9,11,16,.92);
+    border-bottom: 1px solid rgba(255,255,255,.07);
+
+    position: sticky;
+    top: 0;
+    z-index: 100;
+
+    backdrop-filter: blur(20px);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.brand-icon {
+    width: 36px;
+    height: 36px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 11px;
+
+    background: rgba(124,92,255,.14);
+    border: 1px solid rgba(124,92,255,.25);
+}
+
+/* =========================================================
+   2. ANA CHAT ALANI
+   ========================================================= */
+
+#chatView {
+    width: 100%;
+    flex: 1;
+
+    box-sizing: border-box;
+
+    padding:
+        0 20px;
+}
+
+/* =========================================================
+   3. WELCOME
+   ========================================================= */
+
+.welcome {
+    width: min(100%, var(--tk-content));
+
+    min-height: 530px;
+
+    margin: 0 auto;
+
+    padding:
+        55px 20px 35px;
+
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+}
+
+.welcome-icon {
+    width: 68px;
+    height: 68px;
+
+    margin-bottom: 20px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 20px;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(124,92,255,.2),
+            rgba(32,199,214,.08)
+        );
+
+    border: 1px solid rgba(255,255,255,.09);
+
+    box-shadow:
+        0 18px 50px rgba(0,0,0,.25);
+}
+
+.welcome h1 {
+    margin: 0;
+
+    font-size: clamp(32px, 4vw, 52px);
+    line-height: 1.05;
+
+    letter-spacing: -2px;
+}
+
+.welcome p {
+    max-width: 620px;
+
+    margin:
+        16px auto 0;
+
+    color: rgba(255,255,255,.5);
+
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+/* =========================================================
+   4. ÖNERİ KARTLARI
+   ========================================================= */
+
+.suggestions {
+    width: min(100%, 900px);
+
+    margin: 30px auto 0;
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 12px;
+}
+
+.suggestion {
+    min-height: 110px;
+
+    box-sizing: border-box;
+
+    padding: 17px;
+
+    border-radius: 17px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+
+    text-align: left;
+
+    background:
+        rgba(255,255,255,.035);
+
+    border:
+        1px solid rgba(255,255,255,.07);
+
+    transition:
+        transform .2s ease,
+        background .2s ease,
+        border-color .2s ease;
+}
+
+.suggestion:hover {
+    transform: translateY(-2px);
+
+    background:
+        rgba(124,92,255,.07);
+
+    border-color:
+        rgba(124,92,255,.25);
+}
+
+.suggestion-icon {
+    width: 34px;
+    height: 34px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 10px;
+
+    background:
+        rgba(255,255,255,.05);
+}
+
+.suggestion span {
+    margin-top: 12px;
+
+    font-size: 13px;
+    line-height: 1.4;
+
+    color: rgba(255,255,255,.72);
+}
+
+/* =========================================================
+   5. MESAJLAR
+   ========================================================= */
+
+.chat-messages {
+    width: min(100%, var(--tk-chat));
+
+    margin: 0 auto;
+
+    padding:
+        25px 0
+        150px;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 18px;
+}
+
+.message {
+    width: 100%;
+}
+
+.message.user {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.message.assistant {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.message-bubble {
+    max-width: 760px;
+
+    padding:
+        13px 17px;
+
+    box-sizing: border-box;
+
+    border-radius: 17px;
+
+    font-size: 14px;
+    line-height: 1.65;
+
+    overflow-wrap: anywhere;
+}
+
+.message.user .message-bubble {
+    background:
+        linear-gradient(
+            135deg,
+            #7154e8,
+            #6248cf
+        );
+
+    border-bottom-right-radius: 5px;
+}
+
+.message.assistant .message-bubble {
+    background:
+        rgba(255,255,255,.035);
+
+    border:
+        1px solid rgba(255,255,255,.06);
+
+    border-bottom-left-radius: 5px;
+}
+
+/* =========================================================
+   6. COMPOSER
+   ========================================================= */
+
+.composer-area {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding:
+        12px 20px
+        18px;
+
+    position: sticky;
+    bottom: 0;
+
+    z-index: 90;
+
+    background:
+        linear-gradient(
+            180deg,
+            transparent,
+            rgba(9,11,16,.92) 30%,
+            #090b10 70%
+        );
+}
+
+.composer {
+    width: min(100%, var(--tk-composer));
+
+    min-height: 58px;
+
+    margin: 0 auto;
+
+    padding: 7px;
+
+    box-sizing: border-box;
+
+    display: flex;
+    align-items: flex-end;
+
+    gap: 7px;
+
+    border-radius: 18px;
+
+    background:
+        rgba(22,24,32,.96);
+
+    border:
+        1px solid rgba(255,255,255,.08);
+
+    box-shadow:
+        0 15px 45px rgba(0,0,0,.3);
+
+    backdrop-filter: blur(20px);
+}
+
+#messageInput {
+    flex: 1;
+
+    width: 100%;
+
+    min-height: 42px;
+    max-height: 160px;
+
+    padding:
+        10px 8px;
+
+    box-sizing: border-box;
+
+    resize: none;
+
+    border: 0;
+    outline: 0;
+
+    background: transparent;
+
+    color: white;
+
+    font-family: inherit;
+    font-size: 14px;
+
+    line-height: 1.5;
+}
+
+#messageInput::placeholder {
+    color: rgba(255,255,255,.35);
+}
+
+.composer-button,
+.send-button {
+    width: 42px;
+    height: 42px;
+
+    flex: 0 0 42px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 12px;
+
+    border:
+        1px solid rgba(255,255,255,.07);
+
+    background:
+        rgba(255,255,255,.045);
+
+    color:
+        rgba(255,255,255,.75);
+
+    cursor: pointer;
+
+    transition:
+        transform .18s ease,
+        background .18s ease;
+}
+
+.composer-button:hover {
+    background:
+        rgba(255,255,255,.08);
+
+    transform:
+        translateY(-1px);
+}
+
+.send-button {
+    background:
+        #7154e8;
+
+    border-color:
+        transparent;
+
+    color: white;
+}
+
+.send-button:hover {
+    background:
+        #8066ef;
+
+    transform:
+        translateY(-1px);
+}
+
+/* =========================================================
+   7. DOSYA ÖNİZLEME
+   ========================================================= */
+
+.file-preview {
+    width: min(100%, var(--tk-composer));
+
+    margin:
+        0 auto 8px;
+
+    padding: 10px 13px;
+
+    box-sizing: border-box;
+
+    border-radius: 13px;
+
+    background:
+        rgba(255,255,255,.04);
+
+    border:
+        1px solid rgba(255,255,255,.07);
+}
+
+/* =========================================================
+   8. GENEL MODAL
+   ========================================================= */
+
+.modal {
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 500;
+
+    padding: 20px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    box-sizing: border-box;
+
+    background:
+        rgba(0,0,0,.64);
+
+    backdrop-filter:
+        blur(14px);
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    width: min(100%, 850px);
+
+    max-height:
+        calc(100vh - 40px);
+
+    overflow: auto;
+
+    border-radius: 23px;
+
+    background:
+        #151821;
+
+    border:
+        1px solid rgba(255,255,255,.08);
+
+    box-shadow:
+        0 30px 90px rgba(0,0,0,.5);
+}
+
+.modal-content.large {
+    width: min(100%, 1100px);
+}
+
+/* =========================================================
+   9. KOD ALANI
+   ========================================================= */
+
+.code-workspace {
+    width: 100%;
+
+    min-height: 520px;
+
+    display: grid;
+
+    grid-template-columns:
+        210px
+        minmax(0, 1fr)
+        260px;
+}
+
+.code-sidebar {
+    min-width: 0;
+
+    border-right:
+        1px solid rgba(255,255,255,.06);
+}
+
+.code-editor {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.code-output {
+    min-width: 0;
+
+    border-left:
+        1px solid rgba(255,255,255,.06);
+
+    background:
+        rgba(0,0,0,.14);
+}
+
+.code-editor textarea {
+    width: 100%;
+    height: 100%;
+
+    min-height: 500px;
+
+    box-sizing: border-box;
+
+    padding: 20px;
+
+    resize: none;
+
+    border: 0;
+    outline: 0;
+
+    background:
+        #0c0e13;
+
+    color:
+        #e7e9ef;
+
+    font-family:
+        Consolas,
+        "Cascadia Code",
+        monospace;
+
+    font-size: 13px;
+
+    line-height: 1.65;
+}
+
+/* =========================================================
+   10. TABLET
+   ========================================================= */
+
+@media (max-width: 900px) {
+
+    .suggestions {
+        width: min(100%, 650px);
+    }
+
+    .code-workspace {
+        grid-template-columns:
+            180px
+            minmax(0, 1fr);
+    }
+
+    .code-output {
+        display: none;
+    }
+}
+
+/* =========================================================
+   11. TELEFON
+   ========================================================= */
+
+@media (max-width: 650px) {
+
+    .topbar {
+        height: 58px;
+        min-height: 58px;
+
+        padding: 0 12px;
+    }
+
+    #chatView {
+        padding: 0 10px;
+    }
+
+    .welcome {
+        min-height: 500px;
+
+        padding:
+            35px 5px 25px;
+    }
+
+    .welcome-icon {
+        width: 58px;
+        height: 58px;
+
+        border-radius: 17px;
+
+        margin-bottom: 16px;
+    }
+
+    .welcome h1 {
+        font-size: 32px;
+        letter-spacing: -1.5px;
+    }
+
+    .welcome p {
+        font-size: 14px;
+        max-width: 440px;
+    }
+
+    .suggestions {
+        grid-template-columns: 1fr;
+
+        gap: 9px;
+
+        margin-top: 24px;
+    }
+
+    .suggestion {
+        min-height: 86px;
+
+        padding: 14px;
+    }
+
+    .suggestion span {
+        margin-top: 8px;
+    }
+
+    .chat-messages {
+        padding-bottom: 125px;
+
+        gap: 13px;
+    }
+
+    .message-bubble {
+        max-width: 91%;
+
+        padding:
+            11px 14px;
+
+        font-size: 14px;
+
+        border-radius: 15px;
+    }
+
+    .composer-area {
+        padding:
+            8px 9px
+            max(9px, env(safe-area-inset-bottom));
+    }
+
+    .composer {
+        min-height: 53px;
+
+        padding: 5px;
+
+        border-radius: 15px;
+    }
+
+    #messageInput {
+        min-height: 40px;
+
+        font-size: 14px;
+
+        padding:
+            9px 6px;
+    }
+
+    .composer-button,
+    .send-button {
+        width: 40px;
+        height: 40px;
+
+        flex-basis: 40px;
+
+        border-radius: 11px;
+    }
+
+    .modal {
+        padding: 8px;
+    }
+
+    .modal-content {
+        max-height:
+            calc(100vh - 16px);
+
+        border-radius: 18px;
+    }
+}
+
+/* =========================================================
+   12. ÇOK KÜÇÜK EKRAN
+   ========================================================= */
+
+@media (max-width: 390px) {
+
+    .welcome h1 {
+        font-size: 28px;
+    }
+
+    .welcome p {
+        font-size: 13px;
+    }
+
+    .message-bubble {
+        max-width: 94%;
+        font-size: 13px;
+    }
+
+    .composer-button,
+    .send-button {
+        width: 38px;
+        height: 38px;
+
+        flex-basis: 38px;
+    }
+}
+
+/* =========================================================
+   13. ANİMASYONLAR
+   ========================================================= */
+
+@keyframes tkFadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.welcome,
+.suggestion,
+.message {
+    animation:
+        tkFadeUp .3s ease both;
+}
+
+/* =========================================================
+   14. SCROLLBAR
+   ========================================================= */
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color:
+        rgba(255,255,255,.15)
+        transparent;
+}
+
+::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background:
+        rgba(255,255,255,.13);
+
+    border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background:
+        rgba(255,255,255,.22);
+}
+
+/* =========================================================
+   15. ERİŞİLEBİLİRLİK
+   ========================================================= */
+
+button,
+textarea,
+input {
+    font-family: inherit;
+}
+
+button:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
+    outline:
+        2px solid rgba(124,92,255,.65);
+
+    outline-offset:
+        2px;
+}
+
+/* =========================================================
+   16. HAREKET AZALTMA
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+</style>
