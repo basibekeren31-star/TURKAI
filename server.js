@@ -3,37 +3,21 @@
 /*
 ╔══════════════════════════════════════════════════════════════════════╗
 ║                         TÜRKAI SERVER                              ║
-║                         CORE ENGINE                                ║
-║                         VERSION 14.0                               ║
+║                         VERSION 14.0                              ║
+║                                                                      ║
+║  PARÇA 1 / 3                                                       ║
+║                                                                      ║
+║  Bu dosya PARÇA 2 ve PARÇA 3 ile birlikte tek server.js oluşturur. ║
+║                                                                      ║
+║  Uyum:                                                             ║
+║  - Render                                                          ║
+║  - GitHub                                                          ║
+║  - Node.js                                                         ║
+║  - Express                                                         ║
+║  - Socket.IO                                                       ║
+║  - JSON database                                                   ║
+║  - TürkAI AI API                                                   ║
 ╚══════════════════════════════════════════════════════════════════════╝
-
-PART 1
-──────────────────────────────────────────────────────────────────────
-• Express
-• HTTP
-• Socket.IO
-• Security
-• CORS
-• Helmet
-• JSON
-• Database
-• Users
-• Sessions
-• Plans
-• Usage
-• Chat
-• AI Providers
-• Local AI
-• Provider fallback
-• Health
-• Status
-• Server diagnostics
-
-PART 2:
-Memory / Knowledge / Research / Files / Projects / Admin / Security...
-
-PART 3:
-Socket runtime / Static frontend / SPA / Shutdown / Production...
 */
 
 require("dotenv").config();
@@ -42,35 +26,35 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const http = require("http");
+const os = require("os");
 
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const { Server } = require("socket.io");
 
-
-// ═══════════════════════════════════════════════════════════════════
-// APPLICATION INFORMATION
-// ═══════════════════════════════════════════════════════════════════
+/* ================================================================
+   01 — APPLICATION CONFIGURATION
+================================================================ */
 
 const APP_NAME = "TürkAI";
-
 const APP_VERSION = "14.0.0";
-
-const APP_DESCRIPTION =
-    "Türkçe yapay zekâ, araştırma, kodlama ve üretkenlik platformu";
+const APP_DESCRIPTION = "Türkçe yapay zekâ platformu";
 
 const NODE_ENV =
-    process.env.NODE_ENV || "development";
+    process.env.NODE_ENV ||
+    "development";
 
 const IS_PRODUCTION =
     NODE_ENV === "production";
 
 const PORT =
-    Number(process.env.PORT) || 10000;
+    Number(process.env.PORT) ||
+    10000;
 
 const HOST =
-    process.env.HOST || "0.0.0.0";
+    process.env.HOST ||
+    "0.0.0.0";
 
 const START_TIME =
     Date.now();
@@ -79,82 +63,146 @@ const SERVER_ID =
     process.env.RENDER_INSTANCE_ID ||
     crypto.randomBytes(12).toString("hex");
 
+const SERVER_NAME =
+    process.env.SERVER_NAME ||
+    "TürkAI Render Server";
 
-// ═══════════════════════════════════════════════════════════════════
-// EXPRESS / HTTP
-// ═══════════════════════════════════════════════════════════════════
+const MAX_JSON_SIZE =
+    process.env.MAX_JSON_SIZE ||
+    "25mb";
 
-const app = express();
+const MAX_URLENCODED_SIZE =
+    process.env.MAX_URLENCODED_SIZE ||
+    "25mb";
+
+const DEFAULT_LANGUAGE =
+    "tr-TR";
+
+const DEFAULT_TIMEZONE =
+    "Europe/Istanbul";
+
+/* ================================================================
+   02 — EXPRESS / HTTP / SOCKET.IO
+================================================================ */
+
+const app =
+    express();
 
 const httpServer =
     http.createServer(app);
 
+const io =
+    new Server(
+        httpServer,
+        {
+            cors: {
+                origin: "*",
+                methods: [
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "PATCH",
+                    "DELETE",
+                    "OPTIONS"
+                ]
+            },
 
-// ═══════════════════════════════════════════════════════════════════
-// SOCKET.IO
-// ═══════════════════════════════════════════════════════════════════
+            transports: [
+                "websocket",
+                "polling"
+            ],
 
-const io = new Server(
-    httpServer,
-    {
-        cors: {
-            origin: "*",
-            methods: [
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE"
-            ]
-        },
+            pingInterval:
+                25000,
 
-        transports: [
-            "websocket",
-            "polling"
-        ]
-    }
-);
+            pingTimeout:
+                20000,
 
+            maxHttpBufferSize:
+                25 * 1024 * 1024
+        }
+    );
 
-// ═══════════════════════════════════════════════════════════════════
-// DIRECTORIES
-// ═══════════════════════════════════════════════════════════════════
+/* ================================================================
+   03 — DIRECTORY STRUCTURE
+================================================================ */
 
 const ROOT_DIR =
     __dirname;
 
 const DATA_DIR =
-    path.join(ROOT_DIR, "data");
+    path.join(
+        ROOT_DIR,
+        "data"
+    );
 
 const DATABASE_DIR =
-    path.join(ROOT_DIR, "database");
+    path.join(
+        ROOT_DIR,
+        "database"
+    );
 
 const STORAGE_DIR =
-    path.join(ROOT_DIR, "storage");
+    path.join(
+        ROOT_DIR,
+        "storage"
+    );
 
 const USERS_DIR =
-    path.join(STORAGE_DIR, "users");
+    path.join(
+        STORAGE_DIR,
+        "users"
+    );
 
 const UPLOADS_DIR =
-    path.join(STORAGE_DIR, "uploads");
+    path.join(
+        STORAGE_DIR,
+        "uploads"
+    );
 
 const GENERATED_DIR =
-    path.join(STORAGE_DIR, "generated");
+    path.join(
+        STORAGE_DIR,
+        "generated"
+    );
 
 const LOGS_DIR =
-    path.join(STORAGE_DIR, "logs");
+    path.join(
+        STORAGE_DIR,
+        "logs"
+    );
 
 const CACHE_DIR =
-    path.join(STORAGE_DIR, "cache");
+    path.join(
+        STORAGE_DIR,
+        "cache"
+    );
 
 const TEMP_DIR =
-    path.join(STORAGE_DIR, "temp");
+    path.join(
+        STORAGE_DIR,
+        "temp"
+    );
+
+const BACKUP_DIR =
+    path.join(
+        STORAGE_DIR,
+        "backups"
+    );
+
+const PROJECTS_DIR =
+    path.join(
+        STORAGE_DIR,
+        "projects"
+    );
 
 const PUBLIC_DIR =
-    path.join(ROOT_DIR, "public");
+    path.join(
+        ROOT_DIR,
+        "public"
+    );
 
-
-const DIRECTORIES = [
+const ALL_DIRECTORIES = [
     DATA_DIR,
     DATABASE_DIR,
     STORAGE_DIR,
@@ -164,14 +212,19 @@ const DIRECTORIES = [
     LOGS_DIR,
     CACHE_DIR,
     TEMP_DIR,
+    BACKUP_DIR,
+    PROJECTS_DIR,
     PUBLIC_DIR
 ];
 
+/* ================================================================
+   04 — DIRECTORY INITIALIZATION
+================================================================ */
 
-for (const directory of DIRECTORIES) {
-
+function ensureDirectory(
+    directory
+) {
     try {
-
         fs.mkdirSync(
             directory,
             {
@@ -179,22 +232,30 @@ for (const directory of DIRECTORIES) {
             }
         );
 
+        return true;
     } catch (error) {
-
         console.error(
             "[DIRECTORY ERROR]",
             directory,
             error.message
         );
 
+        return false;
     }
-
 }
 
+for (
+    const directory
+    of ALL_DIRECTORIES
+) {
+    ensureDirectory(
+        directory
+    );
+}
 
-// ═══════════════════════════════════════════════════════════════════
-// DATABASE FILES
-// ═══════════════════════════════════════════════════════════════════
+/* ================================================================
+   05 — DATABASE FILE PATHS
+================================================================ */
 
 const DB_FILES = {
 
@@ -286,14 +347,30 @@ const DB_FILES = {
         path.join(
             DATABASE_DIR,
             "settings.json"
-        )
+        ),
 
+    apiKeys:
+        path.join(
+            DATABASE_DIR,
+            "api_keys.json"
+        ),
+
+    rateLimits:
+        path.join(
+            DATABASE_DIR,
+            "rate_limits.json"
+        ),
+
+    statistics:
+        path.join(
+            DATABASE_DIR,
+            "statistics.json"
+        )
 };
 
-
-// ═══════════════════════════════════════════════════════════════════
-// DEFAULT DATABASE CONTENT
-// ═══════════════════════════════════════════════════════════════════
+/* ================================================================
+   06 — DEFAULT DATABASE STRUCTURE
+================================================================ */
 
 const DEFAULT_DATABASE = {
 
@@ -327,98 +404,332 @@ const DEFAULT_DATABASE = {
 
     settings: {
 
-        maintenance: false,
+        maintenance:
+            false,
 
-        allowRegistration: true,
+        allowRegistration:
+            true,
 
-        maxUploadMB: 25,
+        allowGuest:
+            true,
 
-        defaultModel: "fast",
+        defaultModel:
+            "fast",
 
-        version: APP_VERSION,
+        defaultLanguage:
+            DEFAULT_LANGUAGE,
 
-        updatedAt: null
+        timezone:
+            DEFAULT_TIMEZONE,
 
+        maxUploadMB:
+            25,
+
+        maxMessageLength:
+            30000,
+
+        enableMemory:
+            true,
+
+        enableResearch:
+            true,
+
+        enableCode:
+            true,
+
+        enableImage:
+            true,
+
+        enableVideo:
+            true,
+
+        enableSocket:
+            true,
+
+        version:
+            APP_VERSION,
+
+        updatedAt:
+            null
+    },
+
+    apiKeys: [],
+
+    rateLimits: {},
+
+    statistics: {
+
+        totalRequests:
+            0,
+
+        totalMessages:
+            0,
+
+        totalUsers:
+            0,
+
+        totalChats:
+            0,
+
+        totalErrors:
+            0,
+
+        totalResearch:
+            0,
+
+        totalFiles:
+            0,
+
+        startedAt:
+            new Date().toISOString()
     }
-
 };
 
+/* ================================================================
+   07 — JSON HELPERS
+================================================================ */
 
-// ═══════════════════════════════════════════════════════════════════
-// DATABASE INITIALIZATION
-// ═══════════════════════════════════════════════════════════════════
-
-function ensureDatabase() {
-
-    for (const [name, file] of Object.entries(DB_FILES)) {
-
-        if (!fs.existsSync(file)) {
-
-            const defaultValue =
-                DEFAULT_DATABASE[name];
-
-            writeJSON(
-                file,
-                defaultValue
-            );
-
-        }
-
-    }
-
+function cloneDefault(
+    value
+) {
+    return JSON.parse(
+        JSON.stringify(
+            value
+        )
+    );
 }
 
+function ensureDatabaseFile(
+    filePath,
+    fallback
+) {
+    try {
 
-function readJSON(file, fallback = null) {
+        if (
+            !fs.existsSync(
+                filePath
+            )
+        ) {
+
+            fs.writeFileSync(
+                filePath,
+                JSON.stringify(
+                    fallback,
+                    null,
+                    2
+                ),
+                "utf8"
+            );
+
+            return;
+        }
+
+        const content =
+            fs.readFileSync(
+                filePath,
+                "utf8"
+            ).trim();
+
+        if (
+            !content
+        ) {
+
+            fs.writeFileSync(
+                filePath,
+                JSON.stringify(
+                    fallback,
+                    null,
+                    2
+                ),
+                "utf8"
+            );
+        }
+
+    } catch (error) {
+
+        console.error(
+            "[DATABASE INIT ERROR]",
+            filePath,
+            error.message
+        );
+
+    }
+}
+
+/* ================================================================
+   08 — DATABASE INITIALIZATION
+================================================================ */
+
+ensureDatabaseFile(
+    DB_FILES.users,
+    DEFAULT_DATABASE.users
+);
+
+ensureDatabaseFile(
+    DB_FILES.sessions,
+    DEFAULT_DATABASE.sessions
+);
+
+ensureDatabaseFile(
+    DB_FILES.chats,
+    DEFAULT_DATABASE.chats
+);
+
+ensureDatabaseFile(
+    DB_FILES.messages,
+    DEFAULT_DATABASE.messages
+);
+
+ensureDatabaseFile(
+    DB_FILES.memories,
+    DEFAULT_DATABASE.memories
+);
+
+ensureDatabaseFile(
+    DB_FILES.knowledge,
+    DEFAULT_DATABASE.knowledge
+);
+
+ensureDatabaseFile(
+    DB_FILES.usage,
+    DEFAULT_DATABASE.usage
+);
+
+ensureDatabaseFile(
+    DB_FILES.files,
+    DEFAULT_DATABASE.files
+);
+
+ensureDatabaseFile(
+    DB_FILES.projects,
+    DEFAULT_DATABASE.projects
+);
+
+ensureDatabaseFile(
+    DB_FILES.research,
+    DEFAULT_DATABASE.research
+);
+
+ensureDatabaseFile(
+    DB_FILES.payments,
+    DEFAULT_DATABASE.payments
+);
+
+ensureDatabaseFile(
+    DB_FILES.notifications,
+    DEFAULT_DATABASE.notifications
+);
+
+ensureDatabaseFile(
+    DB_FILES.audit,
+    DEFAULT_DATABASE.audit
+);
+
+ensureDatabaseFile(
+    DB_FILES.security,
+    DEFAULT_DATABASE.security
+);
+
+ensureDatabaseFile(
+    DB_FILES.settings,
+    DEFAULT_DATABASE.settings
+);
+
+ensureDatabaseFile(
+    DB_FILES.apiKeys,
+    DEFAULT_DATABASE.apiKeys
+);
+
+ensureDatabaseFile(
+    DB_FILES.rateLimits,
+    DEFAULT_DATABASE.rateLimits
+);
+
+ensureDatabaseFile(
+    DB_FILES.statistics,
+    DEFAULT_DATABASE.statistics
+);
+
+/* ================================================================
+   09 — SAFE JSON READ
+================================================================ */
+
+function readJSON(
+    filePath,
+    fallback
+) {
 
     try {
 
-        if (!fs.existsSync(file)) {
+        if (
+            !fs.existsSync(
+                filePath
+            )
+        ) {
 
-            return fallback;
-
+            return cloneDefault(
+                fallback
+            );
         }
 
         const raw =
             fs.readFileSync(
-                file,
+                filePath,
                 "utf8"
             );
 
-        if (!raw.trim()) {
+        if (
+            !raw.trim()
+        ) {
 
-            return fallback;
-
+            return cloneDefault(
+                fallback
+            );
         }
 
-        return JSON.parse(raw);
+        return JSON.parse(
+            raw
+        );
 
     } catch (error) {
 
-        logError(
-            "JSON_READ_ERROR",
-            {
-                file,
-                error: error.message
-            }
+        console.error(
+            "[JSON READ ERROR]",
+            filePath,
+            error.message
         );
 
-        return fallback;
-
+        return cloneDefault(
+            fallback
+        );
     }
-
 }
 
+/* ================================================================
+   10 — SAFE JSON WRITE
+================================================================ */
 
-function writeJSON(file, data) {
+function writeJSON(
+    filePath,
+    data
+) {
 
     try {
 
-        const temporaryFile =
-            `${file}.tmp`;
+        const directory =
+            path.dirname(
+                filePath
+            );
+
+        ensureDirectory(
+            directory
+        );
+
+        const temporary =
+            `${filePath}.tmp`;
 
         fs.writeFileSync(
-            temporaryFile,
+            temporary,
             JSON.stringify(
                 data,
                 null,
@@ -428,8 +739,8 @@ function writeJSON(file, data) {
         );
 
         fs.renameSync(
-            temporaryFile,
-            file
+            temporary,
+            filePath
         );
 
         return true;
@@ -437,101 +748,479 @@ function writeJSON(file, data) {
     } catch (error) {
 
         console.error(
-            "[JSON_WRITE_ERROR]",
-            file,
+            "[JSON WRITE ERROR]",
+            filePath,
             error.message
         );
 
         return false;
-
     }
-
 }
 
+/* ================================================================
+   11 — DATABASE ACCESS FUNCTIONS
+================================================================ */
 
-ensureDatabase();
+function getUsers() {
+    return readJSON(
+        DB_FILES.users,
+        []
+    );
+}
 
+function saveUsers(
+    users
+) {
+    return writeJSON(
+        DB_FILES.users,
+        users
+    );
+}
 
-// ═══════════════════════════════════════════════════════════════════
-// LOGGING ENGINE
-// ═══════════════════════════════════════════════════════════════════
+function getSessions() {
+    return readJSON(
+        DB_FILES.sessions,
+        []
+    );
+}
+
+function saveSessions(
+    sessions
+) {
+    return writeJSON(
+        DB_FILES.sessions,
+        sessions
+    );
+}
+
+function getChats() {
+    return readJSON(
+        DB_FILES.chats,
+        []
+    );
+}
+
+function saveChats(
+    chats
+) {
+    return writeJSON(
+        DB_FILES.chats,
+        chats
+    );
+}
+
+function getMessages() {
+    return readJSON(
+        DB_FILES.messages,
+        []
+    );
+}
+
+function saveMessages(
+    messages
+) {
+    return writeJSON(
+        DB_FILES.messages,
+        messages
+    );
+}
+
+function getMemories() {
+    return readJSON(
+        DB_FILES.memories,
+        []
+    );
+}
+
+function saveMemories(
+    memories
+) {
+    return writeJSON(
+        DB_FILES.memories,
+        memories
+    );
+}
+
+function getKnowledge() {
+    return readJSON(
+        DB_FILES.knowledge,
+        []
+    );
+}
+
+function saveKnowledge(
+    knowledge
+) {
+    return writeJSON(
+        DB_FILES.knowledge,
+        knowledge
+    );
+}
+
+function getUsage() {
+    return readJSON(
+        DB_FILES.usage,
+        {}
+    );
+}
+
+function saveUsage(
+    usage
+) {
+    return writeJSON(
+        DB_FILES.usage,
+        usage
+    );
+}
+
+function getFiles() {
+    return readJSON(
+        DB_FILES.files,
+        []
+    );
+}
+
+function saveFiles(
+    files
+) {
+    return writeJSON(
+        DB_FILES.files,
+        files
+    );
+}
+
+function getProjects() {
+    return readJSON(
+        DB_FILES.projects,
+        []
+    );
+}
+
+function saveProjects(
+    projects
+) {
+    return writeJSON(
+        DB_FILES.projects,
+        projects
+    );
+}
+
+function getResearch() {
+    return readJSON(
+        DB_FILES.research,
+        []
+    );
+}
+
+function saveResearch(
+    research
+) {
+    return writeJSON(
+        DB_FILES.research,
+        research
+    );
+}
+
+function getPayments() {
+    return readJSON(
+        DB_FILES.payments,
+        []
+    );
+}
+
+function savePayments(
+    payments
+) {
+    return writeJSON(
+        DB_FILES.payments,
+        payments
+    );
+}
+
+function getNotifications() {
+    return readJSON(
+        DB_FILES.notifications,
+        []
+    );
+}
+
+function saveNotifications(
+    notifications
+) {
+    return writeJSON(
+        DB_FILES.notifications,
+        notifications
+    );
+}
+
+function getAuditLogs() {
+    return readJSON(
+        DB_FILES.audit,
+        []
+    );
+}
+
+function saveAuditLogs(
+    logs
+) {
+    return writeJSON(
+        DB_FILES.audit,
+        logs
+    );
+}
+
+function getSecurityEvents() {
+    return readJSON(
+        DB_FILES.security,
+        []
+    );
+}
+
+function saveSecurityEvents(
+    events
+) {
+    return writeJSON(
+        DB_FILES.security,
+        events
+    );
+}
+
+function getSettings() {
+    return readJSON(
+        DB_FILES.settings,
+        DEFAULT_DATABASE.settings
+    );
+}
+
+function saveSettings(
+    settings
+) {
+    return writeJSON(
+        DB_FILES.settings,
+        settings
+    );
+}
+
+function getStatistics() {
+    return readJSON(
+        DB_FILES.statistics,
+        DEFAULT_DATABASE.statistics
+    );
+}
+
+function saveStatistics(
+    statistics
+) {
+    return writeJSON(
+        DB_FILES.statistics,
+        statistics
+    );
+}
+
+/* ================================================================
+   12 — BASIC UTILITIES
+================================================================ */
 
 function nowISO() {
-
-    return new Date().toISOString();
-
+    return new Date()
+        .toISOString();
 }
 
-
-function createId(prefix = "id") {
+function createId(
+    prefix = "id"
+) {
 
     return (
         `${prefix}_` +
         Date.now().toString(36) +
         "_" +
         crypto
-            .randomBytes(6)
+            .randomBytes(8)
             .toString("hex")
     );
-
 }
 
+function createToken(
+    prefix = "tk"
+) {
 
-function createToken() {
+    return (
+        `${prefix}_` +
+        crypto
+            .randomBytes(32)
+            .toString("hex")
+    );
+}
+
+function hashText(
+    text
+) {
 
     return crypto
-        .randomBytes(32)
-        .toString("hex");
-
+        .createHash("sha256")
+        .update(
+            String(text)
+        )
+        .digest("hex");
 }
 
-
-function cleanText(value, maxLength = 20000) {
+function cleanText(
+    value,
+    maxLength = 30000
+) {
 
     if (
         value === null ||
         value === undefined
     ) {
-
         return "";
-
     }
 
     return String(value)
-        .replace(/\u0000/g, "")
+        .replace(
+            /\u0000/g,
+            ""
+        )
         .trim()
-        .slice(0, maxLength);
-
+        .slice(
+            0,
+            maxLength
+        );
 }
 
-
-function normalizeText(value) {
+function normalizeText(
+    value
+) {
 
     return cleanText(
         value,
-        50000
+        30000
     )
-        .toLocaleLowerCase("tr-TR")
-        .normalize("NFKC");
-
+        .toLocaleLowerCase(
+            "tr-TR"
+        )
+        .normalize(
+            "NFD"
+        )
+        .replace(
+            /[\u0300-\u036f]/g,
+            ""
+        );
 }
 
+function isObject(
+    value
+) {
 
-function logTo(fileName, data) {
+    return (
+        value !== null &&
+        typeof value === "object" &&
+        !Array.isArray(
+            value
+        )
+    );
+}
+
+function safeNumber(
+    value,
+    fallback = 0
+) {
+
+    const number =
+        Number(value);
+
+    return Number.isFinite(
+        number
+    )
+        ? number
+        : fallback;
+}
+
+function clamp(
+    value,
+    min,
+    max
+) {
+
+    return Math.min(
+        max,
+        Math.max(
+            min,
+            safeNumber(
+                value,
+                min
+            )
+        )
+    );
+}
+
+function sleep(
+    milliseconds
+) {
+
+    return new Promise(
+        resolve =>
+            setTimeout(
+                resolve,
+                milliseconds
+            )
+    );
+}
+
+/* ================================================================
+   13 — LOGGING SYSTEM
+================================================================ */
+
+const LOG_FILE =
+    path.join(
+        LOGS_DIR,
+        "server.log"
+    );
+
+const ERROR_LOG_FILE =
+    path.join(
+        LOGS_DIR,
+        "error.log"
+    );
+
+const SECURITY_LOG_FILE =
+    path.join(
+        LOGS_DIR,
+        "security.log"
+    );
+
+const AI_LOG_FILE =
+    path.join(
+        LOGS_DIR,
+        "ai.log"
+    );
+
+function appendLog(
+    file,
+    level,
+    message,
+    meta = {}
+) {
+
+    const line =
+        JSON.stringify({
+            time:
+                nowISO(),
+
+            level,
+
+            message:
+
+                cleanText(
+                    message,
+                    5000
+                ),
+
+            meta
+        }) +
+        os.EOL;
 
     try {
-
-        const file =
-            path.join(
-                LOGS_DIR,
-                fileName
-            );
-
-        const line =
-            JSON.stringify({
-                timestamp: nowISO(),
-                ...data
-            }) + "\n";
 
         fs.appendFileSync(
             file,
@@ -545,155 +1234,1066 @@ function logTo(fileName, data) {
             "[LOG ERROR]",
             error.message
         );
-
     }
-
 }
 
-
-function logInfo(message, extra = {}) {
+function logInfo(
+    message,
+    meta = {}
+) {
 
     console.log(
-        `[${nowISO()}] INFO: ${message}`
+        `[INFO] ${message}`
     );
 
-    logTo(
-        "server.log",
-        {
-            level: "info",
-            message,
-            ...extra
-        }
+    appendLog(
+        LOG_FILE,
+        "INFO",
+        message,
+        meta
     );
-
 }
 
-
-function logError(message, extra = {}) {
-
-    console.error(
-        `[${nowISO()}] ERROR: ${message}`
-    );
-
-    logTo(
-        "error.log",
-        {
-            level: "error",
-            message,
-            ...extra
-        }
-    );
-
-}
-
-
-function logSecurity(message, extra = {}) {
+function logWarn(
+    message,
+    meta = {}
+) {
 
     console.warn(
-        `[${nowISO()}] SECURITY: ${message}`
+        `[WARN] ${message}`
     );
 
-    logTo(
-        "security.log",
-        {
-            level: "security",
-            message,
-            ...extra
-        }
+    appendLog(
+        LOG_FILE,
+        "WARN",
+        message,
+        meta
     );
-
 }
 
+function logError(
+    message,
+    meta = {}
+) {
 
-function logAI(message, extra = {}) {
-
-    logTo(
-        "ai.log",
-        {
-            level: "ai",
-            message,
-            ...extra
-        }
+    console.error(
+        `[ERROR] ${message}`
     );
 
+    appendLog(
+        ERROR_LOG_FILE,
+        "ERROR",
+        message,
+        meta
+    );
 }
 
+function logSecurity(
+    message,
+    meta = {}
+) {
 
-// ═══════════════════════════════════════════════════════════════════
-// EXPRESS SECURITY
-// ═══════════════════════════════════════════════════════════════════
+    console.warn(
+        `[SECURITY] ${message}`
+    );
 
-app.disable("x-powered-by");
+    appendLog(
+        SECURITY_LOG_FILE,
+        "SECURITY",
+        message,
+        meta
+    );
+}
 
+function logAI(
+    message,
+    meta = {}
+) {
 
-app.use(
-    helmet(
-        {
-            contentSecurityPolicy: false,
+    appendLog(
+        AI_LOG_FILE,
+        "AI",
+        message,
+        meta
+    );
+}
 
-            crossOriginEmbedderPolicy: false,
+/* ================================================================
+   14 — REQUEST ID
+================================================================ */
 
-            crossOriginResourcePolicy: {
-                policy: "cross-origin"
+function createRequestId() {
+
+    return (
+        "req_" +
+        Date.now().toString(36) +
+        "_" +
+        crypto
+            .randomBytes(6)
+            .toString("hex")
+    );
+}
+
+/* ================================================================
+   15 — PLAN SYSTEM
+================================================================ */
+
+const PLANS = {
+
+    free: {
+
+        id:
+            "free",
+
+        name:
+            "Free",
+
+        price:
+            0,
+
+        currency:
+            "TRY",
+
+        messages:
+            50,
+
+        research:
+            5,
+
+        images:
+            0,
+
+        videos:
+            0,
+
+        maxUploadMB:
+            10,
+
+        memory:
+            true,
+
+        coding:
+            true,
+
+        priority:
+            1
+    },
+
+    pro: {
+
+        id:
+            "pro",
+
+        name:
+            "Pro",
+
+        price:
+            250,
+
+        currency:
+            "TRY",
+
+        messages:
+            100,
+
+        research:
+            25,
+
+        images:
+            2,
+
+        videos:
+            0,
+
+        maxUploadMB:
+            25,
+
+        memory:
+            true,
+
+        coding:
+            true,
+
+        priority:
+            2
+    },
+
+    plus: {
+
+        id:
+            "plus",
+
+        name:
+            "Plus",
+
+        price:
+            500,
+
+        currency:
+            "TRY",
+
+        messages:
+            200,
+
+        research:
+            75,
+
+        images:
+            4,
+
+        videos:
+            5,
+
+        maxUploadMB:
+            50,
+
+        memory:
+            true,
+
+        coding:
+            true,
+
+        priority:
+            3
+    },
+
+    ultra: {
+
+        id:
+            "ultra",
+
+        name:
+            "Ultra",
+
+        price:
+            1000,
+
+        currency:
+            "TRY",
+
+        messages:
+            1000,
+
+        research:
+            250,
+
+        images:
+            10,
+
+        videos:
+            15,
+
+        maxUploadMB:
+            100,
+
+        memory:
+            true,
+
+        coding:
+            true,
+
+        priority:
+            4
+    },
+
+    developer: {
+
+        id:
+            "developer",
+
+        name:
+            "Developer",
+
+        price:
+            0,
+
+        currency:
+            "TRY",
+
+        messages:
+            400,
+
+        research:
+            500,
+
+        images:
+            50,
+
+        videos:
+            50,
+
+        maxUploadMB:
+            200,
+
+        memory:
+            true,
+
+        coding:
+            true,
+
+        priority:
+            99
+    }
+};
+
+/* ================================================================
+   16 — PLAN HELPERS
+================================================================ */
+
+function getPlan(
+    planId
+) {
+
+    return (
+        PLANS[
+            String(
+                planId || "free"
+            ).toLowerCase()
+        ] ||
+        PLANS.free
+    );
+}
+
+function getPlanForUser(
+    user
+) {
+
+    if (
+        !user
+    ) {
+        return PLANS.free;
+    }
+
+    return getPlan(
+        user.plan
+    );
+}
+
+function isDeveloper(
+    user
+) {
+
+    return Boolean(
+        user &&
+        (
+            user.plan ===
+                "developer" ||
+            user.role ===
+                "developer"
+        )
+    );
+}
+
+function isAdminUser(
+    user
+) {
+
+    const adminEmail =
+        process.env.ADMIN_EMAIL;
+
+    return Boolean(
+        user &&
+        (
+            isDeveloper(
+                user
+            ) ||
+            (
+                adminEmail &&
+                user.email &&
+                user.email
+                    .toLowerCase() ===
+                    adminEmail
+                        .toLowerCase()
+            )
+        )
+    );
+}
+
+/* ================================================================
+   17 — USER SYSTEM
+================================================================ */
+
+function findUserById(
+    userId
+) {
+
+    const users =
+        getUsers();
+
+    return users.find(
+        user =>
+            user.id ===
+            userId
+    ) || null;
+}
+
+function findUserByEmail(
+    email
+) {
+
+    const normalized =
+        cleanText(
+            email,
+            320
+        ).toLowerCase();
+
+    if (
+        !normalized
+    ) {
+        return null;
+    }
+
+    const users =
+        getUsers();
+
+    return users.find(
+        user =>
+            String(
+                user.email || ""
+            ).toLowerCase() ===
+            normalized
+    ) || null;
+}
+
+function createUser(
+    input = {}
+) {
+
+    const email =
+        cleanText(
+            input.email,
+            320
+        ).toLowerCase();
+
+    const existing =
+        email
+            ? findUserByEmail(
+                email
+            )
+            : null;
+
+    if (
+        existing
+    ) {
+        return existing;
+    }
+
+    const users =
+        getUsers();
+
+    const user = {
+
+        id:
+            createId(
+                "usr"
+            ),
+
+        email:
+            email ||
+            null,
+
+        name:
+            cleanText(
+                input.name ||
+                "TürkAI Kullanıcısı",
+                120
+            ),
+
+        avatar:
+            cleanText(
+                input.avatar,
+                2000
+            ) ||
+            null,
+
+        plan:
+            cleanText(
+                input.plan ||
+                "free",
+                30
+            ),
+
+        role:
+            cleanText(
+                input.role ||
+                "user",
+                30
+            ),
+
+        provider:
+            cleanText(
+                input.provider ||
+                "local",
+                50
+            ),
+
+        createdAt:
+            nowISO(),
+
+        updatedAt:
+            nowISO(),
+
+        lastSeenAt:
+            nowISO(),
+
+        active:
+            true
+    };
+
+    users.push(
+        user
+    );
+
+    saveUsers(
+        users
+    );
+
+    const statistics =
+        getStatistics();
+
+    statistics.totalUsers =
+        users.length;
+
+    saveStatistics(
+        statistics
+    );
+
+    return user;
+}
+
+function getGuestUser() {
+
+    return {
+
+        id:
+            "guest",
+
+        email:
+            null,
+
+        name:
+            "Misafir",
+
+        plan:
+            "free",
+
+        role:
+            "guest",
+
+        provider:
+            "guest",
+
+        active:
+            true
+    };
+}
+
+/* ================================================================
+   18 — SESSION SYSTEM
+================================================================ */
+
+function createSession(
+    userId
+) {
+
+    const sessions =
+        getSessions();
+
+    const token =
+        createToken(
+            "session"
+        );
+
+    const session = {
+
+        id:
+            createId(
+                "ses"
+            ),
+
+        userId,
+
+        token,
+
+        createdAt:
+            nowISO(),
+
+        expiresAt:
+            new Date(
+                Date.now() +
+                1000 *
+                60 *
+                60 *
+                24 *
+                30
+            ).toISOString(),
+
+        lastUsedAt:
+            nowISO(),
+
+        active:
+            true
+    };
+
+    sessions.push(
+        session
+    );
+
+    saveSessions(
+        sessions
+    );
+
+    return session;
+}
+
+function getSessionByToken(
+    token
+) {
+
+    const clean =
+        cleanText(
+            token,
+            1000
+        );
+
+    if (
+        !clean
+    ) {
+        return null;
+    }
+
+    const sessions =
+        getSessions();
+
+    const session =
+        sessions.find(
+            item =>
+                item.token ===
+                    clean &&
+                item.active !==
+                    false
+        );
+
+    if (
+        !session
+    ) {
+        return null;
+    }
+
+    if (
+        session.expiresAt &&
+        Date.now() >
+            new Date(
+                session.expiresAt
+            ).getTime()
+    ) {
+
+        session.active =
+            false;
+
+        saveSessions(
+            sessions
+        );
+
+        return null;
+    }
+
+    session.lastUsedAt =
+        nowISO();
+
+    saveSessions(
+        sessions
+    );
+
+    return session;
+}
+
+/* ================================================================
+   19 — TOKEN EXTRACTION
+================================================================ */
+
+function extractToken(
+    req
+) {
+
+    const authorization =
+        req.headers
+            .authorization;
+
+    if (
+        authorization &&
+        authorization
+            .startsWith(
+                "Bearer "
+            )
+    ) {
+
+        return authorization
+            .slice(7)
+            .trim();
+    }
+
+    const headerToken =
+        req.headers[
+            "x-turkai-token"
+        ];
+
+    if (
+        headerToken
+    ) {
+        return String(
+            headerToken
+        ).trim();
+    }
+
+    if (
+        req.query &&
+        req.query.token
+    ) {
+        return String(
+            req.query.token
+        ).trim();
+    }
+
+    if (
+        req.body &&
+        req.body.token
+    ) {
+        return String(
+            req.body.token
+        ).trim();
+    }
+
+    return "";
+}
+
+/* ================================================================
+   20 — REQUEST USER
+================================================================ */
+
+function getRequestUser(
+    req
+) {
+
+    if (
+        req.user
+    ) {
+        return req.user;
+    }
+
+    const token =
+        extractToken(
+            req
+        );
+
+    if (
+        !token
+    ) {
+        return getGuestUser();
+    }
+
+    const session =
+        getSessionByToken(
+            token
+        );
+
+    if (
+        !session
+    ) {
+        return getGuestUser();
+    }
+
+    const user =
+        findUserById(
+            session.userId
+        );
+
+    return (
+        user ||
+        getGuestUser()
+    );
+}
+
+/* ================================================================
+   21 — AUTH MIDDLEWARE
+================================================================ */
+
+function optionalAuth(
+    req,
+    res,
+    next
+) {
+
+    try {
+
+        req.user =
+            getRequestUser(
+                req
+            );
+
+        next();
+
+    } catch (error) {
+
+        logError(
+            "optionalAuth error",
+            {
+                error:
+                    error.message
             }
+        );
+
+        req.user =
+            getGuestUser();
+
+        next();
+    }
+}
+
+function requireAuth(
+    req,
+    res,
+    next
+) {
+
+    try {
+
+        const token =
+            extractToken(
+                req
+            );
+
+        if (
+            !token
+        ) {
+
+            return res
+                .status(401)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Oturum gerekli."
+                });
         }
-    )
+
+        const session =
+            getSessionByToken(
+                token
+            );
+
+        if (
+            !session
+        ) {
+
+            return res
+                .status(401)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Oturum geçersiz veya süresi dolmuş."
+                });
+        }
+
+        const user =
+            findUserById(
+                session.userId
+            );
+
+        if (
+            !user
+        ) {
+
+            return res
+                .status(401)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Kullanıcı bulunamadı."
+                });
+        }
+
+        req.session =
+            session;
+
+        req.user =
+            user;
+
+        next();
+
+    } catch (error) {
+
+        logError(
+            "requireAuth error",
+            {
+                error:
+                    error.message
+            }
+        );
+
+        return res
+            .status(500)
+            .json({
+                success:
+                    false,
+
+                error:
+                    "Kimlik doğrulama sırasında hata oluştu."
+            });
+    }
+}
+
+/* ================================================================
+   22 — ADMIN MIDDLEWARE
+================================================================ */
+
+function requireAdmin(
+    req,
+    res,
+    next
+) {
+
+    if (
+        !req.user
+    ) {
+
+        return res
+            .status(401)
+            .json({
+                success:
+                    false,
+
+                error:
+                    "Kimlik doğrulama gerekli."
+            });
+    }
+
+    if (
+        !isAdminUser(
+            req.user
+        )
+    ) {
+
+        logSecurity(
+            "Yetkisiz admin erişimi",
+            {
+                userId:
+                    req.user.id,
+
+                path:
+                    req.path
+            }
+        );
+
+        return res
+            .status(403)
+            .json({
+                success:
+                    false,
+
+                error:
+                    "Yönetici yetkisi gerekli."
+            });
+    }
+
+    next();
+}
+
+/* ================================================================
+   23 — EXPRESS SECURITY CONFIG
+================================================================ */
+
+app.disable(
+    "x-powered-by"
 );
 
-
-app.use(
-    cors(
-        {
-            origin: true,
-
-            credentials: true,
-
-            methods: [
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE",
-                "OPTIONS"
-            ],
-
-            allowedHeaders: [
-                "Content-Type",
-                "Authorization",
-                "X-User-ID",
-                "X-Requested-With",
-                "X-Request-ID"
-            ]
-        }
-    )
+app.set(
+    "trust proxy",
+    1
 );
 
-
 app.use(
-    express.json(
-        {
-            limit: "25mb"
-        }
-    )
+    helmet({
+        contentSecurityPolicy:
+            false,
+
+        crossOriginEmbedderPolicy:
+            false,
+
+        crossOriginResourcePolicy:
+            false
+    })
 );
 
-
 app.use(
-    express.urlencoded(
-        {
-            extended: true,
-            limit: "25mb"
-        }
-    )
+    cors({
+        origin:
+            true,
+
+        credentials:
+            true,
+
+        methods: [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "OPTIONS"
+        ],
+
+        allowedHeaders: [
+            "Content-Type",
+            "Authorization",
+            "X-TürkAI-Token",
+            "X-Request-ID"
+        ]
+    })
 );
 
-
-// ═══════════════════════════════════════════════════════════════════
-// REQUEST LOGGER
-// ═══════════════════════════════════════════════════════════════════
+app.use(
+    express.json({
+        limit:
+            MAX_JSON_SIZE
+    })
+);
 
 app.use(
-    (req, res, next) => {
+    express.urlencoded({
+        extended:
+            true,
+
+        limit:
+            MAX_URLENCODED_SIZE
+    })
+);
+
+/* ================================================================
+   24 — REQUEST TRACKING
+================================================================ */
+
+app.use(
+    (
+        req,
+        res,
+        next
+    ) => {
+
+        const requestId =
+            createRequestId();
+
+        req.requestId =
+            requestId;
+
+        res.setHeader(
+            "X-Request-ID",
+            requestId
+        );
 
         const started =
             Date.now();
@@ -703,1721 +2303,81 @@ app.use(
             () => {
 
                 const duration =
-                    Date.now() - started;
+                    Date.now() -
+                    started;
 
-                logTo(
-                    "access.log",
+                logInfo(
+                    `${req.method} ${req.originalUrl} ${res.statusCode}`,
                     {
-                        method: req.method,
-                        path: req.originalUrl,
-                        status: res.statusCode,
+                        requestId,
                         duration,
                         ip:
-                            req.headers["x-forwarded-for"] ||
-                            req.socket.remoteAddress
+                            req.ip
                     }
                 );
-
             }
         );
 
         next();
-
     }
 );
 
-
-// ═══════════════════════════════════════════════════════════════════
-// USER ENGINE
-// ═══════════════════════════════════════════════════════════════════
-
-function getUsers() {
-
-    return readJSON(
-        DB_FILES.users,
-        []
-    );
-
-}
-
-
-function saveUsers(users) {
-
-    return writeJSON(
-        DB_FILES.users,
-        users
-    );
-
-}
-
-
-function findUserById(id) {
-
-    if (!id) {
-
-        return null;
-
-    }
-
-    const users =
-        getUsers();
-
-    return (
-        users.find(
-            user =>
-                user.id === id
-        ) || null
-    );
-
-}
-
-
-function findUserByEmail(email) {
-
-    const normalized =
-        normalizeText(email);
-
-    if (!normalized) {
-
-        return null;
-
-    }
-
-    const users =
-        getUsers();
-
-    return (
-        users.find(
-            user =>
-                normalizeText(
-                    user.email
-                ) === normalized
-        ) || null
-    );
-
-}
-
-
-function createUser(options = {}) {
-
-    const email =
-        cleanText(
-            options.email,
-            320
-        );
-
-    const name =
-        cleanText(
-            options.name ||
-            "TürkAI Kullanıcısı",
-            100
-        );
-
-    const existing =
-        email
-            ? findUserByEmail(email)
-            : null;
-
-    if (existing) {
-
-        return existing;
-
-    }
-
-    const user = {
-
-        id:
-            createId("user"),
-
-        email,
-
-        name,
-
-        plan:
-            options.plan ||
-            "free",
-
-        avatar:
-            options.avatar ||
-            null,
-
-        active: true,
-
-        createdAt:
-            nowISO(),
-
-        updatedAt:
-            nowISO(),
-
-        lastSeenAt:
-            nowISO()
-
-    };
-
-    const users =
-        getUsers();
-
-    users.push(user);
-
-    saveUsers(users);
-
-    return user;
-
-}
-
-
-function getGuestUser() {
-
-    return {
-
-        id: "guest",
-
-        email: "",
-
-        name: "Misafir",
-
-        plan: "free",
-
-        active: true,
-
-        guest: true
-
-    };
-
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// SESSION ENGINE
-// ═══════════════════════════════════════════════════════════════════
-
-function getSessions() {
-
-    return readJSON(
-        DB_FILES.sessions,
-        []
-    );
-
-}
-
-
-function saveSessions(sessions) {
-
-    return writeJSON(
-        DB_FILES.sessions,
-        sessions
-    );
-
-}
-
-
-function createSession(userId) {
-
-    const token =
-        createToken();
-
-    const session = {
-
-        id:
-            createId("session"),
-
-        token,
-
-        userId,
-
-        createdAt:
-            nowISO(),
-
-        lastUsedAt:
-            nowISO(),
-
-        expiresAt:
-            new Date(
-                Date.now() +
-                1000 * 60 * 60 * 24 * 30
-            ).toISOString()
-
-    };
-
-    const sessions =
-        getSessions();
-
-    sessions.push(session);
-
-    saveSessions(sessions);
-
-    return session;
-
-}
-
-
-function getSessionByToken(token) {
-
-    if (!token) {
-
-        return null;
-
-    }
-
-    const sessions =
-        getSessions();
-
-    const session =
-        sessions.find(
-            item =>
-                item.token === token
-        );
-
-    if (!session) {
-
-        return null;
-
-    }
-
-    if (
-        session.expiresAt &&
-        Date.now() >
-        new Date(
-            session.expiresAt
-        ).getTime()
-    ) {
-
-        return null;
-
-    }
-
-    return session;
-
-}
-
-
-function getRequestUser(req) {
-
-    const authorization =
-        req.headers.authorization || "";
-
-    if (
-        authorization
-            .toLowerCase()
-            .startsWith("bearer ")
-    ) {
-
-        const token =
-            authorization
-                .slice(7)
-                .trim();
-
-        const session =
-            getSessionByToken(token);
-
-        if (session) {
-
-            const user =
-                findUserById(
-                    session.userId
-                );
-
-            if (user) {
-
-                user.lastSeenAt =
-                    nowISO();
-
-                return user;
-
-            }
-
-        }
-
-    }
-
-
-    const userId =
-        req.headers["x-user-id"];
-
-    if (userId) {
-
-        const user =
-            findUserById(
-                String(userId)
-            );
-
-        if (user) {
-
-            return user;
-
-        }
-
-    }
-
-
-    return getGuestUser();
-
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// PLAN ENGINE
-// ═══════════════════════════════════════════════════════════════════
-
-const PLANS = {
-
-    free: {
-
-        id: "free",
-
-        name: "Free",
-
-        price: 0,
-
-        messages: 50,
-
-        research: 5,
-
-        images: 0,
-
-        videos: 0,
-
-        storageMB: 10
-
-    },
-
-    pro: {
-
-        id: "pro",
-
-        name: "Pro",
-
-        price: 250,
-
-        messages: 100,
-
-        research: 25,
-
-        images: 2,
-
-        videos: 0,
-
-        storageMB: 25
-
-    },
-
-    plus: {
-
-        id: "plus",
-
-        name: "Plus",
-
-        price: 500,
-
-        messages: 200,
-
-        research: 75,
-
-        images: 4,
-
-        videos: 5,
-
-        storageMB: 50
-
-    },
-
-    ultra: {
-
-        id: "ultra",
-
-        name: "Ultra",
-
-        price: 1000,
-
-        messages: 1000,
-
-        research: 250,
-
-        images: 10,
-
-        videos: 15,
-
-        storageMB: 100
-
-    },
-
-    developer: {
-
-        id: "developer",
-
-        name: "Developer",
-
-        price: 0,
-
-        messages: 400,
-
-        research: 500,
-
-        images: 50,
-
-        videos: 50,
-
-        storageMB: 200
-
-    }
-
-};
-
-
-function getPlan(user) {
-
-    if (
-        user &&
-        PLANS[user.plan]
-    ) {
-
-        return PLANS[user.plan];
-
-    }
-
-    return PLANS.free;
-
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// CHAT DATABASE
-// ═══════════════════════════════════════════════════════════════════
-
-function getChats() {
-
-    return readJSON(
-        DB_FILES.chats,
-        []
-    );
-
-}
-
-
-function saveChats(chats) {
-
-    return writeJSON(
-        DB_FILES.chats,
-        chats
-    );
-
-}
-
-
-function getMessages() {
-
-    return readJSON(
-        DB_FILES.messages,
-        []
-    );
-
-}
-
-
-function saveMessages(messages) {
-
-    return writeJSON(
-        DB_FILES.messages,
-        messages
-    );
-
-}
-
-
-function createChat(user, title = "Yeni sohbet") {
-
-    const chat = {
-
-        id:
-            createId("chat"),
-
-        userId:
-            user.id,
-
-        title:
-            cleanText(
-                title,
-                200
-            ) ||
-            "Yeni sohbet",
-
-        model:
-            "fast",
-
-        createdAt:
-            nowISO(),
-
-        updatedAt:
-            nowISO(),
-
-        archived: false
-
-    };
-
-    const chats =
-        getChats();
-
-    chats.push(chat);
-
-    saveChats(chats);
-
-    return chat;
-
-}
-
-
-function findChatById(id) {
-
-    if (!id) {
-
-        return null;
-
-    }
-
-    const chats =
-        getChats();
-
-    return (
-        chats.find(
-            chat =>
-                chat.id === id
-        ) || null
-    );
-
-}
-
-
-function addMessage(
-    chatId,
-    userId,
-    role,
-    content,
-    metadata = {}
-) {
-
-    const message = {
-
-        id:
-            createId("msg"),
-
-        chatId,
-
-        userId,
-
-        role,
-
-        content:
-            cleanText(
-                content,
-                50000
-            ),
-
-        metadata,
-
-        createdAt:
-            nowISO()
-
-    };
-
-    const messages =
-        getMessages();
-
-    messages.push(message);
-
-    saveMessages(messages);
-
-    return message;
-
-}
-
-
-function getChatMessages(
-    chatId,
-    limit = 40
-) {
-
-    const messages =
-        getMessages();
-
-    return messages
-        .filter(
-            message =>
-                message.chatId === chatId
-        )
-        .slice(-Math.max(
-            1,
-            Math.min(
-                Number(limit) || 40,
-                100
-            )
-        ));
-
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// AI CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════
-
-const GROQ_API_KEY =
-    process.env.GROQ_API_KEY ||
-    "";
-
-const CEREBRAS_API_KEY =
-    process.env.CEREBRAS_API_KEY ||
-    "";
-
-const OPENROUTER_API_KEY =
-    process.env.OPENROUTER_API_KEY ||
-    "";
-
-const GEMINI_API_KEY =
-    process.env.GEMINI_API_KEY ||
-    "";
-
-
-const GROQ_MODEL =
-    process.env.GROQ_MODEL ||
-    "openai/gpt-oss-20b";
-
-const CEREBRAS_MODEL =
-    process.env.CEREBRAS_MODEL ||
-    "gpt-oss-120b";
-
-const OPENROUTER_MODEL =
-    process.env.OPENROUTER_MODEL ||
-    "openai/gpt-oss-20b";
-
-const GEMINI_MODEL =
-    process.env.GEMINI_MODEL ||
-    "gemini-2.0-flash";
-
-
-// ═══════════════════════════════════════════════════════════════════
-// TÜRKAI SYSTEM PROMPT
-// ═══════════════════════════════════════════════════════════════════
-
-const TURKAI_SYSTEM_PROMPT = `
-Sen TürkAI'sın.
-
-Türkçe odaklı, modern, yardımcı ve güvenilir bir yapay zekâ
-asistanısın.
-
-Temel kurallar:
-
-1. Kullanıcı Türkçe konuşuyorsa Türkçe cevap ver.
-2. Kullanıcı başka bir dil kullanıyorsa gerektiğinde o dilde cevap ver.
-3. Kod istenirse kodu doğrudan ve çalışabilir şekilde üret.
-4. Kullanıcı "en baştan en sona" diyorsa eksik parça bırakma.
-5. Bilmediğin bilgiyi kesin gerçek gibi söyleme.
-6. Güncel bilgi gerekiyorsa araştırma sistemini kullanabilecek şekilde
-   cevap oluştur.
-7. Kullanıcı bir hata mesajı verirse hatanın nedenini açıkla ve
-   düzeltilmiş kodu ver.
-8. Gereksiz uzun girişler yapma.
-9. Kullanıcı "knk" gibi samimi konuşuyorsa doğal ve samimi ol.
-10. UI kodlarında mümkün olduğunca emoji yerine ikon yaklaşımını tercih et.
-11. Güvenli olmayan veya zararlı kullanım taleplerinde güvenli alternatif
-    sun.
-12. Kullanıcı kod istediğinde kodun hangi dosyaya konacağını belirt.
-13. Aynı soruya gereksiz şekilde tekrar tekrar cevap verme.
-
-Özel cevap:
-
-Kullanıcı tam olarak veya anlam olarak
-"En hızlı kim?" diye sorarsa:
-
-TürkAI ⚡🤖
-
-cevabını ver.
-`;
-
-
-// ═══════════════════════════════════════════════════════════════════
-// FETCH WITH TIMEOUT
-// ═══════════════════════════════════════════════════════════════════
-
-async function fetchWithTimeout(
-    url,
-    options = {},
-    timeout = 30000
-) {
-
-    const controller =
-        new AbortController();
-
-    const timer =
-        setTimeout(
-            () => controller.abort(),
-            timeout
-        );
-
-    try {
-
-        return await fetch(
-            url,
-            {
-                ...options,
-                signal:
-                    controller.signal
-            }
-        );
-
-    } finally {
-
-        clearTimeout(timer);
-
-    }
-
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// GROQ
-// ═══════════════════════════════════════════════════════════════════
-
-async function callGroq(messages) {
-
-    if (!GROQ_API_KEY) {
-
-        throw new Error(
-            "GROQ_API_KEY bulunamadı."
-        );
-
-    }
-
-    const response =
-        await fetchWithTimeout(
-            "https://api.groq.com/openai/v1/chat/completions",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json",
-
-                    "Authorization":
-                        `Bearer ${GROQ_API_KEY}`
-                },
-
-                body:
-                    JSON.stringify({
-                        model:
-                            GROQ_MODEL,
-
-                        messages,
-
-                        temperature:
-                            0.7,
-
-                        max_tokens:
-                            4096
-                    })
-            },
-            30000
-        );
-
-
-    const data =
-        await response.json()
-            .catch(
-                () => ({})
-            );
-
-
-    if (!response.ok) {
-
-        throw new Error(
-            data?.error?.message ||
-            `Groq HTTP ${response.status}`
-        );
-
-    }
-
-
-    const text =
-        data?.choices?.[0]?.message?.content;
-
-    if (!text) {
-
-        throw new Error(
-            "Groq boş cevap döndürdü."
-        );
-
-    }
-
-
-    return {
-
-        text,
-
-        provider:
-            "groq",
-
-        model:
-            GROQ_MODEL
-
-    };
-
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// CEREBRAS
-// ═══════════════════════════════════════════════════════════════════
-
-async function callCerebras(messages) {
-
-    if (!CEREBRAS_API_KEY) {
-
-        throw new Error(
-            "CEREBRAS_API_KEY bulunamadı."
-        );
-
-    }
-
-
-    const response =
-        await fetchWithTimeout(
-            "https://api.cerebras.ai/v1/chat/completions",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json",
-
-                    "Authorization":
-                        `Bearer ${CEREBRAS_API_KEY}`
-                },
-
-                body:
-                    JSON.stringify({
-                        model:
-                            CEREBRAS_MODEL,
-
-                        messages,
-
-                        temperature:
-                            0.7,
-
-                        max_tokens:
-                            4096
-                    })
-            },
-            30000
-        );
-
-
-    const data =
-        await response.json()
-            .catch(
-                () => ({})
-            );
-
-
-    if (!response.ok) {
-
-        throw new Error(
-            data?.error?.message ||
-            `Cerebras HTTP ${response.status}`
-        );
-
-    }
-
-
-    const text =
-        data?.choices?.[0]?.message?.content;
-
-    if (!text) {
-
-        throw new Error(
-            "Cerebras boş cevap döndürdü."
-        );
-
-    }
-
-
-    return {
-
-        text,
-
-        provider:
-            "cerebras",
-
-        model:
-            CEREBRAS_MODEL
-
-    };
-
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// OPENROUTER
-// ═══════════════════════════════════════════════════════════════════
-
-async function callOpenRouter(messages) {
-
-    if (!OPENROUTER_API_KEY) {
-
-        throw new Error(
-            "OPENROUTER_API_KEY bulunamadı."
-        );
-
-    }
-
-
-    const response =
-        await fetchWithTimeout(
-            "https://openrouter.ai/api/v1/chat/completions",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json",
-
-                    "Authorization":
-                        `Bearer ${OPENROUTER_API_KEY}`,
-
-                    "HTTP-Referer":
-                        "https://turkai.app",
-
-                    "X-Title":
-                        "TürkAI"
-                },
-
-                body:
-                    JSON.stringify({
-                        model:
-                            OPENROUTER_MODEL,
-
-                        messages,
-
-                        temperature:
-                            0.7,
-
-                        max_tokens:
-                            4096
-                    })
-            },
-            30000
-        );
-
-
-    const data =
-        await response.json()
-            .catch(
-                () => ({})
-            );
-
-
-    if (!response.ok) {
-
-        throw new Error(
-            data?.error?.message ||
-            `OpenRouter HTTP ${response.status}`
-        );
-
-    }
-
-
-    const text =
-        data?.choices?.[0]?.message?.content;
-
-    if (!text) {
-
-        throw new Error(
-            "OpenRouter boş cevap döndürdü."
-        );
-
-    }
-
-
-    return {
-
-        text,
-
-        provider:
-            "openrouter",
-
-        model:
-            OPENROUTER_MODEL
-
-    };
-
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// GEMINI
-// ═══════════════════════════════════════════════════════════════════
-
-async function callGemini(messages) {
-
-    if (!GEMINI_API_KEY) {
-
-        throw new Error(
-            "GEMINI_API_KEY bulunamadı."
-        );
-
-    }
-
-
-    const systemParts =
-        messages
-            .filter(
-                message =>
-                    message.role === "system"
-            )
-            .map(
-                message =>
-                    message.content
-            );
-
-
-    const conversation =
-        messages
-            .filter(
-                message =>
-                    message.role !== "system"
-            )
-            .map(
-                message => ({
-                    role:
-                        message.role === "assistant"
-                            ? "model"
-                            : "user",
-
-                    parts: [
-                        {
-                            text:
-                                message.content
-                        }
-                    ]
-                })
-            );
-
-
-    const url =
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-
-
-    const response =
-        await fetchWithTimeout(
-            url,
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-
-                body:
-                    JSON.stringify({
-
-                        systemInstruction:
-                            systemParts.length
-                                ? {
-                                    parts: [
-                                        {
-                                            text:
-                                                systemParts.join(
-                                                    "\n\n"
-                                                )
-                                        }
-                                    ]
-                                }
-                                : undefined,
-
-                        contents:
-                            conversation,
-
-                        generationConfig: {
-
-                            temperature:
-                                0.7,
-
-                            maxOutputTokens:
-                                4096
-
-                        }
-
-                    })
-            },
-            30000
-        );
-
-
-    const data =
-        await response.json()
-            .catch(
-                () => ({})
-            );
-
-
-    if (!response.ok) {
-
-        throw new Error(
-            data?.error?.message ||
-            `Gemini HTTP ${response.status}`
-        );
-
-    }
-
-
-    const text =
-        data
-            ?.candidates?.[0]
-            ?.content
-            ?.parts
-            ?.map(
-                part =>
-                    part.text || ""
-            )
-            .join("")
-            .trim();
-
-
-    if (!text) {
-
-        throw new Error(
-            "Gemini boş cevap döndürdü."
-        );
-
-    }
-
-
-    return {
-
-        text,
-
-        provider:
-            "gemini",
-
-        model:
-            GEMINI_MODEL
-
-    };
-
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// LOCAL RESPONSE ENGINE
-// ═══════════════════════════════════════════════════════════════════
-
-function solveSimpleMath(text) {
-
-    const expression =
-        cleanText(
-            text,
-            200
-        )
-            .replace(/,/g, ".")
-            .trim();
-
-
-    if (
-        !/^[0-9+\-*/().%\s]+$/
-            .test(expression)
-    ) {
-
-        return null;
-
-    }
-
-
-    if (
-        !/[+\-*/%]/.test(
-            expression
-        )
-    ) {
-
-        return null;
-
-    }
-
-
-    try {
-
-        const safeExpression =
-            expression
-                .replace(
-                    /(\d+(?:\.\d+)?)%/g,
-                    "($1/100)"
-                );
-
-
-        const result =
-            Function(
-                `"use strict"; return (${safeExpression});`
-            )();
-
-
-        if (
-            typeof result !== "number" ||
-            !Number.isFinite(result)
-        ) {
-
-            return null;
-
-        }
-
-
-        return String(
-            Math.round(
-                result * 100000000
-            ) / 100000000
-        );
-
-    } catch {
-
-        return null;
-
-    }
-
-}
-
-
-function localResponse(message) {
-
-    const text =
-        normalizeText(message);
-
-
-    if (!text) {
-
-        return {
-
-            text:
-                "Buradayım. Ne yapmak istediğini yazabilirsin.",
-
-            provider:
-                "local",
-
-            model:
-                "turkai-local"
-
-        };
-
-    }
-
-
-    if (
-        text === "en hızlı kim?" ||
-        text === "en hizli kim?" ||
-        text.includes("en hızlı kim")
-    ) {
-
-        return {
-
-            text:
-                "TürkAI ⚡🤖",
-
-            provider:
-                "local",
-
-            model:
-                "turkai-local"
-
-        };
-
-    }
-
-
-    const math =
-        solveSimpleMath(
-            message
-        );
-
-
-    if (math !== null) {
-
-        return {
-
-            text:
-                `Sonuç: ${math}`,
-
-            provider:
-                "local",
-
-            model:
-                "turkai-math"
-
-        };
-
-    }
-
-
-    if (
-        /^(merhaba|selam|sa|selamlar|hey|hello|hi)\b/
-            .test(text)
-    ) {
-
-        return {
-
-            text:
-                "Selam knk! 👋 TürkAI burada. Ne yapıyoruz?",
-
-            provider:
-                "local",
-
-            model:
-                "turkai-local"
-
-        };
-
-    }
-
-
-    if (
-        text.includes("sen kimsin") ||
-        text.includes("nesin sen") ||
-        text.includes("türkai nedir")
-    ) {
-
-        return {
-
-            text:
-                "Ben TürkAI'yım. Türkçe odaklı yapay zekâ, kodlama, araştırma ve üretkenlik özellikleri için tasarlanmış bir asistanım.",
-
-            provider:
-                "local",
-
-            model:
-                "turkai-local"
-
-        };
-
-    }
-
-
-    if (
-        text.includes("teşekkür") ||
-        text.includes("sağ ol") ||
-        text.includes("eyvallah")
-    ) {
-
-        return {
-
-            text:
-                "Rica ederim knk. 😎",
-
-            provider:
-                "local",
-
-            model:
-                "turkai-local"
-
-        };
-
-    }
-
-
-    return null;
-
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// AI MESSAGE BUILDER
-// ═══════════════════════════════════════════════════════════════════
-
-function buildMessages(
-    userMessage,
-    history = []
-) {
-
-    const messages = [
-
-        {
-            role:
-                "system",
-
-            content:
-                TURKAI_SYSTEM_PROMPT
-        }
-
-    ];
-
-
-    for (
-        const item of history.slice(-20)
-    ) {
-
-        if (
-            item.role !== "user" &&
-            item.role !== "assistant"
-        ) {
-
-            continue;
-
-        }
-
-
-        const content =
-            cleanText(
-                item.content,
-                12000
-            );
-
-
-        if (!content) {
-
-            continue;
-
-        }
-
-
-        messages.push({
-
-            role:
-                item.role,
-
-            content
-
-        });
-
-    }
-
-
-    messages.push({
-
-        role:
-            "user",
-
-        content:
-            cleanText(
-                userMessage,
-                20000
-            )
-
-    });
-
-
-    return messages;
-
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// AI FALLBACK ENGINE
-// ═══════════════════════════════════════════════════════════════════
-
-async function callAI(
-    userMessage,
-    history = []
-) {
-
-    const local =
-        localResponse(
-            userMessage
-        );
-
-
-    if (local) {
-
-        logAI(
-            "Local response",
-            {
-                provider:
-                    local.provider
-            }
-        );
-
-        return local;
-
-    }
-
-
-    const messages =
-        buildMessages(
-            userMessage,
-            history
-        );
-
-
-    const providers = [
-
-        {
-            name:
-                "groq",
-
-            enabled:
-                Boolean(
-                    GROQ_API_KEY
-                ),
-
-            call:
-                () =>
-                    callGroq(
-                        messages
-                    )
-        },
-
-        {
-            name:
-                "cerebras",
-
-            enabled:
-                Boolean(
-                    CEREBRAS_API_KEY
-                ),
-
-            call:
-                () =>
-                    callCerebras(
-                        messages
-                    )
-        },
-
-        {
-            name:
-                "openrouter",
-
-            enabled:
-                Boolean(
-                    OPENROUTER_API_KEY
-                ),
-
-            call:
-                () =>
-                    callOpenRouter(
-                        messages
-                    )
-        },
-
-        {
-            name:
-                "gemini",
-
-            enabled:
-                Boolean(
-                    GEMINI_API_KEY
-                ),
-
-            call:
-                () =>
-                    callGemini(
-                        messages
-                    )
-        }
-
-    ];
-
-
-    const failures = [];
-
-
-    for (
-        const provider of providers
-    ) {
-
-        if (!provider.enabled) {
-
-            continue;
-
-        }
-
+/* ================================================================
+   25 — GLOBAL STATISTICS MIDDLEWARE
+================================================================ */
+
+app.use(
+    (
+        req,
+        res,
+        next
+    ) => {
 
         try {
 
-            const result =
-                await provider.call();
+            const statistics =
+                getStatistics();
 
+            statistics.totalRequests =
+                safeNumber(
+                    statistics.totalRequests
+                ) + 1;
 
-            if (
-                result &&
-                result.text
-            ) {
+            saveStatistics(
+                statistics
+            );
 
-                logAI(
-                    "AI provider success",
-                    {
-                        provider:
-                            result.provider,
-
-                        model:
-                            result.model
-                    }
-                );
-
-
-                return result;
-
-            }
-
-        } catch (error) {
-
-            failures.push({
-
-                provider:
-                    provider.name,
-
-                error:
-                    error.message
-
-            });
-
+        } catch (
+            error
+        ) {
 
             logError(
-                `AI provider failed: ${provider.name}`,
+                "Statistics middleware error",
                 {
                     error:
                         error.message
                 }
             );
-
         }
 
+        next();
     }
+);
 
-
-    return {
-
-        text:
-            "Şu anda yapay zekâ servislerine bağlanamadım. Biraz sonra tekrar deneyebiliriz.",
-
-        provider:
-            "fallback",
-
-        model:
-            "turkai-fallback",
-
-        failures
-
-    };
-
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// CHAT ANSWER
-// ═══════════════════════════════════════════════════════════════════
-
-async function generateChatAnswer(
-    userMessage,
-    history = []
-) {
-
-    return callAI(
-        userMessage,
-        history
-    );
-
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// HEALTH
-// ═══════════════════════════════════════════════════════════════════
+/* ================================================================
+   26 — BASIC HEALTH ROUTES
+================================================================ */
 
 app.get(
     "/api/health",
-    (req, res) => {
+    (
+        req,
+        res
+    ) => {
+
+        const uptime =
+            Date.now() -
+            START_TIME;
 
         res.json({
 
@@ -2427,7 +2387,7 @@ app.get(
             status:
                 "ok",
 
-            app:
+            service:
                 APP_NAME,
 
             version:
@@ -2440,24 +2400,55 @@ app.get(
                 SERVER_ID,
 
             uptime:
-                process.uptime(),
+
+                Math.floor(
+                    uptime /
+                    1000
+                ),
+
+            uptimeMs:
+                uptime,
 
             timestamp:
-                nowISO()
+                nowISO(),
 
+            node:
+                process.version,
+
+            platform:
+                process.platform,
+
+            memory: {
+
+                rss:
+                    process
+                        .memoryUsage()
+                        .rss,
+
+                heapUsed:
+                    process
+                        .memoryUsage()
+                        .heapUsed,
+
+                heapTotal:
+                    process
+                        .memoryUsage()
+                        .heapTotal
+            }
         });
-
     }
 );
 
-
-// ═══════════════════════════════════════════════════════════════════
-// STATUS
-// ═══════════════════════════════════════════════════════════════════
-
 app.get(
     "/api/status",
-    (req, res) => {
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const settings =
+            getSettings();
 
         res.json({
 
@@ -2474,7 +2465,6 @@ app.get(
 
                 description:
                     APP_DESCRIPTION
-
             },
 
             server: {
@@ -2485,66 +2475,68 @@ app.get(
                 environment:
                     NODE_ENV,
 
-                port:
-                    PORT,
-
                 host:
                     HOST,
 
+                port:
+                    PORT,
+
                 uptime:
-                    process.uptime(),
+                    Date.now() -
+                    START_TIME
+            },
+
+            user: {
+
+                authenticated:
+                    req.user &&
+                    req.user.role !==
+                        "guest",
+
+                id:
+                    req.user.id,
+
+                plan:
+                    req.user.plan
+            },
+
+            features: {
+
+                chat:
+                    true,
 
                 memory:
-                    process.memoryUsage(),
+                    settings.enableMemory,
 
-                node:
-                    process.version
+                research:
+                    settings.enableResearch,
 
-            },
+                coding:
+                    settings.enableCode,
 
-            ai: {
+                image:
+                    settings.enableImage,
 
-                groq:
-                    Boolean(
-                        GROQ_API_KEY
-                    ),
+                video:
+                    settings.enableVideo,
 
-                cerebras:
-                    Boolean(
-                        CEREBRAS_API_KEY
-                    ),
-
-                openrouter:
-                    Boolean(
-                        OPENROUTER_API_KEY
-                    ),
-
-                gemini:
-                    Boolean(
-                        GEMINI_API_KEY
-                    ),
-
-                local:
-                    true
-
-            },
-
-            timestamp:
-                nowISO()
-
+                socket:
+                    settings.enableSocket
+            }
         });
-
     }
 );
 
-
-// ═══════════════════════════════════════════════════════════════════
-// PLANS API
-// ═══════════════════════════════════════════════════════════════════
+/* ================================================================
+   27 — PLAN API
+================================================================ */
 
 app.get(
     "/api/plans",
-    (req, res) => {
+    (
+        req,
+        res
+    ) => {
 
         res.json({
 
@@ -2552,465 +2544,170 @@ app.get(
                 true,
 
             plans:
-                PLANS
-
+                Object.values(
+                    PLANS
+                )
         });
-
     }
 );
 
-
-// ═══════════════════════════════════════════════════════════════════
-// CURRENT USER
-// ═══════════════════════════════════════════════════════════════════
+/* ================================================================
+   28 — CURRENT USER API
+================================================================ */
 
 app.get(
     "/api/me",
-    (req, res) => {
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         const user =
-            getRequestUser(
-                req
-            );
+            req.user;
 
         const plan =
-            getPlan(
+            getPlanForUser(
                 user
             );
 
-
         res.json({
 
             success:
                 true,
 
-            user,
+            authenticated:
+                user.role !==
+                    "guest",
 
-            plan
+            user: {
 
-        });
-
-    }
-);
-
-
-// ═══════════════════════════════════════════════════════════════════
-// AI STATUS
-// ═══════════════════════════════════════════════════════════════════
-
-app.get(
-    "/api/ai/status",
-    (req, res) => {
-
-        res.json({
-
-            success:
-                true,
-
-            providers: {
-
-                local: {
-
-                    available:
-                        true,
-
-                    model:
-                        "turkai-local"
-
-                },
-
-                groq: {
-
-                    available:
-                        Boolean(
-                            GROQ_API_KEY
-                        ),
-
-                    model:
-                        GROQ_MODEL
-
-                },
-
-                cerebras: {
-
-                    available:
-                        Boolean(
-                            CEREBRAS_API_KEY
-                        ),
-
-                    model:
-                        CEREBRAS_MODEL
-
-                },
-
-                openrouter: {
-
-                    available:
-                        Boolean(
-                            OPENROUTER_API_KEY
-                        ),
-
-                    model:
-                        OPENROUTER_MODEL
-
-                },
-
-                gemini: {
-
-                    available:
-                        Boolean(
-                            GEMINI_API_KEY
-                        ),
-
-                    model:
-                        GEMINI_MODEL
-
-                }
-
-            },
-
-            fallbackOrder: [
-
-                "local",
-
-                "groq",
-
-                "cerebras",
-
-                "openrouter",
-
-                "gemini",
-
-                "fallback"
-
-            ]
-
-        });
-
-    }
-);
-
-
-// ═══════════════════════════════════════════════════════════════════
-// MAIN CHAT API
-// ═══════════════════════════════════════════════════════════════════
-
-app.post(
-    "/api/chat",
-    async (req, res) => {
-
-        try {
-
-            const user =
-                getRequestUser(
-                    req
-                );
-
-
-            const message =
-                cleanText(
-                    req.body?.message ||
-                    req.body?.prompt ||
-                    req.body?.text ||
-                    "",
-                    20000
-                );
-
-
-            if (!message) {
-
-                return res.status(400).json({
-
-                    success:
-                        false,
-
-                    error:
-                        "Mesaj boş olamaz."
-
-                });
-
-            }
-
-
-            let chat =
-                findChatById(
-                    req.body?.chatId
-                );
-
-
-            if (
-                !chat ||
-                chat.userId !== user.id
-            ) {
-
-                chat =
-                    createChat(
-                        user,
-                        message.slice(
-                            0,
-                            80
-                        )
-                    );
-
-            }
-
-
-            const history =
-                getChatMessages(
-                    chat.id,
-                    30
-                );
-
-
-            const userMessage =
-                addMessage(
-                    chat.id,
+                id:
                     user.id,
-                    "user",
-                    message
-                );
 
+                email:
+                    user.email,
 
-            const answer =
-                await generateChatAnswer(
-                    message,
-                    history
-                );
+                name:
+                    user.name,
 
+                avatar:
+                    user.avatar,
 
-            const assistantMessage =
-                addMessage(
-                    chat.id,
-                    user.id,
-                    "assistant",
-                    answer.text,
-                    {
-                        provider:
-                            answer.provider,
+                plan:
+                    user.plan,
 
-                        model:
-                            answer.model
-                    }
-                );
-
-
-            const chats =
-                getChats();
-
-            const chatIndex =
-                chats.findIndex(
-                    item =>
-                        item.id === chat.id
-                );
-
-
-            if (
-                chatIndex !== -1
-            ) {
-
-                chats[
-                    chatIndex
-                ].updatedAt =
-                    nowISO();
-
-
-                if (
-                    chats[
-                        chatIndex
-                    ].title === "Yeni sohbet"
-                ) {
-
-                    chats[
-                        chatIndex
-                    ].title =
-                        message.slice(
-                            0,
-                            80
-                        );
-
-                }
-
-
-                saveChats(
-                    chats
-                );
-
-            }
-
-
-            io.to(
-                `chat:${chat.id}`
-            ).emit(
-                "chat:message",
-                {
-
-                    chatId:
-                        chat.id,
-
-                    message:
-                        assistantMessage
-
-                }
-            );
-
-
-            return res.json({
-
-                success:
-                    true,
-
-                reply:
-                    answer.text,
-
-                response:
-                    answer.text,
-
-                message:
-                    answer.text,
-
-                text:
-                    answer.text,
-
-                chatId:
-                    chat.id,
+                role:
+                    user.role,
 
                 provider:
-                    answer.provider,
+                    user.provider
+            },
 
-                model:
-                    answer.model,
-
-                userMessageId:
-                    userMessage.id,
-
-                assistantMessageId:
-                    assistantMessage.id
-
-            });
-
-        } catch (error) {
-
-            logError(
-                "CHAT_API_ERROR",
-                {
-                    error:
-                        error.message,
-
-                    stack:
-                        error.stack
-                }
-            );
-
-
-            return res.status(500).json({
-
-                success:
-                    false,
-
-                error:
-                    "TürkAI mesajı işlerken bir hata oluştu.",
-
-                details:
-                    IS_PRODUCTION
-                        ? undefined
-                        : error.message
-
-            });
-
-        }
-
+            plan
+        });
     }
 );
 
-
-// ═══════════════════════════════════════════════════════════════════
-// LOGIN / REGISTER HELPERS
-// ═══════════════════════════════════════════════════════════════════
+/* ================================================================
+   29 — LOGIN / REGISTER
+================================================================ */
 
 app.post(
     "/api/auth/register",
-    (req, res) => {
+    (
+        req,
+        res
+    ) => {
 
         try {
 
             const settings =
-                readJSON(
-                    DB_FILES.settings,
-                    DEFAULT_DATABASE.settings
-                );
-
+                getSettings();
 
             if (
-                settings.allowRegistration === false
+                settings.allowRegistration ===
+                false
             ) {
 
-                return res.status(403).json({
+                return res
+                    .status(403)
+                    .json({
+                        success:
+                            false,
 
-                    success:
-                        false,
-
-                    error:
-                        "Yeni kullanıcı kayıtları şu anda kapalı."
-
-                });
-
+                        error:
+                            "Kayıt işlemleri şu anda kapalı."
+                    });
             }
-
-
-            const email =
-                cleanText(
-                    req.body?.email,
-                    320
-                );
-
 
             const name =
                 cleanText(
-                    req.body?.name ||
-                    "TürkAI Kullanıcısı",
-                    100
+                    req.body.name,
+                    120
                 );
 
+            const email =
+                cleanText(
+                    req.body.email,
+                    320
+                ).toLowerCase();
 
-            if (!email) {
+            if (
+                !email
+            ) {
 
-                return res.status(400).json({
+                return res
+                    .status(400)
+                    .json({
+                        success:
+                            false,
 
-                    success:
-                        false,
-
-                    error:
-                        "E-posta gerekli."
-
-                });
-
+                        error:
+                            "E-posta gerekli."
+                    });
             }
 
-
-            let user =
+            const existing =
                 findUserByEmail(
                     email
                 );
 
+            if (
+                existing
+            ) {
 
-            if (!user) {
+                return res
+                    .status(409)
+                    .json({
+                        success:
+                            false,
 
-                user =
-                    createUser({
-                        email,
-                        name
+                        error:
+                            "Bu e-posta zaten kayıtlı."
                     });
-
             }
 
+            const user =
+                createUser({
+                    name:
+                        name ||
+                        "TürkAI Kullanıcısı",
+
+                    email,
+
+                    provider:
+                        "local"
+                });
 
             const session =
                 createSession(
                     user.id
                 );
 
-
-            return res.json({
+            res.status(
+                201
+            ).json({
 
                 success:
                     true,
@@ -3020,112 +2717,738 @@ app.post(
                 token:
                     session.token,
 
-                expiresAt:
-                    session.expiresAt
+                session: {
 
+                    id:
+                        session.id,
+
+                    expiresAt:
+                        session.expiresAt
+                }
             });
 
-        } catch (error) {
+        } catch (
+            error
+        ) {
 
             logError(
-                "REGISTER_ERROR",
+                "Register error",
                 {
                     error:
                         error.message
                 }
             );
 
-
-            return res.status(500).json({
+            res.status(
+                500
+            ).json({
 
                 success:
                     false,
 
                 error:
-                    "Kayıt işlemi başarısız."
-
+                    "Kayıt sırasında hata oluştu."
             });
-
         }
-
     }
 );
 
+app.post(
+    "/api/auth/login",
+    (
+        req,
+        res
+    ) => {
 
-// ═══════════════════════════════════════════════════════════════════
-// SESSION CHECK
-// ═══════════════════════════════════════════════════════════════════
+        try {
 
-app.get(
-    "/api/auth/session",
-    (req, res) => {
+            const email =
+                cleanText(
+                    req.body.email,
+                    320
+                ).toLowerCase();
 
-        const user =
-            getRequestUser(
-                req
+            if (
+                !email
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+                        success:
+                            false,
+
+                        error:
+                            "E-posta gerekli."
+                    });
+            }
+
+            const user =
+                findUserByEmail(
+                    email
+                );
+
+            if (
+                !user
+            ) {
+
+                return res
+                    .status(404)
+                    .json({
+                        success:
+                            false,
+
+                        error:
+                            "Kullanıcı bulunamadı."
+                    });
+            }
+
+            user.lastSeenAt =
+                nowISO();
+
+            user.updatedAt =
+                nowISO();
+
+            const users =
+                getUsers();
+
+            const index =
+                users.findIndex(
+                    item =>
+                        item.id ===
+                        user.id
+                );
+
+            if (
+                index >= 0
+            ) {
+
+                users[index] =
+                    user;
+
+                saveUsers(
+                    users
+                );
+            }
+
+            const session =
+                createSession(
+                    user.id
+                );
+
+            res.json({
+
+                success:
+                    true,
+
+                user,
+
+                token:
+                    session.token,
+
+                session: {
+
+                    id:
+                        session.id,
+
+                    expiresAt:
+                        session.expiresAt
+                }
+            });
+
+        } catch (
+            error
+        ) {
+
+            logError(
+                "Login error",
+                {
+                    error:
+                        error.message
+                }
             );
 
+            res.status(
+                500
+            ).json({
+
+                success:
+                    false,
+
+                error:
+                    "Giriş sırasında hata oluştu."
+            });
+        }
+    }
+);
+
+app.post(
+    "/api/auth/logout",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        try {
+
+            const token =
+                extractToken(
+                    req
+                );
+
+            if (
+                token
+            ) {
+
+                const sessions =
+                    getSessions();
+
+                const index =
+                    sessions.findIndex(
+                        session =>
+                            session.token ===
+                            token
+                    );
+
+                if (
+                    index >= 0
+                ) {
+
+                    sessions[
+                        index
+                    ].active =
+                        false;
+
+                    sessions[
+                        index
+                    ].lastUsedAt =
+                        nowISO();
+
+                    saveSessions(
+                        sessions
+                    );
+                }
+            }
+
+            res.json({
+
+                success:
+                    true,
+
+                message:
+                    "Oturum kapatıldı."
+            });
+
+        } catch (
+            error
+        ) {
+
+            logError(
+                "Logout error",
+                {
+                    error:
+                        error.message
+                }
+            );
+
+            res.status(
+                500
+            ).json({
+
+                success:
+                    false,
+
+                error:
+                    "Çıkış sırasında hata oluştu."
+            });
+        }
+    }
+);
+
+/* ================================================================
+   30 — GUEST SESSION
+================================================================ */
+
+app.post(
+    "/api/auth/guest",
+    (
+        req,
+        res
+    ) => {
+
+        const settings =
+            getSettings();
+
+        if (
+            settings.allowGuest ===
+            false
+        ) {
+
+            return res
+                .status(403)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Misafir kullanımı kapalı."
+                });
+        }
+
+        const guestId =
+            createId(
+                "guest"
+            );
+
+        const token =
+            createToken(
+                "guest"
+            );
 
         res.json({
 
             success:
                 true,
 
-            authenticated:
-                !user.guest,
+            guest: {
 
-            user,
+                id:
+                    guestId,
 
-            plan:
-                getPlan(user)
+                name:
+                    "Misafir",
 
+                plan:
+                    "free",
+
+                role:
+                    "guest"
+            },
+
+            token
         });
-
     }
 );
 
+/* ================================================================
+   31 — CHAT DATABASE FUNCTIONS
+================================================================ */
 
-// ═══════════════════════════════════════════════════════════════════
-// LOGOUT
-// ═══════════════════════════════════════════════════════════════════
+function findChatById(
+    chatId
+) {
 
-app.post(
-    "/api/auth/logout",
-    (req, res) => {
+    const chats =
+        getChats();
 
-        const authorization =
-            req.headers.authorization || "";
+    return chats.find(
+        chat =>
+            chat.id ===
+            chatId
+    ) || null;
+}
 
+function createChat(
+    userId,
+    title = "Yeni sohbet"
+) {
 
-        if (
-            authorization
-                .toLowerCase()
-                .startsWith("bearer ")
-        ) {
+    const chats =
+        getChats();
 
-            const token =
-                authorization
-                    .slice(7)
-                    .trim();
+    const chat = {
 
+        id:
+            createId(
+                "chat"
+            ),
 
-            const sessions =
-                getSessions();
+        userId,
 
+        title:
+            cleanText(
+                title,
+                200
+            ) ||
+            "Yeni sohbet",
 
-            const filtered =
-                sessions.filter(
-                    session =>
-                        session.token !== token
+        createdAt:
+            nowISO(),
+
+        updatedAt:
+            nowISO(),
+
+        archived:
+            false,
+
+        pinned:
+            false,
+
+        model:
+            "fast",
+
+        messageCount:
+            0
+    };
+
+    chats.push(
+        chat
+    );
+
+    saveChats(
+        chats
+    );
+
+    const statistics =
+        getStatistics();
+
+    statistics.totalChats =
+        chats.length;
+
+    saveStatistics(
+        statistics
+    );
+
+    return chat;
+}
+
+function addMessage(
+    chatId,
+    userId,
+    role,
+    content,
+    metadata = {}
+) {
+
+    const messages =
+        getMessages();
+
+    const message = {
+
+        id:
+            createId(
+                "msg"
+            ),
+
+        chatId,
+
+        userId,
+
+        role:
+            cleanText(
+                role,
+                30
+            ),
+
+        content:
+            cleanText(
+                content,
+                30000
+            ),
+
+        metadata:
+            isObject(
+                metadata
+            )
+                ? metadata
+                : {},
+
+        createdAt:
+            nowISO()
+    };
+
+    messages.push(
+        message
+    );
+
+    saveMessages(
+        messages
+    );
+
+    const chats =
+        getChats();
+
+    const chatIndex =
+        chats.findIndex(
+            chat =>
+                chat.id ===
+                chatId
+        );
+
+    if (
+        chatIndex >= 0
+    ) {
+
+        chats[
+            chatIndex
+        ].updatedAt =
+            nowISO();
+
+        chats[
+            chatIndex
+        ].messageCount =
+            safeNumber(
+                chats[
+                    chatIndex
+                ].messageCount
+            ) + 1;
+
+        saveChats(
+            chats
+        );
+    }
+
+    return message;
+}
+
+function getChatMessages(
+    chatId,
+    limit = 100
+) {
+
+    const messages =
+        getMessages();
+
+    return messages
+        .filter(
+            message =>
+                message.chatId ===
+                chatId
+        )
+        .slice(
+            -clamp(
+                limit,
+                1,
+                500
+            )
+        );
+}
+
+/* ================================================================
+   32 — CHAT API
+================================================================ */
+
+app.get(
+    "/api/chats",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const user =
+            req.user;
+
+        const chats =
+            getChats()
+                .filter(
+                    chat =>
+                        chat.userId ===
+                        user.id
+                )
+                .sort(
+                    (
+                        a,
+                        b
+                    ) =>
+                        new Date(
+                            b.updatedAt
+                        ) -
+                        new Date(
+                            a.updatedAt
+                        )
                 );
 
+        res.json({
 
-            saveSessions(
-                filtered
+            success:
+                true,
+
+            chats
+        });
+    }
+);
+
+app.post(
+    "/api/chats",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const title =
+            cleanText(
+                req.body.title ||
+                "Yeni sohbet",
+                200
             );
 
+        const chat =
+            createChat(
+                req.user.id,
+                title
+            );
+
+        res.status(
+            201
+        ).json({
+
+            success:
+                true,
+
+            chat
+        });
+    }
+);
+
+app.get(
+    "/api/chats/:id",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const chat =
+            findChatById(
+                req.params.id
+            );
+
+        if (
+            !chat
+        ) {
+
+            return res
+                .status(404)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Sohbet bulunamadı."
+                });
         }
 
+        if (
+            chat.userId !==
+            req.user.id &&
+            !isAdminUser(
+                req.user
+            )
+        ) {
+
+            return res
+                .status(403)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Bu sohbete erişemezsiniz."
+                });
+        }
+
+        res.json({
+
+            success:
+                true,
+
+            chat,
+
+            messages:
+                getChatMessages(
+                    chat.id
+                )
+        });
+    }
+);
+
+/* ================================================================
+   33 — CHAT DELETE
+================================================================ */
+
+app.delete(
+    "/api/chats/:id",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const chatId =
+            req.params.id;
+
+        const chats =
+            getChats();
+
+        const chatIndex =
+            chats.findIndex(
+                chat =>
+                    chat.id ===
+                    chatId
+            );
+
+        if (
+            chatIndex < 0
+        ) {
+
+            return res
+                .status(404)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Sohbet bulunamadı."
+                });
+        }
+
+        const chat =
+            chats[
+                chatIndex
+            ];
+
+        if (
+            chat.userId !==
+            req.user.id &&
+            !isAdminUser(
+                req.user
+            )
+        ) {
+
+            return res
+                .status(403)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Yetkiniz yok."
+                });
+        }
+
+        chats.splice(
+            chatIndex,
+            1
+        );
+
+        saveChats(
+            chats
+        );
+
+        const messages =
+            getMessages()
+                .filter(
+                    message =>
+                        message.chatId !==
+                        chatId
+                );
+
+        saveMessages(
+            messages
+        );
 
         res.json({
 
@@ -3133,128 +3456,1912 @@ app.post(
                 true,
 
             message:
-                "Oturum kapatıldı."
-
+                "Sohbet silindi."
         });
-
     }
 );
 
+/* ================================================================
+   34 — AI CONFIGURATION
+================================================================ */
 
-// ═══════════════════════════════════════════════════════════════════
-// CORE EXPORT MARKER
-// ═══════════════════════════════════════════════════════════════════
-//
-// PART 2 BU DOSYANIN DEVAMINA GELECEK.
-//
-// PART 3'TE:
-// startServer()
-// shutdown()
-// static frontend
-// socket runtime
-// 404
-// error handler
-// module.exports
-// require.main
-//
-// BURADA SERVER BAŞLATILMIYOR.
-// ═══════════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════
-// TÜRKAI SERVER — PART 2
-// PLATFORM / DATA / SECURITY / AI SERVICES ENGINE
-// ═══════════════════════════════════════════════════════════════════
+const AI_CONFIG = {
 
+    groq: {
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 1. USAGE / LIMIT ENGINE                                         ║
-// ╚══════════════════════════════════════════════════════════════════╝
+        enabled:
+            Boolean(
+                process.env.GROQ_API_KEY
+            ),
+
+        apiKey:
+            process.env.GROQ_API_KEY ||
+            "",
+
+        endpoint:
+            "https://api.groq.com/openai/v1/chat/completions",
+
+        model:
+            process.env.GROQ_MODEL ||
+            "openai/gpt-oss-20b"
+    },
+
+    cerebras: {
+
+        enabled:
+            Boolean(
+                process.env.CEREBRAS_API_KEY
+            ),
+
+        apiKey:
+            process.env.CEREBRAS_API_KEY ||
+            "",
+
+        endpoint:
+            "https://api.cerebras.ai/v1/chat/completions",
+
+        model:
+            process.env.CEREBRAS_MODEL ||
+            "gpt-oss-120b"
+    },
+
+    openrouter: {
+
+        enabled:
+            Boolean(
+                process.env.OPENROUTER_API_KEY
+            ),
+
+        apiKey:
+            process.env.OPENROUTER_API_KEY ||
+            "",
+
+        endpoint:
+            "https://openrouter.ai/api/v1/chat/completions",
+
+        model:
+            process.env.OPENROUTER_MODEL ||
+            "openai/gpt-oss-20b"
+    },
+
+    gemini: {
+
+        enabled:
+            Boolean(
+                process.env.GEMINI_API_KEY
+            ),
+
+        apiKey:
+            process.env.GEMINI_API_KEY ||
+            "",
+
+        model:
+            process.env.GEMINI_MODEL ||
+            "gemini-2.0-flash"
+    }
+};
+
+/* ================================================================
+   35 — AI SYSTEM PROMPT
+================================================================ */
+
+const TURKAI_SYSTEM_PROMPT = `
+Sen TürkAI adlı Türkçe yapay zekâ platformunun asistanısın.
+
+Temel kurallar:
+
+1. Kullanıcı Türkçe yazıyorsa Türkçe cevap ver.
+2. Gereksiz yere uzun konuşma.
+3. Kullanıcı kod isterse çalışan ve düzenli kod ver.
+4. Kod isterse gerekli dosya yapısını açıkça belirt.
+5. Bilmediğin güncel bilgileri uydurma.
+6. Güncel bilgi gerekiyorsa araştırma sisteminin kullanılabileceğini belirt.
+7. Kullanıcı bir hata mesajı verirse doğrudan hatayı analiz et.
+8. Programlama sorularında mümkün olduğunca pratik çözüm sun.
+9. Kullanıcı "En hızlı kim?" diye sorarsa tam olarak:
+TürkAI ⚡🤖
+cevabını ver.
+10. Zararlı veya tehlikeli isteklerde güvenli alternatif sun.
+11. Kullanıcının verdiği kodda gereksiz değişiklik yapma.
+12. Bir dosyayı baştan yazman istenirse eksiksiz ve tutarlı yaz.
+13. Yanıtları gereksiz başlıklarla doldurma.
+14. Kullanıcı "knk" gibi samimi bir dil kullanıyorsa doğal ve samimi olabilirsin.
+15. Asla API anahtarlarını veya gizli ortam değişkenlerini kullanıcıya gösterme.
+`;
+
+/* ================================================================
+   36 — SIMPLE LOCAL ANSWERS
+================================================================ */
+
+function solveSimpleMath(
+    text
+) {
+
+    const normalized =
+        normalizeText(
+            text
+        );
+
+    const expressionMatch =
+        normalized.match(
+            /^[\d\s+\-*/().,%]+$/
+        );
+
+    if (
+        !expressionMatch
+    ) {
+        return null;
+    }
+
+    try {
+
+        let expression =
+            normalized
+                .replace(
+                    /,/g,
+                    "."
+                )
+                .replace(
+                    /%/g,
+                    "/100"
+                );
+
+        if (
+            !/^[0-9+\-*/().\s]+$/
+                .test(
+                    expression
+                )
+        ) {
+            return null;
+        }
+
+        const result =
+            Function(
+                `"use strict"; return (${expression})`
+            )();
+
+        if (
+            typeof result !==
+                "number" ||
+            !Number.isFinite(
+                result
+            )
+        ) {
+            return null;
+        }
+
+        return String(
+            result
+        );
+
+    } catch (
+        error
+    ) {
+
+        return null;
+    }
+}
+
+function localResponse(
+    text
+) {
+
+    const normalized =
+        normalizeText(
+            text
+        );
+
+    if (
+        normalized.includes(
+            "en hizli kim"
+        )
+    ) {
+
+        return "TürkAI ⚡🤖";
+    }
+
+    if (
+        normalized ===
+        "merhaba" ||
+        normalized ===
+        "selam" ||
+        normalized.includes(
+            "merhaba turkai"
+        )
+    ) {
+
+        return "Selam knk! TürkAI hazır. Ne yapıyoruz?";
+    }
+
+    if (
+        normalized.includes(
+            "sen kimsin"
+        )
+    ) {
+
+        return "Ben TürkAI. Türkçe odaklı yapay zekâ asistanıyım.";
+    }
+
+    const math =
+        solveSimpleMath(
+            text
+        );
+
+    if (
+        math !== null
+    ) {
+
+        return math;
+    }
+
+    return null;
+}
+
+/* ================================================================
+   37 — AI FETCH HELPER
+================================================================ */
+
+async function fetchWithTimeout(
+    url,
+    options = {},
+    timeout = 30000
+) {
+
+    const controller =
+        new AbortController();
+
+    const timer =
+        setTimeout(
+            () =>
+                controller.abort(),
+            timeout
+        );
+
+    try {
+
+        return await fetch(
+            url,
+            {
+                ...options,
+                signal:
+                    controller.signal
+            }
+        );
+
+    } finally {
+
+        clearTimeout(
+            timer
+        );
+    }
+}
+
+/* ================================================================
+   38 — GROQ
+================================================================ */
+
+async function callGroq(
+    messages
+) {
+
+    const config =
+        AI_CONFIG.groq;
+
+    if (
+        !config.enabled
+    ) {
+        throw new Error(
+            "Groq API anahtarı bulunamadı."
+        );
+    }
+
+    const response =
+        await fetchWithTimeout(
+            config.endpoint,
+            {
+                method:
+                    "POST",
+
+                headers: {
+
+                    "Authorization":
+                        `Bearer ${config.apiKey}`,
+
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify({
+
+                        model:
+                            config.model,
+
+                        messages,
+
+                        temperature:
+                            0.7,
+
+                        max_tokens:
+                            4096
+                    })
+            },
+            45000
+        );
+
+    const data =
+        await response.json();
+
+    if (
+        !response.ok
+    ) {
+
+        throw new Error(
+            data?.error?.message ||
+            `Groq HTTP ${response.status}`
+        );
+    }
+
+    const content =
+        data?.choices?.[0]
+            ?.message
+            ?.content;
+
+    if (
+        !content
+    ) {
+
+        throw new Error(
+            "Groq boş cevap döndürdü."
+        );
+    }
+
+    return {
+
+        text:
+            String(
+                content
+            ),
+
+        provider:
+            "groq",
+
+        model:
+            config.model
+    };
+}
+
+/* ================================================================
+   39 — CEREBRAS
+================================================================ */
+
+async function callCerebras(
+    messages
+) {
+
+    const config =
+        AI_CONFIG.cerebras;
+
+    if (
+        !config.enabled
+    ) {
+        throw new Error(
+            "Cerebras API anahtarı bulunamadı."
+        );
+    }
+
+    const response =
+        await fetchWithTimeout(
+            config.endpoint,
+            {
+                method:
+                    "POST",
+
+                headers: {
+
+                    "Authorization":
+                        `Bearer ${config.apiKey}`,
+
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify({
+
+                        model:
+                            config.model,
+
+                        messages,
+
+                        temperature:
+                            0.7,
+
+                        max_tokens:
+                            4096
+                    })
+            },
+            45000
+        );
+
+    const data =
+        await response.json();
+
+    if (
+        !response.ok
+    ) {
+
+        throw new Error(
+            data?.error?.message ||
+            `Cerebras HTTP ${response.status}`
+        );
+    }
+
+    const content =
+        data?.choices?.[0]
+            ?.message
+            ?.content;
+
+    if (
+        !content
+    ) {
+
+        throw new Error(
+            "Cerebras boş cevap döndürdü."
+        );
+    }
+
+    return {
+
+        text:
+            String(
+                content
+            ),
+
+        provider:
+            "cerebras",
+
+        model:
+            config.model
+    };
+}
+
+/* ================================================================
+   40 — OPENROUTER
+================================================================ */
+
+async function callOpenRouter(
+    messages
+) {
+
+    const config =
+        AI_CONFIG.openrouter;
+
+    if (
+        !config.enabled
+    ) {
+        throw new Error(
+            "OpenRouter API anahtarı bulunamadı."
+        );
+    }
+
+    const response =
+        await fetchWithTimeout(
+            config.endpoint,
+            {
+                method:
+                    "POST",
+
+                headers: {
+
+                    "Authorization":
+                        `Bearer ${config.apiKey}`,
+
+                    "Content-Type":
+                        "application/json",
+
+                    "HTTP-Referer":
+                        process.env.APP_URL ||
+                        "https://turkai-6.onrender.com",
+
+                    "X-Title":
+                        APP_NAME
+                },
+
+                body:
+                    JSON.stringify({
+
+                        model:
+                            config.model,
+
+                        messages,
+
+                        temperature:
+                            0.7,
+
+                        max_tokens:
+                            4096
+                    })
+            },
+            45000
+        );
+
+    const data =
+        await response.json();
+
+    if (
+        !response.ok
+    ) {
+
+        throw new Error(
+            data?.error?.message ||
+            `OpenRouter HTTP ${response.status}`
+        );
+    }
+
+    const content =
+        data?.choices?.[0]
+            ?.message
+            ?.content;
+
+    if (
+        !content
+    ) {
+
+        throw new Error(
+            "OpenRouter boş cevap döndürdü."
+        );
+    }
+
+    return {
+
+        text:
+            String(
+                content
+            ),
+
+        provider:
+            "openrouter",
+
+        model:
+            config.model
+    };
+}
+
+/* ================================================================
+   41 — GEMINI
+================================================================ */
+
+async function callGemini(
+    messages
+) {
+
+    const config =
+        AI_CONFIG.gemini;
+
+    if (
+        !config.enabled
+    ) {
+        throw new Error(
+            "Gemini API anahtarı bulunamadı."
+        );
+    }
+
+    const contents =
+        messages
+            .filter(
+                message =>
+                    message.role !==
+                    "system"
+            )
+            .map(
+                message => ({
+
+                    role:
+                        message.role ===
+                        "assistant"
+                            ? "model"
+                            : "user",
+
+                    parts: [
+                        {
+                            text:
+                                String(
+                                    message.content
+                                )
+                        }
+                    ]
+                })
+            );
+
+    const system =
+        messages.find(
+            message =>
+                message.role ===
+                "system"
+        );
+
+    const endpoint =
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+            config.model
+        )}:generateContent?key=${encodeURIComponent(
+            config.apiKey
+        )}`;
+
+    const body = {
+
+        contents,
+
+        generationConfig: {
+
+            temperature:
+                0.7,
+
+            maxOutputTokens:
+                4096
+        }
+    };
+
+    if (
+        system
+    ) {
+
+        body.systemInstruction = {
+
+            parts: [
+                {
+                    text:
+                        String(
+                            system.content
+                        )
+                }
+            ]
+        };
+    }
+
+    const response =
+        await fetchWithTimeout(
+            endpoint,
+            {
+                method:
+                    "POST",
+
+                headers: {
+
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify(
+                        body
+                    )
+            },
+            45000
+        );
+
+    const data =
+        await response.json();
+
+    if (
+        !response.ok
+    ) {
+
+        throw new Error(
+            data?.error?.message ||
+            `Gemini HTTP ${response.status}`
+        );
+    }
+
+    const content =
+        data?.candidates?.[0]
+            ?.content
+            ?.parts
+            ?.map(
+                part =>
+                    part.text || ""
+            )
+            .join("");
+
+    if (
+        !content
+    ) {
+
+        throw new Error(
+            "Gemini boş cevap döndürdü."
+        );
+    }
+
+    return {
+
+        text:
+            String(
+                content
+            ),
+
+        provider:
+            "gemini",
+
+        model:
+            config.model
+    };
+}
+
+/* ================================================================
+   42 — AI MESSAGE BUILDER
+================================================================ */
+
+function buildMessages(
+    userText,
+    history = []
+) {
+
+    const messages = [
+
+        {
+            role:
+                "system",
+
+            content:
+                TURKAI_SYSTEM_PROMPT
+        }
+    ];
+
+    if (
+        Array.isArray(
+            history
+        )
+    ) {
+
+        for (
+            const item
+            of history.slice(-20)
+        ) {
+
+            if (
+                !item ||
+                !item.role ||
+                !item.content
+            ) {
+                continue;
+            }
+
+            const role =
+                (
+                    item.role ===
+                    "assistant" ||
+                    item.role ===
+                    "user" ||
+                    item.role ===
+                    "system"
+                )
+                    ? item.role
+                    : "user";
+
+            messages.push({
+
+                role,
+
+                content:
+                    cleanText(
+                        item.content,
+                        12000
+                    )
+            });
+        }
+    }
+
+    messages.push({
+
+        role:
+            "user",
+
+        content:
+            cleanText(
+                userText,
+                30000
+            )
+    });
+
+    return messages;
+}
+
+/* ================================================================
+   43 — AI PROVIDER CHAIN
+================================================================ */
+
+async function callAI(
+    userText,
+    history = []
+) {
+
+    const local =
+        localResponse(
+            userText
+        );
+
+    if (
+        local !== null
+    ) {
+
+        return {
+
+            text:
+                local,
+
+            provider:
+                "local",
+
+            model:
+                "turkai-local"
+        };
+    }
+
+    const messages =
+        buildMessages(
+            userText,
+            history
+        );
+
+    const providers = [
+
+        {
+            name:
+                "groq",
+
+            enabled:
+                AI_CONFIG.groq
+                    .enabled,
+
+            call:
+                () =>
+                    callGroq(
+                        messages
+                    )
+        },
+
+        {
+            name:
+                "cerebras",
+
+            enabled:
+                AI_CONFIG.cerebras
+                    .enabled,
+
+            call:
+                () =>
+                    callCerebras(
+                        messages
+                    )
+        },
+
+        {
+            name:
+                "openrouter",
+
+            enabled:
+                AI_CONFIG.openrouter
+                    .enabled,
+
+            call:
+                () =>
+                    callOpenRouter(
+                        messages
+                    )
+        },
+
+        {
+            name:
+                "gemini",
+
+            enabled:
+                AI_CONFIG.gemini
+                    .enabled,
+
+            call:
+                () =>
+                    callGemini(
+                        messages
+                    )
+        }
+    ];
+
+    const errors = [];
+
+    for (
+        const provider
+        of providers
+    ) {
+
+        if (
+            !provider.enabled
+        ) {
+            continue;
+        }
+
+        try {
+
+            logAI(
+                `AI provider deneniyor: ${provider.name}`
+            );
+
+            const result =
+                await provider.call();
+
+            logAI(
+                `AI provider başarılı: ${provider.name}`
+            );
+
+            return result;
+
+        } catch (
+            error
+        ) {
+
+            errors.push({
+
+                provider:
+                    provider.name,
+
+                error:
+                    error.message
+            });
+
+            logWarn(
+                `AI provider başarısız: ${provider.name}`,
+                {
+                    error:
+                        error.message
+                }
+            );
+        }
+    }
+
+    return {
+
+        text:
+            "Şu anda yapay zekâ servislerine ulaşılamıyor. Biraz sonra tekrar deneyebilirsin.",
+
+        provider:
+            "fallback",
+
+        model:
+            "turkai-fallback",
+
+        errors
+    };
+}
+
+/* ================================================================
+   44 — CHAT AI ENDPOINT
+================================================================ */
+
+app.post(
+    "/api/chat",
+    optionalAuth,
+    async (
+        req,
+        res
+    ) => {
+
+        try {
+
+            const text =
+                cleanText(
+                    req.body.message ||
+                    req.body.prompt ||
+                    req.body.text,
+                    30000
+                );
+
+            if (
+                !text
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+                        success:
+                            false,
+
+                        error:
+                            "Mesaj boş olamaz."
+                    });
+            }
+
+            const user =
+                req.user;
+
+            let chatId =
+                cleanText(
+                    req.body.chatId,
+                    200
+                );
+
+            let chat =
+                chatId
+                    ? findChatById(
+                        chatId
+                    )
+                    : null;
+
+            if (
+                chat &&
+                chat.userId !==
+                    user.id &&
+                !isAdminUser(
+                    user
+                )
+            ) {
+
+                chat = null;
+            }
+
+            if (
+                !chat
+            ) {
+
+                chat =
+                    createChat(
+                        user.id,
+                        text.slice(
+                            0,
+                            60
+                        )
+                    );
+
+                chatId =
+                    chat.id;
+            }
+
+            const history =
+                getChatMessages(
+                    chatId,
+                    20
+                );
+
+            addMessage(
+                chatId,
+                user.id,
+                "user",
+                text
+            );
+
+            const result =
+                await callAI(
+                    text,
+                    history
+                );
+
+            const assistantMessage =
+                addMessage(
+                    chatId,
+                    user.id,
+                    "assistant",
+                    result.text,
+                    {
+                        provider:
+                            result.provider,
+
+                        model:
+                            result.model
+                    }
+                );
+
+            const statistics =
+                getStatistics();
+
+            statistics.totalMessages =
+                safeNumber(
+                    statistics.totalMessages
+                ) + 2;
+
+            saveStatistics(
+                statistics
+            );
+
+            res.json({
+
+                success:
+                    true,
+
+                reply:
+                    result.text,
+
+                response:
+                    result.text,
+
+                text:
+                    result.text,
+
+                message:
+                    result.text,
+
+                chatId,
+
+                provider:
+                    result.provider,
+
+                model:
+                    result.model,
+
+                messageId:
+                    assistantMessage.id
+            });
+
+        } catch (
+            error
+        ) {
+
+            const statistics =
+                getStatistics();
+
+            statistics.totalErrors =
+                safeNumber(
+                    statistics.totalErrors
+                ) + 1;
+
+            saveStatistics(
+                statistics
+            );
+
+            logError(
+                "Chat API error",
+                {
+                    error:
+                        error.message,
+
+                    requestId:
+                        req.requestId
+                }
+            );
+
+            res.status(
+                500
+            ).json({
+
+                success:
+                    false,
+
+                error:
+                    "AI yanıtı oluşturulurken bir hata oluştu.",
+
+                requestId:
+                    req.requestId
+            });
+        }
+    }
+);
+
+/* ================================================================
+   45 — AI STATUS
+================================================================ */
+
+app.get(
+    "/api/ai/status",
+    (
+        req,
+        res
+    ) => {
+
+        res.json({
+
+            success:
+                true,
+
+            providers: {
+
+                groq:
+                    AI_CONFIG.groq
+                        .enabled,
+
+                cerebras:
+                    AI_CONFIG.cerebras
+                        .enabled,
+
+                openrouter:
+                    AI_CONFIG.openrouter
+                        .enabled,
+
+                gemini:
+                    AI_CONFIG.gemini
+                        .enabled
+            },
+
+            local:
+                true,
+
+            fallback:
+                true
+        });
+    }
+);
+
+/* ================================================================
+   46 — SOCKET STATE
+================================================================ */
+
+const connectedUsers =
+    new Map();
+
+const connectedSockets =
+    new Map();
+
+const activeChatRooms =
+    new Map();
+
+const SERVER_STATE = {
+
+    startedAt:
+        nowISO(),
+
+    shuttingDown:
+        false,
+
+    connections:
+        0,
+
+    activeUsers:
+        0,
+
+    activeRooms:
+        0
+};
+
+/* ================================================================
+   47 — SOCKET AUTH HELPER
+================================================================ */
+
+function getSocketToken(
+    socket
+) {
+
+    const auth =
+        socket.handshake &&
+        socket.handshake.auth
+            ? socket.handshake.auth
+            : {};
+
+    const query =
+        socket.handshake &&
+        socket.handshake.query
+            ? socket.handshake.query
+            : {};
+
+    return cleanText(
+        auth.token ||
+        auth.sessionToken ||
+        query.token ||
+        "",
+        2000
+    );
+}
+
+function getSocketUser(
+    socket
+) {
+
+    const token =
+        getSocketToken(
+            socket
+        );
+
+    if (
+        token
+    ) {
+
+        const session =
+            getSessionByToken(
+                token
+            );
+
+        if (
+            session
+        ) {
+
+            const user =
+                findUserById(
+                    session.userId
+                );
+
+            if (
+                user
+            ) {
+                return user;
+            }
+        }
+    }
+
+    return getGuestUser();
+}
+
+/* ================================================================
+   48 — SOCKET.IO CONNECTION
+================================================================ */
+
+io.on(
+    "connection",
+    socket => {
+
+        SERVER_STATE.connections++;
+
+        const user =
+            getSocketUser(
+                socket
+            );
+
+        const userId =
+            user.id;
+
+        connectedSockets.set(
+            socket.id,
+            {
+                userId,
+                connectedAt:
+                    nowISO()
+            }
+        );
+
+        if (
+            !connectedUsers.has(
+                userId
+            )
+        ) {
+
+            connectedUsers.set(
+                userId,
+                {
+                    userId,
+
+                    name:
+                        user.name,
+
+                    plan:
+                        user.plan,
+
+                    sockets:
+                        new Set(),
+
+                    connectedAt:
+                        nowISO(),
+
+                    lastSeenAt:
+                        nowISO()
+                }
+            );
+        }
+
+        connectedUsers
+            .get(
+                userId
+            )
+            .sockets
+            .add(
+                socket.id
+            );
+
+        SERVER_STATE.activeUsers =
+            connectedUsers.size;
+
+        socket.emit(
+            "turkai:ready",
+            {
+                success:
+                    true,
+
+                server:
+                    APP_NAME,
+
+                version:
+                    APP_VERSION,
+
+                socketId:
+                    socket.id,
+
+                user: {
+
+                    id:
+                        user.id,
+
+                    name:
+                        user.name,
+
+                    plan:
+                        user.plan,
+
+                    role:
+                        user.role
+                }
+            }
+        );
+
+        socket.on(
+            "turkai:ping",
+            payload => {
+
+                socket.emit(
+                    "turkai:pong",
+                    {
+                        success:
+                            true,
+
+                        received:
+                            payload ||
+                            null,
+
+                        timestamp:
+                            nowISO()
+                    }
+                );
+            }
+        );
+
+        socket.on(
+            "chat:join",
+            payload => {
+
+                const chatId =
+                    cleanText(
+                        payload?.chatId,
+                        200
+                    );
+
+                if (
+                    !chatId
+                ) {
+                    return;
+                }
+
+                socket.join(
+                    `chat:${chatId}`
+                );
+
+                if (
+                    !activeChatRooms.has(
+                        chatId
+                    )
+                ) {
+
+                    activeChatRooms.set(
+                        chatId,
+                        new Set()
+                    );
+                }
+
+                activeChatRooms
+                    .get(
+                        chatId
+                    )
+                    .add(
+                        socket.id
+                    );
+
+                SERVER_STATE.activeRooms =
+                    activeChatRooms.size;
+
+                socket.emit(
+                    "chat:joined",
+                    {
+                        success:
+                            true,
+
+                        chatId
+                    }
+                );
+            }
+        );
+
+        socket.on(
+            "chat:leave",
+            payload => {
+
+                const chatId =
+                    cleanText(
+                        payload?.chatId,
+                        200
+                    );
+
+                if (
+                    !chatId
+                ) {
+                    return;
+                }
+
+                socket.leave(
+                    `chat:${chatId}`
+                );
+
+                const room =
+                    activeChatRooms.get(
+                        chatId
+                    );
+
+                if (
+                    room
+                ) {
+
+                    room.delete(
+                        socket.id
+                    );
+
+                    if (
+                        room.size ===
+                        0
+                    ) {
+
+                        activeChatRooms.delete(
+                            chatId
+                        );
+                    }
+                }
+
+                SERVER_STATE.activeRooms =
+                    activeChatRooms.size;
+
+                socket.emit(
+                    "chat:left",
+                    {
+                        success:
+                            true,
+
+                        chatId
+                    }
+                );
+            }
+        );
+
+        socket.on(
+            "chat:typing",
+            payload => {
+
+                const chatId =
+                    cleanText(
+                        payload?.chatId,
+                        200
+                    );
+
+                if (
+                    !chatId
+                ) {
+                    return;
+                }
+
+                socket
+                    .to(
+                        `chat:${chatId}`
+                    )
+                    .emit(
+                        "chat:typing",
+                        {
+                            userId,
+
+                            name:
+                                user.name,
+
+                            typing:
+                                Boolean(
+                                    payload?.typing
+                                )
+                        }
+                    );
+            }
+        );
+
+        socket.on(
+            "chat:presence",
+            () => {
+
+                socket.emit(
+                    "chat:presence",
+                    {
+                        users:
+                            Array.from(
+                                connectedUsers.values()
+                            ).map(
+                                item => ({
+
+                                    userId:
+                                        item.userId,
+
+                                    name:
+                                        item.name,
+
+                                    plan:
+                                        item.plan,
+
+                                    online:
+                                        true
+                                })
+                            )
+                    }
+                );
+            }
+        );
+
+        socket.on(
+            "disconnect",
+            reason => {
+
+                connectedSockets.delete(
+                    socket.id
+                );
+
+                const connection =
+                    connectedUsers.get(
+                        userId
+                    );
+
+                if (
+                    connection
+                ) {
+
+                    connection.sockets.delete(
+                        socket.id
+                    );
+
+                    connection.lastSeenAt =
+                        nowISO();
+
+                    if (
+                        connection.sockets.size ===
+                        0
+                    ) {
+
+                        connectedUsers.delete(
+                            userId
+                        );
+                    }
+                }
+
+                for (
+                    const [
+                        chatId,
+                        room
+                    ]
+                    of activeChatRooms
+                ) {
+
+                    room.delete(
+                        socket.id
+                    );
+
+                    if (
+                        room.size ===
+                        0
+                    ) {
+
+                        activeChatRooms.delete(
+                            chatId
+                        );
+                    }
+                }
+
+                SERVER_STATE.activeUsers =
+                    connectedUsers.size;
+
+                SERVER_STATE.activeRooms =
+                    activeChatRooms.size;
+
+                logInfo(
+                    "Socket disconnected",
+                    {
+                        socketId:
+                            socket.id,
+
+                        userId,
+
+                        reason
+                    }
+                );
+            }
+        );
+    }
+);
+
+/* ================================================================
+   49 — SOCKET STATUS
+================================================================ */
+
+app.get(
+    "/api/socket/status",
+    (
+        req,
+        res
+    ) => {
+
+        res.json({
+
+            success:
+                true,
+
+            socket: {
+
+                connections:
+                    SERVER_STATE.connections,
+
+                activeUsers:
+                    SERVER_STATE.activeUsers,
+
+                activeRooms:
+                    SERVER_STATE.activeRooms
+            }
+        });
+    }
+);
+
+/* ================================================================
+   50 — SERVER INFO
+================================================================ */
+
+app.get(
+    "/api/server/info",
+    (
+        req,
+        res
+    ) => {
+
+        res.json({
+
+            success:
+                true,
+
+            application: {
+
+                name:
+                    APP_NAME,
+
+                version:
+                    APP_VERSION,
+
+                description:
+                    APP_DESCRIPTION
+            },
+
+            server: {
+
+                id:
+                    SERVER_ID,
+
+                name:
+                    SERVER_NAME,
+
+                environment:
+                    NODE_ENV,
+
+                host:
+                    HOST,
+
+                port:
+                    PORT,
+
+                node:
+                    process.version,
+
+                platform:
+                    process.platform,
+
+                architecture:
+                    process.arch,
+
+                startedAt:
+                    SERVER_STATE.startedAt,
+
+                uptime:
+                    Date.now() -
+                    START_TIME
+            },
+
+            runtime: {
+
+                memory:
+                    process.memoryUsage(),
+
+                cpu:
+                    os.cpus().length,
+
+                hostname:
+                    os.hostname()
+            }
+        });
+    }
+);
+
+/* ================================================================
+   PARÇA 1 SONU
+================================================================ */
+
+/*
+   ÖNEMLİ:
+
+   Burada server.js'i çalıştırma.
+
+   PARÇA 2 bu kodun hemen ALTINA gelecek.
+
+   Sonrasında PARÇA 3 gelecek.
+
+   startServer() ve module.exports
+   PARÇA 3'ün sonunda bulunacak.
+
+   Böylece:
+
+   PARÇA 1
+       ↓
+   PARÇA 2
+       ↓
+   PARÇA 3
+       ↓
+   TEK server.js
+*/
+/* ================================================================
+   TÜRKAI SERVER — PARÇA 2 / 3
+   AI • MEMORY • RESEARCH • FILES • PROJECTS • ADMIN • USAGE
+================================================================ */
+
+/* ================================================================
+   51 — USAGE SYSTEM
+================================================================ */
 
 function getTodayKey() {
 
-    const date = new Date();
+    const now = new Date();
 
     const year =
-        date.getFullYear();
+        now.getFullYear();
 
     const month =
         String(
-            date.getMonth() + 1
-        ).padStart(2, "0");
+            now.getMonth() + 1
+        ).padStart(
+            2,
+            "0"
+        );
 
     const day =
         String(
-            date.getDate()
-        ).padStart(2, "0");
+            now.getDate()
+        ).padStart(
+            2,
+            "0"
+        );
 
     return `${year}-${month}-${day}`;
-
 }
 
+function createEmptyUsage() {
 
-function getUsage() {
+    return {
 
-    return readJSON(
-        DB_FILES.usage,
-        {}
-    );
+        messages:
+            0,
 
+        research:
+            0,
+
+        images:
+            0,
+
+        videos:
+            0,
+
+        uploads:
+            0,
+
+        apiRequests:
+            0,
+
+        errors:
+            0,
+
+        date:
+            getTodayKey(),
+
+        updatedAt:
+            nowISO()
+    };
 }
 
-
-function saveUsage(usage) {
-
-    return writeJSON(
-        DB_FILES.usage,
-        usage
-    );
-
-}
-
-
-function getUserUsage(userId) {
-
-    const usage =
-        getUsage();
-
-    const today =
-        getTodayKey();
-
-    if (!usage[userId]) {
-
-        usage[userId] = {};
-
-    }
-
-    if (!usage[userId][today]) {
-
-        usage[userId][today] = {
-
-            messages: 0,
-
-            research: 0,
-
-            images: 0,
-
-            videos: 0,
-
-            bytesUploaded: 0,
-
-            updatedAt:
-                nowISO()
-
-        };
-
-    }
-
-    return usage[userId][today];
-
-}
-
-
-function updateUsage(
-    userId,
-    type,
-    amount = 1
+function getUserUsage(
+    userId
 ) {
 
     const usage =
@@ -3263,77 +5370,86 @@ function updateUsage(
     const today =
         getTodayKey();
 
-
-    if (!usage[userId]) {
-
-        usage[userId] = {};
-
-    }
-
-
-    if (!usage[userId][today]) {
-
-        usage[userId][today] = {
-
-            messages: 0,
-
-            research: 0,
-
-            images: 0,
-
-            videos: 0,
-
-            bytesUploaded: 0,
-
-            updatedAt:
-                nowISO()
-
-        };
-
-    }
-
-
     if (
-        typeof usage[userId][today][type] !==
-        "number"
+        !usage[userId]
     ) {
 
-        usage[userId][today][type] = 0;
-
+        usage[userId] =
+            {};
     }
 
+    if (
+        usage[userId].date !==
+        today
+    ) {
 
-    usage[userId][today][type] +=
-        Number(amount) || 0;
+        usage[userId] =
+            createEmptyUsage();
+    }
 
+    return usage[userId];
+}
 
-    usage[userId][today].updatedAt =
-        nowISO();
+function saveUserUsage(
+    userId,
+    data
+) {
 
+    const usage =
+        getUsage();
 
-    saveUsage(
+    usage[userId] = {
+
+        ...createEmptyUsage(),
+
+        ...data,
+
+        date:
+            getTodayKey(),
+
+        updatedAt:
+            nowISO()
+    };
+
+    return saveUsage(
         usage
     );
-
-
-    return usage[userId][today];
-
 }
 
-
-function getPlanForUser(user) {
-
-    return getPlan(
-        user
-    );
-
-}
-
-
-function usageAvailable(
-    user,
+function incrementUsage(
+    userId,
     type,
     amount = 1
+) {
+
+    const current =
+        getUserUsage(
+            userId
+        );
+
+    current[type] =
+        safeNumber(
+            current[type]
+        ) +
+        safeNumber(
+            amount,
+            1
+        );
+
+    current.updatedAt =
+        nowISO();
+
+    saveUserUsage(
+        userId,
+        current
+    );
+
+    return current;
+}
+
+function getUsageLimit(
+    user,
+    type
 ) {
 
     const plan =
@@ -3341,52 +5457,63 @@ function usageAvailable(
             user
         );
 
+    return safeNumber(
+        plan[type],
+        0
+    );
+}
+
+function usageAvailable(
+    user,
+    type,
+    amount = 1
+) {
+
+    const limit =
+        getUsageLimit(
+            user,
+            type
+        );
+
+    if (
+        limit <= 0
+    ) {
+
+        return false;
+    }
+
     const usage =
         getUserUsage(
             user.id
         );
 
-
     const current =
-        Number(
-            usage[type] || 0
+        safeNumber(
+            usage[type],
+            0
         );
 
-
-    const limit =
-        Number(
-            plan[type] || 0
-        );
-
-
-    return {
-
-        allowed:
-            current + amount <= limit,
-
-        current,
-
-        limit,
-
-        remaining:
-            Math.max(
-                0,
-                limit - current
-            )
-
-    };
-
+    return (
+        current +
+        amount <=
+        limit
+    );
 }
 
+/* ================================================================
+   52 — USAGE API
+================================================================ */
 
 app.get(
     "/api/usage",
-    (req, res) => {
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         const user =
-            getRequestUser(
-                req
-            );
+            req.user;
 
         const usage =
             getUserUsage(
@@ -3394,10 +5521,9 @@ app.get(
             );
 
         const plan =
-            getPlan(
+            getPlanForUser(
                 user
             );
-
 
         res.json({
 
@@ -3406,6 +5532,15 @@ app.get(
 
             date:
                 getTodayKey(),
+
+            plan: {
+
+                id:
+                    plan.id,
+
+                name:
+                    plan.name
+            },
 
             usage,
 
@@ -3423,111 +5558,16 @@ app.get(
                 videos:
                     plan.videos,
 
-                storageMB:
-                    plan.storageMB
-
+                maxUploadMB:
+                    plan.maxUploadMB
             }
-
         });
-
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 2. MEMORY ENGINE                                                ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-function getMemories() {
-
-    return readJSON(
-        DB_FILES.memories,
-        []
-    );
-
-}
-
-
-function saveMemories(memories) {
-
-    return writeJSON(
-        DB_FILES.memories,
-        memories
-    );
-
-}
-
-
-function addMemory(
-    userId,
-    text,
-    metadata = {}
-) {
-
-    const clean =
-        cleanText(
-            text,
-            5000
-        );
-
-
-    if (!clean) {
-
-        return null;
-
-    }
-
-
-    const memories =
-        getMemories();
-
-
-    const memory = {
-
-        id:
-            createId("memory"),
-
-        userId,
-
-        text:
-            clean,
-
-        type:
-            metadata.type ||
-            "general",
-
-        source:
-            metadata.source ||
-            "user",
-
-        importance:
-            Number(
-                metadata.importance || 1
-            ),
-
-        createdAt:
-            nowISO(),
-
-        updatedAt:
-            nowISO()
-
-    };
-
-
-    memories.push(
-        memory
-    );
-
-
-    saveMemories(
-        memories
-    );
-
-
-    return memory;
-
-}
-
+/* ================================================================
+   53 — MEMORY SYSTEM
+================================================================ */
 
 function searchMemories(
     userId,
@@ -3538,141 +5578,239 @@ function searchMemories(
     const memories =
         getMemories();
 
-
     const normalizedQuery =
         normalizeText(
             query
         );
 
-
-    if (!normalizedQuery) {
-
+    if (
+        !normalizedQuery
+    ) {
         return [];
-
     }
 
+    return memories
+        .filter(
+            memory =>
+                memory.userId ===
+                userId
+        )
+        .filter(
+            memory => {
 
-    const words =
-        normalizedQuery
-            .split(/\s+/)
-            .filter(Boolean);
+                const content =
+                    normalizeText(
+                        memory.content
+                    );
 
+                const title =
+                    normalizeText(
+                        memory.title ||
+                        ""
+                    );
 
-    const results =
-        memories
-            .filter(
-                memory =>
-                    memory.userId === userId
-            )
-            .map(
-                memory => {
-
-                    const text =
-                        normalizeText(
-                            memory.text
-                        );
-
-
-                    let score = 0;
-
-
-                    for (
-                        const word of words
-                    ) {
-
-                        if (
-                            text.includes(
-                                word
-                            )
-                        ) {
-
-                            score += 1;
-
-                        }
-
-                    }
-
-
-                    if (
-                        text.includes(
-                            normalizedQuery
-                        )
-                    ) {
-
-                        score += 5;
-
-                    }
-
-
-                    score +=
-                        Number(
-                            memory.importance ||
-                            0
-                        ) * 0.1;
-
-
-                    return {
-
-                        ...memory,
-
-                        score
-
-                    };
-
-                }
-            )
-            .filter(
-                item =>
-                    item.score > 0
-            )
-            .sort(
-                (a, b) =>
-                    b.score - a.score
-            )
-            .slice(
-                0,
-                Math.max(
-                    1,
-                    Math.min(
-                        Number(limit) || 10,
-                        50
+                return (
+                    content.includes(
+                        normalizedQuery
+                    ) ||
+                    title.includes(
+                        normalizedQuery
                     )
-                )
-            );
-
-
-    return results;
-
+                );
+            }
+        )
+        .slice(
+            -clamp(
+                limit,
+                1,
+                100
+            )
+        );
 }
 
+function addMemory(
+    userId,
+    content,
+    metadata = {}
+) {
+
+    const memories =
+        getMemories();
+
+    const memory = {
+
+        id:
+            createId(
+                "mem"
+            ),
+
+        userId,
+
+        title:
+            cleanText(
+                metadata.title ||
+                "Hatırlanan bilgi",
+                200
+            ),
+
+        content:
+            cleanText(
+                content,
+                5000
+            ),
+
+        type:
+            cleanText(
+                metadata.type ||
+                "general",
+                50
+            ),
+
+        source:
+            cleanText(
+                metadata.source ||
+                "chat",
+                50
+            ),
+
+        createdAt:
+            nowISO(),
+
+        updatedAt:
+            nowISO()
+    };
+
+    memories.push(
+        memory
+    );
+
+    saveMemories(
+        memories
+    );
+
+    return memory;
+}
+
+function detectMemoryCandidate(
+    text
+) {
+
+    const normalized =
+        normalizeText(
+            text
+        );
+
+    const patterns = [
+
+        "benim adim",
+
+        "adim",
+
+        "ben",
+
+        "hatirla",
+
+        "unutma",
+
+        "aklinda tut",
+
+        "bunu hatirla",
+
+        "favorim",
+
+        "sevdigim",
+
+        "projem"
+    ];
+
+    return patterns.some(
+        pattern =>
+            normalized.includes(
+                pattern
+            )
+    );
+}
+
+function processMemoryCandidate(
+    userId,
+    text
+) {
+
+    if (
+        !detectMemoryCandidate(
+            text
+        )
+    ) {
+
+        return null;
+    }
+
+    const normalized =
+        normalizeText(
+            text
+        );
+
+    if (
+        normalized.includes(
+            "hatirla"
+        ) ||
+        normalized.includes(
+            "unutma"
+        ) ||
+        normalized.includes(
+            "aklinda tut"
+        )
+    ) {
+
+        return addMemory(
+            userId,
+            text,
+            {
+                type:
+                    "explicit",
+
+                source:
+                    "chat"
+            }
+        );
+    }
+
+    return null;
+}
+
+/* ================================================================
+   54 — MEMORY ROUTES
+================================================================ */
 
 app.get(
     "/api/memory",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         const memories =
             getMemories()
                 .filter(
-                    item =>
-                        item.userId ===
-                        user.id
+                    memory =>
+                        memory.userId ===
+                        req.user.id
                 )
                 .sort(
-                    (a, b) =>
+                    (
+                        a,
+                        b
+                    ) =>
                         new Date(
+                            b.updatedAt ||
                             b.createdAt
                         ) -
                         new Date(
+                            a.updatedAt ||
                             a.createdAt
                         )
                 );
-
 
         res.json({
 
@@ -3680,330 +5818,278 @@ app.get(
                 true,
 
             memories
-
         });
-
     }
 );
 
-
 app.get(
     "/api/memory/search",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         const query =
             cleanText(
-                req.query.q ||
-                req.query.query ||
-                "",
+                req.query.q,
                 1000
             );
 
-
-        if (!query) {
-
-            return res.json({
-
-                success:
-                    true,
-
-                results: []
-
-            });
-
-        }
-
+        const memories =
+            searchMemories(
+                req.user.id,
+                query,
+                20
+            );
 
         res.json({
 
             success:
                 true,
 
-            results:
-                searchMemories(
-                    user.id,
-                    query,
-                    20
-                )
+            query,
 
+            memories
         });
-
     }
 );
 
-
 app.post(
     "/api/memory",
-    (req, res) => {
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
-        const user =
-            getRequestUser(
-                req
-            );
-
-
-        const text =
+        const content =
             cleanText(
-                req.body?.text ||
-                req.body?.memory ||
-                "",
+                req.body.content ||
+                req.body.text,
                 5000
             );
 
+        if (
+            !content
+        ) {
 
-        if (!text) {
+            return res
+                .status(400)
+                .json({
+                    success:
+                        false,
 
-            return res.status(400).json({
-
-                success:
-                    false,
-
-                error:
-                    "Memory metni boş olamaz."
-
-            });
-
+                    error:
+                        "Hafızaya kaydedilecek bilgi boş."
+                });
         }
-
 
         const memory =
             addMemory(
-                user.id,
-                text,
+                req.user.id,
+                content,
                 {
-                    type:
-                        req.body?.type,
+                    title:
+                        req.body.title,
 
-                    source:
-                        req.body?.source ||
+                    type:
+                        req.body.type ||
                         "manual",
 
-                    importance:
-                        req.body?.importance
+                    source:
+                        "manual"
                 }
             );
 
-
-        res.json({
+        res.status(
+            201
+        ).json({
 
             success:
                 true,
 
             memory
-
         });
-
     }
 );
 
-
 app.delete(
     "/api/memory/:id",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         const memories =
             getMemories();
 
-
-        const before =
-            memories.length;
-
-
-        const filtered =
-            memories.filter(
+        const index =
+            memories.findIndex(
                 memory =>
-                    !(
-                        memory.id ===
-                        req.params.id &&
-                        memory.userId ===
-                        user.id
-                    )
+                    memory.id ===
+                    req.params.id &&
+                    memory.userId ===
+                    req.user.id
             );
 
+        if (
+            index < 0
+        ) {
 
-        saveMemories(
-            filtered
+            return res
+                .status(404)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Hafıza kaydı bulunamadı."
+                });
+        }
+
+        memories.splice(
+            index,
+            1
         );
 
+        saveMemories(
+            memories
+        );
 
         res.json({
 
             success:
                 true,
 
-            deleted:
-                before !==
-                filtered.length
-
+            message:
+                "Hafıza kaydı silindi."
         });
-
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 3. KNOWLEDGE ENGINE                                             ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-function getKnowledge() {
-
-    return readJSON(
-        DB_FILES.knowledge,
-        []
-    );
-
-}
-
-
-function saveKnowledge(
-    knowledge
-) {
-
-    return writeJSON(
-        DB_FILES.knowledge,
-        knowledge
-    );
-
-}
-
+/* ================================================================
+   55 — KNOWLEDGE SYSTEM
+================================================================ */
 
 function findKnowledgeAnswer(
-    query
+    question
 ) {
 
     const knowledge =
         getKnowledge();
 
-
     const normalized =
         normalizeText(
-            query
+            question
         );
 
-
-    if (!normalized) {
-
+    if (
+        !normalized
+    ) {
         return null;
-
     }
 
+    let best =
+        null;
 
-    let best = null;
-
-    let bestScore = 0;
-
+    let bestScore =
+        0;
 
     for (
-        const item of knowledge
+        const item
+        of knowledge
     ) {
 
-        const question =
+        const questionText =
             normalizeText(
                 item.question ||
                 ""
             );
 
-        const answer =
-            cleanText(
+        const answerText =
+            normalizeText(
                 item.answer ||
-                "",
-                20000
+                ""
             );
 
-
-        if (!question || !answer) {
-
+        if (
+            !questionText
+        ) {
             continue;
-
         }
-
-
-        let score = 0;
-
 
         if (
             normalized ===
-            question
+            questionText
         ) {
 
-            score += 100;
-
+            return item;
         }
-
-
-        if (
-            normalized.includes(
-                question
-            )
-        ) {
-
-            score += 40;
-
-        }
-
 
         const words =
-            question
-                .split(/\s+/)
+            normalized
+                .split(
+                    /\s+/
+                )
                 .filter(
                     word =>
-                        word.length > 2
+                        word.length >
+                        2
                 );
 
+        let score =
+            0;
 
         for (
-            const word of words
+            const word
+            of words
         ) {
 
             if (
-                normalized.includes(
+                questionText.includes(
                     word
                 )
             ) {
 
-                score += 2;
-
+                score++;
             }
 
+            if (
+                answerText.includes(
+                    word
+                )
+            ) {
+
+                score +=
+                    0.25;
+            }
         }
 
-
         if (
-            score > bestScore
+            score >
+            bestScore
         ) {
 
             bestScore =
                 score;
 
-            best = {
-
-                ...item,
-
-                score
-
-            };
-
+            best =
+                item;
         }
-
     }
 
+    if (
+        best &&
+        bestScore >= 2
+    ) {
 
-    return best;
+        return best;
+    }
 
+    return null;
 }
-
 
 function saveKnowledgeAnswer(
     question,
@@ -4011,615 +6097,725 @@ function saveKnowledgeAnswer(
     metadata = {}
 ) {
 
-    const cleanQuestion =
-        cleanText(
-            question,
-            2000
-        );
-
-    const cleanAnswer =
-        cleanText(
-            answer,
-            20000
-        );
-
-
-    if (
-        !cleanQuestion ||
-        !cleanAnswer
-    ) {
-
-        return null;
-
-    }
-
-
     const knowledge =
         getKnowledge();
 
+    const normalized =
+        normalizeText(
+            question
+        );
 
-    const existingIndex =
-        knowledge.findIndex(
+    const existing =
+        knowledge.find(
             item =>
                 normalizeText(
                     item.question
                 ) ===
-                normalizeText(
-                    cleanQuestion
-                )
+                normalized
         );
 
+    if (
+        existing
+    ) {
+
+        existing.answer =
+            cleanText(
+                answer,
+                20000
+            );
+
+        existing.updatedAt =
+            nowISO();
+
+        saveKnowledge(
+            knowledge
+        );
+
+        return existing;
+    }
 
     const item = {
 
         id:
-            existingIndex >= 0
-                ? knowledge[
-                    existingIndex
-                ].id
-                : createId(
-                    "knowledge"
-                ),
+            createId(
+                "know"
+            ),
 
         question:
-            cleanQuestion,
-
-        answer:
-            cleanAnswer,
-
-        source:
-            metadata.source ||
-            "turkai",
-
-        confidence:
-            metadata.confidence ||
-            0.7,
-
-        createdAt:
-            existingIndex >= 0
-                ? knowledge[
-                    existingIndex
-                ].createdAt
-                : nowISO(),
-
-        updatedAt:
-            nowISO()
-
-    };
-
-
-    if (
-        existingIndex >= 0
-    ) {
-
-        knowledge[
-            existingIndex
-        ] = item;
-
-    } else {
-
-        knowledge.push(
-            item
-        );
-
-    }
-
-
-    saveKnowledge(
-        knowledge
-    );
-
-
-    return item;
-
-}
-
-
-app.get(
-    "/api/knowledge",
-    (req, res) => {
-
-        const knowledge =
-            getKnowledge();
-
-
-        res.json({
-
-            success:
-                true,
-
-            count:
-                knowledge.length,
-
-            knowledge
-
-        });
-
-    }
-);
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 4. RESEARCH ENGINE                                              ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-function getResearch() {
-
-    return readJSON(
-        DB_FILES.research,
-        []
-    );
-
-}
-
-
-function saveResearch(
-    research
-) {
-
-    return writeJSON(
-        DB_FILES.research,
-        research
-    );
-
-}
-
-
-function saveResearchRecord(
-    userId,
-    query,
-    result,
-    metadata = {}
-) {
-
-    const research =
-        getResearch();
-
-
-    const record = {
-
-        id:
-            createId("research"),
-
-        userId,
-
-        query:
             cleanText(
-                query,
+                question,
                 5000
             ),
 
-        result:
+        answer:
             cleanText(
-                result,
-                30000
+                answer,
+                20000
             ),
-
-        provider:
-            metadata.provider ||
-            "turkai",
 
         source:
             metadata.source ||
             "ai",
 
         createdAt:
+            nowISO(),
+
+        updatedAt:
             nowISO()
-
     };
 
-
-    research.push(
-        record
+    knowledge.push(
+        item
     );
 
-
-    if (
-        research.length > 5000
-    ) {
-
-        research.splice(
-            0,
-            research.length - 5000
-        );
-
-    }
-
-
-    saveResearch(
-        research
+    saveKnowledge(
+        knowledge
     );
 
-
-    return record;
-
+    return item;
 }
 
+/* ================================================================
+   56 — KNOWLEDGE ROUTES
+================================================================ */
 
-async function performResearch(
-    user,
-    query
-) {
+app.get(
+    "/api/knowledge",
+    optionalAuth,
+    requireAdmin,
+    (
+        req,
+        res
+    ) => {
 
-    const cleanQuery =
-        cleanText(
-            query,
-            5000
-        );
+        res.json({
 
+            success:
+                true,
 
-    if (!cleanQuery) {
-
-        return {
-
-            text:
-                "Araştırılacak konu boş.",
-
-            provider:
-                "local",
-
-            model:
-                "turkai-local"
-
-        };
-
+            knowledge:
+                getKnowledge()
+        });
     }
-
-
-    const available =
-        usageAvailable(
-            user,
-            "research",
-            1
-        );
-
-
-    if (!available.allowed) {
-
-        return {
-
-            text:
-                `Araştırma limitin doldu. Planındaki günlük araştırma limiti: ${available.limit}.`,
-
-            provider:
-                "limit",
-
-            model:
-                "turkai-limit"
-
-        };
-
-    }
-
-
-    updateUsage(
-        user.id,
-        "research",
-        1
-    );
-
-
-    const knowledge =
-        findKnowledgeAnswer(
-            cleanQuery
-        );
-
-
-    if (knowledge) {
-
-        const record =
-            saveResearchRecord(
-                user.id,
-                cleanQuery,
-                knowledge.answer,
-                {
-                    provider:
-                        "knowledge",
-
-                    source:
-                        "knowledge.json"
-                }
-            );
-
-
-        return {
-
-            text:
-                knowledge.answer,
-
-            provider:
-                "knowledge",
-
-            model:
-                "turkai-knowledge",
-
-            researchId:
-                record.id
-
-        };
-
-    }
-
-
-    const result =
-        await callAI(
-            `Araştırma isteği:\n\n${cleanQuery}\n\nKonu hakkında mümkün olduğunca doğru, açık ve yapılandırılmış bir açıklama hazırla.`,
-            []
-        );
-
-
-    const record =
-        saveResearchRecord(
-            user.id,
-            cleanQuery,
-            result.text,
-            {
-                provider:
-                    result.provider,
-
-                source:
-                    "ai"
-            }
-        );
-
-
-    saveKnowledgeAnswer(
-        cleanQuery,
-        result.text,
-        {
-            source:
-                result.provider,
-
-            confidence:
-                0.55
-        }
-    );
-
-
-    return {
-
-        ...result,
-
-        researchId:
-            record.id
-
-    };
-
-}
-
+);
 
 app.post(
-    "/api/research",
-    async (req, res) => {
+    "/api/knowledge",
+    optionalAuth,
+    requireAdmin,
+    (
+        req,
+        res
+    ) => {
 
-        try {
+        const question =
+            cleanText(
+                req.body.question,
+                5000
+            );
 
-            const user =
-                getRequestUser(
-                    req
-                );
+        const answer =
+            cleanText(
+                req.body.answer,
+                20000
+            );
 
+        if (
+            !question ||
+            !answer
+        ) {
 
-            const query =
-                cleanText(
-                    req.body?.query ||
-                    req.body?.q ||
-                    req.body?.message ||
-                    "",
-                    5000
-                );
-
-
-            if (!query) {
-
-                return res.status(400).json({
-
+            return res
+                .status(400)
+                .json({
                     success:
                         false,
 
                     error:
-                        "Araştırma sorgusu boş."
-
+                        "Soru ve cevap gerekli."
                 });
+        }
 
+        const item =
+            saveKnowledgeAnswer(
+                question,
+                answer,
+                {
+                    source:
+                        "admin"
+                }
+            );
+
+        res.status(
+            201
+        ).json({
+
+            success:
+                true,
+
+            item
+        });
+    }
+);
+
+/* ================================================================
+   57 — RESEARCH SYSTEM
+================================================================ */
+
+async function performResearch(
+    query,
+    user
+) {
+
+    const question =
+        cleanText(
+            query,
+            12000
+        );
+
+    if (
+        !question
+    ) {
+
+        throw new Error(
+            "Araştırma sorgusu boş."
+        );
+    }
+
+    if (
+        !usageAvailable(
+            user,
+            "research"
+        )
+    ) {
+
+        throw new Error(
+            "Günlük araştırma limitin doldu."
+        );
+    }
+
+    incrementUsage(
+        user.id,
+        "research"
+    );
+
+    const statistics =
+        getStatistics();
+
+    statistics.totalResearch =
+        safeNumber(
+            statistics.totalResearch
+        ) + 1;
+
+    saveStatistics(
+        statistics
+    );
+
+    const localKnowledge =
+        findKnowledgeAnswer(
+            question
+        );
+
+    if (
+        localKnowledge
+    ) {
+
+        return {
+
+            query:
+                question,
+
+            answer:
+                localKnowledge.answer,
+
+            source:
+                "knowledge",
+
+            provider:
+                "local",
+
+            timestamp:
+                nowISO()
+        };
+    }
+
+    const researchPrompt = `
+Aşağıdaki konu hakkında kullanıcıya Türkçe,
+düzenli ve mümkün olduğunca doğru bir araştırma
+cevabı hazırla.
+
+Konu:
+${question}
+
+Kurallar:
+- Bilmediğin bilgiyi kesin gerçek gibi yazma.
+- Tarihsel veya güncel bilgi ayrımını belirt.
+- Gereksiz tekrar yapma.
+- Sonuç bölümünde kısa özet ver.
+`;
+
+    const result =
+        await callAI(
+            researchPrompt,
+            []
+        );
+
+    const record = {
+
+        query:
+            question,
+
+        answer:
+            result.text,
+
+        source:
+            "ai",
+
+        provider:
+            result.provider,
+
+        model:
+            result.model,
+
+        timestamp:
+            nowISO()
+    };
+
+    return record;
+}
+
+/* ================================================================
+   58 — RESEARCH ROUTE
+================================================================ */
+
+app.post(
+    "/api/research",
+    optionalAuth,
+    async (
+        req,
+        res
+    ) => {
+
+        try {
+
+            const query =
+                cleanText(
+                    req.body.query ||
+                    req.body.question ||
+                    req.body.text,
+                    12000
+                );
+
+            if (
+                !query
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+                        success:
+                            false,
+
+                        error:
+                            "Araştırma konusu gerekli."
+                    });
             }
-
 
             const result =
                 await performResearch(
-                    user,
-                    query
+                    query,
+                    req.user
                 );
 
+            const research =
+                getResearch();
+
+            const record = {
+
+                id:
+                    createId(
+                        "research"
+                    ),
+
+                userId:
+                    req.user.id,
+
+                ...result
+            };
+
+            research.push(
+                record
+            );
+
+            saveResearch(
+                research
+            );
 
             res.json({
 
                 success:
                     true,
 
-                query,
-
-                ...result
-
+                result:
+                    record
             });
 
-        } catch (error) {
+        } catch (
+            error
+        ) {
 
             logError(
-                "RESEARCH_ERROR",
+                "Research error",
                 {
                     error:
                         error.message
                 }
             );
 
-
-            res.status(500).json({
+            res.status(
+                500
+            ).json({
 
                 success:
                     false,
 
                 error:
+                    error.message ||
                     "Araştırma sırasında hata oluştu."
-
             });
-
         }
-
     }
 );
 
+app.get(
+    "/api/research",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 5. FILE ENGINE                                                   ║
-// ╚══════════════════════════════════════════════════════════════════╝
+        const records =
+            getResearch()
+                .filter(
+                    record =>
+                        record.userId ===
+                        req.user.id
+                )
+                .slice(
+                    -100
+                )
+                .reverse();
 
-function getFiles() {
+        res.json({
 
-    return readJSON(
-        DB_FILES.files,
-        []
-    );
+            success:
+                true,
 
-}
+            research:
+                records
+        });
+    }
+);
 
+/* ================================================================
+   59 — UNIVERSAL SEARCH
+================================================================ */
 
-function saveFiles(
-    files
-) {
+app.get(
+    "/api/search",
+    optionalAuth,
+    async (
+        req,
+        res
+    ) => {
 
-    return writeJSON(
-        DB_FILES.files,
-        files
-    );
+        try {
 
-}
+            const query =
+                cleanText(
+                    req.query.q ||
+                    req.query.query,
+                    10000
+                );
 
+            if (
+                !query
+            ) {
 
-function safeFilename(
+                return res
+                    .status(400)
+                    .json({
+                        success:
+                            false,
+
+                        error:
+                            "Arama sorgusu gerekli."
+                    });
+            }
+
+            const knowledge =
+                findKnowledgeAnswer(
+                    query
+                );
+
+            if (
+                knowledge
+            ) {
+
+                return res.json({
+
+                    success:
+                        true,
+
+                    source:
+                        "knowledge",
+
+                    result:
+                        knowledge.answer
+                });
+            }
+
+            const result =
+                await performResearch(
+                    query,
+                    req.user
+                );
+
+            res.json({
+
+                success:
+                    true,
+
+                source:
+                    result.source,
+
+                result:
+                    result.answer
+            });
+
+        } catch (
+            error
+        ) {
+
+            res.status(
+                500
+            ).json({
+
+                success:
+                    false,
+
+                error:
+                    error.message
+            });
+        }
+    }
+);
+
+/* ================================================================
+   60 — FILE STORAGE
+================================================================ */
+
+function sanitizeFileName(
     filename
 ) {
 
-    return cleanText(
-        filename,
-        180
-    )
-        .replace(
-            /[^a-zA-Z0-9ğüşöçıİĞÜŞÖÇ._ -]/g,
-            "_"
-        )
-        .replace(
-            /\s+/g,
-            "_"
+    let name =
+        cleanText(
+            filename,
+            255
         );
 
+    name =
+        name
+            .replace(
+                /[<>:"/\\|?*\x00-\x1F]/g,
+                "_"
+            )
+            .replace(
+                /\.\./g,
+                "_"
+            );
+
+    if (
+        !name
+    ) {
+
+        name =
+            "dosya.txt";
+    }
+
+    return name;
 }
 
+function getFileExtension(
+    filename
+) {
+
+    return path
+        .extname(
+            filename
+        )
+        .toLowerCase();
+}
+
+function getFileSizeMB(
+    bytes
+) {
+
+    return (
+        safeNumber(
+            bytes
+        ) /
+        1024 /
+        1024
+    );
+}
+
+/* ================================================================
+   61 — FILE UPLOAD API
+================================================================ */
 
 app.post(
     "/api/upload",
-    (req, res) => {
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         try {
 
             const user =
-                getRequestUser(
-                    req
-                );
-
+                req.user;
 
             const filename =
-                safeFilename(
-                    req.body?.filename ||
-                    req.body?.name ||
+                sanitizeFileName(
+                    req.body.filename ||
+                    req.body.name ||
                     "dosya.txt"
                 );
 
-
             const content =
-                req.body?.content;
-
+                req.body.content;
 
             if (
-                typeof content !==
-                "string"
+                !content
             ) {
 
-                return res.status(400).json({
+                return res
+                    .status(400)
+                    .json({
+                        success:
+                            false,
 
-                    success:
-                        false,
-
-                    error:
-                        "Base64 content gerekli."
-
-                });
-
+                        error:
+                            "Dosya içeriği gerekli."
+                    });
             }
 
+            let buffer;
 
-            const buffer =
-                Buffer.from(
-                    content,
-                    "base64"
-                );
+            try {
 
+                if (
+                    typeof content ===
+                    "string" &&
+                    content.startsWith(
+                        "data:"
+                    )
+                ) {
+
+                    const base64 =
+                        content.split(
+                            ","
+                        )[1] ||
+                        "";
+
+                    buffer =
+                        Buffer.from(
+                            base64,
+                            "base64"
+                        );
+
+                } else {
+
+                    buffer =
+                        Buffer.from(
+                            String(
+                                content
+                            ),
+                            "base64"
+                        );
+                }
+
+            } catch (
+                error
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+                        success:
+                            false,
+
+                        error:
+                            "Dosya verisi geçersiz."
+                    });
+            }
 
             const plan =
-                getPlan(
+                getPlanForUser(
                     user
                 );
 
-
             const maxBytes =
-                plan.storageMB *
+                plan.maxUploadMB *
                 1024 *
                 1024;
-
 
             if (
                 buffer.length >
                 maxBytes
             ) {
 
-                return res.status(413).json({
+                return res
+                    .status(413)
+                    .json({
+                        success:
+                            false,
 
-                    success:
-                        false,
-
-                    error:
-                        `Dosya boyutu plan limitini aşıyor. Limit: ${plan.storageMB} MB.`
-
-                });
-
+                        error:
+                            `Dosya limiti ${plan.maxUploadMB} MB.`
+                    });
             }
 
-
-            const uniqueName =
-                `${Date.now()}_${crypto.randomBytes(5).toString("hex")}_${filename}`;
-
-
-            const filePath =
-                path.join(
-                    UPLOADS_DIR,
-                    uniqueName
+            const fileId =
+                createId(
+                    "file"
                 );
 
+            const storedName =
+                `${fileId}_${filename}`;
+
+            const fullPath =
+                path.join(
+                    UPLOADS_DIR,
+                    storedName
+                );
 
             fs.writeFileSync(
-                filePath,
+                fullPath,
                 buffer
             );
-
 
             const files =
                 getFiles();
 
-
-            const fileRecord = {
+            const file = {
 
                 id:
-                    createId("file"),
+                    fileId,
 
                 userId:
                     user.id,
@@ -4627,43 +6823,54 @@ app.post(
                 originalName:
                     filename,
 
-                storedName:
-                    uniqueName,
+                storedName,
 
                 path:
-                    filePath,
+                    fullPath,
 
                 size:
                     buffer.length,
 
-                mimeType:
-                    req.body?.mimeType ||
-                    "application/octet-stream",
+                sizeMB:
+                    getFileSizeMB(
+                        buffer.length
+                    ),
+
+                extension:
+                    getFileExtension(
+                        filename
+                    ),
 
                 createdAt:
                     nowISO()
-
             };
 
-
             files.push(
-                fileRecord
+                file
             );
-
 
             saveFiles(
                 files
             );
 
-
-            updateUsage(
+            incrementUsage(
                 user.id,
-                "bytesUploaded",
-                buffer.length
+                "uploads"
             );
 
+            const statistics =
+                getStatistics();
 
-            res.json({
+            statistics.totalFiles =
+                files.length;
+
+            saveStatistics(
+                statistics
+            );
+
+            res.status(
+                201
+            ).json({
 
                 success:
                     true,
@@ -4671,67 +6878,69 @@ app.post(
                 file: {
 
                     id:
-                        fileRecord.id,
+                        file.id,
 
                     name:
-                        filename,
+                        file.originalName,
 
                     size:
-                        buffer.length,
+                        file.size,
 
-                    mimeType:
-                        fileRecord.mimeType,
+                    sizeMB:
+                        file.sizeMB,
+
+                    extension:
+                        file.extension,
 
                     createdAt:
-                        fileRecord.createdAt
-
+                        file.createdAt
                 }
-
             });
 
-        } catch (error) {
+        } catch (
+            error
+        ) {
 
             logError(
-                "UPLOAD_ERROR",
+                "Upload error",
                 {
                     error:
                         error.message
                 }
             );
 
-
-            res.status(500).json({
+            res.status(
+                500
+            ).json({
 
                 success:
                     false,
 
                 error:
-                    "Dosya yüklenemedi."
-
+                    "Dosya yüklenirken hata oluştu."
             });
-
         }
-
     }
 );
 
+/* ================================================================
+   62 — FILE LIST
+================================================================ */
 
 app.get(
     "/api/files",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         const files =
             getFiles()
                 .filter(
                     file =>
                         file.userId ===
-                        user.id
+                        req.user.id
                 )
                 .map(
                     file => ({
@@ -4745,15 +6954,17 @@ app.get(
                         size:
                             file.size,
 
-                        mimeType:
-                            file.mimeType,
+                        sizeMB:
+                            file.sizeMB,
+
+                        extension:
+                            file.extension,
 
                         createdAt:
                             file.createdAt
-
                     })
-                );
-
+                )
+                .reverse();
 
         res.json({
 
@@ -4761,244 +6972,214 @@ app.get(
                 true,
 
             files
-
         });
-
     }
 );
 
+/* ================================================================
+   63 — FILE DELETE
+================================================================ */
 
 app.delete(
     "/api/files/:id",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         const files =
             getFiles();
 
-
-        const target =
-            files.find(
+        const index =
+            files.findIndex(
                 file =>
                     file.id ===
                     req.params.id &&
                     file.userId ===
-                    user.id
+                    req.user.id
             );
 
+        if (
+            index < 0
+        ) {
 
-        if (!target) {
+            return res
+                .status(404)
+                .json({
+                    success:
+                        false,
 
-            return res.status(404).json({
-
-                success:
-                    false,
-
-                error:
-                    "Dosya bulunamadı."
-
-            });
-
+                    error:
+                        "Dosya bulunamadı."
+                });
         }
 
+        const file =
+            files[
+                index
+            ];
 
         try {
 
             if (
-                target.path &&
+                file.path &&
                 fs.existsSync(
-                    target.path
+                    file.path
                 )
             ) {
 
                 fs.unlinkSync(
-                    target.path
+                    file.path
                 );
-
             }
 
-        } catch (error) {
+        } catch (
+            error
+        ) {
 
-            logError(
-                "FILE_DELETE_ERROR",
+            logWarn(
+                "Dosya fiziksel olarak silinemedi",
                 {
                     error:
                         error.message
                 }
             );
-
         }
 
-
-        const filtered =
-            files.filter(
-                file =>
-                    file.id !==
-                    target.id
-            );
-
-
-        saveFiles(
-            filtered
+        files.splice(
+            index,
+            1
         );
 
+        saveFiles(
+            files
+        );
 
         res.json({
 
             success:
                 true,
 
-            deleted:
-                true
-
+            message:
+                "Dosya silindi."
         });
-
     }
 );
 
+/* ================================================================
+   64 — PROJECT SYSTEM
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 6. PROJECT ENGINE                                                ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-function getProjects() {
-
-    return readJSON(
-        DB_FILES.projects,
-        []
-    );
-
-}
-
-
-function saveProjects(
-    projects
+function findProjectById(
+    projectId
 ) {
 
-    return writeJSON(
-        DB_FILES.projects,
-        projects
-    );
-
+    return getProjects()
+        .find(
+            project =>
+                project.id ===
+                projectId
+        ) || null;
 }
-
 
 function createProject(
-    user,
-    data = {}
+    userId,
+    input = {}
 ) {
+
+    const projects =
+        getProjects();
 
     const project = {
 
         id:
-            createId("project"),
+            createId(
+                "project"
+            ),
 
-        userId:
-            user.id,
+        userId,
 
         name:
             cleanText(
-                data.name ||
-                "Yeni Proje",
+                input.name ||
+                "Yeni proje",
                 200
             ),
 
         description:
             cleanText(
-                data.description ||
+                input.description ||
                 "",
                 5000
             ),
 
         language:
             cleanText(
-                data.language ||
+                input.language ||
                 "javascript",
                 50
             ),
 
         code:
             cleanText(
-                data.code ||
+                input.code ||
                 "",
                 100000
             ),
 
         files:
             Array.isArray(
-                data.files
+                input.files
             )
-                ? data.files
+                ? input.files
                 : [],
 
         createdAt:
             nowISO(),
 
         updatedAt:
-            nowISO()
+            nowISO(),
 
+        starred:
+            false
     };
-
-
-    const projects =
-        getProjects();
-
 
     projects.push(
         project
     );
 
-
     saveProjects(
         projects
     );
 
-
     return project;
-
 }
 
-
-function findProject(
-    id,
-    userId
-) {
-
-    return (
-        getProjects().find(
-            project =>
-                project.id === id &&
-                project.userId === userId
-        ) || null
-    );
-
-}
-
+/* ================================================================
+   65 — PROJECT LIST
+================================================================ */
 
 app.get(
     "/api/projects",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         const projects =
             getProjects()
                 .filter(
                     project =>
                         project.userId ===
-                        user.id
+                        req.user.id
                 )
                 .sort(
-                    (a, b) =>
+                    (
+                        a,
+                        b
+                    ) =>
                         new Date(
                             b.updatedAt
                         ) -
@@ -5007,36 +7188,96 @@ app.get(
                         )
                 );
 
-
         res.json({
 
             success:
                 true,
 
             projects
-
         });
-
     }
 );
 
+/* ================================================================
+   66 — PROJECT CREATE
+================================================================ */
 
 app.post(
     "/api/projects",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         const project =
             createProject(
-                user,
-                req.body || {}
+                req.user.id,
+                req.body
             );
 
+        res.status(
+            201
+        ).json({
+
+            success:
+                true,
+
+            project
+        });
+    }
+);
+
+/* ================================================================
+   67 — PROJECT GET
+================================================================ */
+
+app.get(
+    "/api/projects/:id",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const project =
+            findProjectById(
+                req.params.id
+            );
+
+        if (
+            !project
+        ) {
+
+            return res
+                .status(404)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Proje bulunamadı."
+                });
+        }
+
+        if (
+            project.userId !==
+            req.user.id &&
+            !isAdminUser(
+                req.user
+            )
+        ) {
+
+            return res
+                .status(403)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Bu projeye erişemezsiniz."
+                });
+        }
 
         res.json({
 
@@ -5044,248 +7285,482 @@ app.post(
                 true,
 
             project
-
         });
-
     }
 );
 
+/* ================================================================
+   68 — PROJECT UPDATE
+================================================================ */
 
 app.put(
     "/api/projects/:id",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         const projects =
             getProjects();
-
 
         const index =
             projects.findIndex(
                 project =>
                     project.id ===
-                    req.params.id &&
-                    project.userId ===
-                    user.id
+                    req.params.id
             );
 
-
         if (
-            index === -1
+            index < 0
         ) {
 
-            return res.status(404).json({
+            return res
+                .status(404)
+                .json({
+                    success:
+                        false,
 
-                success:
-                    false,
-
-                error:
-                    "Proje bulunamadı."
-
-            });
-
+                    error:
+                        "Proje bulunamadı."
+                });
         }
 
+        const project =
+            projects[
+                index
+            ];
 
-        const old =
-            projects[index];
+        if (
+            project.userId !==
+            req.user.id &&
+            !isAdminUser(
+                req.user
+            )
+        ) {
 
+            return res
+                .status(403)
+                .json({
+                    success:
+                        false,
 
-        projects[index] = {
+                    error:
+                        "Yetkiniz yok."
+                });
+        }
 
-            ...old,
+        if (
+            req.body.name !==
+            undefined
+        ) {
 
-            name:
-                req.body?.name !== undefined
-                    ? cleanText(
-                        req.body.name,
-                        200
-                    )
-                    : old.name,
+            project.name =
+                cleanText(
+                    req.body.name,
+                    200
+                );
+        }
 
-            description:
-                req.body?.description !== undefined
-                    ? cleanText(
-                        req.body.description,
-                        5000
-                    )
-                    : old.description,
+        if (
+            req.body.description !==
+            undefined
+        ) {
 
-            language:
-                req.body?.language !== undefined
-                    ? cleanText(
-                        req.body.language,
-                        50
-                    )
-                    : old.language,
+            project.description =
+                cleanText(
+                    req.body.description,
+                    5000
+                );
+        }
 
-            code:
-                req.body?.code !== undefined
-                    ? cleanText(
-                        req.body.code,
-                        100000
-                    )
-                    : old.code,
+        if (
+            req.body.language !==
+            undefined
+        ) {
 
-            files:
-                Array.isArray(
-                    req.body?.files
-                )
-                    ? req.body.files
-                    : old.files,
+            project.language =
+                cleanText(
+                    req.body.language,
+                    50
+                );
+        }
 
-            updatedAt:
-                nowISO()
+        if (
+            req.body.code !==
+            undefined
+        ) {
 
-        };
+            project.code =
+                cleanText(
+                    req.body.code,
+                    100000
+                );
+        }
 
+        if (
+            Array.isArray(
+                req.body.files
+            )
+        ) {
+
+            project.files =
+                req.body.files;
+        }
+
+        project.updatedAt =
+            nowISO();
+
+        projects[
+            index
+        ] =
+            project;
 
         saveProjects(
             projects
         );
 
-
         res.json({
 
             success:
                 true,
 
-            project:
-                projects[index]
-
+            project
         });
-
     }
 );
 
+/* ================================================================
+   69 — PROJECT DELETE
+================================================================ */
 
 app.delete(
     "/api/projects/:id",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         const projects =
             getProjects();
 
-
-        const filtered =
-            projects.filter(
+        const index =
+            projects.findIndex(
                 project =>
-                    !(
-                        project.id ===
-                        req.params.id &&
-                        project.userId ===
-                        user.id
-                    )
+                    project.id ===
+                    req.params.id
             );
 
+        if (
+            index < 0
+        ) {
 
-        const deleted =
-            filtered.length !==
-            projects.length;
+            return res
+                .status(404)
+                .json({
+                    success:
+                        false,
 
+                    error:
+                        "Proje bulunamadı."
+                });
+        }
 
-        saveProjects(
-            filtered
+        const project =
+            projects[
+                index
+            ];
+
+        if (
+            project.userId !==
+            req.user.id &&
+            !isAdminUser(
+                req.user
+            )
+        ) {
+
+            return res
+                .status(403)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Yetkiniz yok."
+                });
+        }
+
+        projects.splice(
+            index,
+            1
         );
 
+        saveProjects(
+            projects
+        );
 
         res.json({
 
             success:
                 true,
 
-            deleted
-
+            message:
+                "Proje silindi."
         });
-
     }
 );
 
+/* ================================================================
+   70 — CODE ANALYSIS
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 7. CODE ANALYZER                                                 ║
-// ╚══════════════════════════════════════════════════════════════════╝
+function detectCodeLanguage(
+    code,
+    requested
+) {
+
+    if (
+        requested
+    ) {
+
+        return cleanText(
+            requested,
+            50
+        );
+    }
+
+    const text =
+        String(
+            code || ""
+        );
+
+    if (
+        /<html|<div|<script/i
+            .test(
+                text
+            )
+    ) {
+        return "html";
+    }
+
+    if (
+        /function\s+\w+|console\.log|const\s+\w+|let\s+\w+/i
+            .test(
+                text
+            )
+    ) {
+        return "javascript";
+    }
+
+    if (
+        /def\s+\w+\(|import\s+\w+|print\s*\(/i
+            .test(
+                text
+            )
+    ) {
+        return "python";
+    }
+
+    if (
+        /#include\s*<|std::|int\s+main\s*\(/i
+            .test(
+                text
+            )
+    ) {
+        return "cpp";
+    }
+
+    if (
+        /using\s+System|namespace\s+\w+/i
+            .test(
+                text
+            )
+    ) {
+        return "csharp";
+    }
+
+    if (
+        /public\s+static\s+void\s+main|class\s+\w+/i
+            .test(
+                text
+            )
+    ) {
+        return "java";
+    }
+
+    return "unknown";
+}
+
+function basicCodeChecks(
+    code,
+    language
+) {
+
+    const issues = [];
+
+    const text =
+        String(
+            code || ""
+        );
+
+    if (
+        !text.trim()
+    ) {
+
+        issues.push({
+
+            severity:
+                "warning",
+
+            message:
+                "Kod boş."
+        });
+
+        return issues;
+    }
+
+    if (
+        language ===
+        "javascript"
+    ) {
+
+        const opens =
+            (
+                text.match(
+                    /{/g
+                ) || []
+            ).length;
+
+        const closes =
+            (
+                text.match(
+                    /}/g
+                ) || []
+            ).length;
+
+        if (
+            opens !==
+            closes
+        ) {
+
+            issues.push({
+
+                severity:
+                    "error",
+
+                message:
+                    "Süslü parantez sayıları eşleşmiyor."
+            });
+        }
+
+        if (
+            text.includes(
+                "eval("
+            )
+        ) {
+
+            issues.push({
+
+                severity:
+                    "warning",
+
+                message:
+                    "eval() kullanımı güvenlik açısından dikkat gerektirir."
+            });
+        }
+    }
+
+    if (
+        language ===
+        "html"
+    ) {
+
+        if (
+            !/<html/i.test(
+                text
+            ) &&
+            !/<body/i.test(
+                text
+            )
+        ) {
+
+            issues.push({
+
+                severity:
+                    "info",
+
+                message:
+                    "Tam HTML belgesi yerine parça HTML kullanılıyor olabilir."
+            });
+        }
+    }
+
+    return issues;
+}
 
 app.post(
     "/api/code/analyze",
-    async (req, res) => {
+    optionalAuth,
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
-            const user =
-                getRequestUser(
-                    req
-                );
-
-
             const code =
                 cleanText(
-                    req.body?.code ||
-                    "",
-                    50000
+                    req.body.code,
+                    100000
                 );
-
 
             const language =
-                cleanText(
-                    req.body?.language ||
-                    "javascript",
-                    50
+                detectCodeLanguage(
+                    code,
+                    req.body.language
                 );
 
+            const issues =
+                basicCodeChecks(
+                    code,
+                    language
+                );
 
-            if (!code) {
+            let aiAnalysis =
+                null;
 
-                return res.status(400).json({
+            if (
+                req.body.ai === true ||
+                req.body.ai ===
+                    "true"
+            ) {
 
-                    success:
-                        false,
+                const prompt = `
+Aşağıdaki kodu analiz et.
 
-                    error:
-                        "Analiz edilecek kod boş."
-
-                });
-
-            }
-
-
-            const prompt = `
-Aşağıdaki ${language} kodunu analiz et.
+Dil:
+${language}
 
 Kod:
-
 ${code}
 
-Şunları açıkla:
-
-1. Kod ne yapıyor?
-2. Hatalar var mı?
-3. Güvenlik sorunları var mı?
-4. Performans sorunları var mı?
-5. Nasıl geliştirilebilir?
-6. Gerekirse düzeltilmiş kodu ver.
-
-Cevabı Türkçe ver.
+Şunları kısa ve teknik şekilde belirt:
+- Hatalar
+- Güvenlik sorunları
+- Performans sorunları
+- İyileştirme önerileri
 `;
 
+                const result =
+                    await callAI(
+                        prompt,
+                        []
+                    );
 
-            const result =
-                await callAI(
-                    prompt,
-                    []
-                );
-
+                aiAnalysis =
+                    result.text;
+            }
 
             res.json({
 
@@ -5294,260 +7769,198 @@ Cevabı Türkçe ver.
 
                 language,
 
-                result:
-                    result.text,
+                issues,
 
-                provider:
-                    result.provider,
-
-                model:
-                    result.model
-
+                aiAnalysis
             });
 
-        } catch (error) {
+        } catch (
+            error
+        ) {
 
-            logError(
-                "CODE_ANALYZE_ERROR",
-                {
-                    error:
-                        error.message
-                }
-            );
-
-
-            res.status(500).json({
+            res.status(
+                500
+            ).json({
 
                 success:
                     false,
 
                 error:
-                    "Kod analizi başarısız."
-
+                    error.message
             });
-
         }
-
     }
 );
 
+/* ================================================================
+   71 — PRO CODE SYSTEM
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 8. SEARCH ENGINE                                                  ║
-// ╚══════════════════════════════════════════════════════════════════╝
+const TURKAI_PRO_CODE =
+    process.env.TURKAI_PRO_CODE ||
+    "";
 
-app.get(
-    "/api/search",
-    async (req, res) => {
+app.post(
+    "/api/pro/activate",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
-        try {
+        const code =
+            cleanText(
+                req.body.code,
+                500
+            );
 
-            const user =
-                getRequestUser(
-                    req
-                );
+        if (
+            !TURKAI_PRO_CODE
+        ) {
 
-
-            const query =
-                cleanText(
-                    req.query.q ||
-                    req.query.query ||
-                    "",
-                    3000
-                );
-
-
-            if (!query) {
-
-                return res.status(400).json({
-
+            return res
+                .status(503)
+                .json({
                     success:
                         false,
 
                     error:
-                        "Arama sorgusu boş."
-
+                        "Pro aktivasyon sistemi yapılandırılmamış."
                 });
+        }
 
-            }
+        if (
+            !code ||
+            code !==
+                TURKAI_PRO_CODE
+        ) {
 
-
-            const knowledge =
-                findKnowledgeAnswer(
-                    query
-                );
-
-
-            if (knowledge) {
-
-                return res.json({
-
-                    success:
-                        true,
-
-                    query,
-
-                    result:
-                        knowledge.answer,
-
-                    source:
-                        "knowledge",
-
-                    provider:
-                        "knowledge"
-
-                });
-
-            }
-
-
-            const result =
-                await performResearch(
-                    user,
-                    query
-                );
-
-
-            res.json({
-
-                success:
-                    true,
-
-                query,
-
-                result:
-                    result.text,
-
-                source:
-                    result.provider,
-
-                provider:
-                    result.provider,
-
-                model:
-                    result.model
-
-            });
-
-        } catch (error) {
-
-            logError(
-                "SEARCH_ERROR",
+            logSecurity(
+                "Geçersiz Pro kodu",
                 {
-                    error:
-                        error.message
+                    userId:
+                        req.user.id
                 }
             );
 
+            return res
+                .status(403)
+                .json({
+                    success:
+                        false,
 
-            res.status(500).json({
-
-                success:
-                    false,
-
-                error:
-                    "Arama başarısız."
-
-            });
-
+                    error:
+                        "Pro kodu geçersiz."
+                });
         }
 
+        const users =
+            getUsers();
+
+        const index =
+            users.findIndex(
+                user =>
+                    user.id ===
+                    req.user.id
+            );
+
+        if (
+            index < 0
+        ) {
+
+            return res
+                .status(404)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Kullanıcı bulunamadı."
+                });
+        }
+
+        users[
+            index
+        ].plan =
+            "pro";
+
+        users[
+            index
+        ].updatedAt =
+            nowISO();
+
+        saveUsers(
+            users
+        );
+
+        const payments =
+            getPayments();
+
+        payments.push({
+
+            id:
+                createId(
+                    "payment"
+                ),
+
+            userId:
+                req.user.id,
+
+            type:
+                "pro_activation",
+
+            plan:
+                "pro",
+
+            amount:
+                0,
+
+            currency:
+                "TRY",
+
+            status:
+                "activated",
+
+            createdAt:
+                nowISO()
+        });
+
+        savePayments(
+            payments
+        );
+
+        res.json({
+
+            success:
+                true,
+
+            message:
+                "TürkAI Pro aktif edildi.",
+
+            plan:
+                "pro"
+        });
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 9. ADMIN ENGINE                                                  ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-const ADMIN_EMAIL =
-    normalizeText(
-        process.env.ADMIN_EMAIL ||
-        ""
-    );
-
-
-function isAdmin(
-    user
-) {
-
-    if (!user) {
-
-        return false;
-
-    }
-
-
-    if (
-        user.plan ===
-        "developer"
-    ) {
-
-        return true;
-
-    }
-
-
-    if (
-        ADMIN_EMAIL &&
-        normalizeText(
-            user.email
-        ) ===
-        ADMIN_EMAIL
-    ) {
-
-        return true;
-
-    }
-
-
-    return false;
-
-}
-
-
-function requireAdmin(
-    req,
-    res,
-    next
-) {
-
-    const user =
-        getRequestUser(
-            req
-        );
-
-
-    if (
-        !isAdmin(user)
-    ) {
-
-        return res.status(403).json({
-
-            success:
-                false,
-
-            error:
-                "Yönetici yetkisi gerekli."
-
-        });
-
-    }
-
-
-    req.adminUser =
-        user;
-
-
-    next();
-
-}
-
+/* ================================================================
+   72 — ADMIN STATUS
+================================================================ */
 
 app.get(
     "/api/admin/status",
+    optionalAuth,
     requireAdmin,
-    (req, res) => {
+    (
+        req,
+        res
+    ) => {
+
+        const users =
+            getUsers();
+
+        const statistics =
+            getStatistics();
 
         res.json({
 
@@ -5557,19 +7970,53 @@ app.get(
             admin:
                 true,
 
-            user:
-                req.adminUser
+            statistics,
 
+            counts: {
+
+                users:
+                    users.length,
+
+                chats:
+                    getChats()
+                        .length,
+
+                messages:
+                    getMessages()
+                        .length,
+
+                memories:
+                    getMemories()
+                        .length,
+
+                files:
+                    getFiles()
+                        .length,
+
+                projects:
+                    getProjects()
+                        .length,
+
+                research:
+                    getResearch()
+                        .length
+            }
         });
-
     }
 );
 
+/* ================================================================
+   73 — ADMIN USERS
+================================================================ */
 
 app.get(
     "/api/admin/users",
+    optionalAuth,
     requireAdmin,
-    (req, res) => {
+    (
+        req,
+        res
+    ) => {
 
         const users =
             getUsers()
@@ -5588,6 +8035,12 @@ app.get(
                         plan:
                             user.plan,
 
+                        role:
+                            user.role,
+
+                        provider:
+                            user.provider,
+
                         active:
                             user.active,
 
@@ -5596,35 +8049,34 @@ app.get(
 
                         lastSeenAt:
                             user.lastSeenAt
-
                     })
                 );
-
 
         res.json({
 
             success:
                 true,
 
-            count:
-                users.length,
-
             users
-
         });
-
     }
 );
 
+/* ================================================================
+   74 — ADMIN USER UPDATE
+================================================================ */
 
 app.patch(
     "/api/admin/users/:id",
+    optionalAuth,
     requireAdmin,
-    (req, res) => {
+    (
+        req,
+        res
+    ) => {
 
         const users =
             getUsers();
-
 
         const index =
             users.findIndex(
@@ -5633,226 +8085,184 @@ app.patch(
                     req.params.id
             );
 
-
         if (
-            index === -1
+            index < 0
         ) {
 
-            return res.status(404).json({
+            return res
+                .status(404)
+                .json({
+                    success:
+                        false,
 
-                success:
-                    false,
-
-                error:
-                    "Kullanıcı bulunamadı."
-
-            });
-
+                    error:
+                        "Kullanıcı bulunamadı."
+                });
         }
 
-
-        const allowedPlans =
-            Object.keys(
-                PLANS
-            );
-
-
-        const requestedPlan =
-            cleanText(
-                req.body?.plan ||
-                "",
-                30
-            );
-
+        const user =
+            users[
+                index
+            ];
 
         if (
-            requestedPlan &&
-            allowedPlans.includes(
-                requestedPlan
-            )
+            req.body.plan
         ) {
 
-            users[index].plan =
-                requestedPlan;
+            const requestedPlan =
+                cleanText(
+                    req.body.plan,
+                    30
+                );
 
+            if (
+                PLANS[
+                    requestedPlan
+                ]
+            ) {
+
+                user.plan =
+                    requestedPlan;
+            }
         }
-
 
         if (
-            typeof req.body?.active ===
-            "boolean"
+            req.body.role
         ) {
 
-            users[index].active =
-                req.body.active;
-
+            user.role =
+                cleanText(
+                    req.body.role,
+                    30
+                );
         }
 
+        if (
+            req.body.name !==
+            undefined
+        ) {
 
-        users[index].updatedAt =
+            user.name =
+                cleanText(
+                    req.body.name,
+                    120
+                );
+        }
+
+        if (
+            req.body.active !==
+            undefined
+        ) {
+
+            user.active =
+                Boolean(
+                    req.body.active
+                );
+        }
+
+        user.updatedAt =
             nowISO();
 
+        users[
+            index
+        ] =
+            user;
 
         saveUsers(
             users
         );
 
+        addAuditLog(
+            req.user.id,
+            "admin_user_update",
+            {
+                targetUserId:
+                    user.id
+            }
+        );
 
         res.json({
 
             success:
                 true,
 
-            user:
-                users[index]
-
+            user
         });
-
     }
 );
 
+/* ================================================================
+   75 — ADMIN USER DELETE
+================================================================ */
 
 app.delete(
     "/api/admin/users/:id",
+    optionalAuth,
     requireAdmin,
-    (req, res) => {
+    (
+        req,
+        res
+    ) => {
 
         const users =
             getUsers();
-
-
-        const filtered =
-            users.filter(
-                user =>
-                    user.id !==
-                    req.params.id
-            );
-
-
-        saveUsers(
-            filtered
-        );
-
-
-        res.json({
-
-            success:
-                true,
-
-            deleted:
-                filtered.length !==
-                users.length
-
-        });
-
-    }
-);
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 10. PRO CODE SYSTEM                                               ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-const TURKAI_PRO_CODE =
-    process.env.TURKAI_PRO_CODE ||
-    "";
-
-
-app.post(
-    "/api/pro/activate",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
-
-        if (
-            user.guest
-        ) {
-
-            return res.status(401).json({
-
-                success:
-                    false,
-
-                error:
-                    "Önce kullanıcı hesabı gerekli."
-
-            });
-
-        }
-
-
-        const code =
-            cleanText(
-                req.body?.code ||
-                "",
-                200
-            );
-
-
-        if (
-            !TURKAI_PRO_CODE ||
-            code !==
-            TURKAI_PRO_CODE
-        ) {
-
-            return res.status(403).json({
-
-                success:
-                    false,
-
-                error:
-                    "Geçersiz aktivasyon kodu."
-
-            });
-
-        }
-
-
-        const users =
-            getUsers();
-
 
         const index =
             users.findIndex(
-                item =>
-                    item.id ===
-                    user.id
+                user =>
+                    user.id ===
+                    req.params.id
             );
 
-
         if (
-            index === -1
+            index < 0
         ) {
 
-            return res.status(404).json({
+            return res
+                .status(404)
+                .json({
+                    success:
+                        false,
 
-                success:
-                    false,
-
-                error:
-                    "Kullanıcı bulunamadı."
-
-            });
-
+                    error:
+                        "Kullanıcı bulunamadı."
+                });
         }
 
+        const target =
+            users[
+                index
+            ];
 
-        users[index].plan =
-            "pro";
-
-
-        users[index].updatedAt =
-            nowISO();
-
+        users.splice(
+            index,
+            1
+        );
 
         saveUsers(
             users
         );
 
+        const sessions =
+            getSessions()
+                .filter(
+                    session =>
+                        session.userId !==
+                        target.id
+                );
+
+        saveSessions(
+            sessions
+        );
+
+        addAuditLog(
+            req.user.id,
+            "admin_user_delete",
+            {
+                targetUserId:
+                    target.id
+            }
+        );
 
         res.json({
 
@@ -5860,401 +8270,14 @@ app.post(
                 true,
 
             message:
-                "TürkAI Pro aktif edildi.",
-
-            plan:
-                PLANS.pro
-
+                "Kullanıcı silindi."
         });
-
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 11. SETTINGS ENGINE                                               ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-function getSettings() {
-
-    return readJSON(
-        DB_FILES.settings,
-        DEFAULT_DATABASE.settings
-    );
-
-}
-
-
-function saveSettings(
-    settings
-) {
-
-    return writeJSON(
-        DB_FILES.settings,
-        settings
-    );
-
-}
-
-
-app.get(
-    "/api/settings",
-    (req, res) => {
-
-        const settings =
-            getSettings();
-
-
-        const publicSettings = {
-
-            maintenance:
-                Boolean(
-                    settings.maintenance
-                ),
-
-            allowRegistration:
-                Boolean(
-                    settings.allowRegistration
-                ),
-
-            maxUploadMB:
-                Number(
-                    settings.maxUploadMB ||
-                    25
-                ),
-
-            defaultModel:
-                settings.defaultModel ||
-                "fast",
-
-            version:
-                settings.version ||
-                APP_VERSION
-
-        };
-
-
-        res.json({
-
-            success:
-                true,
-
-            settings:
-                publicSettings
-
-        });
-
-    }
-);
-
-
-app.patch(
-    "/api/settings",
-    requireAdmin,
-    (req, res) => {
-
-        const settings =
-            getSettings();
-
-
-        if (
-            typeof req.body?.maintenance ===
-            "boolean"
-        ) {
-
-            settings.maintenance =
-                req.body.maintenance;
-
-        }
-
-
-        if (
-            typeof req.body?.allowRegistration ===
-            "boolean"
-        ) {
-
-            settings.allowRegistration =
-                req.body.allowRegistration;
-
-        }
-
-
-        if (
-            Number.isFinite(
-                Number(
-                    req.body?.maxUploadMB
-                )
-            )
-        ) {
-
-            settings.maxUploadMB =
-                Math.max(
-                    1,
-                    Math.min(
-                        1000,
-                        Number(
-                            req.body.maxUploadMB
-                        )
-                    )
-                );
-
-        }
-
-
-        if (
-            typeof req.body?.defaultModel ===
-            "string"
-        ) {
-
-            settings.defaultModel =
-                cleanText(
-                    req.body.defaultModel,
-                    100
-                );
-
-        }
-
-
-        settings.updatedAt =
-            nowISO();
-
-
-        saveSettings(
-            settings
-        );
-
-
-        res.json({
-
-            success:
-                true,
-
-            settings
-
-        });
-
-    }
-);
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 12. NOTIFICATION ENGINE                                          ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-function getNotifications() {
-
-    return readJSON(
-        DB_FILES.notifications,
-        []
-    );
-
-}
-
-
-function saveNotifications(
-    notifications
-) {
-
-    return writeJSON(
-        DB_FILES.notifications,
-        notifications
-    );
-
-}
-
-
-function createNotification(
-    userId,
-    title,
-    message,
-    type = "info"
-) {
-
-    const notifications =
-        getNotifications();
-
-
-    const notification = {
-
-        id:
-            createId("notification"),
-
-        userId,
-
-        title:
-            cleanText(
-                title,
-                200
-            ),
-
-        message:
-            cleanText(
-                message,
-                5000
-            ),
-
-        type:
-            cleanText(
-                type,
-                50
-            ),
-
-        read:
-            false,
-
-        createdAt:
-            nowISO()
-
-    };
-
-
-    notifications.push(
-        notification
-    );
-
-
-    saveNotifications(
-        notifications
-    );
-
-
-    return notification;
-
-}
-
-
-app.get(
-    "/api/notifications",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
-
-        const notifications =
-            getNotifications()
-                .filter(
-                    item =>
-                        item.userId ===
-                        user.id
-                )
-                .sort(
-                    (a, b) =>
-                        new Date(
-                            b.createdAt
-                        ) -
-                        new Date(
-                            a.createdAt
-                        )
-                );
-
-
-        res.json({
-
-            success:
-                true,
-
-            notifications
-
-        });
-
-    }
-);
-
-
-app.post(
-    "/api/notifications/:id/read",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
-
-        const notifications =
-            getNotifications();
-
-
-        const item =
-            notifications.find(
-                notification =>
-                    notification.id ===
-                    req.params.id &&
-                    notification.userId ===
-                    user.id
-            );
-
-
-        if (!item) {
-
-            return res.status(404).json({
-
-                success:
-                    false,
-
-                error:
-                    "Bildirim bulunamadı."
-
-            });
-
-        }
-
-
-        item.read =
-            true;
-
-
-        item.readAt =
-            nowISO();
-
-
-        saveNotifications(
-            notifications
-        );
-
-
-        res.json({
-
-            success:
-                true,
-
-            notification:
-                item
-
-        });
-
-    }
-);
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 13. AUDIT LOG                                                    ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-function getAuditLogs() {
-
-    return readJSON(
-        DB_FILES.audit,
-        []
-    );
-
-}
-
-
-function saveAuditLogs(
-    logs
-) {
-
-    return writeJSON(
-        DB_FILES.audit,
-        logs
-    );
-
-}
-
+/* ================================================================
+   76 — AUDIT LOG SYSTEM
+================================================================ */
 
 function addAuditLog(
     userId,
@@ -6265,11 +8288,12 @@ function addAuditLog(
     const logs =
         getAuditLogs();
 
-
-    const item = {
+    const entry = {
 
         id:
-            createId("audit"),
+            createId(
+                "audit"
+            ),
 
         userId,
 
@@ -6279,106 +8303,82 @@ function addAuditLog(
                 200
             ),
 
-        metadata,
+        metadata:
+            isObject(
+                metadata
+            )
+                ? metadata
+                : {},
 
         createdAt:
             nowISO()
-
     };
 
-
     logs.push(
-        item
+        entry
     );
-
 
     if (
         logs.length >
-        10000
+        5000
     ) {
 
         logs.splice(
             0,
-            logs.length - 10000
+            logs.length -
+                5000
         );
-
     }
-
 
     saveAuditLogs(
         logs
     );
 
-
-    return item;
-
+    return entry;
 }
-
 
 app.get(
     "/api/admin/audit",
+    optionalAuth,
     requireAdmin,
-    (req, res) => {
-
-        const logs =
-            getAuditLogs()
-                .slice(-500)
-                .reverse();
-
+    (
+        req,
+        res
+    ) => {
 
         res.json({
 
             success:
                 true,
 
-            logs
-
+            logs:
+                getAuditLogs()
+                    .slice(
+                        -500
+                    )
+                    .reverse()
         });
-
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 14. SECURITY ENGINE                                               ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-function getSecurityEvents() {
-
-    return readJSON(
-        DB_FILES.security,
-        []
-    );
-
-}
-
-
-function saveSecurityEvents(
-    events
-) {
-
-    return writeJSON(
-        DB_FILES.security,
-        events
-    );
-
-}
-
+/* ================================================================
+   77 — SECURITY EVENTS
+================================================================ */
 
 function addSecurityEvent(
     type,
-    message,
     metadata = {}
 ) {
 
     const events =
         getSecurityEvents();
 
-
     const event = {
 
         id:
-            createId("security"),
+            createId(
+                "sec"
+            ),
 
         type:
             cleanText(
@@ -6386,62 +8386,50 @@ function addSecurityEvent(
                 100
             ),
 
-        message:
-            cleanText(
-                message,
-                5000
-            ),
-
-        metadata,
+        metadata:
+            isObject(
+                metadata
+            )
+                ? metadata
+                : {},
 
         createdAt:
             nowISO()
-
     };
-
 
     events.push(
         event
     );
 
-
     if (
         events.length >
-        10000
+        5000
     ) {
 
         events.splice(
             0,
-            events.length - 10000
+            events.length -
+                5000
         );
-
     }
-
 
     saveSecurityEvents(
         events
     );
 
-
-    logSecurity(
-        message,
-        metadata
-    );
-
-
     return event;
-
 }
-
 
 app.get(
     "/api/security/status",
-    requireAdmin,
-    (req, res) => {
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         const events =
             getSecurityEvents();
-
 
         res.json({
 
@@ -6450,31 +8438,384 @@ app.get(
 
             security: {
 
-                events:
-                    events.length,
+                enabled:
+                    true,
 
-                lastEvent:
-                    events.length
-                        ? events[
-                            events.length - 1
-                        ]
-                        : null
+                helmet:
+                    true,
 
+                cors:
+                    true,
+
+                requestIds:
+                    true,
+
+                recentEvents:
+                    events
+                        .slice(
+                            -20
+                        )
+                        .reverse()
             }
-
         });
-
     }
 );
 
+/* ================================================================
+   78 — SETTINGS
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 15. IMAGE GENERATION JOB ENGINE                                  ║
-// ╚══════════════════════════════════════════════════════════════════╝
+app.get(
+    "/api/settings",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const settings =
+            getSettings();
+
+        res.json({
+
+            success:
+                true,
+
+            settings: {
+
+                maintenance:
+                    settings.maintenance,
+
+                allowRegistration:
+                    settings.allowRegistration,
+
+                allowGuest:
+                    settings.allowGuest,
+
+                defaultModel:
+                    settings.defaultModel,
+
+                defaultLanguage:
+                    settings.defaultLanguage,
+
+                timezone:
+                    settings.timezone,
+
+                maxUploadMB:
+                    settings.maxUploadMB,
+
+                maxMessageLength:
+                    settings.maxMessageLength,
+
+                enableMemory:
+                    settings.enableMemory,
+
+                enableResearch:
+                    settings.enableResearch,
+
+                enableCode:
+                    settings.enableCode,
+
+                enableImage:
+                    settings.enableImage,
+
+                enableVideo:
+                    settings.enableVideo,
+
+                enableSocket:
+                    settings.enableSocket
+            }
+        });
+    }
+);
+
+/* ================================================================
+   79 — ADMIN SETTINGS UPDATE
+================================================================ */
+
+app.patch(
+    "/api/settings",
+    optionalAuth,
+    requireAdmin,
+    (
+        req,
+        res
+    ) => {
+
+        const settings =
+            getSettings();
+
+        const allowedBoolean =
+            [
+                "maintenance",
+                "allowRegistration",
+                "allowGuest",
+                "enableMemory",
+                "enableResearch",
+                "enableCode",
+                "enableImage",
+                "enableVideo",
+                "enableSocket"
+            ];
+
+        for (
+            const key
+            of allowedBoolean
+        ) {
+
+            if (
+                req.body[key] !==
+                undefined
+            ) {
+
+                settings[key] =
+                    Boolean(
+                        req.body[key]
+                    );
+            }
+        }
+
+        if (
+            req.body.defaultModel
+        ) {
+
+            settings.defaultModel =
+                cleanText(
+                    req.body.defaultModel,
+                    100
+                );
+        }
+
+        if (
+            req.body.defaultLanguage
+        ) {
+
+            settings.defaultLanguage =
+                cleanText(
+                    req.body.defaultLanguage,
+                    50
+                );
+        }
+
+        if (
+            req.body.maxUploadMB !==
+            undefined
+        ) {
+
+            settings.maxUploadMB =
+                clamp(
+                    req.body.maxUploadMB,
+                    1,
+                    1000
+                );
+        }
+
+        if (
+            req.body.maxMessageLength !==
+            undefined
+        ) {
+
+            settings.maxMessageLength =
+                clamp(
+                    req.body.maxMessageLength,
+                    100,
+                    1000000
+                );
+        }
+
+        settings.updatedAt =
+            nowISO();
+
+        saveSettings(
+            settings
+        );
+
+        addAuditLog(
+            req.user.id,
+            "settings_update",
+            {
+                changed:
+                    Object.keys(
+                        req.body || {}
+                    )
+            }
+        );
+
+        res.json({
+
+            success:
+                true,
+
+            settings
+        });
+    }
+);
+
+/* ================================================================
+   80 — NOTIFICATIONS
+================================================================ */
+
+function createNotification(
+    userId,
+    input = {}
+) {
+
+    const notifications =
+        getNotifications();
+
+    const notification = {
+
+        id:
+            createId(
+                "notification"
+            ),
+
+        userId,
+
+        title:
+            cleanText(
+                input.title ||
+                "TürkAI",
+                200
+            ),
+
+        message:
+            cleanText(
+                input.message ||
+                "",
+                5000
+            ),
+
+        type:
+            cleanText(
+                input.type ||
+                "info",
+                50
+            ),
+
+        read:
+            false,
+
+        createdAt:
+            nowISO()
+    };
+
+    notifications.push(
+        notification
+    );
+
+    saveNotifications(
+        notifications
+    );
+
+    return notification;
+}
+
+app.get(
+    "/api/notifications",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const notifications =
+            getNotifications()
+                .filter(
+                    item =>
+                        item.userId ===
+                        req.user.id
+                )
+                .sort(
+                    (
+                        a,
+                        b
+                    ) =>
+                        new Date(
+                            b.createdAt
+                        ) -
+                        new Date(
+                            a.createdAt
+                        )
+                )
+                .slice(
+                    0,
+                    100
+                );
+
+        res.json({
+
+            success:
+                true,
+
+            notifications
+        });
+    }
+);
+
+app.post(
+    "/api/notifications/:id/read",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const notifications =
+            getNotifications();
+
+        const index =
+            notifications.findIndex(
+                item =>
+                    item.id ===
+                    req.params.id &&
+                    item.userId ===
+                    req.user.id
+            );
+
+        if (
+            index < 0
+        ) {
+
+            return res
+                .status(404)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Bildirim bulunamadı."
+                });
+        }
+
+        notifications[
+            index
+        ].read =
+            true;
+
+        saveNotifications(
+            notifications
+        );
+
+        res.json({
+
+            success:
+                true,
+
+            notification:
+                notifications[
+                    index
+                ]
+        });
+    }
+);
+
+/* ================================================================
+   81 — IMAGE JOB SYSTEM
+================================================================ */
 
 const IMAGE_JOBS =
     new Map();
-
 
 function createImageJob(
     user,
@@ -6484,7 +8825,9 @@ function createImageJob(
     const job = {
 
         id:
-            createId("imagejob"),
+            createId(
+                "image"
+            ),
 
         userId:
             user.id,
@@ -6492,184 +8835,129 @@ function createImageJob(
         prompt:
             cleanText(
                 prompt,
-                5000
+                10000
             ),
 
         status:
             "queued",
 
-        progress:
-            0,
+        provider:
+            "pending",
 
         createdAt:
             nowISO(),
 
         updatedAt:
-            nowISO(),
-
-        result:
-            null,
-
-        error:
-            null
-
+            nowISO()
     };
-
 
     IMAGE_JOBS.set(
         job.id,
         job
     );
 
-
     return job;
-
 }
-
 
 app.post(
     "/api/generate/image",
-    async (req, res) => {
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
-        const user =
-            getRequestUser(
-                req
-            );
+        if (
+            !usageAvailable(
+                req.user,
+                "images"
+            )
+        ) {
 
+            return res
+                .status(403)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Günlük görsel üretim limitin doldu veya planın görsel üretimini desteklemiyor."
+                });
+        }
 
         const prompt =
             cleanText(
-                req.body?.prompt ||
-                "",
-                5000
+                req.body.prompt ||
+                req.body.description,
+                10000
             );
-
-
-        if (!prompt) {
-
-            return res.status(400).json({
-
-                success:
-                    false,
-
-                error:
-                    "Görsel promptu boş."
-
-            });
-
-        }
-
-
-        const availability =
-            usageAvailable(
-                user,
-                "images",
-                1
-            );
-
 
         if (
-            !availability.allowed
+            !prompt
         ) {
 
-            return res.status(403).json({
+            return res
+                .status(400)
+                .json({
+                    success:
+                        false,
 
-                success:
-                    false,
-
-                error:
-                    "Günlük görsel limitin doldu.",
-
-                usage:
-                    availability
-
-            });
-
+                    error:
+                        "Görsel açıklaması gerekli."
+                });
         }
 
-
-        updateUsage(
-            user.id,
-            "images",
-            1
+        incrementUsage(
+            req.user.id,
+            "images"
         );
-
 
         const job =
             createImageJob(
-                user,
+                req.user,
                 prompt
             );
 
-
         /*
-         * Burada gerçek image provider
-         * daha sonra bağlanabilir.
+         * Gerçek görsel sağlayıcısı
+         * PARÇA 3 tarafında genişletilebilir.
          *
-         * Şimdilik güvenli job altyapısı
-         * oluşturuluyor.
+         * Burada bilinçli olarak sahte
+         * görsel URL'si üretilmez.
          */
 
-        setTimeout(
-            () => {
+        job.status =
+            "queued";
 
-                const current =
-                    IMAGE_JOBS.get(
-                        job.id
-                    );
+        job.message =
+            "Görsel üretim kuyruğuna alındı.";
 
+        job.updatedAt =
+            nowISO();
 
-                if (!current) {
-
-                    return;
-
-                }
-
-
-                current.status =
-                    "ready";
-
-                current.progress =
-                    100;
-
-                current.updatedAt =
-                    nowISO();
-
-                current.result = {
-
-                    type:
-                        "image",
-
-                    message:
-                        "Görsel üretim sağlayıcısı bağlanmaya hazır."
-
-                };
-
-            },
-            100
+        IMAGE_JOBS.set(
+            job.id,
+            job
         );
 
-
-        res.json({
+        res.status(
+            202
+        ).json({
 
             success:
                 true,
 
             job
-
         });
-
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 16. VIDEO GENERATION JOB ENGINE                                  ║
-// ╚══════════════════════════════════════════════════════════════════╝
+/* ================================================================
+   82 — VIDEO JOB SYSTEM
+================================================================ */
 
 const VIDEO_JOBS =
     new Map();
-
 
 function createVideoJob(
     user,
@@ -6679,7 +8967,9 @@ function createVideoJob(
     const job = {
 
         id:
-            createId("videojob"),
+            createId(
+                "video"
+            ),
 
         userId:
             user.id,
@@ -6687,204 +8977,146 @@ function createVideoJob(
         prompt:
             cleanText(
                 prompt,
-                5000
+                10000
             ),
 
         status:
             "queued",
 
-        progress:
-            0,
+        provider:
+            "pending",
 
         createdAt:
             nowISO(),
 
         updatedAt:
-            nowISO(),
-
-        result:
-            null,
-
-        error:
-            null
-
+            nowISO()
     };
-
 
     VIDEO_JOBS.set(
         job.id,
         job
     );
 
-
     return job;
-
 }
-
 
 app.post(
     "/api/generate/video",
-    async (req, res) => {
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
-        const user =
-            getRequestUser(
-                req
-            );
+        if (
+            !usageAvailable(
+                req.user,
+                "videos"
+            )
+        ) {
 
+            return res
+                .status(403)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Günlük video üretim limitin doldu veya planın video üretimini desteklemiyor."
+                });
+        }
 
         const prompt =
             cleanText(
-                req.body?.prompt ||
-                "",
-                5000
+                req.body.prompt ||
+                req.body.description,
+                10000
             );
-
-
-        if (!prompt) {
-
-            return res.status(400).json({
-
-                success:
-                    false,
-
-                error:
-                    "Video promptu boş."
-
-            });
-
-        }
-
-
-        const availability =
-            usageAvailable(
-                user,
-                "videos",
-                1
-            );
-
 
         if (
-            !availability.allowed
+            !prompt
         ) {
 
-            return res.status(403).json({
+            return res
+                .status(400)
+                .json({
+                    success:
+                        false,
 
-                success:
-                    false,
-
-                error:
-                    "Günlük video limitin doldu.",
-
-                usage:
-                    availability
-
-            });
-
+                    error:
+                        "Video açıklaması gerekli."
+                });
         }
 
-
-        updateUsage(
-            user.id,
-            "videos",
-            1
+        incrementUsage(
+            req.user.id,
+            "videos"
         );
-
 
         const job =
             createVideoJob(
-                user,
+                req.user,
                 prompt
             );
 
+        job.status =
+            "queued";
 
-        setTimeout(
-            () => {
+        job.message =
+            "Video üretim kuyruğuna alındı.";
 
-                const current =
-                    VIDEO_JOBS.get(
-                        job.id
-                    );
+        job.updatedAt =
+            nowISO();
 
-
-                if (!current) {
-
-                    return;
-
-                }
-
-
-                current.status =
-                    "ready";
-
-                current.progress =
-                    100;
-
-                current.updatedAt =
-                    nowISO();
-
-                current.result = {
-
-                    type:
-                        "video",
-
-                    message:
-                        "Video üretim sağlayıcısı bağlanmaya hazır."
-
-                };
-
-            },
-            100
+        VIDEO_JOBS.set(
+            job.id,
+            job
         );
 
-
-        res.json({
+        res.status(
+            202
+        ).json({
 
             success:
                 true,
 
             job
-
         });
-
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 17. GENERATION JOB STATUS                                        ║
-// ╚══════════════════════════════════════════════════════════════════╝
+/* ================================================================
+   83 — GENERATION JOB STATUS
+================================================================ */
 
 app.get(
     "/api/generate/jobs",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
 
         const images =
             Array.from(
                 IMAGE_JOBS.values()
             )
-                .filter(
-                    job =>
-                        job.userId ===
-                        user.id
-                );
-
+            .filter(
+                job =>
+                    job.userId ===
+                    req.user.id
+            );
 
         const videos =
             Array.from(
                 VIDEO_JOBS.values()
             )
-                .filter(
-                    job =>
-                        job.userId ===
-                        user.id
-                );
-
+            .filter(
+                job =>
+                    job.userId ===
+                    req.user.id
+            );
 
         res.json({
 
@@ -6894,27 +9126,141 @@ app.get(
             images,
 
             videos
-
         });
-
     }
 );
 
+/* ================================================================
+   84 — AI MODEL ROUTE
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 18. API DOCUMENTATION                                            ║
-// ╚══════════════════════════════════════════════════════════════════╝
+app.post(
+    "/api/chat/model",
+    optionalAuth,
+    async (
+        req,
+        res
+    ) => {
+
+        try {
+
+            const text =
+                cleanText(
+                    req.body.message ||
+                    req.body.prompt ||
+                    req.body.text,
+                    30000
+                );
+
+            if (
+                !text
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+                        success:
+                            false,
+
+                        error:
+                            "Mesaj gerekli."
+                    });
+            }
+
+            if (
+                !usageAvailable(
+                    req.user,
+                    "messages"
+                )
+            ) {
+
+                return res
+                    .status(403)
+                    .json({
+                        success:
+                            false,
+
+                        error:
+                            "Günlük mesaj limitin doldu."
+                    });
+            }
+
+            incrementUsage(
+                req.user.id,
+                "messages"
+            );
+
+            const history =
+                Array.isArray(
+                    req.body.history
+                )
+                    ? req.body.history
+                    : [];
+
+            const result =
+                await callAI(
+                    text,
+                    history
+                );
+
+            res.json({
+
+                success:
+                    true,
+
+                reply:
+                    result.text,
+
+                response:
+                    result.text,
+
+                provider:
+                    result.provider,
+
+                model:
+                    result.model
+            });
+
+        } catch (
+            error
+        ) {
+
+            incrementUsage(
+                req.user.id,
+                "errors"
+            );
+
+            res.status(
+                500
+            ).json({
+
+                success:
+                    false,
+
+                error:
+                    error.message
+            });
+        }
+    }
+);
+
+/* ================================================================
+   85 — DOCUMENTATION API
+================================================================ */
 
 app.get(
     "/api/docs",
-    (req, res) => {
+    (
+        req,
+        res
+    ) => {
 
         res.json({
 
             success:
                 true,
 
-            name:
+            application:
                 APP_NAME,
 
             version:
@@ -6928,46 +9274,37 @@ app.get(
                 status:
                     "GET /api/status",
 
-                me:
-                    "GET /api/me",
-
                 plans:
                     "GET /api/plans",
 
-                ai:
-                    "GET /api/ai/status",
+                me:
+                    "GET /api/me",
 
                 chat:
                     "POST /api/chat",
+
+                chats:
+                    "GET /api/chats",
+
+                memory:
+                    "GET /api/memory",
 
                 research:
                     "POST /api/research",
 
                 search:
-                    "GET /api/search",
-
-                memory:
-                    "GET /api/memory",
-
-                memorySearch:
-                    "GET /api/memory/search",
-
-                memoryCreate:
-                    "POST /api/memory",
-
-                files:
-                    "GET /api/files",
+                    "GET /api/search?q=...",
 
                 upload:
                     "POST /api/upload",
 
+                files:
+                    "GET /api/files",
+
                 projects:
                     "GET /api/projects",
 
-                projectCreate:
-                    "POST /api/projects",
-
-                codeAnalyze:
+                code:
                     "POST /api/code/analyze",
 
                 image:
@@ -6976,450 +9313,198 @@ app.get(
                 video:
                     "POST /api/generate/video",
 
-                jobs:
-                    "GET /api/generate/jobs"
+                usage:
+                    "GET /api/usage",
 
+                socket:
+                    "GET /api/socket/status"
             }
-
         });
-
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 19. AUTOMATIC MEMORY DETECTION                                   ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-function detectMemoryCandidate(
-    message
-) {
-
-    const text =
-        cleanText(
-            message,
-            3000
-        );
-
-
-    if (!text) {
-
-        return null;
-
-    }
-
-
-    const patterns = [
-
-        /benim adım\s+(.+)/i,
-
-        /bana\s+(.+)\s+diye hitap et/i,
-
-        /hatırla\s*:\s*(.+)/i,
-
-        /unutma\s*:\s*(.+)/i,
-
-        /şunu hatırla\s*:\s*(.+)/i,
-
-        /sevdiğim\s+(.+)/i,
-
-        /ben\s+(.+)\s+seviyorum/i
-
-    ];
-
-
-    for (
-        const pattern of patterns
-    ) {
-
-        const match =
-            text.match(
-                pattern
-            );
-
-
-        if (
-            match &&
-            match[1]
-        ) {
-
-            return cleanText(
-                match[1],
-                1000
-            );
-
-        }
-
-    }
-
-
-    return null;
-
-}
-
-
-function processMemoryCandidate(
-    user,
-    message
-) {
-
-    const candidate =
-        detectMemoryCandidate(
-            message
-        );
-
-
-    if (!candidate) {
-
-        return null;
-
-    }
-
-
-    return addMemory(
-        user.id,
-        candidate,
-        {
-            type:
-                "automatic",
-
-            source:
-                "chat",
-
-            importance:
-                1
-
-        }
-    );
-
-}
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 20. CHAT MEMORY HOOK                                             ║
-// ╚══════════════════════════════════════════════════════════════════╝
-//
-// Önceden tanımlanan /api/chat rotasının
-// üzerine yeni bir middleware eklemiyoruz.
-// Bunun yerine bağımsız yardımcı endpoint
-// sağlıyoruz.
-//
-// Frontend isterse doğrudan kullanabilir.
-//
-
-app.post(
-    "/api/memory/detect",
-    (req, res) => {
-
-        const user =
-            getRequestUser(
-                req
-            );
-
-
-        const message =
-            cleanText(
-                req.body?.message ||
-                "",
-                3000
-            );
-
-
-        if (!message) {
-
-            return res.json({
-
-                success:
-                    true,
-
-                detected:
-                    false,
-
-                memory:
-                    null
-
-            });
-
-        }
-
-
-        const memory =
-            processMemoryCandidate(
-                user,
-                message
-            );
-
-
-        res.json({
-
-            success:
-                true,
-
-            detected:
-                Boolean(memory),
-
-            memory
-
-        });
-
-    }
-);
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 21. DATABASE BACKUP ENGINE                                       ║
-// ╚══════════════════════════════════════════════════════════════════╝
+/* ================================================================
+   86 — DATABASE BACKUP
+================================================================ */
 
 function backupDatabase() {
 
-    try {
-
-        const backupDirectory =
-            path.join(
-                STORAGE_DIR,
-                "backups"
+    const timestamp =
+        new Date()
+            .toISOString()
+            .replace(
+                /[:.]/g,
+                "-"
             );
 
-
-        fs.mkdirSync(
-            backupDirectory,
-            {
-                recursive:
-                    true
-            }
+    const target =
+        path.join(
+            BACKUP_DIR,
+            `backup-${timestamp}`
         );
 
+    ensureDirectory(
+        target
+    );
 
-        const timestamp =
-            new Date()
-                .toISOString()
-                .replace(
-                    /[:.]/g,
-                    "-"
-                );
+    for (
+        const [
+            key,
+            filePath
+        ]
+        of Object.entries(
+            DB_FILES
+        )
+    ) {
 
-
-        const backupPath =
-            path.join(
-                backupDirectory,
-                `database_${timestamp}`
-            );
-
-
-        fs.mkdirSync(
-            backupPath,
-            {
-                recursive:
-                    true
-            }
-        );
-
-
-        for (
-            const [
-                name,
-                file
-            ] of Object.entries(
-                DB_FILES
-            )
-        ) {
+        try {
 
             if (
                 fs.existsSync(
-                    file
+                    filePath
                 )
             ) {
 
                 fs.copyFileSync(
-                    file,
+                    filePath,
                     path.join(
-                        backupPath,
-                        `${name}.json`
+                        target,
+                        `${key}.json`
                     )
                 );
-
             }
 
-        }
-
-
-        return backupPath;
-
-    } catch (error) {
-
-        logError(
-            "BACKUP_ERROR",
-            {
-                error:
-                    error.message
-            }
-        );
-
-
-        return null;
-
-    }
-
-}
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 22. TEMP CLEANUP                                                 ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-function cleanupTemp(
-    maxAgeHours = 24
-) {
-
-    try {
-
-        if (
-            !fs.existsSync(
-                TEMP_DIR
-            )
+        } catch (
+            error
         ) {
 
-            return 0;
-
-        }
-
-
-        const cutoff =
-            Date.now() -
-            (
-                maxAgeHours *
-                60 *
-                60 *
-                1000
-            );
-
-
-        const entries =
-            fs.readdirSync(
-                TEMP_DIR,
+            logError(
+                "Backup file error",
                 {
-                    withFileTypes:
-                        true
+                    key,
+                    error:
+                        error.message
                 }
             );
+        }
+    }
 
+    return target;
+}
 
-        let deleted = 0;
+/* ================================================================
+   87 — TEMP CLEANUP
+================================================================ */
 
+function cleanupTemp() {
 
-        for (
-            const entry of entries
-        ) {
+    if (
+        !fs.existsSync(
+            TEMP_DIR
+        )
+    ) {
+        return;
+    }
 
-            const target =
-                path.join(
-                    TEMP_DIR,
-                    entry.name
+    const files =
+        fs.readdirSync(
+            TEMP_DIR
+        );
+
+    const cutoff =
+        Date.now() -
+        1000 *
+        60 *
+        60 *
+        24;
+
+    for (
+        const file
+        of files
+    ) {
+
+        const fullPath =
+            path.join(
+                TEMP_DIR,
+                file
+            );
+
+        try {
+
+            const stat =
+                fs.statSync(
+                    fullPath
                 );
 
+            if (
+                stat.mtimeMs <
+                cutoff
+            ) {
 
-            try {
-
-                const stats =
-                    fs.statSync(
-                        target
-                    );
-
-
-                if (
-                    stats.mtimeMs <
-                    cutoff
-                ) {
-
-                    if (
-                        entry.isDirectory()
-                    ) {
-
-                        fs.rmSync(
-                            target,
-                            {
-                                recursive:
-                                    true,
-                                force:
-                                    true
-                            }
-                        );
-
-                    } else {
-
-                        fs.unlinkSync(
-                            target
-                        );
-
+                fs.rmSync(
+                    fullPath,
+                    {
+                        recursive:
+                            true,
+                        force:
+                            true
                     }
-
-
-                    deleted++;
-
-                }
-
-            } catch {}
-
-        }
-
-
-        return deleted;
-
-    } catch (error) {
-
-        logError(
-            "TEMP_CLEANUP_ERROR",
-            {
-                error:
-                    error.message
+                );
             }
-        );
 
+        } catch (
+            error
+        ) {
 
-        return 0;
-
+            logWarn(
+                "Temp cleanup error",
+                {
+                    file,
+                    error:
+                        error.message
+                }
+            );
+        }
     }
-
 }
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 23. SESSION CLEANUP                                              ║
-// ╚══════════════════════════════════════════════════════════════════╝
+/* ================================================================
+   88 — SESSION CLEANUP
+================================================================ */
 
 function cleanupSessions() {
 
     const sessions =
         getSessions();
 
-
     const now =
         Date.now();
-
 
     const valid =
         sessions.filter(
             session => {
 
                 if (
-                    !session.expiresAt
+                    session.active ===
+                    false
                 ) {
-
-                    return true;
-
+                    return false;
                 }
 
+                if (
+                    session.expiresAt &&
+                    now >
+                        new Date(
+                            session.expiresAt
+                        ).getTime()
+                ) {
 
-                return (
-                    new Date(
-                        session.expiresAt
-                    ).getTime() >
-                    now
-                );
+                    return false;
+                }
 
+                return true;
             }
         );
-
 
     if (
         valid.length !==
@@ -7429,262 +9514,682 @@ function cleanupSessions() {
         saveSessions(
             valid
         );
-
     }
-
-
-    return (
-        sessions.length -
-        valid.length
-    );
-
 }
 
+/* ================================================================
+   89 — AUTO MEMORY IN CHAT
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 24. USAGE CLEANUP                                                ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-function cleanupOldUsage(
-    days = 45
+function autoProcessChatMemory(
+    user,
+    text
 ) {
 
-    const usage =
-        getUsage();
+    try {
 
+        const settings =
+            getSettings();
 
-    const cutoff =
-        Date.now() -
-        days *
-        24 *
-        60 *
-        60 *
-        1000;
+        if (
+            settings.enableMemory ===
+            false
+        ) {
+            return null;
+        }
 
+        return processMemoryCandidate(
+            user.id,
+            text
+        );
 
-    for (
-        const userId of Object.keys(
-            usage
-        )
+    } catch (
+        error
     ) {
 
-        const daysObject =
-            usage[userId];
+        logWarn(
+            "Auto memory error",
+            {
+                error:
+                    error.message
+            }
+        );
 
+        return null;
+    }
+}
+
+/* ================================================================
+   90 — MEMORY TEST API
+================================================================ */
+
+app.post(
+    "/api/memory/process",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const text =
+            cleanText(
+                req.body.text ||
+                req.body.message,
+                10000
+            );
+
+        if (
+            !text
+        ) {
+
+            return res
+                .status(400)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Metin gerekli."
+                });
+        }
+
+        const memory =
+            autoProcessChatMemory(
+                req.user,
+                text
+            );
+
+        res.json({
+
+            success:
+                true,
+
+            saved:
+                Boolean(
+                    memory
+                ),
+
+            memory:
+                memory || null
+        });
+    }
+);
+
+/* ================================================================
+   91 — RATE LIMIT STORAGE
+================================================================ */
+
+function getRateLimits() {
+
+    return readJSON(
+        DB_FILES.rateLimits,
+        {}
+    );
+}
+
+function saveRateLimits(
+    limits
+) {
+
+    return writeJSON(
+        DB_FILES.rateLimits,
+        limits
+    );
+}
+
+function rateLimitKey(
+    req
+) {
+
+    const ip =
+        req.ip ||
+        "unknown";
+
+    return hashText(
+        ip
+    ).slice(
+        0,
+        32
+    );
+}
+
+function checkRateLimit(
+    req,
+    options = {}
+) {
+
+    const windowMs =
+        safeNumber(
+            options.windowMs,
+            60 * 1000
+        );
+
+    const max =
+        safeNumber(
+            options.max,
+            60
+        );
+
+    const limits =
+        getRateLimits();
+
+    const key =
+        rateLimitKey(
+            req
+        );
+
+    const now =
+        Date.now();
+
+    const item =
+        limits[key];
+
+    if (
+        !item ||
+        now -
+            item.startedAt >
+            windowMs
+    ) {
+
+        limits[key] = {
+
+            startedAt:
+                now,
+
+            count:
+                1
+        };
+
+        saveRateLimits(
+            limits
+        );
+
+        return {
+
+            allowed:
+                true,
+
+            remaining:
+                max - 1
+        };
+    }
+
+    item.count =
+        safeNumber(
+            item.count
+        ) + 1;
+
+    saveRateLimits(
+        limits
+    );
+
+    return {
+
+        allowed:
+            item.count <=
+            max,
+
+        remaining:
+            Math.max(
+                0,
+                max -
+                    item.count
+            )
+    };
+}
+
+/* ================================================================
+   92 — RATE LIMIT MIDDLEWARE
+================================================================ */
+
+function publicRateLimit(
+    req,
+    res,
+    next
+) {
+
+    const result =
+        checkRateLimit(
+            req,
+            {
+                windowMs:
+                    60 * 1000,
+
+                max:
+                    120
+            }
+        );
+
+    res.setHeader(
+        "X-RateLimit-Remaining",
+        String(
+            result.remaining
+        )
+    );
+
+    if (
+        !result.allowed
+    ) {
+
+        addSecurityEvent(
+            "rate_limit",
+            {
+                ip:
+                    req.ip,
+
+                path:
+                    req.path
+            }
+        );
+
+        return res
+            .status(429)
+            .json({
+                success:
+                    false,
+
+                error:
+                    "Çok fazla istek gönderildi. Biraz bekle."
+            });
+    }
+
+    next();
+}
+
+/* ================================================================
+   93 — APPLY RATE LIMIT TO API
+================================================================ */
+
+app.use(
+    "/api",
+    publicRateLimit
+);
+
+/* ================================================================
+   94 — HEALTH OF DATABASE
+================================================================ */
+
+app.get(
+    "/api/database/status",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const files = {};
 
         for (
-            const dateKey of Object.keys(
-                daysObject
+            const [
+                key,
+                filePath
+            ]
+            of Object.entries(
+                DB_FILES
             )
         ) {
 
-            const timestamp =
-                new Date(
-                    `${dateKey}T23:59:59`
-                ).getTime();
+            files[key] = {
 
+                exists:
+                    fs.existsSync(
+                        filePath
+                    ),
 
-            if (
-                timestamp <
-                cutoff
-            ) {
-
-                delete daysObject[
-                    dateKey
-                ];
-
-            }
-
+                size:
+                    fs.existsSync(
+                        filePath
+                    )
+                        ? fs.statSync(
+                            filePath
+                        ).size
+                        : 0
+            };
         }
 
+        res.json({
+
+            success:
+                true,
+
+            database:
+                files
+        });
     }
+);
 
+/* ================================================================
+   95 — SERVER METRICS
+================================================================ */
 
-    saveUsage(
-        usage
-    );
+app.get(
+    "/api/metrics",
+    optionalAuth,
+    requireAdmin,
+    (
+        req,
+        res
+    ) => {
 
-}
+        const memory =
+            process.memoryUsage();
 
+        const cpu =
+            process.cpuUsage();
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 25. PERIODIC MAINTENANCE                                        ║
-// ╚══════════════════════════════════════════════════════════════════╝
+        res.json({
 
-const MAINTENANCE_INTERVAL =
-    setInterval(
-        () => {
+            success:
+                true,
 
-            try {
+            uptime:
+                process.uptime(),
 
-                cleanupTemp();
+            memory,
 
-                cleanupSessions();
+            cpu,
 
-                cleanupOldUsage();
+            connections:
+                SERVER_STATE
+                    .connections,
 
-            } catch (error) {
+            activeUsers:
+                SERVER_STATE
+                    .activeUsers,
 
-                logError(
-                    "MAINTENANCE_ERROR",
-                    {
-                        error:
-                            error.message
-                    }
+            activeRooms:
+                SERVER_STATE
+                    .activeRooms,
+
+            imageJobs:
+                IMAGE_JOBS.size,
+
+            videoJobs:
+                VIDEO_JOBS.size,
+
+            timestamp:
+                nowISO()
+        });
+    }
+);
+
+/* ================================================================
+   96 — API TEST
+================================================================ */
+
+app.get(
+    "/api/test",
+    (
+        req,
+        res
+    ) => {
+
+        res.json({
+
+            success:
+                true,
+
+            message:
+                "TürkAI API çalışıyor.",
+
+            server:
+                APP_NAME,
+
+            version:
+                APP_VERSION,
+
+            timestamp:
+                nowISO(),
+
+            requestId:
+                req.requestId
+        });
+    }
+);
+
+/* ================================================================
+   97 — PAYMENT RECORD API
+================================================================ */
+
+app.get(
+    "/api/payments",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const payments =
+            getPayments()
+                .filter(
+                    payment =>
+                        payment.userId ===
+                        req.user.id
+                )
+                .reverse();
+
+        res.json({
+
+            success:
+                true,
+
+            payments
+        });
+    }
+);
+
+/* ================================================================
+   98 — CHAT MESSAGE HISTORY API
+================================================================ */
+
+app.get(
+    "/api/chats/:id/messages",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const chat =
+            findChatById(
+                req.params.id
+            );
+
+        if (
+            !chat
+        ) {
+
+            return res
+                .status(404)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Sohbet bulunamadı."
+                });
+        }
+
+        if (
+            chat.userId !==
+            req.user.id &&
+            !isAdminUser(
+                req.user
+            )
+        ) {
+
+            return res
+                .status(403)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Yetkiniz yok."
+                });
+        }
+
+        const limit =
+            clamp(
+                req.query.limit ||
+                100,
+                1,
+                500
+            );
+
+        res.json({
+
+            success:
+                true,
+
+            chatId:
+                chat.id,
+
+            messages:
+                getChatMessages(
+                    chat.id,
+                    limit
+                )
+        });
+    }
+);
+
+/* ================================================================
+   99 — CHAT TITLE UPDATE
+================================================================ */
+
+app.patch(
+    "/api/chats/:id",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        const chats =
+            getChats();
+
+        const index =
+            chats.findIndex(
+                chat =>
+                    chat.id ===
+                    req.params.id
+            );
+
+        if (
+            index < 0
+        ) {
+
+            return res
+                .status(404)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Sohbet bulunamadı."
+                });
+        }
+
+        const chat =
+            chats[
+                index
+            ];
+
+        if (
+            chat.userId !==
+            req.user.id &&
+            !isAdminUser(
+                req.user
+            )
+        ) {
+
+            return res
+                .status(403)
+                .json({
+                    success:
+                        false,
+
+                    error:
+                        "Yetkiniz yok."
+                });
+        }
+
+        if (
+            req.body.title !==
+            undefined
+        ) {
+
+            chat.title =
+                cleanText(
+                    req.body.title,
+                    200
                 );
+        }
 
-            }
+        if (
+            req.body.pinned !==
+            undefined
+        ) {
 
-        },
-        30 *
-        60 *
-        1000
-    );
-
-
-if (
-    MAINTENANCE_INTERVAL &&
-    typeof MAINTENANCE_INTERVAL.unref ===
-    "function"
-) {
-
-    MAINTENANCE_INTERVAL.unref();
-
-}
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 26. BACKUP INTERVAL                                              ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-const BACKUP_INTERVAL =
-    setInterval(
-        () => {
-
-            try {
-
-                backupDatabase();
-
-            } catch (error) {
-
-                logError(
-                    "PERIODIC_BACKUP_ERROR",
-                    {
-                        error:
-                            error.message
-                    }
+            chat.pinned =
+                Boolean(
+                    req.body.pinned
                 );
+        }
 
-            }
+        if (
+            req.body.archived !==
+            undefined
+        ) {
 
-        },
-        6 *
-        60 *
-        60 *
-        1000
-    );
+            chat.archived =
+                Boolean(
+                    req.body.archived
+                );
+        }
 
+        chat.updatedAt =
+            nowISO();
 
-if (
-    BACKUP_INTERVAL &&
-    typeof BACKUP_INTERVAL.unref ===
-    "function"
-) {
+        chats[
+            index
+        ] =
+            chat;
 
-    BACKUP_INTERVAL.unref();
+        saveChats(
+            chats
+        );
 
-}
+        res.json({
 
+            success:
+                true,
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 27. MODEL REQUEST ENDPOINT                                       ║
-// ╚══════════════════════════════════════════════════════════════════╝
+            chat
+        });
+    }
+);
 
-app.post(
-    "/api/chat/model",
-    async (req, res) => {
+/* ================================================================
+   100 — AI HEALTH TEST
+================================================================ */
+
+app.get(
+    "/api/ai/test",
+    optionalAuth,
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
-            const user =
-                getRequestUser(
-                    req
-                );
-
-
-            const message =
-                cleanText(
-                    req.body?.message ||
-                    req.body?.prompt ||
-                    "",
-                    20000
-                );
-
-
-            const requestedModel =
-                cleanText(
-                    req.body?.model ||
-                    "fast",
-                    100
-                );
-
-
-            if (!message) {
-
-                return res.status(400).json({
-
-                    success:
-                        false,
-
-                    error:
-                        "Mesaj boş."
-
-                });
-
-            }
-
-
-            const availability =
-                usageAvailable(
-                    user,
-                    "messages",
-                    1
-                );
-
-
-            if (
-                !availability.allowed
-            ) {
-
-                return res.status(429).json({
-
-                    success:
-                        false,
-
-                    error:
-                        "Günlük mesaj limitin doldu.",
-
-                    usage:
-                        availability
-
-                });
-
-            }
-
-
-            updateUsage(
-                user.id,
-                "messages",
-                1
-            );
-
-
             const result =
                 await callAI(
-                    message,
+                    "Kısaca TürkAI çalışıyor mu?",
                     []
                 );
-
 
             res.json({
 
@@ -7694,85 +10199,1118 @@ app.post(
                 reply:
                     result.text,
 
-                response:
-                    result.text,
-
-                text:
-                    result.text,
-
-                requestedModel,
-
                 provider:
                     result.provider,
 
                 model:
                     result.model
-
             });
 
-        } catch (error) {
+        } catch (
+            error
+        ) {
 
-            logError(
-                "MODEL_CHAT_ERROR",
-                {
-                    error:
-                        error.message
-                }
-            );
-
-
-            res.status(500).json({
+            res.status(
+                500
+            ).json({
 
                 success:
                     false,
 
                 error:
-                    "Model isteği başarısız."
-
+                    error.message
             });
-
         }
-
     }
 );
 
+/* ================================================================
+   101 — AUTO BACKUP / CLEANUP SCHEDULER
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 28. SERVER DIAGNOSTICS                                          ║
-// ╚══════════════════════════════════════════════════════════════════╝
+const BACKUP_INTERVAL =
+    setInterval(
+        () => {
+
+            try {
+
+                backupDatabase();
+
+                logInfo(
+                    "Otomatik database backup tamamlandı."
+                );
+
+            } catch (
+                error
+            ) {
+
+                logError(
+                    "Automatic backup error",
+                    {
+                        error:
+                            error.message
+                    }
+                );
+            }
+
+        },
+        1000 *
+        60 *
+        60 *
+        6
+    );
+
+if (
+    BACKUP_INTERVAL &&
+    typeof BACKUP_INTERVAL.unref ===
+        "function"
+) {
+
+    BACKUP_INTERVAL.unref();
+}
+
+const TEMP_CLEANUP_INTERVAL =
+    setInterval(
+        () => {
+
+            try {
+
+                cleanupTemp();
+
+            } catch (
+                error
+            ) {
+
+                logError(
+                    "Temp cleanup scheduler error",
+                    {
+                        error:
+                            error.message
+                    }
+                );
+            }
+
+        },
+        1000 *
+        60 *
+        60
+    );
+
+if (
+    TEMP_CLEANUP_INTERVAL &&
+    typeof TEMP_CLEANUP_INTERVAL.unref ===
+        "function"
+) {
+
+    TEMP_CLEANUP_INTERVAL.unref();
+}
+
+const SESSION_CLEANUP_INTERVAL =
+    setInterval(
+        () => {
+
+            try {
+
+                cleanupSessions();
+
+            } catch (
+                error
+            ) {
+
+                logError(
+                    "Session cleanup scheduler error",
+                    {
+                        error:
+                            error.message
+                    }
+                );
+            }
+
+        },
+        1000 *
+        60 *
+        30
+    );
+
+if (
+    SESSION_CLEANUP_INTERVAL &&
+    typeof SESSION_CLEANUP_INTERVAL.unref ===
+        "function"
+) {
+
+    SESSION_CLEANUP_INTERVAL.unref();
+}
+
+/* ================================================================
+   102 — FINAL DATABASE INITIALIZATION CHECK
+================================================================ */
+
+function verifyDatabase() {
+
+    const missing = [];
+
+    for (
+        const [
+            key,
+            filePath
+        ]
+        of Object.entries(
+            DB_FILES
+        )
+    ) {
+
+        if (
+            !fs.existsSync(
+                filePath
+            )
+        ) {
+
+            missing.push(
+                key
+            );
+        }
+    }
+
+    if (
+        missing.length
+    ) {
+
+        logWarn(
+            "Eksik database dosyaları bulundu.",
+            {
+                missing
+            }
+        );
+
+        return false;
+    }
+
+    return true;
+}
+
+verifyDatabase();
+
+/* ================================================================
+   PARÇA 2 SONU
+================================================================ */
+
+/*
+   ŞİMDİ BURADA DUR.
+
+   PARÇA 3 bunun hemen altına gelecek.
+
+   PARÇA 3'te:
+
+   - static frontend
+   - / route
+   - SPA fallback
+   - 404
+   - global error handler
+   - server startup
+   - Render uyumluluğu
+   - graceful shutdown
+   - SIGINT / SIGTERM
+   - uncaughtException
+   - unhandledRejection
+   - module.exports
+   - startServer()
+
+   gelecek.
+
+   ÖNEMLİ:
+   Burada startServer() ÇAĞIRMA.
+*/
+/* ================================================================
+   TÜRKAI SERVER 13.0
+   PARÇA 3 / 3
+   RENDER • GITHUB • SOCKET.IO • FRONTEND • STARTUP • SHUTDOWN
+================================================================ */
+
+"use strict";
+
+/* ================================================================
+   103 — SERVER RUNTIME STATE
+================================================================ */
+
+const SERVER_STATE =
+    global.__TURKAI_SERVER_STATE ||
+    {
+
+        startedAt:
+            Date.now(),
+
+        connections:
+            0,
+
+        activeUsers:
+            0,
+
+        activeRooms:
+            0,
+
+        requests:
+            0,
+
+        errors:
+            0,
+
+        lastRequestAt:
+            null,
+
+        lastErrorAt:
+            null,
+
+        lastError:
+            null,
+
+        shuttingDown:
+            false
+    };
+
+global.__TURKAI_SERVER_STATE =
+    SERVER_STATE;
+
+/* ================================================================
+   104 — SOCKET USER MAPS
+================================================================ */
+
+const connectedUsers =
+    global.__TURKAI_CONNECTED_USERS ||
+    new Map();
+
+const connectedSockets =
+    global.__TURKAI_CONNECTED_SOCKETS ||
+    new Map();
+
+const activeChatRooms =
+    global.__TURKAI_CHAT_ROOMS ||
+    new Map();
+
+global.__TURKAI_CONNECTED_USERS =
+    connectedUsers;
+
+global.__TURKAI_CONNECTED_SOCKETS =
+    connectedSockets;
+
+global.__TURKAI_CHAT_ROOMS =
+    activeChatRooms;
+
+/* ================================================================
+   105 — SERVER INSTANCE
+================================================================ */
+
+/*
+ * SERVER_INSTANCE mutlaka burada,
+ * startServer() fonksiyonundan ÖNCE
+ * tanımlanır.
+ *
+ * Böylece:
+ *
+ * ReferenceError:
+ * Cannot access 'SERVER_INSTANCE'
+ * before initialization
+ *
+ * problemi oluşmaz.
+ */
+
+let SERVER_INSTANCE =
+    global.__TURKAI_HTTP_SERVER ||
+    null;
+
+global.__TURKAI_HTTP_SERVER =
+    SERVER_INSTANCE;
+
+/* ================================================================
+   106 — SERVER START INFORMATION
+================================================================ */
+
+const SERVER_BOOT_ID =
+    createId(
+        "boot"
+    );
+
+const SERVER_STARTED_AT =
+    new Date();
+
+const SERVER_RUNTIME_VERSION =
+    process.version;
+
+const SERVER_PLATFORM =
+    process.platform;
+
+const SERVER_ARCH =
+    process.arch;
+
+/* ================================================================
+   107 — SOCKET AUTH HELPER
+================================================================ */
+
+function getSocketToken(
+    socket
+) {
+
+    try {
+
+        const auth =
+            socket.handshake &&
+            socket.handshake.auth
+                ? socket.handshake.auth
+                : {};
+
+        const headers =
+            socket.handshake &&
+            socket.handshake.headers
+                ? socket.handshake.headers
+                : {};
+
+        const query =
+            socket.handshake &&
+            socket.handshake.query
+                ? socket.handshake.query
+                : {};
+
+        return (
+            auth.token ||
+            auth.accessToken ||
+            auth.userToken ||
+            headers.authorization ||
+            query.token ||
+            null
+        );
+
+    } catch (
+        error
+    ) {
+
+        return null;
+    }
+}
+
+/* ================================================================
+   108 — SOCKET USER RESOLUTION
+================================================================ */
+
+function getSocketUser(
+    socket
+) {
+
+    try {
+
+        const auth =
+            socket.handshake &&
+            socket.handshake.auth
+                ? socket.handshake.auth
+                : {};
+
+        const token =
+            getSocketToken(
+                socket
+            );
+
+        if (
+            token
+        ) {
+
+            const cleanedToken =
+                String(
+                    token
+                )
+                .replace(
+                    /^Bearer\s+/i,
+                    ""
+                )
+                .trim();
+
+            const session =
+                getSessionByToken(
+                    cleanedToken
+                );
+
+            if (
+                session
+            ) {
+
+                const users =
+                    getUsers();
+
+                const user =
+                    users.find(
+                        item =>
+                            item.id ===
+                            session.userId
+                    );
+
+                if (
+                    user
+                ) {
+
+                    return user;
+                }
+            }
+        }
+
+        const userId =
+            auth.userId ||
+            socket.handshake.query.userId;
+
+        if (
+            userId
+        ) {
+
+            const users =
+                getUsers();
+
+            const user =
+                users.find(
+                    item =>
+                        item.id ===
+                        String(
+                            userId
+                        )
+                );
+
+            if (
+                user
+            ) {
+
+                return user;
+            }
+        }
+
+        return getGuestUser();
+
+    } catch (
+        error
+    ) {
+
+        logWarn(
+            "Socket user resolution failed",
+            {
+                error:
+                    error.message
+            }
+        );
+
+        return getGuestUser();
+    }
+}
+
+/* ================================================================
+   109 — SOCKET ROOM HELPERS
+================================================================ */
+
+function joinChatRoom(
+    socket,
+    chatId,
+    user
+) {
+
+    const id =
+        cleanText(
+            chatId,
+            200
+        );
+
+    if (
+        !id
+    ) {
+
+        return false;
+    }
+
+    const room =
+        `chat:${id}`;
+
+    socket.join(
+        room
+    );
+
+    if (
+        !activeChatRooms.has(
+            id
+        )
+    ) {
+
+        activeChatRooms.set(
+            id,
+            new Set()
+        );
+    }
+
+    const members =
+        activeChatRooms.get(
+            id
+        );
+
+    members.add(
+        socket.id
+    );
+
+    SERVER_STATE.activeRooms =
+        activeChatRooms.size;
+
+    socket.data.chatId =
+        id;
+
+    socket.data.userId =
+        user.id;
+
+    socket.emit(
+        "chat:joined",
+        {
+            chatId:
+                id,
+
+            room,
+
+            members:
+                members.size,
+
+            timestamp:
+                nowISO()
+        }
+    );
+
+    socket.to(
+        room
+    ).emit(
+        "chat:presence",
+        {
+            type:
+                "join",
+
+            chatId:
+                id,
+
+            userId:
+                user.id,
+
+            members:
+                members.size,
+
+            timestamp:
+                nowISO()
+        }
+    );
+
+    return true;
+}
+
+function leaveChatRoom(
+    socket,
+    chatId
+) {
+
+    const id =
+        cleanText(
+            chatId,
+            200
+        );
+
+    if (
+        !id
+    ) {
+
+        return false;
+    }
+
+    const room =
+        `chat:${id}`;
+
+    socket.leave(
+        room
+    );
+
+    const members =
+        activeChatRooms.get(
+            id
+        );
+
+    if (
+        members
+    ) {
+
+        members.delete(
+            socket.id
+        );
+
+        if (
+            members.size ===
+            0
+        ) {
+
+            activeChatRooms.delete(
+                id
+            );
+        }
+    }
+
+    SERVER_STATE.activeRooms =
+        activeChatRooms.size;
+
+    socket.to(
+        room
+    ).emit(
+        "chat:presence",
+        {
+            type:
+                "leave",
+
+            chatId:
+                id,
+
+            userId:
+                socket.data.userId ||
+                null,
+
+            members:
+                members
+                    ? members.size
+                    : 0,
+
+            timestamp:
+                nowISO()
+        }
+    );
+
+    if (
+        socket.data.chatId ===
+        id
+    ) {
+
+        socket.data.chatId =
+            null;
+    }
+
+    return true;
+}
+
+/* ================================================================
+   110 — SOCKET.IO CONNECTION
+================================================================ */
+
+io.on(
+    "connection",
+    (
+        socket
+    ) => {
+
+        SERVER_STATE.connections++;
+
+        SERVER_STATE.activeUsers =
+            connectedUsers.size;
+
+        const user =
+            getSocketUser(
+                socket
+            );
+
+        socket.data.userId =
+            user.id;
+
+        socket.data.user =
+            user;
+
+        connectedSockets.set(
+            socket.id,
+            socket
+        );
+
+        if (
+            !connectedUsers.has(
+                user.id
+            )
+        ) {
+
+            connectedUsers.set(
+                user.id,
+                new Set()
+            );
+        }
+
+        connectedUsers
+            .get(
+                user.id
+            )
+            .add(
+                socket.id
+            );
+
+        SERVER_STATE.activeUsers =
+            connectedUsers.size;
+
+        logInfo(
+            "Socket bağlantısı",
+            {
+                socketId:
+                    socket.id,
+
+                userId:
+                    user.id
+            }
+        );
+
+        socket.emit(
+            "turkai:ready",
+            {
+
+                success:
+                    true,
+
+                app:
+                    APP_NAME,
+
+                version:
+                    APP_VERSION,
+
+                socketId:
+                    socket.id,
+
+                userId:
+                    user.id,
+
+                timestamp:
+                    nowISO()
+            }
+        );
+
+        socket.on(
+            "turkai:ping",
+            (
+                payload = {}
+            ) => {
+
+                socket.emit(
+                    "turkai:pong",
+                    {
+
+                        success:
+                            true,
+
+                        received:
+                            payload,
+
+                        timestamp:
+                            nowISO()
+                    }
+                );
+            }
+        );
+
+        socket.on(
+            "chat:join",
+            (
+                payload = {}
+            ) => {
+
+                try {
+
+                    const chatId =
+                        payload.chatId ||
+                        payload.id;
+
+                    if (
+                        !chatId
+                    ) {
+
+                        return socket.emit(
+                            "turkai:error",
+                            {
+                                error:
+                                    "chatId gerekli."
+                            }
+                        );
+                    }
+
+                    joinChatRoom(
+                        socket,
+                        chatId,
+                        user
+                    );
+
+                } catch (
+                    error
+                ) {
+
+                    logError(
+                        "chat:join error",
+                        {
+                            error:
+                                error.message
+                        }
+                    );
+
+                    socket.emit(
+                        "turkai:error",
+                        {
+                            error:
+                                "Sohbete katılırken hata oluştu."
+                        }
+                    );
+                }
+            }
+        );
+
+        socket.on(
+            "chat:leave",
+            (
+                payload = {}
+            ) => {
+
+                try {
+
+                    const chatId =
+                        payload.chatId ||
+                        payload.id ||
+                        socket.data.chatId;
+
+                    if (
+                        chatId
+                    ) {
+
+                        leaveChatRoom(
+                            socket,
+                            chatId
+                        );
+                    }
+
+                } catch (
+                    error
+                ) {
+
+                    logWarn(
+                        "chat:leave error",
+                        {
+                            error:
+                                error.message
+                        }
+                    );
+                }
+            }
+        );
+
+        socket.on(
+            "chat:typing",
+            (
+                payload = {}
+            ) => {
+
+                const chatId =
+                    payload.chatId ||
+                    socket.data.chatId;
+
+                if (
+                    !chatId
+                ) {
+
+                    return;
+                }
+
+                const room =
+                    `chat:${chatId}`;
+
+                socket.to(
+                    room
+                ).emit(
+                    "chat:typing",
+                    {
+
+                        chatId,
+
+                        userId:
+                            user.id,
+
+                        typing:
+                            Boolean(
+                                payload.typing
+                            ),
+
+                        timestamp:
+                            nowISO()
+                    }
+                );
+            }
+        );
+
+        socket.on(
+            "chat:presence",
+            (
+                payload = {}
+            ) => {
+
+                const chatId =
+                    payload.chatId ||
+                    socket.data.chatId;
+
+                if (
+                    !chatId
+                ) {
+
+                    return;
+                }
+
+                socket.to(
+                    `chat:${chatId}`
+                ).emit(
+                    "chat:presence",
+                    {
+
+                        type:
+                            payload.type ||
+                            "update",
+
+                        chatId,
+
+                        userId:
+                            user.id,
+
+                        timestamp:
+                            nowISO()
+                    }
+                );
+            }
+        );
+
+        socket.on(
+            "disconnect",
+            (
+                reason
+            ) => {
+
+                try {
+
+                    const chatId =
+                        socket.data.chatId;
+
+                    if (
+                        chatId
+                    ) {
+
+                        leaveChatRoom(
+                            socket,
+                            chatId
+                        );
+                    }
+
+                    const sockets =
+                        connectedUsers.get(
+                            user.id
+                        );
+
+                    if (
+                        sockets
+                    ) {
+
+                        sockets.delete(
+                            socket.id
+                        );
+
+                        if (
+                            sockets.size ===
+                            0
+                        ) {
+
+                            connectedUsers.delete(
+                                user.id
+                            );
+                        }
+                    }
+
+                    connectedSockets.delete(
+                        socket.id
+                    );
+
+                    SERVER_STATE.connections =
+                        Math.max(
+                            0,
+                            SERVER_STATE.connections -
+                            1
+                        );
+
+                    SERVER_STATE.activeUsers =
+                        connectedUsers.size;
+
+                    logInfo(
+                        "Socket bağlantısı kapandı",
+                        {
+                            socketId:
+                                socket.id,
+
+                            userId:
+                                user.id,
+
+                            reason
+                        }
+                    );
+
+                } catch (
+                    error
+                ) {
+
+                    logError(
+                        "Socket disconnect cleanup error",
+                        {
+                            error:
+                                error.message
+                        }
+                    );
+                }
+            }
+        );
+    }
+);
+
+/* ================================================================
+   111 — SOCKET STATUS API
+================================================================ */
 
 app.get(
-    "/api/diagnostics",
-    requireAdmin,
-    (req, res) => {
+    "/api/socket/status",
+    optionalAuth,
+    (
+        req,
+        res
+    ) => {
+
+        res.json({
+
+            success:
+                true,
+
+            socket: {
+
+                enabled:
+                    true,
+
+                connected:
+                    connectedSockets.size,
+
+                users:
+                    connectedUsers.size,
+
+                rooms:
+                    activeChatRooms.size,
+
+                connections:
+                    SERVER_STATE.connections
+            }
+        });
+    }
+);
+
+/* ================================================================
+   112 — SERVER INFO API
+================================================================ */
+
+app.get(
+    "/api/server/info",
+    (
+        req,
+        res
+    ) => {
 
         const memory =
             process.memoryUsage();
-
-
-        const users =
-            getUsers();
-
-
-        const chats =
-            getChats();
-
-
-        const messages =
-            getMessages();
-
-
-        const projects =
-            getProjects();
-
-
-        const files =
-            getFiles();
-
-
-        const research =
-            getResearch();
-
 
         res.json({
 
@@ -7787,907 +11325,174 @@ app.get(
                 version:
                     APP_VERSION,
 
-                environment:
-                    NODE_ENV,
-
-                production:
-                    IS_PRODUCTION
-
-            },
-
-            runtime: {
-
-                node:
-                    process.version,
-
-                platform:
-                    process.platform,
-
-                architecture:
-                    process.arch,
-
-                pid:
-                    process.pid,
-
-                uptime:
-                    process.uptime(),
-
-                memory
-
-            },
-
-            database: {
-
-                users:
-                    users.length,
-
-                chats:
-                    chats.length,
-
-                messages:
-                    messages.length,
-
-                projects:
-                    projects.length,
-
-                files:
-                    files.length,
-
-                research:
-                    research.length
-
-            },
-
-            directories: {
-
-                root:
-                    ROOT_DIR,
-
-                database:
-                    DATABASE_DIR,
-
-                storage:
-                    STORAGE_DIR,
-
-                public:
-                    PUBLIC_DIR
-
-            },
-
-            timestamp:
-                nowISO()
-
-        });
-
-    }
-);
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 29. REQUEST ID                                                   ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-app.use(
-    (req, res, next) => {
-
-        const requestId =
-            createId(
-                "request"
-            );
-
-
-        req.requestId =
-            requestId;
-
-
-        res.setHeader(
-            "X-Request-ID",
-            requestId
-        );
-
-
-        next();
-
-    }
-);
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 30. PART 2 SONU                                                  ║
-// ╚══════════════════════════════════════════════════════════════════╝
-//
-// PART 3 BU DOSYANIN HEMEN ALTINA GELECEK.
-//
-// PART 3:
-// • Socket.IO runtime
-// • online users
-// • typing
-// • chat rooms
-// • server info
-// • static frontend
-// • SPA fallback
-// • API 404
-// • global error handler
-// • graceful shutdown
-// • Render uyumluluğu
-// • server start
-// • exports
-//
-// ÖNEMLİ:
-// Burada server.listen() YOK.
-// ═══════════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════
-// TÜRKAI SERVER — PART 3
-// RUNTIME / SOCKET / STATIC / PRODUCTION ENGINE
-// ═══════════════════════════════════════════════════════════════════
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 1. RUNTIME STATE                                                 ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-const connectedUsers =
-    new Map();
-
-const connectedSockets =
-    new Map();
-
-const activeChatRooms =
-    new Map();
-
-let SERVER_INSTANCE =
-    null;
-
-let shuttingDown =
-    false;
-
-let serverStartedAt =
-    null;
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 2. SOCKET USER IDENTIFICATION                                    ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-function getSocketUser(socket) {
-
-    try {
-
-        const token =
-            socket.handshake?.auth?.token ||
-            socket.handshake?.headers?.authorization?.replace(
-                /^Bearer\s+/i,
-                ""
-            );
-
-        if (token) {
-
-            const session =
-                getSessionByToken(
-                    token
-                );
-
-            if (session) {
-
-                const user =
-                    findUserById(
-                        session.userId
-                    );
-
-                if (user) {
-
-                    return user;
-
-                }
-
-            }
-
-        }
-
-
-        const userId =
-            socket.handshake?.auth?.userId ||
-            socket.handshake?.query?.userId;
-
-
-        if (userId) {
-
-            const user =
-                findUserById(
-                    String(userId)
-                );
-
-            if (user) {
-
-                return user;
-
-            }
-
-        }
-
-
-    } catch (error) {
-
-        logError(
-            "SOCKET_USER_ERROR",
-            {
-                error:
-                    error.message
-            }
-        );
-
-    }
-
-
-    return getGuestUser();
-
-}
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 3. SOCKET CONNECTION ENGINE                                      ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-io.on(
-    "connection",
-    socket => {
-
-        const user =
-            getSocketUser(
-                socket
-            );
-
-
-        const socketId =
-            socket.id;
-
-
-        connectedSockets.set(
-            socketId,
-            {
-                id:
-                    socketId,
-
-                userId:
-                    user.id,
-
-                connectedAt:
-                    nowISO(),
-
-                lastActivity:
-                    nowISO()
-            }
-        );
-
-
-        if (
-            !connectedUsers.has(
-                user.id
-            )
-        ) {
-
-            connectedUsers.set(
-                user.id,
-                new Set()
-            );
-
-        }
-
-
-        connectedUsers
-            .get(user.id)
-            .add(socketId);
-
-
-        socket.data.user =
-            user;
-
-
-        socket.data.connectedAt =
-            nowISO();
-
-
-        logInfo(
-            "Socket connected",
-            {
-                socketId,
-                userId:
-                    user.id
-            }
-        );
-
-
-        socket.emit(
-            "turkai:ready",
-            {
-
-                success:
-                    true,
-
-                socketId,
-
-                user: {
-
-                    id:
-                        user.id,
-
-                    name:
-                        user.name,
-
-                    plan:
-                        user.plan
-
-                },
-
-                server: {
-
-                    name:
-                        APP_NAME,
-
-                    version:
-                        APP_VERSION,
-
-                    serverId:
-                        SERVER_ID
-
-                },
-
-                timestamp:
-                    nowISO()
-
-            }
-        );
-
-
-        socket.on(
-            "turkai:ping",
-            payload => {
-
-                const info =
-                    connectedSockets.get(
-                        socketId
-                    );
-
-
-                if (info) {
-
-                    info.lastActivity =
-                        nowISO();
-
-                }
-
-
-                socket.emit(
-                    "turkai:pong",
-                    {
-
-                        timestamp:
-                            nowISO(),
-
-                        received:
-                            payload || null
-
-                    }
-                );
-
-            }
-        );
-
-
-        socket.on(
-            "chat:join",
-            chatId => {
-
-                const cleanChatId =
-                    cleanText(
-                        chatId,
-                        200
-                    );
-
-
-                if (!cleanChatId) {
-
-                    return;
-
-                }
-
-
-                const chat =
-                    findChatById(
-                        cleanChatId
-                    );
-
-
-                if (
-                    chat &&
-                    chat.userId !==
-                    user.id &&
-                    !isAdmin(user)
-                ) {
-
-                    socket.emit(
-                        "chat:error",
-                        {
-
-                            error:
-                                "Bu sohbet odasına erişim iznin yok."
-
-                        }
-                    );
-
-                    return;
-
-                }
-
-
-                const room =
-                    `chat:${cleanChatId}`;
-
-
-                socket.join(
-                    room
-                );
-
-
-                if (
-                    !activeChatRooms.has(
-                        cleanChatId
-                    )
-                ) {
-
-                    activeChatRooms.set(
-                        cleanChatId,
-                        new Set()
-                    );
-
-                }
-
-
-                activeChatRooms
-                    .get(cleanChatId)
-                    .add(socketId);
-
-
-                socket.data.chatId =
-                    cleanChatId;
-
-
-                socket.emit(
-                    "chat:joined",
-                    {
-
-                        chatId:
-                            cleanChatId,
-
-                        room,
-
-                        timestamp:
-                            nowISO()
-
-                    }
-                );
-
-
-                logInfo(
-                    "Chat room joined",
-                    {
-                        socketId,
-                        userId:
-                            user.id,
-                        chatId:
-                            cleanChatId
-                    }
-                );
-
-            }
-        );
-
-
-        socket.on(
-            "chat:leave",
-            chatId => {
-
-                const cleanChatId =
-                    cleanText(
-                        chatId ||
-                        socket.data.chatId ||
-                        "",
-                        200
-                    );
-
-
-                if (!cleanChatId) {
-
-                    return;
-
-                }
-
-
-                const room =
-                    `chat:${cleanChatId}`;
-
-
-                socket.leave(
-                    room
-                );
-
-
-                const members =
-                    activeChatRooms.get(
-                        cleanChatId
-                    );
-
-
-                if (members) {
-
-                    members.delete(
-                        socketId
-                    );
-
-
-                    if (
-                        members.size === 0
-                    ) {
-
-                        activeChatRooms.delete(
-                            cleanChatId
-                        );
-
-                    }
-
-                }
-
-
-                if (
-                    socket.data.chatId ===
-                    cleanChatId
-                ) {
-
-                    socket.data.chatId =
-                        null;
-
-                }
-
-
-                socket.emit(
-                    "chat:left",
-                    {
-
-                        chatId:
-                            cleanChatId,
-
-                        timestamp:
-                            nowISO()
-
-                    }
-                );
-
-            }
-        );
-
-
-        socket.on(
-            "chat:typing",
-            payload => {
-
-                const chatId =
-                    cleanText(
-                        payload?.chatId ||
-                        socket.data.chatId ||
-                        "",
-                        200
-                    );
-
-
-                if (!chatId) {
-
-                    return;
-
-                }
-
-
-                const room =
-                    `chat:${chatId}`;
-
-
-                socket.to(
-                    room
-                ).emit(
-                    "chat:typing",
-                    {
-
-                        chatId,
-
-                        userId:
-                            user.id,
-
-                        name:
-                            user.name,
-
-                        typing:
-                            Boolean(
-                                payload?.typing
-                            ),
-
-                        timestamp:
-                            nowISO()
-
-                    }
-                );
-
-
-                const info =
-                    connectedSockets.get(
-                        socketId
-                    );
-
-
-                if (info) {
-
-                    info.lastActivity =
-                        nowISO();
-
-                }
-
-            }
-        );
-
-
-        socket.on(
-            "chat:presence",
-            payload => {
-
-                const chatId =
-                    cleanText(
-                        payload?.chatId ||
-                        socket.data.chatId ||
-                        "",
-                        200
-                    );
-
-
-                if (!chatId) {
-
-                    return;
-
-                }
-
-
-                socket.to(
-                    `chat:${chatId}`
-                ).emit(
-                    "chat:presence",
-                    {
-
-                        chatId,
-
-                        userId:
-                            user.id,
-
-                        name:
-                            user.name,
-
-                        online:
-                            true,
-
-                        timestamp:
-                            nowISO()
-
-                    }
-                );
-
-            }
-        );
-
-
-        socket.on(
-            "disconnect",
-            reason => {
-
-                connectedSockets.delete(
-                    socketId
-                );
-
-
-                const userSockets =
-                    connectedUsers.get(
-                        user.id
-                    );
-
-
-                if (userSockets) {
-
-                    userSockets.delete(
-                        socketId
-                    );
-
-
-                    if (
-                        userSockets.size === 0
-                    ) {
-
-                        connectedUsers.delete(
-                            user.id
-                        );
-
-                    }
-
-                }
-
-
-                for (
-                    const [
-                        chatId,
-                        members
-                    ]
-                    of activeChatRooms
-                ) {
-
-                    members.delete(
-                        socketId
-                    );
-
-
-                    if (
-                        members.size === 0
-                    ) {
-
-                        activeChatRooms.delete(
-                            chatId
-                        );
-
-                    }
-
-                }
-
-
-                logInfo(
-                    "Socket disconnected",
-                    {
-                        socketId,
-                        userId:
-                            user.id,
-                        reason
-                    }
-                );
-
-            }
-        );
-
-    }
-);
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 4. SOCKET STATUS API                                             ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-app.get(
-    "/api/socket/status",
-    (req, res) => {
-
-        res.json({
-
-            success:
-                true,
-
-            sockets:
-                connectedSockets.size,
-
-            users:
-                connectedUsers.size,
-
-            rooms:
-                activeChatRooms.size,
-
-            timestamp:
-                nowISO()
-
-        });
-
-    }
-);
-
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 5. SERVER INFORMATION                                            ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-app.get(
-    "/api/server/info",
-    (req, res) => {
-
-        const memory =
-            process.memoryUsage();
-
-
-        res.json({
-
-            success:
-                true,
-
-            app: {
-
-                name:
-                    APP_NAME,
-
-                version:
-                    APP_VERSION,
-
                 description:
                     APP_DESCRIPTION
-
-            },
-
-            runtime: {
-
-                node:
-                    process.version,
-
-                platform:
-                    process.platform,
-
-                architecture:
-                    process.arch,
-
-                pid:
-                    process.pid,
-
-                uptime:
-                    process.uptime(),
-
-                memory
-
             },
 
             server: {
 
-                id:
-                    SERVER_ID,
-
-                host:
-                    HOST,
-
-                port:
-                    PORT,
-
-                environment:
-                    NODE_ENV,
+                bootId:
+                    SERVER_BOOT_ID,
 
                 startedAt:
-                    serverStartedAt
+                    SERVER_STARTED_AT,
 
+                uptime:
+                    process.uptime(),
+
+                node:
+                    SERVER_RUNTIME_VERSION,
+
+                platform:
+                    SERVER_PLATFORM,
+
+                architecture:
+                    SERVER_ARCH,
+
+                environment:
+                    NODE_ENV
             },
 
-            realtime: {
+            runtime: {
 
-                sockets:
-                    connectedSockets.size,
+                memory,
 
-                users:
-                    connectedUsers.size,
+                connections:
+                    SERVER_STATE.connections,
 
-                rooms:
-                    activeChatRooms.size
+                activeUsers:
+                    SERVER_STATE.activeUsers,
 
+                activeRooms:
+                    SERVER_STATE.activeRooms,
+
+                requests:
+                    SERVER_STATE.requests,
+
+                errors:
+                    SERVER_STATE.errors
             },
 
             timestamp:
                 nowISO()
-
         });
-
     }
 );
 
+/* ================================================================
+   113 — REQUEST MONITOR
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 6. ROOT API                                                      ║
-// ╚══════════════════════════════════════════════════════════════════╝
+app.use(
+    (
+        req,
+        res,
+        next
+    ) => {
+
+        SERVER_STATE.requests++;
+
+        SERVER_STATE.lastRequestAt =
+            nowISO();
+
+        if (
+            req.path.startsWith(
+                "/api"
+            )
+        ) {
+
+            res.setHeader(
+                "X-TurkAI-Version",
+                APP_VERSION
+            );
+        }
+
+        next();
+    }
+);
+
+/* ================================================================
+   114 — MAINTENANCE GUARD
+================================================================ */
+
+app.use(
+    (
+        req,
+        res,
+        next
+    ) => {
+
+        if (
+            !req.path.startsWith(
+                "/api"
+            )
+        ) {
+
+            return next();
+        }
+
+        if (
+            req.path ===
+            "/api/health"
+        ) {
+
+            return next();
+        }
+
+        if (
+            req.path ===
+            "/api/status"
+        ) {
+
+            return next();
+        }
+
+        const settings =
+            getSettings();
+
+        if (
+            settings.maintenance !==
+            true
+        ) {
+
+            return next();
+        }
+
+        if (
+            req.path.startsWith(
+                "/api/admin"
+            )
+        ) {
+
+            return next();
+        }
+
+        res.status(
+            503
+        ).json({
+
+            success:
+                false,
+
+            maintenance:
+                true,
+
+            error:
+                "TürkAI şu anda bakım modunda."
+        });
+    }
+);
+
+/* ================================================================
+   115 — ROOT API
+================================================================ */
 
 app.get(
     "/api",
-    (req, res) => {
+    (
+        req,
+        res
+    ) => {
 
         res.json({
 
@@ -8700,6 +11505,12 @@ app.get(
             version:
                 APP_VERSION,
 
+            description:
+                APP_DESCRIPTION,
+
+            status:
+                "online",
+
             message:
                 "TürkAI API aktif.",
 
@@ -8711,67 +11522,50 @@ app.get(
                 status:
                     "/api/status",
 
-                server:
-                    "/api/server/info",
-
-                socket:
-                    "/api/socket/status",
-
-                plans:
-                    "/api/plans",
-
-                me:
-                    "/api/me",
+                ai:
+                    "/api/ai/status",
 
                 chat:
                     "/api/chat",
 
-                research:
-                    "/api/research",
-
-                search:
-                    "/api/search",
+                plans:
+                    "/api/plans",
 
                 memory:
                     "/api/memory",
 
-                files:
-                    "/api/files",
+                research:
+                    "/api/research",
+
+                upload:
+                    "/api/upload",
 
                 projects:
                     "/api/projects",
 
-                docs:
-                    "/api/docs"
-
+                socket:
+                    "/api/socket/status"
             },
 
             timestamp:
                 nowISO()
-
         });
-
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 7. STATIC FRONTEND                                               ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-const publicDirectory =
-    PUBLIC_DIR;
-
+/* ================================================================
+   116 — STATIC FRONTEND
+================================================================ */
 
 if (
     fs.existsSync(
-        publicDirectory
+        PUBLIC_DIR
     )
 ) {
 
     app.use(
         express.static(
-            publicDirectory,
+            PUBLIC_DIR,
             {
 
                 index:
@@ -8787,115 +11581,252 @@ if (
 
                 lastModified:
                     true
-
             }
         )
     );
-
 }
 
+/* ================================================================
+   117 — FRONTEND HTML FALLBACK
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 8. ROOT FRONTEND                                                 ║
-// ╚══════════════════════════════════════════════════════════════════╝
+function getFrontendFile() {
 
-app.get(
-    "/",
-    (req, res) => {
+    const candidates = [
 
-        const indexPath =
-            path.join(
-                publicDirectory,
-                "index.html"
-            );
+        path.join(
+            PUBLIC_DIR,
+            "index.html"
+        ),
 
+        path.join(
+            ROOT_DIR,
+            "index.html"
+        ),
+
+        path.join(
+            ROOT_DIR,
+            "public",
+            "index.htm"
+        )
+    ];
+
+    for (
+        const file
+        of candidates
+    ) {
 
         if (
             fs.existsSync(
-                indexPath
+                file
             )
         ) {
 
-            return res.sendFile(
-                indexPath
-            );
-
+            return file;
         }
+    }
 
+    return null;
+}
 
-        res
-            .status(200)
-            .type("html")
-            .send(
-                `<!doctype html>
+/* ================================================================
+   118 — FRONTEND FALLBACK HTML
+================================================================ */
+
+function fallbackHTML() {
+
+    return `<!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${APP_NAME}</title>
 <style>
-*{box-sizing:border-box}
-body{
+*{
+box-sizing:border-box;
+}
+html,body{
 margin:0;
-min-height:100vh;
+min-height:100%;
+font-family:Inter,Arial,sans-serif;
+background:#080b12;
+color:#f5f7fb;
+}
+body{
 display:flex;
 align-items:center;
 justify-content:center;
-font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-background:#090b10;
-color:#fff;
+padding:24px;
 }
-.card{
-width:min(680px,calc(100% - 32px));
-padding:32px;
-border:1px solid rgba(255,255,255,.12);
+.container{
+width:min(720px,100%);
+border:1px solid rgba(255,255,255,.1);
+background:rgba(255,255,255,.045);
 border-radius:24px;
-background:rgba(255,255,255,.05);
-backdrop-filter:blur(20px);
-text-align:center;
+padding:32px;
+box-shadow:0 24px 80px rgba(0,0,0,.35);
 }
-h1{margin:0 0 10px;font-size:32px}
-p{color:#a9afbd;line-height:1.6}
+.logo{
+width:58px;
+height:58px;
+border-radius:18px;
+display:grid;
+place-items:center;
+background:linear-gradient(135deg,#20c7d6,#7c5cff);
+font-weight:900;
+font-size:22px;
+margin-bottom:20px;
+}
+h1{
+margin:0 0 8px;
+font-size:32px;
+}
+p{
+color:#aeb6c5;
+line-height:1.65;
+}
 .status{
-display:inline-flex;
+display:flex;
 align-items:center;
-gap:8px;
-padding:10px 14px;
-border-radius:999px;
-background:rgba(32,199,214,.12);
+gap:10px;
+margin-top:20px;
+padding:14px 16px;
+border-radius:14px;
+background:rgba(32,199,214,.08);
+border:1px solid rgba(32,199,214,.2);
+}
+.dot{
+width:9px;
+height:9px;
+border-radius:50%;
+background:#20c7d6;
+box-shadow:0 0 16px #20c7d6;
+}
+a{
 color:#20c7d6;
+text-decoration:none;
 }
 </style>
 </head>
 <body>
-<div class="card">
-<div class="status">● TürkAI API aktif</div>
-<h1>TürkAI ${APP_VERSION}</h1>
+<div class="container">
+<div class="logo">T</div>
+<h1>TürkAI</h1>
 <p>
-Sunucu çalışıyor fakat <b>public/index.html</b>
-dosyası bulunamadı.
+TürkAI sunucusu çalışıyor.
+Frontend dosyanı <b>public/index.html</b>
+içine koyduğunda uygulama otomatik olarak burada açılır.
+</p>
+<div class="status">
+<span class="dot"></span>
+<span>Sunucu çevrimiçi • ${APP_VERSION}</span>
+</div>
+<p>
+API: <a href="/api">/api</a><br>
+Health: <a href="/api/health">/api/health</a>
 </p>
 </div>
 </body>
-</html>`
-            );
+</html>`;
+}
 
+/* ================================================================
+   119 — ROOT ROUTE
+================================================================ */
+
+app.get(
+    "/",
+    (
+        req,
+        res
+    ) => {
+
+        const frontend =
+            getFrontendFile();
+
+        if (
+            frontend
+        ) {
+
+            return res.sendFile(
+                frontend
+            );
+        }
+
+        res
+            .type(
+                "html"
+            )
+            .send(
+                fallbackHTML()
+            );
     }
 );
 
+/* ================================================================
+   120 — FAVICON SILENT RESPONSE
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 9. SPA FALLBACK — EXPRESS 5 UYUMLU                               ║
-// ╚══════════════════════════════════════════════════════════════════╝
-//
-// Express 5 / path-to-regexp sürümlerinde
-// eski app.get("*") kullanımı sorun çıkarabilir.
-// Bu yüzden wildcard yerine middleware
-// kullanıyoruz.
-//
+app.get(
+    "/favicon.ico",
+    (
+        req,
+        res
+    ) => {
+
+        const favicon =
+            path.join(
+                PUBLIC_DIR,
+                "favicon.ico"
+            );
+
+        if (
+            fs.existsSync(
+                favicon
+            )
+        ) {
+
+            return res.sendFile(
+                favicon
+            );
+        }
+
+        res.status(
+            204
+        ).end();
+    }
+);
+
+/* ================================================================
+   121 — SPA FALLBACK
+================================================================ */
+
+/*
+ * Express 5'te:
+ *
+ * app.get("*", ...)
+ *
+ * bazı sürümlerde
+ * PathError üretebilir.
+ *
+ * Bu nedenle wildcard route
+ * yerine middleware kullanıyoruz.
+ */
 
 app.use(
-    (req, res, next) => {
+    (
+        req,
+        res,
+        next
+    ) => {
+
+        if (
+            req.method !==
+            "GET"
+        ) {
+
+            return next();
+        }
 
         if (
             req.path.startsWith(
@@ -8904,54 +11835,46 @@ app.use(
         ) {
 
             return next();
-
         }
 
-
         if (
-            req.method !== "GET"
+            req.path ===
+            "/api"
         ) {
 
             return next();
-
         }
 
-
-        const indexPath =
-            path.join(
-                publicDirectory,
-                "index.html"
-            );
-
+        const frontend =
+            getFrontendFile();
 
         if (
-            fs.existsSync(
-                indexPath
-            )
+            frontend
         ) {
 
             return res.sendFile(
-                indexPath
+                frontend
             );
-
         }
 
-
         next();
-
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 10. API 404                                                      ║
-// ╚══════════════════════════════════════════════════════════════════╝
+/* ================================================================
+   122 — API 404
+================================================================ */
 
 app.use(
     "/api",
-    (req, res) => {
+    (
+        req,
+        res
+    ) => {
 
-        res.status(404).json({
+        res.status(
+            404
+        ).json({
 
             success:
                 false,
@@ -8959,142 +11882,165 @@ app.use(
             error:
                 "API endpoint bulunamadı.",
 
-            path:
-                req.originalUrl,
-
             method:
                 req.method,
 
+            path:
+                req.path,
+
             requestId:
-                req.requestId ||
-                null,
+                req.requestId,
 
             timestamp:
                 nowISO()
-
         });
-
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 11. GLOBAL 404                                                    ║
-// ╚══════════════════════════════════════════════════════════════════╝
+/* ================================================================
+   123 — GLOBAL 404
+================================================================ */
 
 app.use(
-    (req, res) => {
+    (
+        req,
+        res
+    ) => {
+
+        const acceptsJSON =
+            req.headers.accept &&
+            req.headers.accept.includes(
+                "application/json"
+            );
 
         if (
-            req.accepts("html")
+            acceptsJSON
         ) {
 
             return res
                 .status(404)
-                .type("html")
-                .send(
-                    `<!doctype html>
+                .json({
+
+                    success:
+                        false,
+
+                    error:
+                        "Sayfa bulunamadı.",
+
+                    path:
+                        req.path,
+
+                    requestId:
+                        req.requestId
+                });
+        }
+
+        res.status(
+            404
+        )
+        .type(
+            "html"
+        )
+        .send(
+            `<!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>404 — TürkAI</title>
+<title>404 • TürkAI</title>
 <style>
-*{box-sizing:border-box}
 body{
 margin:0;
 min-height:100vh;
-display:flex;
-align-items:center;
-justify-content:center;
-background:#090b10;
+display:grid;
+place-items:center;
+background:#080b12;
 color:#fff;
-font-family:system-ui,sans-serif;
+font-family:Arial,sans-serif;
+padding:20px;
 }
-main{
+.box{
 text-align:center;
-padding:30px;
+padding:35px;
+border:1px solid #252b38;
+border-radius:24px;
+background:#11151e;
+max-width:520px;
 }
-.code{
-font-size:80px;
-font-weight:800;
-letter-spacing:-4px;
+h1{
+font-size:72px;
+margin:0;
 }
 p{
-color:#9da5b5;
+color:#9ca6b7;
+line-height:1.6;
 }
 a{
-display:inline-block;
-margin-top:12px;
-padding:12px 18px;
-border-radius:12px;
-background:#7c5cff;
-color:white;
+color:#20c7d6;
 text-decoration:none;
 }
 </style>
 </head>
 <body>
-<main>
-<div class="code">404</div>
-<h1>Sayfa bulunamadı</h1>
-<p>TürkAI istediğin sayfayı bulamadı.</p>
-<a href="/">Ana sayfaya dön</a>
-</main>
+<div class="box">
+<h1>404</h1>
+<h2>Sayfa bulunamadı</h2>
+<p>
+Aradığın adres TürkAI sunucusunda mevcut değil.
+</p>
+<a href="/">TürkAI ana sayfasına dön</a>
+</div>
 </body>
 </html>`
-                );
-
-        }
-
-
-        res.status(404).json({
-
-            success:
-                false,
-
-            error:
-                "Not found",
-
-            path:
-                req.originalUrl
-
-        });
-
+        );
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 12. GLOBAL ERROR HANDLER                                         ║
-// ╚══════════════════════════════════════════════════════════════════╝
+/* ================================================================
+   124 — GLOBAL ERROR HANDLER
+================================================================ */
 
 app.use(
-    (error, req, res, next) => {
+    (
+        error,
+        req,
+        res,
+        next
+    ) => {
+
+        SERVER_STATE.errors++;
+
+        SERVER_STATE.lastErrorAt =
+            nowISO();
+
+        SERVER_STATE.lastError =
+            error.message ||
+            String(
+                error
+            );
 
         logError(
-            "GLOBAL_SERVER_ERROR",
+            "Global server error",
             {
 
-                error:
-                    error?.message ||
-                    String(error),
-
-                stack:
-                    error?.stack,
+                requestId:
+                    req.requestId,
 
                 method:
-                    req?.method,
+                    req.method,
 
                 path:
-                    req?.originalUrl,
+                    req.path,
 
-                requestId:
-                    req?.requestId
+                error:
+                    error.message,
 
+                stack:
+                    IS_PRODUCTION
+                        ? undefined
+                        : error.stack
             }
         );
-
 
         if (
             res.headersSent
@@ -9103,23 +12049,19 @@ app.use(
             return next(
                 error
             );
-
         }
 
-
         const status =
-            Number(
-                error?.status ||
-                error?.statusCode ||
-                500
+            clamp(
+                error.status ||
+                error.statusCode ||
+                500,
+                400,
+                599
             );
 
-
         res.status(
-            status >= 400 &&
-            status < 600
-                ? status
-                : 500
+            status
         ).json({
 
             success:
@@ -9127,556 +12069,600 @@ app.use(
 
             error:
                 IS_PRODUCTION
-                    ? "Sunucu tarafında bir hata oluştu."
+                    ? "Sunucu hatası oluştu."
                     : (
-                        error?.message ||
+                        error.message ||
                         "Sunucu hatası."
                     ),
 
             requestId:
-                req?.requestId ||
-                null
+                req.requestId,
 
+            timestamp:
+                nowISO()
         });
-
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 13. STARTUP BANNER                                               ║
-// ╚══════════════════════════════════════════════════════════════════╝
+/* ================================================================
+   125 — STARTUP BANNER
+================================================================ */
 
 function printStartupBanner() {
 
+    const line =
+        "═".repeat(
+            64
+        );
+
     console.log("");
-
     console.log(
-        "════════════════════════════════════════════════════════"
+        line
     );
-
     console.log(
         "                 TÜRKAI SERVER"
     );
-
     console.log(
-        "════════════════════════════════════════════════════════"
+        line
     );
-
     console.log(
-        ` App        : ${APP_NAME}`
+        `  Uygulama      : ${APP_NAME}`
     );
-
     console.log(
-        ` Version    : ${APP_VERSION}`
+        `  Sürüm         : ${APP_VERSION}`
     );
-
     console.log(
-        ` Environment: ${NODE_ENV}`
+        `  Ortam         : ${NODE_ENV}`
     );
-
     console.log(
-        ` Host       : ${HOST}`
+        `  Node.js       : ${process.version}`
     );
-
     console.log(
-        ` Port       : ${PORT}`
+        `  Platform      : ${process.platform}`
     );
-
     console.log(
-        ` Server ID  : ${SERVER_ID}`
+        `  Mimari        : ${process.arch}`
     );
-
     console.log(
-        ` Node       : ${process.version}`
+        `  Host          : ${HOST}`
     );
-
     console.log(
-        ` Platform   : ${process.platform}`
+        `  Port          : ${PORT}`
     );
-
     console.log(
-        "────────────────────────────────────────────────────────"
+        `  Server ID     : ${SERVER_ID}`
     );
-
     console.log(
-        ` Local AI   : ${true ? "READY" : "OFF"}`
+        `  Boot ID       : ${SERVER_BOOT_ID}`
     );
-
     console.log(
-        ` Groq       : ${GROQ_API_KEY ? "READY" : "OFF"}`
+        `  Socket.IO     : AKTİF`
     );
-
     console.log(
-        ` Cerebras   : ${CEREBRAS_API_KEY ? "READY" : "OFF"}`
+        `  API           : AKTİF`
     );
-
     console.log(
-        ` OpenRouter : ${OPENROUTER_API_KEY ? "READY" : "OFF"}`
+        `  Frontend      : ${
+            getFrontendFile()
+                ? "BULUNDU"
+                : "FALLBACK"
+        }`
     );
-
     console.log(
-        ` Gemini     : ${GEMINI_API_KEY ? "READY" : "OFF"}`
+        `  AI Groq       : ${
+            process.env.GROQ_API_KEY
+                ? "HAZIR"
+                : "YOK"
+        }`
     );
-
     console.log(
-        "────────────────────────────────────────────────────────"
+        `  AI Cerebras   : ${
+            process.env.CEREBRAS_API_KEY
+                ? "HAZIR"
+                : "YOK"
+        }`
     );
-
     console.log(
-        " Health     : /api/health"
+        `  AI OpenRouter : ${
+            process.env.OPENROUTER_API_KEY
+                ? "HAZIR"
+                : "YOK"
+        }`
     );
-
     console.log(
-        " Status     : /api/status"
-    );
-
+        `  AI Gemini     : ${
+            process.env.GEMINI_API_KEY
+                ? "HAZIR"
+                : "YOK"
+        }`);
     console.log(
-        " API        : /api"
+        line
     );
-
     console.log(
-        " Docs       : /api/docs"
+        `  Local URL     : http://localhost:${PORT}`
     );
-
     console.log(
-        "════════════════════════════════════════════════════════"
+        `  Health        : http://localhost:${PORT}/api/health`
     );
-
+    console.log(
+        `  API           : http://localhost:${PORT}/api`
+    );
+    console.log(
+        line
+    );
     console.log("");
-
 }
 
+/* ================================================================
+   126 — START SERVER
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 14. SERVER START                                                  ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-function startServer() {
+async function startServer() {
 
     if (
         SERVER_INSTANCE
     ) {
 
-        logInfo(
-            "Server zaten çalışıyor."
+        logWarn(
+            "Server zaten başlatılmış."
         );
 
         return SERVER_INSTANCE;
-
     }
 
+    SERVER_STATE.shuttingDown =
+        false;
 
-    if (
-        shuttingDown
-    ) {
+    SERVER_STATE.startedAt =
+        Date.now();
 
-        throw new Error(
-            "Server kapanma sürecinde."
-        );
+    return new Promise(
+        (
+            resolve,
+            reject
+        ) => {
 
-    }
+            let settled =
+                false;
 
+            const onError =
+                (
+                    error
+                ) => {
 
-    serverStartedAt =
-        nowISO();
+                    if (
+                        settled
+                    ) {
 
-
-    SERVER_INSTANCE =
-        httpServer.listen(
-            PORT,
-            HOST,
-            () => {
-
-                printStartupBanner();
-
-
-                logInfo(
-                    "TürkAI server started",
-                    {
-
-                        app:
-                            APP_NAME,
-
-                        version:
-                            APP_VERSION,
-
-                        host:
-                            HOST,
-
-                        port:
-                            PORT,
-
-                        serverId:
-                            SERVER_ID
-
+                        return;
                     }
-                );
 
-            }
-        );
+                    settled =
+                        true;
 
+                    logError(
+                        "HTTP server startup error",
+                        {
+                            error:
+                                error.message,
 
-    SERVER_INSTANCE.on(
-        "error",
-        error => {
+                            code:
+                                error.code
+                        }
+                    );
 
-            logError(
-                "HTTP_SERVER_ERROR",
-                {
+                    SERVER_INSTANCE =
+                        null;
 
-                    message:
-                        error.message,
+                    global.__TURKAI_HTTP_SERVER =
+                        null;
 
-                    code:
-                        error.code,
+                    reject(
+                        error
+                    );
+                };
 
-                    stack:
-                        error.stack
+            const server =
+                httpServer;
 
+            server.once(
+                "error",
+                onError
+            );
+
+            server.listen(
+                PORT,
+                HOST,
+                () => {
+
+                    if (
+                        settled
+                    ) {
+
+                        return;
+                    }
+
+                    settled =
+                        true;
+
+                    server.removeListener(
+                        "error",
+                        onError
+                    );
+
+                    SERVER_INSTANCE =
+                        server;
+
+                    global.__TURKAI_HTTP_SERVER =
+                        server;
+
+                    SERVER_STATE.startedAt =
+                        Date.now();
+
+                    printStartupBanner();
+
+                    logInfo(
+                        "TürkAI server başarıyla başlatıldı.",
+                        {
+
+                            port:
+                                PORT,
+
+                            host:
+                                HOST,
+
+                            serverId:
+                                SERVER_ID
+                        }
+                    );
+
+                    resolve(
+                        server
+                    );
                 }
             );
-
-
-            if (
-                error.code ===
-                "EADDRINUSE"
-            ) {
-
-                console.error(
-                    `Port ${PORT} zaten kullanılıyor.`
-                );
-
-            }
-
         }
     );
-
-
-    SERVER_INSTANCE.on(
-        "listening",
-        () => {
-
-            const address =
-                SERVER_INSTANCE.address();
-
-
-            logInfo(
-                "HTTP server listening",
-                {
-                    address
-                }
-            );
-
-        }
-    );
-
-
-    SERVER_INSTANCE.on(
-        "close",
-        () => {
-
-            logInfo(
-                "HTTP server closed."
-            );
-
-        }
-    );
-
-
-    return SERVER_INSTANCE;
-
 }
 
+/* ================================================================
+   127 — GRACEFUL SHUTDOWN
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 15. GRACEFUL SHUTDOWN                                             ║
-// ╚══════════════════════════════════════════════════════════════════╝
+let shutdownPromise =
+    null;
 
 async function shutdown(
     signal = "UNKNOWN"
 ) {
 
     if (
-        shuttingDown
+        shutdownPromise
     ) {
 
-        return;
-
+        return shutdownPromise;
     }
 
+    shutdownPromise =
+        (async () => {
 
-    shuttingDown =
-        true;
+            SERVER_STATE.shuttingDown =
+                true;
 
+            console.log("");
 
-    console.log("");
+            console.log(
+                `TürkAI kapanıyor... Signal: ${signal}`
+            );
 
-    console.log(
-        `TürkAI shutdown başlatılıyor: ${signal}`
-    );
-
-
-    logInfo(
-        "Shutdown started",
-        {
-            signal
-        }
-    );
-
-
-    try {
-
-        clearInterval(
-            MAINTENANCE_INTERVAL
-        );
-
-    } catch {}
-
-
-    try {
-
-        clearInterval(
-            BACKUP_INTERVAL
-        );
-
-    } catch {}
-
-
-    try {
-
-        backupDatabase();
-
-    } catch (error) {
-
-        logError(
-            "SHUTDOWN_BACKUP_ERROR",
-            {
-                error:
-                    error.message
-            }
-        );
-
-    }
-
-
-    for (
-        const [
-            socketId,
-            socket
-        ]
-        of io.sockets.sockets
-    ) {
-
-        try {
-
-            socket.emit(
-                "turkai:shutdown",
+            logInfo(
+                "Graceful shutdown başlatıldı.",
                 {
-
-                    message:
-                        "TürkAI sunucusu kapanıyor.",
-
-                    timestamp:
-                        nowISO()
-
+                    signal
                 }
             );
 
+            try {
 
-            socket.disconnect(
-                true
-            );
+                for (
+                    const socket
+                    of connectedSockets.values()
+                ) {
 
-        } catch {}
+                    try {
 
-    }
+                        socket.emit(
+                            "turkai:shutdown",
+                            {
+                                message:
+                                    "Sunucu kapanıyor.",
 
+                                timestamp:
+                                    nowISO()
+                            }
+                        );
 
-    if (
-        SERVER_INSTANCE
-    ) {
+                    } catch (
+                        error
+                    ) {
 
-        await new Promise(
-            resolve => {
+                        logWarn(
+                            "Socket shutdown notification error",
+                            {
+                                error:
+                                    error.message
+                            }
+                        );
+                    }
+                }
 
-                let finished =
-                    false;
+                connectedUsers.clear();
 
+                activeChatRooms.clear();
 
-                const finish =
-                    () => {
+                connectedSockets.clear();
 
-                        if (
-                            finished
-                        ) {
+                SERVER_STATE.activeUsers =
+                    0;
 
-                            return;
+                SERVER_STATE.activeRooms =
+                    0;
 
+                if (
+                    SERVER_INSTANCE
+                ) {
+
+                    await new Promise(
+                        resolve => {
+
+                            let finished =
+                                false;
+
+                            const finish =
+                                () => {
+
+                                    if (
+                                        finished
+                                    ) {
+                                        return;
+                                    }
+
+                                    finished =
+                                        true;
+
+                                    resolve();
+                                };
+
+                            try {
+
+                                SERVER_INSTANCE.close(
+                                    () => {
+
+                                        finish();
+                                    }
+                                );
+
+                                setTimeout(
+                                    finish,
+                                    5000
+                                );
+
+                            } catch (
+                                error
+                            ) {
+
+                                logWarn(
+                                    "HTTP close error",
+                                    {
+                                        error:
+                                            error.message
+                                    }
+                                );
+
+                                finish();
+                            }
                         }
-
-
-                        finished =
-                            true;
-
-                        resolve();
-
-                    };
-
-
-                try {
-
-                    SERVER_INSTANCE.close(
-                        finish
                     );
-
-                } catch {
-
-                    finish();
-
                 }
 
+                SERVER_INSTANCE =
+                    null;
 
-                setTimeout(
-                    finish,
-                    8000
+                global.__TURKAI_HTTP_SERVER =
+                    null;
+
+                console.log(
+                    "TürkAI server güvenli şekilde kapatıldı."
                 );
 
+            } catch (
+                error
+            ) {
+
+                logError(
+                    "Shutdown error",
+                    {
+                        error:
+                            error.message
+                    }
+                );
+
+            } finally {
+
+                shutdownPromise =
+                    null;
             }
-        );
+        })();
 
-    }
-
-
-    SERVER_INSTANCE =
-        null;
-
-
-    logInfo(
-        "Shutdown completed",
-        {
-            signal
-        }
-    );
-
-
-    console.log(
-        "TürkAI server kapandı."
-    );
-
+    return shutdownPromise;
 }
 
+/* ================================================================
+   128 — PROCESS SIGNALS
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 16. PROCESS SIGNALS                                               ║
-// ╚══════════════════════════════════════════════════════════════════╝
-
-process.on(
+process.once(
     "SIGINT",
-    () => {
+    async () => {
 
-        shutdown(
+        await shutdown(
             "SIGINT"
-        ).finally(
-            () => {
-                process.exit(
-                    0
-                );
-            }
         );
 
+        process.exit(
+            0
+        );
     }
 );
 
-
-process.on(
+process.once(
     "SIGTERM",
-    () => {
+    async () => {
 
-        shutdown(
+        await shutdown(
             "SIGTERM"
-        ).finally(
-            () => {
-                process.exit(
-                    0
-                );
-            }
         );
 
+        process.exit(
+            0
+        );
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 17. UNCAUGHT EXCEPTION                                            ║
-// ╚══════════════════════════════════════════════════════════════════╝
+/* ================================================================
+   129 — UNCAUGHT EXCEPTION
+================================================================ */
 
 process.on(
     "uncaughtException",
-    error => {
+    async (
+        error
+    ) => {
+
+        SERVER_STATE.errors++;
+
+        SERVER_STATE.lastErrorAt =
+            nowISO();
+
+        SERVER_STATE.lastError =
+            error.message;
 
         logError(
-            "UNCAUGHT_EXCEPTION",
+            "UNCAUGHT EXCEPTION",
             {
 
-                message:
+                error:
                     error.message,
 
                 stack:
                     error.stack
-
             }
         );
 
+        /*
+         * Kritik exception durumunda
+         * process'in sessizce bozulmasına
+         * izin vermiyoruz.
+         */
 
-        shutdown(
-            "uncaughtException"
-        ).finally(
-            () => {
+        if (
+            IS_PRODUCTION
+        ) {
 
-                process.exit(
-                    1
-                );
+            await shutdown(
+                "uncaughtException"
+            );
 
-            }
-        );
-
+            process.exit(
+                1
+            );
+        }
     }
 );
 
-
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 18. UNHANDLED REJECTION                                           ║
-// ╚══════════════════════════════════════════════════════════════════╝
+/* ================================================================
+   130 — UNHANDLED REJECTION
+================================================================ */
 
 process.on(
     "unhandledRejection",
-    reason => {
+    async (
+        reason
+    ) => {
+
+        SERVER_STATE.errors++;
+
+        SERVER_STATE.lastErrorAt =
+            nowISO();
+
+        SERVER_STATE.lastError =
+            String(
+                reason
+            );
 
         logError(
-            "UNHANDLED_REJECTION",
+            "UNHANDLED REJECTION",
             {
 
-                reason:
-                    reason instanceof Error
-                        ? reason.message
-                        : String(reason),
-
-                stack:
-                    reason instanceof Error
-                        ? reason.stack
-                        : undefined
-
+                error:
+                    String(
+                        reason
+                    )
             }
         );
 
+        if (
+            IS_PRODUCTION
+        ) {
+
+            await shutdown(
+                "unhandledRejection"
+            );
+
+            process.exit(
+                1
+            );
+        }
     }
 );
 
+/* ================================================================
+   131 — BEFORE EXIT
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 19. SERVER EXPORTS                                                ║
-// ╚══════════════════════════════════════════════════════════════════╝
+process.on(
+    "beforeExit",
+    () => {
+
+        logInfo(
+            "Node beforeExit tetiklendi.",
+            {
+                uptime:
+                    process.uptime()
+            }
+        );
+    }
+);
+
+/* ================================================================
+   132 — EXIT
+================================================================ */
+
+process.on(
+    "exit",
+    (
+        code
+    ) => {
+
+        console.log(
+            `TürkAI process kapandı. Kod: ${code}`
+        );
+    }
+);
+
+/* ================================================================
+   133 — MODULE EXPORTS
+================================================================ */
 
 module.exports = {
 
@@ -9690,74 +12676,81 @@ module.exports = {
 
     shutdown,
 
-    getRequestUser,
+    getServerState:
+        () => ({
+            ...SERVER_STATE
+        }),
 
-    getPlan,
+    getConnectedUsers:
+        () =>
+            connectedUsers,
 
-    getUserUsage,
+    getConnectedSockets:
+        () =>
+            connectedSockets,
 
-    addMemory,
+    getActiveChatRooms:
+        () =>
+            activeChatRooms,
 
-    searchMemories,
+    APP_NAME,
 
-    findKnowledgeAnswer,
+    APP_VERSION,
 
-    saveKnowledgeAnswer,
+    PORT,
 
-    performResearch,
-
-    getProjects,
-
-    getFiles,
-
-    getResearch,
-
-    createUser,
-
-    createSession,
-
-    findUserById,
-
-    findUserByEmail,
-
-    getChatMessages,
-
-    addMessage,
-
-    createChat,
-
-    getPlanForUser,
-
-    usageAvailable,
-
-    updateUsage,
-
-    backupDatabase,
-
-    cleanupTemp,
-
-    cleanupSessions,
-
-    getSecurityEvents,
-
-    addSecurityEvent
-
+    HOST
 };
 
+/* ================================================================
+   134 — START ONLY WHEN EXECUTED DIRECTLY
+================================================================ */
 
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║ 20. FINAL START GUARD                                             ║
-// ╚══════════════════════════════════════════════════════════════════╝
+/*
+ * ÇOK ÖNEMLİ:
+ *
+ * require("./server")
+ *
+ * yapıldığında server otomatik başlamaz.
+ *
+ * Ama:
+ *
+ * node server.js
+ *
+ * çalıştırıldığında başlar.
+ *
+ * Bu yapı testleri ve Render'ı
+ * daha düzgün hale getirir.
+ */
 
 if (
-    require.main === module
+    require.main ===
+    module
 ) {
 
-    startServer();
+    startServer()
+        .catch(
+            error => {
 
+                logError(
+                    "Server startup failed",
+                    {
+
+                        error:
+                            error.message,
+
+                        stack:
+                            error.stack
+                    }
+                );
+
+                process.exit(
+                    1
+                );
+            }
+        );
 }
 
-
-// ═══════════════════════════════════════════════════════════════════
-// END OF TÜRKAI SERVER
-// ═══════════════════════════════════════════════════════════════════
+/* ================================================================
+   TÜRKAI SERVER — PARÇA 3/3 SONU
+================================================================ */
