@@ -1,2671 +1,2095 @@
 /* =========================================================
    TÜRKAI — APP.JS
-   PART 1 / 3
-   CORE + STATE + API + CHAT ENGINE
+   PART 1 / 2
+   Core UI + Chat + Navigation + API + Modals
    ========================================================= */
 
 "use strict";
 
 /* =========================================================
-   GLOBAL CONFIG
+   1. GLOBAL CONFIG
    ========================================================= */
 
-const TURKAI_APP_CONFIG = {
-    name: "TürkAI",
+const TURKAI = {
     version: "20.0.0",
-    apiBase: window.location.origin,
-    requestTimeout: 45000,
 
-    storage: {
-        token: "turkai_access_token",
-        refreshToken: "turkai_refresh_token",
-        user: "turkai_user",
-        settings: "turkai_settings",
-        conversation: "turkai_conversation",
-        theme: "turkai_theme"
-    },
+    apiBase: "",
 
-    features: {
-        memory: true,
-        research: true,
-        weather: true,
-        coding: true,
-        files: true,
-        image: true,
-        video: true,
-        realtime: true
-    }
-};
+    state: {
+        currentPage: "chat",
+        currentModel: "auto",
+        currentConversationId: null,
+        currentUser: null,
 
+        isSending: false,
+        isOnline: navigator.onLine,
+        isRecording: false,
 
-/* =========================================================
-   GLOBAL STATE
-   ========================================================= */
+        selectedFile: null,
+        uploadedFile: null,
 
-const TURKAI_STATE = {
-    user: null,
-
-    authenticated: false,
-
-    accessToken: null,
-
-    refreshToken: null,
-
-    conversationId:
-        localStorage.getItem(
-            TURKAI_APP_CONFIG.storage.conversation
-        ) ||
-        crypto.randomUUID?.() ||
-        `conversation-${Date.now()}`,
-
-    messages: [],
-
-    isGenerating: false,
-
-    isResearching: false,
-
-    isUploading: false,
-
-    isGeneratingImage: false,
-
-    isGeneratingVideo: false,
-
-    currentAbortController: null,
-
-    currentTaskId: null,
-
-    currentMode: "chat",
-
-    activeModel: "auto",
-
-    plan: "free",
-
-    notifications: [],
-
-    unreadNotifications: 0,
-
-    online: navigator.onLine,
-
-    socket: null,
-
-    socketConnected: false,
-
-    settings: {
-        enterToSend: true,
-        sound: true,
-        autoResearch: true,
-        saveHistory: true,
-        compactMode: false,
-        theme: "dark"
-    },
-
-    ui: {
         sidebarOpen: false,
-        settingsOpen: false,
-        imageModalOpen: false,
-        fileModalOpen: false,
+        modelMenuOpen: false,
         notificationOpen: false,
-        modelMenuOpen: false
+        userMenuOpen: false,
+
+        activeModal: null,
+
+        messages: []
+    },
+
+    config: {
+        maxMessageLength: 50000,
+        requestTimeout: 60000,
+        maxFileSize: 10 * 1024 * 1024
     }
 };
 
 
 /* =========================================================
-   DOM CACHE
+   2. SHORTCUTS
    ========================================================= */
 
-const TURKAI_DOM = {};
+const $ = (selector, parent = document) => {
+    return parent.querySelector(selector);
+};
 
+const $$ = (selector, parent = document) => {
+    return [...parent.querySelectorAll(selector)];
+};
 
-function turkAICacheDOM() {
+function byId(id) {
+    return document.getElementById(id);
+}
 
-    const selectors = {
-        app: "#app",
-        chat: "#chat",
-        chatContainer: "#chatContainer",
-        messages: "#messages",
-        messageInput: "#messageInput",
-        promptInput: "#promptInput",
-        sendButton: "#sendButton",
-        submitButton: "#submitButton",
-
-        voiceButton: "#voiceButton",
-        researchButton: "#researchButton",
-        weatherButton: "#weatherButton",
-        memoryButton: "#memoryButton",
-        uploadButton: "#uploadButton",
-        imageButton: "#imageButton",
-        videoButton: "#videoButton",
-
-        fileInput: "#fileInput",
-
-        sidebar: "#sidebar",
-        sidebarOverlay: "#sidebarOverlay",
-        menuButton: "#menuButton",
-        closeSidebar: "#closeSidebar",
-
-        settingsButton: "#settingsButton",
-        settingsModal: "#settingsModal",
-        closeSettings: "#closeSettings",
-
-        imageModal: "#imageCreateModal",
-        closeImageModal: "#closeImageModal",
-        generateImageButton: "#generateImageButton",
-
-        videoModal: "#videoCreateModal",
-        closeVideoModal: "#closeVideoModal",
-        generateVideoButton: "#generateVideoButton",
-
-        notificationButton: "#notificationButton",
-        notificationPanel: "#notificationPanel",
-
-        modelButton: "#modelButton",
-        modelMenu: "#modelMenu",
-
-        newChatButton: "#newChatButton",
-        clearChatButton: "#clearChatButton",
-
-        userName: "#userName",
-        userAvatar: "#userAvatar",
-        planBadge: "#planBadge",
-
-        onlineIndicator: "#onlineIndicator",
-        typingIndicator: "#typingIndicator",
-
-        filePreview: "#filePreview",
-        uploadProgress: "#uploadProgress"
-    };
-
-    for (const [key, selector] of Object.entries(selectors)) {
-        TURKAI_DOM[key] =
-            document.querySelector(selector);
-    }
-
-    return TURKAI_DOM;
+function exists(id) {
+    return !!document.getElementById(id);
 }
 
 
 /* =========================================================
-   SAFE DOM HELPERS
+   3. DOM READY
    ========================================================= */
 
-function turkAI$(selector) {
-    return document.querySelector(selector);
+document.addEventListener("DOMContentLoaded", () => {
+
+    console.log("TürkAI App başlatılıyor...");
+
+    initNavigation();
+    initChat();
+    initComposer();
+    initModals();
+    initMenus();
+    initSidebar();
+    initKeyboard();
+    initOnlineState();
+    initGlobalButtons();
+    initCharacterCounter();
+    initSuggestions();
+    initFileSystem();
+
+    restoreLocalState();
+
+    console.log("TürkAI App hazır.");
+});
+
+
+/* =========================================================
+   4. NAVIGATION
+   ========================================================= */
+
+function initNavigation() {
+
+    const navItems = $$("[data-page]");
+
+    navItems.forEach(item => {
+
+        item.addEventListener("click", event => {
+
+            event.preventDefault();
+
+            const page = item.dataset.page;
+
+            if (!page) return;
+
+            navigateTo(page);
+        });
+    });
 }
 
 
-function turkAI$$(selector) {
-    return [
-        ...document.querySelectorAll(selector)
-    ];
-}
+function navigateTo(page) {
+
+    if (!page) return;
+
+    TURKAI.state.currentPage = page;
+
+    /* Tüm sayfaları kapat */
+
+    $$(".page").forEach(section => {
+
+        section.classList.remove("active");
+
+        section.hidden = true;
+    });
 
 
-function turkAIEscapeHTML(value) {
+    /* Hedef sayfa */
 
-    return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-}
+    const target = byId(`${page}Page`) || $(`[data-page-content="${page}"]`);
 
+    if (target) {
 
-function turkAIText(value) {
-
-    return String(value ?? "")
-        .replace(/\r\n/g, "\n")
-        .trim();
-}
+        target.hidden = false;
+        target.classList.add("active");
+    }
 
 
-function turkAIIsEmpty(value) {
-    return !turkAIText(value);
+    /* Navigation aktifliği */
+
+    $$("[data-page]").forEach(item => {
+
+        item.classList.toggle(
+            "active",
+            item.dataset.page === page
+        );
+    });
+
+
+    /* Chat özel */
+
+    if (page === "chat") {
+
+        requestAnimationFrame(() => {
+
+            const input = byId("messageInput");
+
+            if (input && window.innerWidth > 700) {
+                input.focus();
+            }
+
+        });
+    }
+
+
+    /* Mobil sidebar kapat */
+
+    closeSidebar();
+
+
+    saveLocalState();
 }
 
 
 /* =========================================================
-   STORAGE
+   5. CHAT INIT
    ========================================================= */
 
-function turkAIStorageGet(key, fallback = null) {
+function initChat() {
 
-    try {
+    const sendButton =
+        byId("sendButton") ||
+        $(".send-button");
 
-        const value =
-            localStorage.getItem(key);
+    if (sendButton) {
 
-        if (value === null) {
-            return fallback;
-        }
+        sendButton.addEventListener("click", event => {
 
-        try {
-            return JSON.parse(value);
-        } catch (_) {
-            return value;
-        }
+            event.preventDefault();
 
-    } catch (_) {
-
-        return fallback;
+            sendMessage();
+        });
     }
+
+
+    /* New chat */
+
+    const newChatButtons = [
+        byId("newChatButton"),
+        byId("newChat"),
+        $(".new-chat-button")
+    ].filter(Boolean);
+
+    newChatButtons.forEach(button => {
+
+        button.addEventListener("click", event => {
+
+            event.preventDefault();
+
+            createNewChat();
+        });
+    });
+
+
+    /* Copy / retry delegated */
+
+    document.addEventListener("click", event => {
+
+        const copyButton = event.target.closest("[data-action='copy']");
+
+        if (copyButton) {
+
+            event.preventDefault();
+
+            const message = copyButton.closest(".message-row");
+
+            if (message) {
+
+                const content =
+                    $(".message-content", message) ||
+                    $(".message-bubble", message);
+
+                if (content) {
+                    copyText(content.innerText || content.textContent || "");
+                }
+            }
+
+            return;
+        }
+
+
+        const retryButton =
+            event.target.closest("[data-action='retry']");
+
+        if (retryButton) {
+
+            event.preventDefault();
+
+            const message = retryButton.closest(".message-row");
+
+            if (message) {
+
+                const text =
+                    message.dataset.message ||
+                    $(".message-content", message)?.innerText ||
+                    "";
+
+                if (text.trim()) {
+
+                    const input = byId("messageInput");
+
+                    if (input) {
+                        input.value = text;
+                        updateCharacterCounter();
+                    }
+
+                    sendMessage();
+                }
+            }
+        }
+    });
 }
 
 
-function turkAIStorageSet(key, value) {
+/* =========================================================
+   6. COMPOSER
+   ========================================================= */
+
+function initComposer() {
+
+    const input = byId("messageInput");
+
+    if (!input) {
+        console.warn("messageInput bulunamadı.");
+        return;
+    }
+
+
+    input.addEventListener("keydown", event => {
+
+        if (event.key !== "Enter") return;
+
+        if (event.shiftKey) return;
+
+        event.preventDefault();
+
+        sendMessage();
+    });
+
+
+    input.addEventListener("input", () => {
+
+        updateCharacterCounter();
+
+        autoResizeInput(input);
+    });
+}
+
+
+function autoResizeInput(input) {
+
+    input.style.height = "auto";
+
+    const maxHeight = 180;
+
+    input.style.height =
+        Math.min(input.scrollHeight, maxHeight) + "px";
+}
+
+
+function updateCharacterCounter() {
+
+    const input = byId("messageInput");
+
+    if (!input) return;
+
+    const counter =
+        byId("characterCounter") ||
+        $("#characterCounter");
+
+    if (!counter) return;
+
+    const length = input.value.length;
+
+    counter.textContent =
+        `${length.toLocaleString("tr-TR")} / ${TURKAI.config.maxMessageLength.toLocaleString("tr-TR")}`;
+
+    counter.classList.toggle(
+        "warning",
+        length > TURKAI.config.maxMessageLength * 0.8
+    );
+
+    counter.classList.toggle(
+        "danger",
+        length >= TURKAI.config.maxMessageLength
+    );
+}
+
+
+/* =========================================================
+   7. SEND MESSAGE
+   ========================================================= */
+
+async function sendMessage() {
+
+    if (TURKAI.state.isSending) return;
+
+    const input = byId("messageInput");
+
+    if (!input) return;
+
+    const text = input.value.trim();
+
+    if (!text) {
+
+        shakeElement(
+            $(".composer-shell") || input
+        );
+
+        return;
+    }
+
+
+    if (text.length > TURKAI.config.maxMessageLength) {
+
+        showToast(
+            "Mesaj çok uzun.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    TURKAI.state.isSending = true;
+
+    disableSend(true);
+
+
+    /* Hoş geldin ekranını kapat */
+
+    hideWelcomeScreen();
+
+
+    /* Kullanıcı mesajı */
+
+    addMessage({
+        role: "user",
+        content: text
+    });
+
+
+    input.value = "";
+
+    updateCharacterCounter();
+
+    autoResizeInput(input);
+
+
+    showTyping();
+
 
     try {
 
-        if (
-            typeof value === "string"
-        ) {
-            localStorage.setItem(
-                key,
-                value
+        const response = await apiRequest(
+            "/api/chat",
+            {
+                method: "POST",
+
+                body: {
+                    message: text,
+                    model: TURKAI.state.currentModel,
+                    conversationId:
+                        TURKAI.state.currentConversationId
+                }
+            }
+        );
+
+
+        hideTyping();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                response.data?.error ||
+                response.data?.message ||
+                `HTTP ${response.status}`
             );
+        }
+
+
+        const data = response.data || {};
+
+        const answer =
+            data.answer ||
+            data.response ||
+            data.message ||
+            data.content ||
+            data.text;
+
+
+        if (!answer) {
+
+            addMessage({
+                role: "assistant",
+                content:
+                    "Yanıt alınamadı. Sunucunun `/api/chat` endpoint'ini kontrol et."
+            });
+
         } else {
-            localStorage.setItem(
-                key,
-                JSON.stringify(value)
-            );
+
+            addMessage({
+                role: "assistant",
+                content: answer
+            });
         }
 
-        return true;
 
-    } catch (_) {
+        if (data.conversationId) {
 
-        return false;
+            TURKAI.state.currentConversationId =
+                data.conversationId;
+        }
+
+
+        saveLocalState();
+
+    } catch (error) {
+
+        console.error("Chat error:", error);
+
+        hideTyping();
+
+        addMessage({
+            role: "assistant",
+            content:
+                `Bağlantı sırasında bir hata oluştu.\n\n\`${error.message || "Bilinmeyen hata"}\``
+        });
+
+        showToast(
+            "Sunucuya bağlanılamadı.",
+            "danger"
+        );
+
+    } finally {
+
+        TURKAI.state.isSending = false;
+
+        disableSend(false);
     }
 }
 
 
-function turkAIStorageRemove(key) {
+/* =========================================================
+   8. ADD MESSAGE
+   ========================================================= */
+
+function addMessage(message) {
+
+    const container =
+        byId("messages") ||
+        $(".messages");
+
+    if (!container) return;
+
+
+    const role =
+        message.role === "user"
+            ? "user"
+            : "assistant";
+
+
+    const row = document.createElement("div");
+
+    row.className =
+        `message-row ${role}-message`;
+
+    row.dataset.role = role;
+
+    row.dataset.message =
+        message.content || "";
+
+
+    const avatar = document.createElement("div");
+
+    avatar.className = "message-avatar";
+
+    avatar.innerHTML =
+        role === "user"
+            ? `<span class="icon icon-user"></span>`
+            : `<span class="icon icon-ai"></span>`;
+
+
+    const bubble = document.createElement("div");
+
+    bubble.className = "message-bubble";
+
+
+    const content = document.createElement("div");
+
+    content.className = "message-content";
+
+    content.innerHTML =
+        formatMessage(message.content || "");
+
+
+    bubble.appendChild(content);
+
+
+    /* Assistant actions */
+
+    if (role === "assistant") {
+
+        const actions =
+            document.createElement("div");
+
+        actions.className =
+            "message-actions";
+
+
+        actions.innerHTML = `
+            <button
+                type="button"
+                class="message-action"
+                data-action="copy"
+                title="Kopyala">
+                <span class="icon icon-copy"></span>
+            </button>
+
+            <button
+                type="button"
+                class="message-action"
+                data-action="retry"
+                title="Tekrar dene">
+                <span class="icon icon-refresh"></span>
+            </button>
+        `;
+
+
+        bubble.appendChild(actions);
+    }
+
+
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+
+    container.appendChild(row);
+
+
+    TURKAI.state.messages.push({
+        role,
+        content: message.content || ""
+    });
+
+
+    scrollMessages();
+}
+
+
+/* =========================================================
+   9. MESSAGE FORMATTER
+   ========================================================= */
+
+function escapeHTML(text) {
+
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+function formatMessage(text) {
+
+    let html = escapeHTML(text);
+
+
+    /* Code blocks */
+
+    html = html.replace(
+        /```([\w-]*)\n?([\s\S]*?)```/g,
+        (_, language, code) => {
+
+            const lang =
+                language || "code";
+
+            return `
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>${escapeHTML(lang)}</span>
+
+                        <button
+                            type="button"
+                            class="code-copy"
+                            onclick="window.turkAICopyCode(this)">
+                            Kopyala
+                        </button>
+                    </div>
+
+                    <pre><code>${code}</code></pre>
+                </div>
+            `;
+        }
+    );
+
+
+    /* Inline code */
+
+    html = html.replace(
+        /`([^`]+)`/g,
+        "<code>$1</code>"
+    );
+
+
+    /* Bold */
+
+    html = html.replace(
+        /\*\*(.*?)\*\*/g,
+        "<strong>$1</strong>"
+    );
+
+
+    /* Italic */
+
+    html = html.replace(
+        /\*(.*?)\*/g,
+        "<em>$1</em>"
+    );
+
+
+    /* Link */
+
+    html = html.replace(
+        /(https?:\/\/[^\s<]+)/g,
+        `<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>`
+    );
+
+
+    /* Satır sonları */
+
+    html = html.replace(
+        /\n/g,
+        "<br>"
+    );
+
+
+    return html;
+}
+
+
+/* =========================================================
+   10. COPY
+   ========================================================= */
+
+async function copyText(text) {
 
     try {
-        localStorage.removeItem(key);
-    } catch (_) {}
+
+        await navigator.clipboard.writeText(text);
+
+        showToast(
+            "Kopyalandı.",
+            "success"
+        );
+
+    } catch {
+
+        const textarea =
+            document.createElement("textarea");
+
+        textarea.value = text;
+
+        document.body.appendChild(textarea);
+
+        textarea.select();
+
+        document.execCommand("copy");
+
+        textarea.remove();
+
+        showToast(
+            "Kopyalandı.",
+            "success"
+        );
+    }
+}
+
+
+window.turkAICopyCode = function(button) {
+
+    const block =
+        button.closest(".code-block");
+
+    const code =
+        block?.querySelector("code");
+
+    if (!code) return;
+
+    copyText(code.innerText || code.textContent || "");
+};
+
+
+/* =========================================================
+   11. TYPING
+   ========================================================= */
+
+function showTyping() {
+
+    const typing =
+        byId("typingIndicator");
+
+    if (!typing) return;
+
+    typing.hidden = false;
+
+    typing.classList.add("active");
+
+    scrollMessages();
+}
+
+
+function hideTyping() {
+
+    const typing =
+        byId("typingIndicator");
+
+    if (!typing) return;
+
+    typing.hidden = true;
+
+    typing.classList.remove("active");
 }
 
 
 /* =========================================================
-   SETTINGS LOAD
+   12. WELCOME SCREEN
    ========================================================= */
 
-function turkAILoadSettings() {
+function hideWelcomeScreen() {
 
-    const saved =
-        turkAIStorageGet(
-            TURKAI_APP_CONFIG.storage.settings,
-            {}
-        );
+    const welcome =
+        byId("welcomeScreen") ||
+        $(".welcome-screen");
 
-    if (
-        saved &&
-        typeof saved === "object"
-    ) {
+    if (!welcome) return;
 
-        TURKAI_STATE.settings = {
-            ...TURKAI_STATE.settings,
-            ...saved
-        };
-    }
+    welcome.classList.add("hidden");
 
-    const theme =
-        turkAIStorageGet(
-            TURKAI_APP_CONFIG.storage.theme,
-            "dark"
-        );
-
-    TURKAI_STATE.settings.theme =
-        theme;
-
-    turkAIApplyTheme();
-}
-
-
-function turkAISaveSettings() {
-
-    turkAIStorageSet(
-        TURKAI_APP_CONFIG.storage.settings,
-        TURKAI_STATE.settings
-    );
-
-    turkAIStorageSet(
-        TURKAI_APP_CONFIG.storage.theme,
-        TURKAI_STATE.settings.theme
-    );
-}
-
-
-/* =========================================================
-   THEME
-   ========================================================= */
-
-function turkAIApplyTheme() {
-
-    document.documentElement
-        .setAttribute(
-            "data-theme",
-            TURKAI_STATE.settings.theme
-        );
-
-    document.body?.classList.toggle(
-        "compact-mode",
-        Boolean(
-            TURKAI_STATE.settings.compactMode
-        )
-    );
-}
-
-
-/* =========================================================
-   TOKEN MANAGEMENT
-   ========================================================= */
-
-function turkAILoadAuth() {
-
-    TURKAI_STATE.accessToken =
-        turkAIStorageGet(
-            TURKAI_APP_CONFIG.storage.token,
-            null
-        );
-
-    TURKAI_STATE.refreshToken =
-        turkAIStorageGet(
-            TURKAI_APP_CONFIG.storage.refreshToken,
-            null
-        );
-
-    TURKAI_STATE.user =
-        turkAIStorageGet(
-            TURKAI_APP_CONFIG.storage.user,
-            null
-        );
-
-    TURKAI_STATE.authenticated =
-        Boolean(
-            TURKAI_STATE.accessToken &&
-            TURKAI_STATE.user
-        );
-}
-
-
-function turkAISaveAuth(data) {
-
-    if (!data) return;
-
-    if (data.accessToken) {
-
-        TURKAI_STATE.accessToken =
-            data.accessToken;
-
-        turkAIStorageSet(
-            TURKAI_APP_CONFIG.storage.token,
-            data.accessToken
-        );
-    }
-
-    if (data.refreshToken) {
-
-        TURKAI_STATE.refreshToken =
-            data.refreshToken;
-
-        turkAIStorageSet(
-            TURKAI_APP_CONFIG.storage.refreshToken,
-            data.refreshToken
-        );
-    }
-
-    if (data.user) {
-
-        TURKAI_STATE.user =
-            data.user;
-
-        turkAIStorageSet(
-            TURKAI_APP_CONFIG.storage.user,
-            data.user
-        );
-    }
-
-    TURKAI_STATE.authenticated =
-        Boolean(
-            TURKAI_STATE.accessToken &&
-            TURKAI_STATE.user
-        );
-}
-
-
-function turkAIClearAuth() {
-
-    TURKAI_STATE.accessToken = null;
-    TURKAI_STATE.refreshToken = null;
-    TURKAI_STATE.user = null;
-    TURKAI_STATE.authenticated = false;
-
-    turkAIStorageRemove(
-        TURKAI_APP_CONFIG.storage.token
-    );
-
-    turkAIStorageRemove(
-        TURKAI_APP_CONFIG.storage.refreshToken
-    );
-
-    turkAIStorageRemove(
-        TURKAI_APP_CONFIG.storage.user
+    welcome.setAttribute(
+        "aria-hidden",
+        "true"
     );
 }
 
 
 /* =========================================================
-   API REQUEST ENGINE
+   13. NEW CHAT
    ========================================================= */
 
-async function turkAIApi(
+function createNewChat() {
+
+    TURKAI.state.currentConversationId =
+        generateId();
+
+    TURKAI.state.messages = [];
+
+
+    const messages =
+        byId("messages");
+
+    if (messages) {
+        messages.innerHTML = "";
+    }
+
+
+    hideTyping();
+
+
+    const welcome =
+        byId("welcomeScreen") ||
+        $(".welcome-screen");
+
+    if (welcome) {
+
+        welcome.classList.remove("hidden");
+
+        welcome.removeAttribute("aria-hidden");
+    }
+
+
+    const input =
+        byId("messageInput");
+
+    if (input) {
+
+        input.value = "";
+
+        updateCharacterCounter();
+
+        autoResizeInput(input);
+
+        input.focus();
+    }
+
+
+    navigateTo("chat");
+
+    showToast(
+        "Yeni sohbet hazır.",
+        "success"
+    );
+
+    saveLocalState();
+}
+
+
+/* =========================================================
+   14. GENERATE ID
+   ========================================================= */
+
+function generateId() {
+
+    return (
+        Date.now().toString(36) +
+        Math.random()
+            .toString(36)
+            .substring(2, 10)
+    );
+}
+
+
+/* =========================================================
+   15. DISABLE SEND
+   ========================================================= */
+
+function disableSend(disabled) {
+
+    const buttons = [
+        byId("sendButton"),
+        $(".send-button")
+    ].filter(Boolean);
+
+
+    buttons.forEach(button => {
+
+        button.disabled = disabled;
+
+        button.classList.toggle(
+            "loading",
+            disabled
+        );
+    });
+}
+
+
+/* =========================================================
+   16. SCROLL
+   ========================================================= */
+
+function scrollMessages() {
+
+    const container =
+        byId("messages") ||
+        $(".messages");
+
+    if (!container) return;
+
+    requestAnimationFrame(() => {
+
+        container.scrollTo({
+            top: container.scrollHeight,
+            behavior: "smooth"
+        });
+
+    });
+}
+
+
+/* =========================================================
+   17. API ENGINE
+   ========================================================= */
+
+async function apiRequest(
     endpoint,
     options = {}
 ) {
 
-    const {
-        method = "GET",
-        body = undefined,
-        headers = {},
-        timeout =
-            TURKAI_APP_CONFIG.requestTimeout,
-        retry = true
-    } = options;
-
     const controller =
         new AbortController();
 
-    const timer =
+
+    const timeout =
         setTimeout(
-            () => {
-                try {
-                    controller.abort();
-                } catch (_) {}
-            },
-            timeout
+            () => controller.abort(),
+            options.timeout ||
+            TURKAI.config.requestTimeout
         );
 
-    const finalHeaders = {
-        "Accept":
-            "application/json",
-        ...headers
+
+    const fetchOptions = {
+
+        method:
+            options.method || "GET",
+
+        headers: {
+            "Content-Type":
+                "application/json",
+
+            ...(options.headers || {})
+        },
+
+        credentials: "include",
+
+        signal:
+            controller.signal
     };
 
-    if (
-        body !== undefined &&
-        !(body instanceof FormData)
-    ) {
-
-        finalHeaders[
-            "Content-Type"
-        ] =
-            "application/json";
-    }
 
     if (
-        TURKAI_STATE.accessToken
+        options.body !== undefined &&
+        fetchOptions.method !== "GET"
     ) {
 
-        finalHeaders[
-            "Authorization"
-        ] =
-            `Bearer ${TURKAI_STATE.accessToken}`;
+        fetchOptions.body =
+            JSON.stringify(options.body);
     }
 
-    let requestBody = body;
 
-    if (
-        body !== undefined &&
-        !(body instanceof FormData) &&
-        typeof body !== "string"
-    ) {
-
-        requestBody =
-            JSON.stringify(body);
-    }
+    let response;
 
     try {
 
-        const response =
+        response =
             await fetch(
-                `${TURKAI_APP_CONFIG.apiBase}${endpoint}`,
-                {
-                    method,
-                    headers:
-                        finalHeaders,
-                    body:
-                        method === "GET" ||
-                        method === "HEAD"
-                            ? undefined
-                            : requestBody,
-                    signal:
-                        controller.signal
-                }
+                TURKAI.apiBase + endpoint,
+                fetchOptions
             );
 
-        clearTimeout(timer);
+    } finally {
 
-        let data = null;
+        clearTimeout(timeout);
+    }
 
-        const contentType =
-            response.headers
-                .get("content-type") ||
-            "";
 
-        if (
-            contentType.includes(
-                "application/json"
-            )
-        ) {
+    let data = null;
 
-            data =
-                await response.json();
+    const contentType =
+        response.headers.get(
+            "content-type"
+        ) || "";
 
-        } else {
+
+    if (
+        contentType.includes(
+            "application/json"
+        )
+    ) {
+
+        try {
+
+            data = await response.json();
+
+        } catch {
+
+            data = null;
+        }
+
+    } else {
+
+        try {
 
             const text =
                 await response.text();
 
             data = {
-                success:
-                    response.ok,
                 text
             };
-        }
 
-        if (
-            response.status === 401 &&
-            retry &&
-            TURKAI_STATE.refreshToken
-        ) {
+        } catch {
 
-            const refreshed =
-                await turkAIRefreshToken();
-
-            if (refreshed) {
-
-                return turkAIApi(
-                    endpoint,
-                    {
-                        ...options,
-                        retry: false
-                    }
-                );
-            }
-        }
-
-        if (!response.ok) {
-
-            const error =
-                new Error(
-                    data?.error ||
-                    data?.message ||
-                    `HTTP ${response.status}`
-                );
-
-            error.status =
-                response.status;
-
-            error.data =
-                data;
-
-            throw error;
-        }
-
-        return data;
-
-    } catch (error) {
-
-        clearTimeout(timer);
-
-        if (
-            error?.name ===
-            "AbortError"
-        ) {
-
-            throw new Error(
-                "İstek zaman aşımına uğradı."
-            );
-        }
-
-        throw error;
-    }
-}
-
-
-/* =========================================================
-   TOKEN REFRESH
-   ========================================================= */
-
-async function turkAIRefreshToken() {
-
-    if (
-        !TURKAI_STATE.refreshToken
-    ) {
-        return false;
-    }
-
-    try {
-
-        const data =
-            await fetch(
-                `${TURKAI_APP_CONFIG.apiBase}/api/auth/refresh`,
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            refreshToken:
-                                TURKAI_STATE
-                                    .refreshToken
-                        })
-                }
-            );
-
-        if (!data.ok) {
-
-            turkAIClearAuth();
-
-            return false;
-        }
-
-        const result =
-            await data.json();
-
-        if (
-            result.accessToken ||
-            result.token
-        ) {
-
-            turkAISaveAuth({
-                accessToken:
-                    result.accessToken ||
-                    result.token,
-
-                refreshToken:
-                    result.refreshToken ||
-                    TURKAI_STATE
-                        .refreshToken,
-
-                user:
-                    result.user ||
-                    TURKAI_STATE.user
-            });
-
-            return true;
-        }
-
-    } catch (_) {}
-
-    return false;
-}
-
-
-/* =========================================================
-   AUTH — CURRENT USER
-   ========================================================= */
-
-async function turkAILoadCurrentUser() {
-
-    try {
-
-        const data =
-            await turkAIApi(
-                "/api/auth/me"
-            );
-
-        const user =
-            data?.user ||
-            data?.account ||
-            data;
-
-        if (user) {
-
-            TURKAI_STATE.user =
-                user;
-
-            TURKAI_STATE.authenticated =
-                true;
-
-            turkAIStorageSet(
-                TURKAI_APP_CONFIG
-                    .storage.user,
-                user
-            );
-
-            turkAIUpdateUserUI(
-                user
-            );
-
-            return user;
-        }
-
-    } catch (error) {
-
-        if (
-            error?.status === 401
-        ) {
-            turkAIClearAuth();
+            data = null;
         }
     }
 
-    return null;
-}
-
-
-/* =========================================================
-   USER UI
-   ========================================================= */
-
-function turkAIGetUserName() {
-
-    const user =
-        TURKAI_STATE.user;
-
-    if (!user) {
-        return "Misafir";
-    }
-
-    return (
-        user.name ||
-        user.displayName ||
-        user.username ||
-        user.email?.split("@")[0] ||
-        "Kullanıcı"
-    );
-}
-
-
-function turkAIGetPlan() {
-
-    const user =
-        TURKAI_STATE.user;
-
-    return (
-        user?.plan ||
-        user?.subscription?.plan ||
-        TURKAI_STATE.plan ||
-        "free"
-    ).toLowerCase();
-}
-
-
-function turkAIUpdateUserUI(user) {
-
-    if (!user) return;
-
-    const name =
-        user.name ||
-        user.displayName ||
-        user.username ||
-        user.email?.split("@")[0] ||
-        "Kullanıcı";
-
-    const plan =
-        turkAIGetPlan();
-
-    TURKAI_STATE.plan =
-        plan;
-
-    if (TURKAI_DOM.userName) {
-        TURKAI_DOM.userName
-            .textContent =
-            name;
-    }
-
-    if (TURKAI_DOM.planBadge) {
-
-        TURKAI_DOM.planBadge
-            .textContent =
-            plan.toUpperCase();
-    }
-
-    if (TURKAI_DOM.userAvatar) {
-
-        const image =
-            user.avatar ||
-            user.picture ||
-            user.photoURL;
-
-        if (image) {
-
-            TURKAI_DOM.userAvatar
-                .style.backgroundImage =
-                `url("${image}")`;
-
-            TURKAI_DOM.userAvatar
-                .textContent = "";
-
-        } else {
-
-            TURKAI_DOM.userAvatar
-                .textContent =
-                name
-                    .charAt(0)
-                    .toUpperCase();
-        }
-    }
-}
-
-
-/* =========================================================
-   NETWORK STATUS
-   ========================================================= */
-
-function turkAISetOnlineStatus(
-    online
-) {
-
-    TURKAI_STATE.online =
-        Boolean(online);
-
-    document.body?.classList.toggle(
-        "offline",
-        !online
-    );
-
-    if (
-        TURKAI_DOM.onlineIndicator
-    ) {
-
-        TURKAI_DOM.onlineIndicator
-            .classList.toggle(
-                "offline",
-                !online
-            );
-    }
-}
-
-
-window.addEventListener(
-    "online",
-    () => {
-        turkAISetOnlineStatus(true);
-        turkAIShowToast(
-            "İnternet bağlantısı yeniden aktif.",
-            "success"
-        );
-    }
-);
-
-
-window.addEventListener(
-    "offline",
-    () => {
-        turkAISetOnlineStatus(false);
-        turkAIShowToast(
-            "İnternet bağlantısı kesildi.",
-            "warning"
-        );
-    }
-);
-
-
-/* =========================================================
-   TOAST SYSTEM
-   ========================================================= */
-
-function turkAIShowToast(
-    message,
-    type = "info",
-    duration = 3200
-) {
-
-    let container =
-        document.querySelector(
-            "#turkaiToastContainer"
-        );
-
-    if (!container) {
-
-        container =
-            document.createElement(
-                "div"
-            );
-
-        container.id =
-            "turkaiToastContainer";
-
-        container.className =
-            "turkai-toast-container";
-
-        document.body.appendChild(
-            container
-        );
-    }
-
-    const toast =
-        document.createElement(
-            "div"
-        );
-
-    toast.className =
-        `turkai-toast turkai-toast-${type}`;
-
-    toast.innerHTML = `
-        <div class="turkai-toast-icon"></div>
-        <div class="turkai-toast-content">
-            ${turkAIEscapeHTML(message)}
-        </div>
-        <button
-            type="button"
-            class="turkai-toast-close"
-            aria-label="Kapat"
-        >
-            ×
-        </button>
-    `;
-
-    const close =
-        () => {
-
-            toast.classList.add(
-                "closing"
-            );
-
-            setTimeout(
-                () => toast.remove(),
-                250
-            );
-        };
-
-    toast
-        .querySelector(
-            ".turkai-toast-close"
-        )
-        ?.addEventListener(
-            "click",
-            close
-        );
-
-    container.appendChild(
-        toast
-    );
-
-    requestAnimationFrame(
-        () => {
-            toast.classList.add(
-                "visible"
-            );
-        }
-    );
-
-    setTimeout(
-        close,
-        duration
-    );
-}
-
-
-/* =========================================================
-   CHAT STORAGE
-   ========================================================= */
-
-function turkAISaveConversation() {
-
-    if (
-        !TURKAI_STATE.settings.saveHistory
-    ) {
-        return;
-    }
-
-    const safeMessages =
-        TURKAI_STATE.messages
-            .slice(-200)
-            .map(message => ({
-                id: message.id,
-                role: message.role,
-                content:
-                    message.content,
-                timestamp:
-                    message.timestamp,
-                mode:
-                    message.mode ||
-                    "chat"
-            }));
-
-    turkAIStorageSet(
-        TURKAI_APP_CONFIG
-            .storage.conversation,
-        TURKAI_STATE
-            .conversationId
-    );
-
-    turkAIStorageSet(
-        "turkai_messages",
-        safeMessages
-    );
-}
-
-
-function turkAILoadConversation() {
-
-    const saved =
-        turkAIStorageGet(
-            "turkai_messages",
-            []
-        );
-
-    if (
-        !Array.isArray(saved)
-    ) {
-        return;
-    }
-
-    TURKAI_STATE.messages =
-        saved;
-
-    turkAIRenderMessages();
-}
-
-
-/* =========================================================
-   MESSAGE ID
-   ========================================================= */
-
-function turkAICreateMessageId(
-    prefix = "msg"
-) {
-
-    if (
-        crypto &&
-        typeof crypto.randomUUID ===
-        "function"
-    ) {
-
-        return `${prefix}-${crypto.randomUUID()}`;
-    }
-
-    return `${prefix}-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 10)}`;
-}
-
-
-/* =========================================================
-   ADD MESSAGE
-   ========================================================= */
-
-function turkAIAddMessage(
-    role,
-    content,
-    options = {}
-) {
-
-    const message = {
-        id:
-            options.id ||
-            turkAICreateMessageId(),
-
-        role,
-
-        content:
-            turkAIText(content),
-
-        timestamp:
-            options.timestamp ||
-            new Date().toISOString(),
-
-        mode:
-            options.mode ||
-            TURKAI_STATE.currentMode,
-
-        metadata:
-            options.metadata ||
-            {}
-    };
-
-    TURKAI_STATE.messages.push(
-        message
-    );
-
-    if (
-        TURKAI_STATE.messages.length >
-        200
-    ) {
-
-        TURKAI_STATE.messages =
-            TURKAI_STATE.messages
-                .slice(-200);
-    }
-
-    turkAISaveConversation();
-
-    turkAIRenderMessages();
-
-    return message;
-}
-
-
-/* =========================================================
-   MESSAGE RENDER
-   ========================================================= */
-
-function turkAIRenderMessages() {
-
-    const container =
-        TURKAI_DOM.messages ||
-        TURKAI_DOM.chat ||
-        document.querySelector(
-            "#messages"
-        ) ||
-        document.querySelector(
-            "#chat"
-        );
-
-    if (!container) {
-        return;
-    }
-
-    container.innerHTML = "";
-
-    if (
-        TURKAI_STATE.messages.length ===
-        0
-    ) {
-
-        turkAIRenderWelcome(
-            container
-        );
-
-        return;
-    }
-
-    for (
-        const message
-        of TURKAI_STATE.messages
-    ) {
-
-        const element =
-            turkAICreateMessageElement(
-                message
-            );
-
-        container.appendChild(
-            element
-        );
-    }
-
-    turkAIScrollToBottom();
-}
-
-
-function turkAIRenderWelcome(
-    container
-) {
-
-    const name =
-        turkAIGetUserName();
-
-    const welcome =
-        document.createElement(
-            "div"
-        );
-
-    welcome.className =
-        "turkai-welcome";
-
-    welcome.innerHTML = `
-        <div class="turkai-welcome-icon">
-            <span></span>
-        </div>
-
-        <div class="turkai-welcome-title">
-            Merhaba ${turkAIEscapeHTML(name)}
-        </div>
-
-        <div class="turkai-welcome-text">
-            Ben TürkAI. Ne yapmak istediğini yaz,
-            birlikte başlayalım.
-        </div>
-    `;
-
-    container.appendChild(
-        welcome
-    );
-}
-
-
-/* =========================================================
-   MESSAGE ELEMENT
-   ========================================================= */
-
-function turkAICreateMessageElement(
-    message
-) {
-
-    const wrapper =
-        document.createElement(
-            "article"
-        );
-
-    wrapper.className =
-        `turkai-message turkai-message-${message.role}`;
-
-    wrapper.dataset.messageId =
-        message.id;
-
-    const isUser =
-        message.role === "user";
-
-    const content =
-        turkAIFormatMessage(
-            message.content
-        );
-
-    wrapper.innerHTML = `
-        <div class="turkai-message-avatar">
-            ${isUser ? "U" : "T"}
-        </div>
-
-        <div class="turkai-message-body">
-
-            <div class="turkai-message-header">
-                <span class="turkai-message-name">
-                    ${isUser ? "Sen" : "TürkAI"}
-                </span>
-
-                <span class="turkai-message-time">
-                    ${turkAIFormatTime(
-                        message.timestamp
-                    )}
-                </span>
-            </div>
-
-            <div class="turkai-message-content">
-                ${content}
-            </div>
-
-            ${
-                !isUser
-                    ? `
-                    <div class="turkai-message-actions">
-
-                        <button
-                            type="button"
-                            data-action="copy"
-                            data-message-id="${message.id}"
-                            title="Kopyala"
-                        >
-                            <span></span>
-                        </button>
-
-                        <button
-                            type="button"
-                            data-action="regenerate"
-                            data-message-id="${message.id}"
-                            title="Yeniden oluştur"
-                        >
-                            <span></span>
-                        </button>
-
-                    </div>
-                    `
-                    : ""
-            }
-
-        </div>
-    `;
-
-    return wrapper;
-}
-
-
-/* =========================================================
-   MESSAGE FORMATTER
-   ========================================================= */
-
-function turkAIFormatMessage(
-    content
-) {
-
-    let text =
-        turkAIEscapeHTML(
-            content
-        );
-
-    /*
-      Kod blokları
-    */
-
-    text =
-        text.replace(
-            /```([\w#+.-]*)\n?([\s\S]*?)```/g,
-            (_, language, code) => {
-
-                return `
-                    <div class="turkai-code-block">
-
-                        <div class="turkai-code-header">
-
-                            <span>
-                                ${turkAIEscapeHTML(
-                                    language ||
-                                    "code"
-                                )}
-                            </span>
-
-                            <button
-                                type="button"
-                                data-copy-code
-                            >
-                                Kopyala
-                            </button>
-
-                        </div>
-
-                        <pre><code>${code}</code></pre>
-
-                    </div>
-                `;
-            }
-        );
-
-    /*
-      Inline code
-    */
-
-    text =
-        text.replace(
-            /`([^`]+)`/g,
-            "<code>$1</code>"
-        );
-
-    /*
-      Kalın
-    */
-
-    text =
-        text.replace(
-            /\*\*(.*?)\*\*/g,
-            "<strong>$1</strong>"
-        );
-
-    /*
-      Satır sonları
-    */
-
-    text =
-        text.replace(
-            /\n/g,
-            "<br>"
-        );
-
-    return text;
-}
-
-
-function turkAIFormatTime(
-    timestamp
-) {
-
-    try {
-
-        return new Date(
-            timestamp
-        ).toLocaleTimeString(
-            "tr-TR",
-            {
-                hour: "2-digit",
-                minute: "2-digit"
-            }
-        );
-
-    } catch (_) {
-
-        return "";
-    }
-}
-
-
-/* =========================================================
-   SCROLL
-   ========================================================= */
-
-function turkAIScrollToBottom(
-    smooth = true
-) {
-
-    const container =
-        TURKAI_DOM.messages ||
-        document.querySelector(
-            "#messages"
-        );
-
-    if (!container) {
-        return;
-    }
-
-    requestAnimationFrame(
-        () => {
-
-            container.scrollTo({
-                top:
-                    container.scrollHeight,
-
-                behavior:
-                    smooth
-                        ? "smooth"
-                        : "auto"
-            });
-        }
-    );
-}
-
-
-/* =========================================================
-   TYPING INDICATOR
-   ========================================================= */
-
-function turkAISetTyping(
-    visible,
-    text = "TürkAI düşünüyor..."
-) {
-
-    const existing =
-        TURKAI_DOM.typingIndicator ||
-        document.querySelector(
-            "#typingIndicator"
-        );
-
-    if (!visible) {
-
-        if (existing) {
-            existing.remove();
-        }
-
-        return;
-    }
-
-    if (existing) {
-
-        existing.innerHTML = `
-            <span class="turkai-typing-dots">
-                <i></i><i></i><i></i>
-            </span>
-            <span>
-                ${turkAIEscapeHTML(text)}
-            </span>
-        `;
-
-        return;
-    }
-
-    const container =
-        TURKAI_DOM.messages ||
-        document.querySelector(
-            "#messages"
-        );
-
-    if (!container) {
-        return;
-    }
-
-    const element =
-        document.createElement(
-            "div"
-        );
-
-    element.id =
-        "typingIndicator";
-
-    element.className =
-        "turkai-typing-indicator";
-
-    element.innerHTML = `
-        <span class="turkai-typing-dots">
-            <i></i><i></i><i></i>
-        </span>
-
-        <span>
-            ${turkAIEscapeHTML(text)}
-        </span>
-    `;
-
-    container.appendChild(
-        element
-    );
-
-    turkAIScrollToBottom();
-}
-
-
-/* =========================================================
-   CHAT PAYLOAD
-   ========================================================= */
-
-function turkAIBuildChatPayload(
-    message
-) {
 
     return {
-        message,
-
-        userId:
-            TURKAI_STATE.user?.id ||
-            TURKAI_STATE.user?.userId ||
-            undefined,
-
-        conversationId:
-            TURKAI_STATE.conversationId,
-
-        mode:
-            TURKAI_STATE.currentMode,
-
-        model:
-            TURKAI_STATE.activeModel,
-
-        language:
-            "tr",
-
-        autoResearch:
-            TURKAI_STATE.settings
-                .autoResearch,
-
-        history:
-            TURKAI_STATE.messages
-                .slice(-20)
-                .map(item => ({
-                    role:
-                        item.role,
-                    content:
-                        item.content
-                }))
+        ok: response.ok,
+        status: response.status,
+        data,
+        headers: response.headers
     };
 }
 
 
 /* =========================================================
-   CHAT RESPONSE EXTRACTION
+   18. MODALS
    ========================================================= */
 
-function turkAIExtractResponse(
-    data
-) {
+function initModals() {
 
-    if (!data) {
-        return "";
-    }
+    document.addEventListener("click", event => {
 
-    const candidates = [
-        data.answer,
-        data.response,
-        data.message,
-        data.text,
-        data.content,
-        data.result?.answer,
-        data.result?.response,
-        data.result?.message,
-        data.data?.answer,
-        data.data?.response,
-        data.data?.message,
-        data.data?.text,
-        data.choices?.[0]?.message?.content,
-        data.choices?.[0]?.text
-    ];
+        const openButton =
+            event.target.closest(
+                "[data-modal]"
+            );
 
-    for (
-        const candidate
-        of candidates
-    ) {
+
+        if (openButton) {
+
+            event.preventDefault();
+
+            openModal(
+                openButton.dataset.modal
+            );
+
+            return;
+        }
+
+
+        const closeButton =
+            event.target.closest(
+                "[data-close-modal]"
+            );
+
+
+        if (closeButton) {
+
+            event.preventDefault();
+
+            closeModal();
+
+            return;
+        }
+
 
         if (
-            typeof candidate ===
-                "string" &&
-            candidate.trim()
+            event.target.classList.contains(
+                "modal-overlay"
+            )
         ) {
 
-            return candidate.trim();
+            closeModal();
         }
+    });
+}
+
+
+function openModal(id) {
+
+    if (!id) return;
+
+    const modal =
+        byId(id);
+
+    if (!modal) {
+
+        console.warn(
+            `Modal bulunamadı: ${id}`
+        );
+
+        return;
     }
 
-    return "";
+
+    $$(".modal-overlay").forEach(item => {
+
+        item.classList.remove("active");
+
+        item.hidden = true;
+    });
+
+
+    modal.hidden = false;
+
+    requestAnimationFrame(() => {
+
+        modal.classList.add("active");
+    });
+
+
+    TURKAI.state.activeModal = id;
+
+    document.body.classList.add(
+        "modal-open"
+    );
+}
+
+
+function closeModal() {
+
+    $$(".modal-overlay").forEach(modal => {
+
+        modal.classList.remove("active");
+
+        modal.hidden = true;
+    });
+
+
+    TURKAI.state.activeModal = null;
+
+    document.body.classList.remove(
+        "modal-open"
+    );
 }
 
 
 /* =========================================================
-   MAIN CHAT REQUEST
+   19. GLOBAL BUTTONS
    ========================================================= */
 
-async function turkAISendMessage(
-    rawMessage = null,
-    options = {}
-) {
+function initGlobalButtons() {
 
-    const input =
-        rawMessage !== null
-            ? rawMessage
-            : (
-                TURKAI_DOM.messageInput ||
-                TURKAI_DOM.promptInput ||
-                document.querySelector(
-                    "#messageInput"
-                ) ||
-                document.querySelector(
-                    "#promptInput"
-                )
-            )?.value;
+    /* Ayarlar */
 
-    const message =
-        turkAIText(input);
-
-    if (!message) {
-        return;
-    }
-
-    if (
-        TURKAI_STATE.isGenerating
-    ) {
-        return;
-    }
-
-    TURKAI_STATE.isGenerating =
-        true;
-
-    TURKAI_STATE.currentMode =
-        options.mode ||
-        TURKAI_STATE.currentMode ||
-        "chat";
-
-    turkAIAddMessage(
-        "user",
-        message,
-        {
-            mode:
-                TURKAI_STATE.currentMode
-        }
+    const settingsButtons = $$(
+        "[data-action='settings']"
     );
 
-    turkAIClearInput();
+    settingsButtons.forEach(button => {
 
-    turkAISetTyping(
-        true,
-        TURKAI_STATE.currentMode ===
-            "research"
-            ? "Araştırıyorum..."
-            : "TürkAI düşünüyor..."
-    );
+        button.addEventListener(
+            "click",
+            event => {
 
-    turkAIUpdateSendButton(
-        true
-    );
+                event.preventDefault();
 
-    try {
-
-        const payload =
-            turkAIBuildChatPayload(
-                message
-            );
-
-        const endpoint =
-            options.endpoint ||
-            "/api/chat";
-
-        const data =
-            await turkAIApi(
-                endpoint,
-                {
-                    method: "POST",
-                    body: payload
-                }
-            );
-
-        const answer =
-            turkAIExtractResponse(
-                data
-            );
-
-        if (!answer) {
-
-            throw new Error(
-                "TürkAI'den geçerli bir yanıt alınamadı."
-            );
-        }
-
-        turkAISetTyping(
-            false
-        );
-
-        turkAIAddMessage(
-            "assistant",
-            answer,
-            {
-                mode:
-                    TURKAI_STATE.currentMode,
-
-                metadata: {
-                    provider:
-                        data.provider ||
-                        data.meta?.provider ||
-                        null,
-
-                    model:
-                        data.model ||
-                        data.meta?.model ||
-                        null,
-
-                    researched:
-                        Boolean(
-                            data.researched ||
-                            data.meta?.researched
-                        )
-                }
+                openSettings();
             }
         );
+    });
 
-        turkAIPlaySound(
-            "message"
-        );
 
-        return answer;
+    /* Plans */
 
-    } catch (error) {
+    $$(
+        "[data-action='plans'], #plansButton, #upgradeButton"
+    ).forEach(button => {
 
-        turkAISetTyping(
-            false
-        );
+        button.addEventListener(
+            "click",
+            event => {
 
-        const errorMessage =
-            turkAIGetFriendlyError(
-                error
-            );
+                event.preventDefault();
 
-        turkAIAddMessage(
-            "assistant",
-            errorMessage,
-            {
-                metadata: {
-                    error: true
-                }
+                openPlans();
             }
         );
+    });
 
-        turkAIShowToast(
-            errorMessage,
-            "error"
+
+    /* User menu */
+
+    $$(
+        "[data-action='user-menu'], #userMenuButton"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+                toggleUserMenu();
+            }
         );
+    });
 
-    } finally {
 
-        TURKAI_STATE.isGenerating =
-            false;
+    /* Notifications */
 
-        turkAIUpdateSendButton(
-            false
+    $$(
+        "[data-action='notifications'], #notificationButton"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+                toggleNotifications();
+            }
         );
-    }
+    });
+
+
+    /* Research */
+
+    $$(
+        "[data-action='research'], #researchButton"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+                navigateTo("research");
+            }
+        );
+    });
+
+
+    /* Files */
+
+    $$(
+        "[data-action='files'], #filesButton"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+                navigateTo("files");
+            }
+        );
+    });
+
+
+    /* Media */
+
+    $$(
+        "[data-action='media'], #mediaButton"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+                navigateTo("media");
+            }
+        );
+    });
+
+
+    /* Code */
+
+    $$(
+        "[data-action='code'], #codeButton"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+                navigateTo("code");
+            }
+        );
+    });
 }
 
 
 /* =========================================================
-   FRIENDLY ERROR
+   20. SETTINGS
    ========================================================= */
 
-function turkAIGetFriendlyError(
-    error
-) {
+function openSettings() {
 
-    const status =
-        error?.status;
+    const panel =
+        byId("settingsPanel") ||
+        byId("settingsModal");
 
-    if (status === 429) {
+    if (!panel) {
 
-        return "Şu anda istek sınırına ulaşıldı. Birkaç saniye sonra tekrar deneyebilirsin.";
+        showToast(
+            "Ayarlar paneli bulunamadı.",
+            "warning"
+        );
+
+        return;
     }
 
-    if (status === 401) {
-
-        return "Oturum bilgisi geçersiz veya süresi dolmuş olabilir.";
-    }
-
-    if (status === 403) {
-
-        return "Bu özellik mevcut planında kullanılamıyor.";
-    }
-
-    if (status === 413) {
-
-        return "Gönderdiğin içerik izin verilen boyutu aşıyor.";
-    }
-
-    if (!navigator.onLine) {
-
-        return "İnternet bağlantısı olmadığı için TürkAI'ye ulaşılamadı.";
-    }
 
     if (
-        error?.message?.includes(
-            "timeout"
-        ) ||
-        error?.message?.includes(
-            "zaman"
+        panel.classList.contains(
+            "modal-overlay"
         )
     ) {
 
-        return "Sunucudan yanıt alınması uzun sürdü. Tekrar deneyebilirsin.";
-    }
+        openModal(panel.id);
 
-    return (
-        error?.message ||
-        "Beklenmeyen bir hata oluştu."
-    );
+    } else {
+
+        panel.hidden = false;
+
+        panel.classList.add("active");
+    }
 }
 
 
 /* =========================================================
-   INPUT
+   21. PLANS
    ========================================================= */
 
-function turkAIClearInput() {
+function openPlans() {
 
-    const input =
-        TURKAI_DOM.messageInput ||
-        TURKAI_DOM.promptInput ||
-        document.querySelector(
-            "#messageInput"
-        ) ||
-        document.querySelector(
-            "#promptInput"
+    const modal =
+        byId("plansModal") ||
+        byId("planModal");
+
+    if (!modal) {
+
+        showToast(
+            "Plan ekranı bulunamadı.",
+            "warning"
         );
 
-    if (!input) {
         return;
     }
 
-    input.value = "";
+    openModal(modal.id);
+}
 
-    input.style.height =
-        "auto";
 
-    input.dispatchEvent(
-        new Event(
-            "input",
-            {
-                bubbles: true
+/* =========================================================
+   22. USER MENU
+   ========================================================= */
+
+function toggleUserMenu() {
+
+    const menu =
+        byId("userMenu") ||
+        $(".user-menu");
+
+    if (!menu) return;
+
+
+    const willOpen =
+        !menu.classList.contains("active");
+
+
+    closeNotificationPanel();
+
+
+    menu.classList.toggle(
+        "active",
+        willOpen
+    );
+
+    menu.hidden = !willOpen;
+
+    TURKAI.state.userMenuOpen =
+        willOpen;
+}
+
+
+/* =========================================================
+   23. NOTIFICATIONS
+   ========================================================= */
+
+function toggleNotifications() {
+
+    const panel =
+        byId("notificationPanel") ||
+        $(".notification-panel");
+
+    if (!panel) return;
+
+
+    const willOpen =
+        !panel.classList.contains("active");
+
+
+    closeUserMenu();
+
+
+    panel.classList.toggle(
+        "active",
+        willOpen
+    );
+
+    panel.hidden = !willOpen;
+
+    TURKAI.state.notificationOpen =
+        willOpen;
+}
+
+
+function closeNotificationPanel() {
+
+    const panel =
+        byId("notificationPanel") ||
+        $(".notification-panel");
+
+    if (!panel) return;
+
+    panel.classList.remove("active");
+
+    panel.hidden = true;
+
+    TURKAI.state.notificationOpen = false;
+}
+
+
+function closeUserMenu() {
+
+    const menu =
+        byId("userMenu") ||
+        $(".user-menu");
+
+    if (!menu) return;
+
+    menu.classList.remove("active");
+
+    menu.hidden = true;
+
+    TURKAI.state.userMenuOpen = false;
+}
+
+
+/* =========================================================
+   24. MODEL MENU
+   ========================================================= */
+
+function initMenus() {
+
+    const modelButton =
+        byId("modelSelector") ||
+        $(".model-selector");
+
+
+    if (modelButton) {
+
+        modelButton.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+                toggleModelMenu();
             }
-        )
-    );
-}
-
-
-function turkAIGetInput() {
-
-    return (
-        TURKAI_DOM.messageInput ||
-        TURKAI_DOM.promptInput ||
-        document.querySelector(
-            "#messageInput"
-        ) ||
-        document.querySelector(
-            "#promptInput"
-        )
-    );
-}
-
-
-/* =========================================================
-   SEND BUTTON STATE
-   ========================================================= */
-
-function turkAIUpdateSendButton(
-    busy
-) {
-
-    const button =
-        TURKAI_DOM.sendButton ||
-        TURKAI_DOM.submitButton ||
-        document.querySelector(
-            "#sendButton"
-        ) ||
-        document.querySelector(
-            "#submitButton"
         );
-
-    if (!button) {
-        return;
     }
 
-    button.disabled =
-        Boolean(busy);
 
-    button.classList.toggle(
-        "loading",
-        Boolean(busy)
-    );
+    /* Model option */
 
-    button.setAttribute(
-        "aria-busy",
-        String(Boolean(busy))
+    document.addEventListener(
+        "click",
+        event => {
+
+            const option =
+                event.target.closest(
+                    "[data-model]"
+                );
+
+            if (!option) return;
+
+            event.preventDefault();
+
+            selectModel(
+                option.dataset.model
+            );
+        }
     );
 }
 
 
-/* =========================================================
-   NEW CHAT
-   ========================================================= */
+function toggleModelMenu() {
 
-function turkAINewChat() {
+    const menu =
+        byId("modelMenu") ||
+        $(".model-menu");
 
-    if (
-        TURKAI_STATE.isGenerating
-    ) {
+    if (!menu) return;
 
-        try {
-            TURKAI_STATE
-                .currentAbortController
-                ?.abort();
-        } catch (_) {}
+
+    const willOpen =
+        !menu.classList.contains("active");
+
+
+    closeUserMenu();
+    closeNotificationPanel();
+
+
+    menu.classList.toggle(
+        "active",
+        willOpen
+    );
+
+    menu.hidden = !willOpen;
+
+    TURKAI.state.modelMenuOpen =
+        willOpen;
+}
+
+
+function selectModel(model) {
+
+    if (!model) return;
+
+    TURKAI.state.currentModel = model;
+
+
+    const label =
+        byId("currentModel") ||
+        $(".current-model");
+
+
+    if (label) {
+
+        const option =
+            $(`[data-model="${CSS.escape(model)}"]`);
+
+        if (option) {
+
+            label.textContent =
+                option.dataset.modelName ||
+                option.textContent.trim();
+        } else {
+
+            label.textContent = model;
+        }
     }
 
-    TURKAI_STATE.messages = [];
 
-    TURKAI_STATE.conversationId =
-        crypto.randomUUID?.() ||
-        `conversation-${Date.now()}`;
+    const menu =
+        byId("modelMenu") ||
+        $(".model-menu");
 
-    turkAIStorageSet(
-        TURKAI_APP_CONFIG
-            .storage.conversation,
-        TURKAI_STATE.conversationId
-    );
+    if (menu) {
 
-    turkAIStorageSet(
-        "turkai_messages",
-        []
-    );
+        menu.classList.remove("active");
 
-    turkAIRenderMessages();
+        menu.hidden = true;
+    }
 
-    turkAIShowToast(
-        "Yeni sohbet başlatıldı.",
+
+    TURKAI.state.modelMenuOpen = false;
+
+    saveLocalState();
+
+    showToast(
+        `Model: ${model}`,
         "success"
     );
 }
 
 
 /* =========================================================
-   CLEAR CHAT
+   25. SIDEBAR
    ========================================================= */
 
-function turkAIClearChat() {
+function initSidebar() {
 
-    TURKAI_STATE.messages = [];
+    const toggleButtons = [
+        byId("sidebarToggle"),
+        byId("mobileMenuButton"),
+        $(".mobile-menu-button"),
+        $(".sidebar-toggle")
+    ].filter(Boolean);
 
-    turkAIStorageRemove(
-        "turkai_messages"
+
+    toggleButtons.forEach(button => {
+
+        button.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+                toggleSidebar();
+            }
+        );
+    });
+
+
+    const overlay =
+        byId("mobileSidebarOverlay") ||
+        $(".mobile-sidebar-overlay");
+
+
+    if (overlay) {
+
+        overlay.addEventListener(
+            "click",
+            closeSidebar
+        );
+    }
+}
+
+
+function toggleSidebar() {
+
+    if (TURKAI.state.sidebarOpen) {
+
+        closeSidebar();
+
+    } else {
+
+        openSidebar();
+    }
+}
+
+
+function openSidebar() {
+
+    TURKAI.state.sidebarOpen = true;
+
+    document.body.classList.add(
+        "sidebar-open"
     );
 
-    turkAIRenderMessages();
 
-    turkAIShowToast(
-        "Sohbet temizlendi.",
-        "success"
+    const sidebar =
+        byId("sidebar") ||
+        $(".sidebar");
+
+
+    if (sidebar) {
+
+        sidebar.classList.add("open");
+    }
+
+
+    const overlay =
+        byId("mobileSidebarOverlay") ||
+        $(".mobile-sidebar-overlay");
+
+
+    if (overlay) {
+
+        overlay.hidden = false;
+
+        overlay.classList.add("active");
+    }
+}
+
+
+function closeSidebar() {
+
+    TURKAI.state.sidebarOpen = false;
+
+    document.body.classList.remove(
+        "sidebar-open"
     );
-}
 
 
-/* =========================================================
-   COPY
-   ========================================================= */
+    const sidebar =
+        byId("sidebar") ||
+        $(".sidebar");
 
-async function turkAICopyText(
-    text
-) {
 
-    try {
+    if (sidebar) {
 
-        await navigator.clipboard.writeText(
-            text
-        );
+        sidebar.classList.remove("open");
+    }
 
-        turkAIShowToast(
-            "Kopyalandı.",
-            "success"
-        );
 
-        return true;
+    const overlay =
+        byId("mobileSidebarOverlay") ||
+        $(".mobile-sidebar-overlay");
 
-    } catch (_) {
 
-        const textarea =
-            document.createElement(
-                "textarea"
-            );
+    if (overlay) {
 
-        textarea.value =
-            text;
+        overlay.classList.remove("active");
 
-        document.body.appendChild(
-            textarea
-        );
-
-        textarea.select();
-
-        try {
-            document.execCommand(
-                "copy"
-            );
-        } catch (_) {}
-
-        textarea.remove();
-
-        turkAIShowToast(
-            "Metin kopyalandı.",
-            "success"
-        );
-
-        return true;
+        overlay.hidden = true;
     }
 }
 
 
 /* =========================================================
-   COPY MESSAGE
+   26. KEYBOARD
    ========================================================= */
 
-async function turkAICopyMessage(
-    messageId
-) {
+function initKeyboard() {
 
-    const message =
-        TURKAI_STATE.messages
-            .find(
-                item =>
-                    item.id ===
-                    messageId
-            );
-
-    if (!message) {
-        return;
-    }
-
-    await turkAICopyText(
-        message.content
-    );
-}
-
-
-/* =========================================================
-   REGENERATE
-   ========================================================= */
-
-async function turkAIRegenerate(
-    messageId
-) {
-
-    const index =
-        TURKAI_STATE.messages
-            .findIndex(
-                item =>
-                    item.id ===
-                    messageId
-            );
-
-    if (index === -1) {
-        return;
-    }
-
-    let userMessage = null;
-
-    for (
-        let i = index - 1;
-        i >= 0;
-        i--
-    ) {
-
-        if (
-            TURKAI_STATE
-                .messages[i]
-                .role === "user"
-        ) {
-
-            userMessage =
-                TURKAI_STATE
-                    .messages[i]
-                    .content;
-
-            break;
-        }
-    }
-
-    if (!userMessage) {
-        return;
-    }
-
-    TURKAI_STATE.messages =
-        TURKAI_STATE.messages
-            .slice(0, index);
-
-    turkAISaveConversation();
-
-    turkAIRenderMessages();
-
-    await turkAISendMessage(
-        userMessage
-    );
-}
-
-
-/* =========================================================
-   PLAY SOUND
-   ========================================================= */
-
-function turkAIPlaySound(
-    type = "message"
-) {
-
-    if (
-        !TURKAI_STATE.settings.sound
-    ) {
-        return;
-    }
-
-    /*
-      Tarayıcı izin vermeden ses üretmeye
-      zorlamıyoruz. İleride gerçek ses
-      sistemi Part 2/3'te bağlanabilir.
-    */
-
-    try {
-
-        const AudioContext =
-            window.AudioContext ||
-            window.webkitAudioContext;
-
-        if (!AudioContext) {
-            return;
-        }
-
-        const context =
-            new AudioContext();
-
-        const oscillator =
-            context.createOscillator();
-
-        const gain =
-            context.createGain();
-
-        oscillator.frequency.value =
-            type === "error"
-                ? 180
-                : 520;
-
-        gain.gain.value =
-            0.025;
-
-        oscillator.connect(
-            gain
-        );
-
-        gain.connect(
-            context.destination
-        );
-
-        oscillator.start();
-
-        gain.gain.exponentialRampToValueAtTime(
-            0.0001,
-            context.currentTime +
-                0.08
-        );
-
-        oscillator.stop(
-            context.currentTime +
-                0.08
-        );
-
-    } catch (_) {}
-}
-
-
-/* =========================================================
-   EVENT DELEGATION
-   ========================================================= */
-
-document.addEventListener(
-    "click",
-    async event => {
-
-        const target =
-            event.target.closest(
-                "[data-action]"
-            );
-
-        if (!target) {
-            return;
-        }
-
-        const action =
-            target.dataset.action;
-
-        const messageId =
-            target.dataset.messageId;
-
-        if (
-            action === "copy"
-        ) {
-
-            await turkAICopyMessage(
-                messageId
-            );
-        }
-
-        if (
-            action === "regenerate"
-        ) {
-
-            await turkAIRegenerate(
-                messageId
-            );
-        }
-    }
-);
-
-
-/* =========================================================
-   CODE COPY DELEGATION
-   ========================================================= */
-
-document.addEventListener(
-    "click",
-    async event => {
-
-        const button =
-            event.target.closest(
-                "[data-copy-code]"
-            );
-
-        if (!button) {
-            return;
-        }
-
-        const block =
-            button.closest(
-                ".turkai-code-block"
-            );
-
-        const code =
-            block?.querySelector(
-                "pre code"
-            )?.textContent;
-
-        if (code) {
-
-            await turkAICopyText(
-                code
-            );
-        }
-    }
-);
-
-
-/* =========================================================
-   SEND EVENTS
-   ========================================================= */
-
-function turkAISetupInputEvents() {
-
-    const input =
-        turkAIGetInput();
-
-    if (!input) {
-        return;
-    }
-
-    input.addEventListener(
+    document.addEventListener(
         "keydown",
         event => {
 
+            /* Escape */
+
+            if (event.key === "Escape") {
+
+                closeModal();
+
+                closeUserMenu();
+
+                closeNotificationPanel();
+
+                closeSidebar();
+
+                return;
+            }
+
+
+            /* Ctrl/Cmd + K */
+
             if (
-                event.key === "Enter" &&
-                !event.shiftKey &&
-                TURKAI_STATE.settings
-                    .enterToSend
+                (event.ctrlKey || event.metaKey) &&
+                event.key.toLowerCase() === "k"
             ) {
 
                 event.preventDefault();
 
-                turkAISendMessage();
-            }
-        }
-    );
-
-    input.addEventListener(
-        "input",
-        () => {
-
-            input.style.height =
-                "auto";
-
-            input.style.height =
-                `${Math.min(
-                    input.scrollHeight,
-                    220
-                )}px`;
-        }
-    );
-}
-
-
-/* =========================================================
-   BUTTON EVENTS
-   ========================================================= */
-
-function turkAISetupButtonEvents() {
-
-    const sendButton =
-        TURKAI_DOM.sendButton ||
-        TURKAI_DOM.submitButton;
-
-    sendButton?.addEventListener(
-        "click",
-        () => {
-            turkAISendMessage();
-        }
-    );
-
-    TURKAI_DOM.newChatButton
-        ?.addEventListener(
-            "click",
-            turkAINewChat
-        );
-
-    TURKAI_DOM.clearChatButton
-        ?.addEventListener(
-            "click",
-            turkAIClearChat
-        );
-
-    TURKAI_DOM.researchButton
-        ?.addEventListener(
-            "click",
-            () => {
-
-                TURKAI_STATE.currentMode =
-                    "research";
-
                 const input =
-                    turkAIGetInput();
+                    byId("messageInput");
 
                 if (input) {
+
                     input.focus();
+
+                    input.select();
                 }
 
-                turkAIShowToast(
-                    "Araştırma modu aktif.",
-                    "info"
-                );
+                return;
             }
-        );
-
-    TURKAI_DOM.weatherButton
-        ?.addEventListener(
-            "click",
-            () => {
-
-                const input =
-                    turkAIGetInput();
-
-                if (!input) return;
-
-                input.value =
-                    "Bugün hava durumu nasıl?";
-
-                input.focus();
-
-                turkAISendMessage();
-            }
-        );
-
-    TURKAI_DOM.memoryButton
-        ?.addEventListener(
-            "click",
-            () => {
-
-                turkAIShowToast(
-                    "TürkAI hafıza sistemi aktif.",
-                    "info"
-                );
-            }
-        );
-}
 
 
-/* =========================================================
-   APP INITIALIZATION
-   ========================================================= */
-
-async function turkAIInitializeApp() {
-
-    console.log(
-        "TürkAI başlatılıyor..."
-    );
-
-    turkAICacheDOM();
-
-    turkAILoadSettings();
-
-    turkAILoadAuth();
-
-    turkAISetOnlineStatus(
-        navigator.onLine
-    );
-
-    turkAILoadConversation();
-
-    turkAISetupInputEvents();
-
-    turkAISetupButtonEvents();
-
-    if (
-        TURKAI_STATE.authenticated
-    ) {
-
-        await turkAILoadCurrentUser();
-    }
-
-    turkAIUpdateUserUI(
-        TURKAI_STATE.user
-    );
-
-    turkAIRenderMessages();
-
-    console.log(
-        "TürkAI Core hazır."
-    );
-}
-
-
-/* =========================================================
-   GLOBAL API
-   ========================================================= */
-
-window.TURKAI = {
-
-    config:
-        TURKAI_APP_CONFIG,
-
-    state:
-        TURKAI_STATE,
-
-    dom:
-        TURKAI_DOM,
-
-    api:
-        turkAIApi,
-
-    send:
-        turkAISendMessage,
-
-    newChat:
-        turkAINewChat,
-
-    clearChat:
-        turkAIClearChat,
-
-    copy:
-        turkAICopyText,
-
-    regenerate:
-        turkAIRegenerate,
-
-    toast:
-        turkAIShowToast,
-
-    refreshToken:
-        turkAIRefreshToken,
-
-    logout:
-        turkAIClearAuth
-};
-
-
-/* =========================================================
-   START
-   ========================================================= */
-
-if (
-    document.readyState ===
-    "loading"
-) {
-
-    document.addEventListener(
-        "DOMContentLoaded",
-        turkAIInitializeApp,
-        {
-            once: true
-        }
-    );
-
-} else {
-
-    turkAIInitializeApp();
-}
-
-
-/* =========================================================
-   PART 1 / 3 END
-   PART 2 BURADAN SONRA GELECEK
-   ========================================================= */
-/* =========================================================
-   TÜRKAI — APP.JS
-   PART 2 / 3
-   FILES + RESEARCH + WEATHER + REALTIME + MEDIA + TASKS
-   ========================================================= */
-
-
-/* =========================================================
-   FILE ENGINE
-   ========================================================= */
-
-const TURKAI_FILE_STATE = {
-    selectedFile: null,
-    uploading: false,
-    uploadProgress: 0,
-    maxSize: 10 * 1024 * 1024,
-    planMaxSize: 10 * 1024 * 1024
-};
-
-
-/* =========================================================
-   FILE LIMITS
-   ========================================================= */
-
-async function turkAIGetFileLimits() {
-
-    try {
-
-        const data =
-            await turkAIApi(
-                "/api/files/limits"
-            );
-
-        const limits =
-            data?.limits ||
-            data?.data ||
-            data;
-
-        if (limits) {
-
-            const maxMB =
-                Number(
-                    limits.maxFileSizeMB ||
-                    limits.maxFileSize ||
-                    10
-                );
+            /* Ctrl/Cmd + N */
 
             if (
-                Number.isFinite(maxMB) &&
-                maxMB > 0
+                (event.ctrlKey || event.metaKey) &&
+                event.key.toLowerCase() === "n"
             ) {
 
-                TURKAI_FILE_STATE
-                    .planMaxSize =
-                    maxMB * 1024 * 1024;
+                event.preventDefault();
+
+                createNewChat();
             }
         }
-
-        return limits;
-
-    } catch (error) {
-
-        /*
-          Ultra için frontend tarafında
-          1 GB limiti desteklenir.
-        */
-
-        if (
-            TURKAI_STATE.plan ===
-                "ultra" ||
-            TURKAI_STATE.plan ===
-                "developer"
-        ) {
-
-            TURKAI_FILE_STATE
-                .planMaxSize =
-                1024 *
-                1024 *
-                1024;
-
-        } else {
-
-            TURKAI_FILE_STATE
-                .planMaxSize =
-                10 *
-                1024 *
-                1024;
-        }
-
-        return null;
-    }
+    );
 }
 
 
 /* =========================================================
-   FILE SIZE FORMAT
+   27. ONLINE STATE
    ========================================================= */
 
-function turkAIFormatBytes(
-    bytes
-) {
+function initOnlineState() {
 
-    const value =
-        Number(bytes);
+    window.addEventListener(
+        "online",
+        () => {
+
+            TURKAI.state.isOnline = true;
+
+            updateConnectionUI();
+
+            showToast(
+                "İnternet bağlantısı geri geldi.",
+                "success"
+            );
+        }
+    );
+
+
+    window.addEventListener(
+        "offline",
+        () => {
+
+            TURKAI.state.isOnline = false;
+
+            updateConnectionUI();
+
+            showToast(
+                "İnternet bağlantısı kesildi.",
+                "warning"
+            );
+        }
+    );
+
+
+    updateConnectionUI();
+}
+
+
+function updateConnectionUI() {
+
+    const elements = $$(
+        "[data-connection-status]"
+    );
+
+
+    elements.forEach(element => {
+
+        element.classList.toggle(
+            "offline",
+            !TURKAI.state.isOnline
+        );
+
+        element.classList.toggle(
+            "online",
+            TURKAI.state.isOnline
+        );
+
+
+        const text =
+            element.querySelector(
+                ".connection-text"
+            );
+
+
+        if (text) {
+
+            text.textContent =
+                TURKAI.state.isOnline
+                    ? "Bağlı"
+                    : "Çevrimdışı";
+        }
+    });
+}
+
+
+/* =========================================================
+   28. SUGGESTIONS
+   ========================================================= */
+
+function initSuggestions() {
+
+    document.addEventListener(
+        "click",
+        event => {
+
+            const suggestion =
+                event.target.closest(
+                    "[data-prompt]"
+                );
+
+            if (!suggestion) return;
+
+            event.preventDefault();
+
+            const prompt =
+                suggestion.dataset.prompt;
+
+            const input =
+                byId("messageInput");
+
+            if (!input) return;
+
+            input.value = prompt;
+
+            updateCharacterCounter();
+
+            autoResizeInput(input);
+
+            navigateTo("chat");
+
+            input.focus();
+        }
+    );
+}
+
+
+/* =========================================================
+   29. FILE SYSTEM
+   ========================================================= */
+
+function initFileSystem() {
+
+    const attachButtons = $$(
+        "[data-action='attach'], #attachButton, #fileButton"
+    );
+
+
+    attachButtons.forEach(button => {
+
+        button.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+                openFilePicker();
+            }
+        );
+    });
+
+
+    const fileInput =
+        byId("fileInput") ||
+        byId("uploadInput");
+
+
+    if (fileInput) {
+
+        fileInput.addEventListener(
+            "change",
+            event => {
+
+                const file =
+                    event.target.files?.[0];
+
+                if (file) {
+
+                    handleSelectedFile(file);
+                }
+            }
+        );
+    }
+}
+
+
+function openFilePicker() {
+
+    let input =
+        byId("fileInput") ||
+        byId("uploadInput");
+
+
+    if (!input) {
+
+        input =
+            document.createElement("input");
+
+        input.type = "file";
+
+        input.id = "turkaiTemporaryFileInput";
+
+        input.accept =
+            ".txt,.pdf,.doc,.docx,.json,.js,.html,.css,.py,.java,.cpp,.c,.cs,.md,.csv,image/*";
+
+        input.style.display = "none";
+
+        document.body.appendChild(input);
+
+
+        input.addEventListener(
+            "change",
+            event => {
+
+                const file =
+                    event.target.files?.[0];
+
+                if (file) {
+
+                    handleSelectedFile(file);
+                }
+            }
+        );
+    }
+
+
+    input.click();
+}
+
+
+/* =========================================================
+   30. FILE SELECT
+   ========================================================= */
+
+function handleSelectedFile(file) {
+
+    if (!file) return;
+
 
     if (
-        !Number.isFinite(value) ||
-        value <= 0
+        file.size >
+        TURKAI.config.maxFileSize
     ) {
-        return "0 B";
+
+        showToast(
+            "Dosya boyutu 10 MB'dan büyük olamaz.",
+            "warning"
+        );
+
+        return;
     }
+
+
+    TURKAI.state.selectedFile = file;
+
+
+    const preview =
+        byId("filePreview") ||
+        $(".file-preview");
+
+
+    if (preview) {
+
+        preview.hidden = false;
+
+        preview.classList.add("active");
+
+
+        const name =
+            preview.querySelector(
+                "[data-file-name]"
+            ) ||
+            preview.querySelector(
+                ".file-name"
+            );
+
+
+        if (name) {
+
+            name.textContent =
+                file.name;
+        }
+
+
+        const size =
+            preview.querySelector(
+                "[data-file-size]"
+            ) ||
+            preview.querySelector(
+                ".file-size"
+            );
+
+
+        if (size) {
+
+            size.textContent =
+                formatFileSize(file.size);
+        }
+    }
+
+
+    showToast(
+        `${file.name} seçildi.`,
+        "success"
+    );
+}
+
+
+function formatFileSize(bytes) {
+
+    if (!bytes) return "0 B";
 
     const units = [
         "B",
@@ -2674,8 +2098,10 @@ function turkAIFormatBytes(
         "GB"
     ];
 
-    let size = value;
     let index = 0;
+
+    let size = bytes;
+
 
     while (
         size >= 1024 &&
@@ -2683,1658 +2109,2107 @@ function turkAIFormatBytes(
     ) {
 
         size /= 1024;
+
         index++;
     }
 
-    return `${size.toFixed(
-        size >= 10 ? 0 : 2
-    )} ${units[index]}`;
+
+    return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }
 
 
 /* =========================================================
-   FILE VALIDATION
+   31. LOCAL STORAGE
    ========================================================= */
 
-function turkAIValidateFile(
-    file
-) {
-
-    if (!file) {
-
-        return {
-            ok: false,
-            error: "Dosya seçilmedi."
-        };
-    }
-
-    const maxSize =
-        TURKAI_FILE_STATE
-            .planMaxSize;
-
-    if (
-        file.size >
-        maxSize
-    ) {
-
-        return {
-            ok: false,
-
-            error:
-                `Bu dosya ${turkAIFormatBytes(
-                    file.size
-                )}. Planındaki maksimum dosya boyutu ${turkAIFormatBytes(
-                    maxSize
-                )}.`
-        };
-    }
-
-    const name =
-        file.name || "";
-
-    const extension =
-        name.includes(".")
-            ? name
-                .split(".")
-                .pop()
-                .toLowerCase()
-            : "";
-
-    const allowed = [
-        "txt",
-        "md",
-        "json",
-        "csv",
-        "log",
-        "js",
-        "ts",
-        "jsx",
-        "tsx",
-        "html",
-        "htm",
-        "css",
-        "scss",
-        "sass",
-        "py",
-        "java",
-        "c",
-        "h",
-        "cpp",
-        "hpp",
-        "cs",
-        "php",
-        "go",
-        "rs",
-        "swift",
-        "kt",
-        "kts",
-        "sql",
-        "xml",
-        "yaml",
-        "yml",
-        "vue",
-        "svelte"
-    ];
-
-    if (
-        extension &&
-        !allowed.includes(
-            extension
-        )
-    ) {
-
-        return {
-            ok: false,
-
-            error:
-                `.${extension} dosya türü desteklenmiyor.`
-        };
-    }
-
-    return {
-        ok: true,
-        extension,
-        size: file.size
-    };
-}
-
-
-/* =========================================================
-   FILE PICKER
-   ========================================================= */
-
-function turkAIOpenFilePicker() {
-
-    let input =
-        TURKAI_DOM.fileInput ||
-        document.querySelector(
-            "#fileInput"
-        );
-
-    if (!input) {
-
-        input =
-            document.createElement(
-                "input"
-            );
-
-        input.type = "file";
-
-        input.id =
-            "turkaiDynamicFileInput";
-
-        input.hidden = true;
-
-        document.body.appendChild(
-            input
-        );
-
-        input.addEventListener(
-            "change",
-            () => {
-
-                const file =
-                    input.files?.[0];
-
-                if (file) {
-                    turkAIHandleFile(
-                        file
-                    );
-                }
-            }
-        );
-    }
-
-    input.click();
-}
-
-
-/* =========================================================
-   FILE PREVIEW
-   ========================================================= */
-
-function turkAIRenderFilePreview(
-    file
-) {
-
-    const container =
-        TURKAI_DOM.filePreview ||
-        document.querySelector(
-            "#filePreview"
-        );
-
-    if (!container) {
-        return;
-    }
-
-    if (!file) {
-
-        container.innerHTML = "";
-
-        return;
-    }
-
-    container.innerHTML = `
-        <div class="turkai-file-preview-card">
-
-            <div class="turkai-file-icon">
-                <span></span>
-            </div>
-
-            <div class="turkai-file-info">
-
-                <strong>
-                    ${turkAIEscapeHTML(
-                        file.name
-                    )}
-                </strong>
-
-                <small>
-                    ${turkAIFormatBytes(
-                        file.size
-                    )}
-                </small>
-
-            </div>
-
-            <button
-                type="button"
-                data-remove-selected-file
-                aria-label="Dosyayı kaldır"
-            >
-                ×
-            </button>
-
-        </div>
-    `;
-}
-
-
-/* =========================================================
-   HANDLE FILE
-   ========================================================= */
-
-async function turkAIHandleFile(
-    file
-) {
-
-    const validation =
-        turkAIValidateFile(
-            file
-        );
-
-    if (!validation.ok) {
-
-        turkAIShowToast(
-            validation.error,
-            "error"
-        );
-
-        return;
-    }
-
-    TURKAI_FILE_STATE
-        .selectedFile =
-        file;
-
-    turkAIRenderFilePreview(
-        file
-    );
-
-    turkAIShowToast(
-        `${file.name} hazır.`,
-        "success"
-    );
-
-    /*
-      Küçük dosyaları otomatik yükle.
-    */
-
-    await turkAIUploadFile(
-        file
-    );
-}
-
-
-/* =========================================================
-   UPLOAD PROGRESS
-   ========================================================= */
-
-function turkAISetUploadProgress(
-    progress
-) {
-
-    const value =
-        Math.max(
-            0,
-            Math.min(
-                100,
-                Number(progress) || 0
-            )
-        );
-
-    TURKAI_FILE_STATE
-        .uploadProgress =
-        value;
-
-    const element =
-        TURKAI_DOM.uploadProgress ||
-        document.querySelector(
-            "#uploadProgress"
-        );
-
-    if (!element) {
-        return;
-    }
-
-    element.value =
-        value;
-
-    element.style.width =
-        `${value}%`;
-
-    element.setAttribute(
-        "aria-valuenow",
-        String(value)
-    );
-}
-
-
-/* =========================================================
-   UPLOAD FILE
-   ========================================================= */
-
-async function turkAIUploadFile(
-    file
-) {
-
-    if (
-        TURKAI_FILE_STATE.uploading
-    ) {
-        return;
-    }
-
-    const validation =
-        turkAIValidateFile(
-            file
-        );
-
-    if (!validation.ok) {
-
-        turkAIShowToast(
-            validation.error,
-            "error"
-        );
-
-        return;
-    }
-
-    TURKAI_FILE_STATE
-        .uploading =
-        true;
-
-    turkAISetUploadProgress(0);
+function saveLocalState() {
 
     try {
 
-        const formData =
-            new FormData();
+        localStorage.setItem(
+            "turkai_state",
+            JSON.stringify({
+                currentModel:
+                    TURKAI.state.currentModel,
 
-        formData.append(
-            "file",
-            file,
-            file.name
+                currentConversationId:
+                    TURKAI.state.currentConversationId
+            })
         );
-
-        formData.append(
-            "userId",
-            TURKAI_STATE.user?.id ||
-            TURKAI_STATE.user?.userId ||
-            ""
-        );
-
-        formData.append(
-            "conversationId",
-            TURKAI_STATE
-                .conversationId
-        );
-
-        /*
-          XMLHttpRequest kullanıyoruz;
-          böylece gerçek upload progress
-          gösterebiliriz.
-        */
-
-        const result =
-            await new Promise(
-                (resolve, reject) => {
-
-                    const xhr =
-                        new XMLHttpRequest();
-
-                    xhr.open(
-                        "POST",
-                        `${TURKAI_APP_CONFIG.apiBase}/api/files/upload`
-                    );
-
-                    if (
-                        TURKAI_STATE
-                            .accessToken
-                    ) {
-
-                        xhr.setRequestHeader(
-                            "Authorization",
-                            `Bearer ${TURKAI_STATE.accessToken}`
-                        );
-                    }
-
-                    xhr.upload.addEventListener(
-                        "progress",
-                        event => {
-
-                            if (
-                                event.lengthComputable
-                            ) {
-
-                                turkAISetUploadProgress(
-                                    (
-                                        event.loaded /
-                                        event.total
-                                    ) *
-                                    100
-                                );
-                            }
-                        }
-                    );
-
-                    xhr.addEventListener(
-                        "load",
-                        () => {
-
-                            let data;
-
-                            try {
-                                data =
-                                    JSON.parse(
-                                        xhr.responseText
-                                    );
-                            } catch (_) {
-
-                                data = {
-                                    success:
-                                        xhr.status >= 200 &&
-                                        xhr.status < 300
-                                };
-                            }
-
-                            if (
-                                xhr.status >= 200 &&
-                                xhr.status < 300
-                            ) {
-
-                                resolve(data);
-
-                            } else {
-
-                                const error =
-                                    new Error(
-                                        data?.error ||
-                                        "Dosya yüklenemedi."
-                                    );
-
-                                error.status =
-                                    xhr.status;
-
-                                reject(error);
-                            }
-                        }
-                    );
-
-                    xhr.addEventListener(
-                        "error",
-                        () => {
-                            reject(
-                                new Error(
-                                    "Dosya yükleme bağlantısı başarısız."
-                                )
-                            );
-                        }
-                    );
-
-                    xhr.addEventListener(
-                        "abort",
-                        () => {
-                            reject(
-                                new Error(
-                                    "Dosya yükleme iptal edildi."
-                                )
-                            );
-                        }
-                    );
-
-                    xhr.send(
-                        formData
-                    );
-                }
-            );
-
-        turkAISetUploadProgress(
-            100
-        );
-
-        const uploaded =
-            result?.file ||
-            result?.data ||
-            result;
-
-        turkAIAddMessage(
-            "assistant",
-            `Dosya yüklendi: ${file.name}`,
-            {
-                metadata: {
-                    type: "file",
-                    fileId:
-                        uploaded?.id ||
-                        uploaded?.fileId ||
-                        null,
-                    fileName:
-                        file.name,
-                    fileSize:
-                        file.size
-                }
-            }
-        );
-
-        turkAIShowToast(
-            "Dosya başarıyla yüklendi.",
-            "success"
-        );
-
-        return result;
 
     } catch (error) {
 
-        turkAIShowToast(
-            error.message ||
-            "Dosya yüklenemedi.",
-            "error"
+        console.warn(
+            "Local state kaydedilemedi.",
+            error
+        );
+    }
+}
+
+
+function restoreLocalState() {
+
+    try {
+
+        const raw =
+            localStorage.getItem(
+                "turkai_state"
+            );
+
+
+        if (!raw) {
+
+            TURKAI.state.currentConversationId =
+                generateId();
+
+            return;
+        }
+
+
+        const saved =
+            JSON.parse(raw);
+
+
+        if (saved.currentModel) {
+
+            TURKAI.state.currentModel =
+                saved.currentModel;
+        }
+
+
+        if (saved.currentConversationId) {
+
+            TURKAI.state.currentConversationId =
+                saved.currentConversationId;
+
+        } else {
+
+            TURKAI.state.currentConversationId =
+                generateId();
+        }
+
+
+    } catch {
+
+        TURKAI.state.currentConversationId =
+            generateId();
+    }
+}
+
+
+/* =========================================================
+   32. CHARACTER COUNTER INIT
+   ========================================================= */
+
+function initCharacterCounter() {
+
+    updateCharacterCounter();
+
+    const input =
+        byId("messageInput");
+
+    if (input) {
+
+        autoResizeInput(input);
+    }
+}
+
+
+/* =========================================================
+   33. TOAST
+   ========================================================= */
+
+function showToast(
+    message,
+    type = "info"
+) {
+
+    let container =
+        byId("toastContainer");
+
+
+    if (!container) {
+
+        container =
+            document.createElement("div");
+
+        container.id =
+            "toastContainer";
+
+        container.className =
+            "toast-container";
+
+        document.body.appendChild(container);
+    }
+
+
+    const toast =
+        document.createElement("div");
+
+    toast.className =
+        `toast toast-${type}`;
+
+
+    toast.innerHTML = `
+        <div class="toast-icon">
+            <span class="icon icon-info"></span>
+        </div>
+
+        <div class="toast-message">
+            ${escapeHTML(message)}
+        </div>
+
+        <button
+            type="button"
+            class="toast-close"
+            aria-label="Kapat">
+            ×
+        </button>
+    `;
+
+
+    container.appendChild(toast);
+
+
+    requestAnimationFrame(() => {
+
+        toast.classList.add("show");
+    });
+
+
+    const close =
+        toast.querySelector(
+            ".toast-close"
         );
 
-        throw error;
 
-    } finally {
+    close?.addEventListener(
+        "click",
+        () => removeToast(toast)
+    );
 
-        TURKAI_FILE_STATE
-            .uploading =
-            false;
 
-        setTimeout(
-            () => {
-                turkAISetUploadProgress(
-                    0
-                );
-            },
-            1200
+    setTimeout(
+        () => removeToast(toast),
+        3500
+    );
+}
+
+
+function removeToast(toast) {
+
+    if (!toast) return;
+
+    toast.classList.remove("show");
+
+    setTimeout(
+        () => toast.remove(),
+        250
+    );
+}
+
+
+/* =========================================================
+   34. SHAKE
+   ========================================================= */
+
+function shakeElement(element) {
+
+    if (!element) return;
+
+    element.classList.remove("shake");
+
+    void element.offsetWidth;
+
+    element.classList.add("shake");
+
+    setTimeout(
+        () => element.classList.remove("shake"),
+        450
+    );
+}
+
+
+/* =========================================================
+   35. GLOBAL EXPORT
+   ========================================================= */
+
+window.TURKAI = TURKAI;
+
+window.turkAI = {
+    sendMessage,
+    createNewChat,
+    navigateTo,
+    openModal,
+    closeModal,
+    openSettings,
+    openPlans,
+    showToast,
+    copyText,
+    apiRequest
+};
+
+
+console.log(
+    "TürkAI App.js PART 1 yüklendi."
+);
+/* =========================================================
+   TÜRKAI — APP.JS
+   PART 2 / 2
+   Research + Weather + Upload + Media + Voice + Auth
+   Socket.IO + Settings + Plans + Final UI
+   ========================================================= */
+
+
+/* =========================================================
+   36. RESEARCH ENGINE
+   ========================================================= */
+
+async function runResearch(query) {
+
+    query = String(query || "").trim();
+
+    if (!query) {
+
+        showToast(
+            "Araştırma konusu yaz.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    const input =
+        byId("researchInput") ||
+        byId("messageInput");
+
+
+    const result =
+        byId("researchResults") ||
+        byId("researchResult");
+
+
+    if (result) {
+
+        result.innerHTML = `
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <div>
+                    <strong>Araştırılıyor...</strong>
+                    <p>Güncel kaynaklar kontrol ediliyor.</p>
+                </div>
+            </div>
+        `;
+    }
+
+
+    try {
+
+        const response =
+            await apiRequest(
+                "/api/research",
+                {
+                    method: "POST",
+                    body: {
+                        query,
+                        question: query
+                    }
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                response.data?.error ||
+                response.data?.message ||
+                "Araştırma başarısız."
+            );
+        }
+
+
+        const data =
+            response.data || {};
+
+
+        const answer =
+            data.answer ||
+            data.result ||
+            data.response ||
+            data.summary ||
+            data.text ||
+            "Araştırma sonucu bulunamadı.";
+
+
+        if (result) {
+
+            result.innerHTML = `
+                <div class="research-result-card">
+                    <div class="result-header">
+                        <span class="result-status">
+                            Tamamlandı
+                        </span>
+                    </div>
+
+                    <div class="result-content">
+                        ${formatMessage(answer)}
+                    </div>
+                </div>
+            `;
+        }
+
+
+        showToast(
+            "Araştırma tamamlandı.",
+            "success"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Research error:",
+            error
+        );
+
+
+        if (result) {
+
+            result.innerHTML = `
+                <div class="error-state">
+                    <strong>Araştırma başarısız</strong>
+                    <p>${escapeHTML(error.message)}</p>
+                </div>
+            `;
+        }
+
+
+        showToast(
+            "Araştırma yapılamadı.",
+            "danger"
         );
     }
 }
 
 
 /* =========================================================
-   REMOVE SELECTED FILE
+   37. RESEARCH BUTTONS
    ========================================================= */
 
-function turkAIRemoveSelectedFile() {
+function initResearch() {
 
-    TURKAI_FILE_STATE
-        .selectedFile =
-        null;
-
-    turkAIRenderFilePreview(
-        null
+    const buttons = $$(
+        "#startResearchButton, " +
+        "#researchStartButton, " +
+        "[data-action='start-research']"
     );
 
-    const input =
-        TURKAI_DOM.fileInput ||
-        document.querySelector(
-            "#fileInput"
+
+    buttons.forEach(button => {
+
+        button.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+
+                const input =
+                    byId("researchInput");
+
+
+                const query =
+                    input?.value?.trim();
+
+
+                if (!query) {
+
+                    showToast(
+                        "Önce araştırma konusu yaz.",
+                        "warning"
+                    );
+
+                    input?.focus();
+
+                    return;
+                }
+
+
+                runResearch(query);
+            }
         );
+    });
+
+
+    const input =
+        byId("researchInput");
+
 
     if (input) {
+
+        input.addEventListener(
+            "keydown",
+            event => {
+
+                if (
+                    event.key === "Enter" &&
+                    !event.shiftKey
+                ) {
+
+                    event.preventDefault();
+
+                    runResearch(
+                        input.value
+                    );
+                }
+            }
+        );
+    }
+}
+
+
+/* =========================================================
+   38. WEATHER
+   ========================================================= */
+
+async function getWeather(city) {
+
+    city =
+        String(city || "").trim();
+
+
+    if (!city) {
+
+        showToast(
+            "Şehir adı yaz.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await apiRequest(
+                `/api/weather?city=${encodeURIComponent(city)}`
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                response.data?.error ||
+                "Hava durumu alınamadı."
+            );
+        }
+
+
+        const data =
+            response.data || {};
+
+
+        const target =
+            byId("weatherResult") ||
+            $(".weather-result");
+
+
+        if (target) {
+
+            const temperature =
+                data.temperature ??
+                data.temp ??
+                data.current?.temperature ??
+                "--";
+
+
+            const description =
+                data.description ||
+                data.condition ||
+                data.current?.condition ||
+                "Bilinmiyor";
+
+
+            target.innerHTML = `
+                <div class="weather-card">
+                    <div class="weather-city">
+                        ${escapeHTML(
+                            data.city || city
+                        )}
+                    </div>
+
+                    <div class="weather-temperature">
+                        ${escapeHTML(
+                            String(temperature)
+                        )}°
+                    </div>
+
+                    <div class="weather-description">
+                        ${escapeHTML(
+                            String(description)
+                        )}
+                    </div>
+                </div>
+            `;
+        }
+
+
+        showToast(
+            "Hava durumu güncellendi.",
+            "success"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Weather error:",
+            error
+        );
+
+
+        showToast(
+            error.message ||
+            "Hava durumu alınamadı.",
+            "danger"
+        );
+    }
+}
+
+
+function initWeather() {
+
+    const button =
+        byId("weatherButton") ||
+        byId("getWeatherButton") ||
+        $("[data-action='weather']");
+
+
+    if (button) {
+
+        button.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+
+                const input =
+                    byId("weatherCity") ||
+                    byId("cityInput");
+
+
+                if (input) {
+
+                    getWeather(input.value);
+
+                } else {
+
+                    navigateTo("chat");
+
+                    const chatInput =
+                        byId("messageInput");
+
+                    if (chatInput) {
+
+                        chatInput.value =
+                            "Bugün hava durumu nasıl?";
+
+                        updateCharacterCounter();
+
+                        chatInput.focus();
+                    }
+                }
+            }
+        );
+    }
+}
+
+
+/* =========================================================
+   39. FILE UPLOAD
+   ========================================================= */
+
+async function uploadSelectedFile() {
+
+    const file =
+        TURKAI.state.selectedFile;
+
+
+    if (!file) {
+
+        showToast(
+            "Önce dosya seç.",
+            "warning"
+        );
+
+        return null;
+    }
+
+
+    const formData =
+        new FormData();
+
+
+    formData.append(
+        "file",
+        file
+    );
+
+
+    const preview =
+        byId("filePreview") ||
+        $(".file-preview");
+
+
+    try {
+
+        if (preview) {
+
+            preview.classList.add(
+                "uploading"
+            );
+        }
+
+
+        const response =
+            await fetch(
+                TURKAI.apiBase +
+                "/api/upload",
+                {
+                    method: "POST",
+                    credentials: "include",
+                    body: formData
+                }
+            );
+
+
+        let data = null;
+
+
+        try {
+
+            data =
+                await response.json();
+
+        } catch {
+
+            data = {};
+        }
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                data.message ||
+                "Dosya yüklenemedi."
+            );
+        }
+
+
+        TURKAI.state.uploadedFile =
+            data;
+
+
+        showToast(
+            `${file.name} yüklendi.`,
+            "success"
+        );
+
+
+        if (preview) {
+
+            preview.classList.remove(
+                "uploading"
+            );
+
+            preview.classList.add(
+                "uploaded"
+            );
+        }
+
+
+        return data;
+
+    } catch (error) {
+
+        console.error(
+            "Upload error:",
+            error
+        );
+
+
+        if (preview) {
+
+            preview.classList.remove(
+                "uploading"
+            );
+        }
+
+
+        showToast(
+            error.message ||
+            "Dosya yüklenemedi.",
+            "danger"
+        );
+
+
+        return null;
+    }
+}
+
+
+/* =========================================================
+   40. FILE REMOVE
+   ========================================================= */
+
+function removeSelectedFile() {
+
+    TURKAI.state.selectedFile = null;
+
+    TURKAI.state.uploadedFile = null;
+
+
+    const preview =
+        byId("filePreview") ||
+        $(".file-preview");
+
+
+    if (preview) {
+
+        preview.classList.remove(
+            "active",
+            "uploaded",
+            "uploading"
+        );
+
+        preview.hidden = true;
+    }
+
+
+    const input =
+        byId("fileInput") ||
+        byId("uploadInput");
+
+
+    if (input) {
+
         input.value = "";
     }
 }
 
 
 /* =========================================================
-   FILE EVENT
+   41. FILE ACTION EVENTS
    ========================================================= */
 
-document.addEventListener(
-    "change",
-    event => {
+function initFileActions() {
 
-        const input =
-            event.target;
+    document.addEventListener(
+        "click",
+        event => {
 
-        if (
-            input.matches?.(
-                "#fileInput"
-            )
-        ) {
-
-            const file =
-                input.files?.[0];
-
-            if (file) {
-                turkAIHandleFile(
-                    file
+            const removeButton =
+                event.target.closest(
+                    "[data-action='remove-file'], " +
+                    "#removeFileButton"
                 );
+
+
+            if (removeButton) {
+
+                event.preventDefault();
+
+                removeSelectedFile();
+
+                return;
+            }
+
+
+            const uploadButton =
+                event.target.closest(
+                    "[data-action='upload-file'], " +
+                    "#uploadFileButton"
+                );
+
+
+            if (uploadButton) {
+
+                event.preventDefault();
+
+                uploadSelectedFile();
+
+                return;
             }
         }
-    }
-);
-
-
-document.addEventListener(
-    "click",
-    event => {
-
-        const removeButton =
-            event.target.closest(
-                "[data-remove-selected-file]"
-            );
-
-        if (
-            removeButton
-        ) {
-
-            turkAIRemoveSelectedFile();
-        }
-    }
-);
-
-
-/* =========================================================
-   UPLOAD BUTTON
-   ========================================================= */
-
-TURKAI_DOM.uploadButton
-    ?.addEventListener(
-        "click",
-        turkAIOpenFilePicker
-    );
-
-
-/* =========================================================
-   RESEARCH ENGINE
-   ========================================================= */
-
-const TURKAI_RESEARCH_STATE = {
-    active: false,
-    lastQuery: null,
-    results: [],
-    taskId: null
-};
-
-
-/* =========================================================
-   START RESEARCH
-   ========================================================= */
-
-async function turkAIRunResearch(
-    query
-) {
-
-    query =
-        turkAIText(query);
-
-    if (!query) {
-        return null;
-    }
-
-    if (
-        TURKAI_RESEARCH_STATE.active
-    ) {
-        return null;
-    }
-
-    TURKAI_RESEARCH_STATE.active =
-        true;
-
-    TURKAI_RESEARCH_STATE
-        .lastQuery =
-        query;
-
-    TURKAI_STATE.currentMode =
-        "research";
-
-    turkAISetTyping(
-        true,
-        "İnternette araştırıyorum..."
-    );
-
-    try {
-
-        const result =
-            await turkAIApi(
-                "/api/research",
-                {
-                    method: "POST",
-
-                    body: {
-                        query,
-
-                        userId:
-                            TURKAI_STATE
-                                .user?.id ||
-                            TURKAI_STATE
-                                .user?.userId,
-
-                        conversationId:
-                            TURKAI_STATE
-                                .conversationId,
-
-                        language:
-                            "tr"
-                    }
-                }
-            );
-
-        const answer =
-            turkAIExtractResponse(
-                result
-            );
-
-        const results =
-            result?.results ||
-            result?.sources ||
-            result?.data?.results ||
-            [];
-
-        TURKAI_RESEARCH_STATE
-            .results =
-            Array.isArray(results)
-                ? results
-                : [];
-
-        turkAISetTyping(
-            false
-        );
-
-        if (answer) {
-
-            turkAIAddMessage(
-                "assistant",
-                answer,
-                {
-                    mode:
-                        "research",
-
-                    metadata: {
-                        researched:
-                            true,
-
-                        sources:
-                            TURKAI_RESEARCH_STATE
-                                .results
-                    }
-                }
-            );
-        }
-
-        return result;
-
-    } catch (error) {
-
-        turkAISetTyping(
-            false
-        );
-
-        turkAIShowToast(
-            error.message ||
-            "Araştırma yapılamadı.",
-            "error"
-        );
-
-        return null;
-
-    } finally {
-
-        TURKAI_RESEARCH_STATE
-            .active =
-            false;
-
-        TURKAI_STATE.currentMode =
-            "chat";
-    }
-}
-
-
-/* =========================================================
-   RESEARCH BUTTON
-   ========================================================= */
-
-TURKAI_DOM.researchButton
-    ?.addEventListener(
-        "dblclick",
-        async () => {
-
-            const input =
-                turkAIGetInput();
-
-            if (!input) return;
-
-            const query =
-                turkAIText(
-                    input.value
-                );
-
-            if (!query) return;
-
-            turkAIClearInput();
-
-            turkAIAddMessage(
-                "user",
-                query,
-                {
-                    mode:
-                        "research"
-                }
-            );
-
-            await turkAIRunResearch(
-                query
-            );
-        }
-    );
-
-
-/* =========================================================
-   WEATHER
-   ========================================================= */
-
-async function turkAIGetWeather(
-    location = null
-) {
-
-    try {
-
-        const params =
-            new URLSearchParams();
-
-        if (location) {
-
-            params.set(
-                "location",
-                location
-            );
-        }
-
-        const result =
-            await turkAIApi(
-                `/api/weather${
-                    params.toString()
-                        ? `?${params}`
-                        : ""
-                }`
-            );
-
-        return result;
-
-    } catch (error) {
-
-        turkAIShowToast(
-            error.message ||
-            "Hava durumu alınamadı.",
-            "error"
-        );
-
-        return null;
-    }
-}
-
-
-/* =========================================================
-   WEATHER UI
-   ========================================================= */
-
-function turkAIRenderWeather(
-    data
-) {
-
-    if (!data) {
-        return;
-    }
-
-    const weather =
-        data.weather ||
-        data.data ||
-        data;
-
-    const location =
-        weather.location ||
-        weather.city ||
-        "Konum";
-
-    const temperature =
-        weather.temperature ??
-        weather.temp ??
-        "--";
-
-    const description =
-        weather.description ||
-        weather.condition ||
-        "Bilinmiyor";
-
-    const html = `
-        <div class="turkai-weather-card">
-
-            <div class="turkai-weather-location">
-                ${turkAIEscapeHTML(
-                    location
-                )}
-            </div>
-
-            <div class="turkai-weather-temperature">
-                ${turkAIEscapeHTML(
-                    temperature
-                )}°
-            </div>
-
-            <div class="turkai-weather-description">
-                ${turkAIEscapeHTML(
-                    description
-                )}
-            </div>
-
-        </div>
-    `;
-
-    const container =
-        TURKAI_DOM.messages ||
-        document.querySelector(
-            "#messages"
-        );
-
-    if (!container) {
-        return;
-    }
-
-    const element =
-        document.createElement(
-            "div"
-        );
-
-    element.innerHTML =
-        html;
-
-    container.appendChild(
-        element.firstElementChild
-    );
-
-    turkAIScrollToBottom();
-}
-
-
-/* =========================================================
-   MODEL SYSTEM
-   ========================================================= */
-
-const TURKAI_MODELS = [
-    {
-        id: "auto",
-        name: "Otomatik",
-        description:
-            "TürkAI uygun modeli seçer.",
-        plans: [
-            "free",
-            "pro",
-            "plus",
-            "ultra",
-            "developer"
-        ]
-    },
-
-    {
-        id: "fast",
-        name: "Hızlı",
-        description:
-            "Günlük sorular için hızlı yanıt.",
-        plans: [
-            "free",
-            "pro",
-            "plus",
-            "ultra",
-            "developer"
-        ]
-    },
-
-    {
-        id: "deep",
-        name: "Derin düşünme",
-        description:
-            "Daha karmaşık görevler için.",
-        plans: [
-            "pro",
-            "plus",
-            "ultra",
-            "developer"
-        ]
-    },
-
-    {
-        id: "code",
-        name: "Kod",
-        description:
-            "Kodlama ve teknik görevler.",
-        plans: [
-            "free",
-            "pro",
-            "plus",
-            "ultra",
-            "developer"
-        ]
-    },
-
-    {
-        id: "research",
-        name: "Araştırma",
-        description:
-            "Web araştırması odaklı.",
-        plans: [
-            "pro",
-            "plus",
-            "ultra",
-            "developer"
-        ]
-    }
-];
-
-
-/* =========================================================
-   MODEL ACCESS
-   ========================================================= */
-
-function turkAIGetAvailableModels() {
-
-    const plan =
-        turkAIGetPlan();
-
-    return TURKAI_MODELS.filter(
-        model =>
-            model.plans.includes(
-                plan
-            )
     );
 }
 
 
 /* =========================================================
-   MODEL MENU
+   42. IMAGE GENERATION
    ========================================================= */
 
-function turkAIRenderModelMenu() {
+async function generateImage(prompt) {
 
-    const menu =
-        TURKAI_DOM.modelMenu ||
-        document.querySelector(
-            "#modelMenu"
-        );
-
-    if (!menu) {
-        return;
-    }
-
-    const models =
-        turkAIGetAvailableModels();
-
-    menu.innerHTML =
-        models
-            .map(
-                model => `
-                    <button
-                        type="button"
-                        class="${
-                            model.id ===
-                            TURKAI_STATE.activeModel
-                                ? "active"
-                                : ""
-                        }"
-                        data-model-id="${
-                            model.id
-                        }"
-                    >
-
-                        <span
-                            class="turkai-model-icon"
-                        ></span>
-
-                        <span>
-                            <strong>
-                                ${turkAIEscapeHTML(
-                                    model.name
-                                )}
-                            </strong>
-
-                            <small>
-                                ${turkAIEscapeHTML(
-                                    model.description
-                                )}
-                            </small>
-                        </span>
-
-                    </button>
-                `
-            )
-            .join("");
-}
+    prompt =
+        String(prompt || "").trim();
 
 
-function turkAISelectModel(
-    modelId
-) {
+    if (!prompt) {
 
-    const available =
-        turkAIGetAvailableModels();
-
-    const model =
-        available.find(
-            item =>
-                item.id ===
-                modelId
-        );
-
-    if (!model) {
-
-        turkAIShowToast(
-            "Bu model planında kullanılamıyor.",
+        showToast(
+            "Görsel açıklaması yaz.",
             "warning"
         );
 
         return;
     }
 
-    TURKAI_STATE.activeModel =
-        model.id;
 
-    turkAIStorageSet(
-        "turkai_model",
-        model.id
+    const result =
+        byId("imageGenerationResult") ||
+        byId("imageResult");
+
+
+    if (result) {
+
+        result.innerHTML = `
+            <div class="media-loading">
+                <div class="loading-spinner"></div>
+                <strong>Görsel hazırlanıyor...</strong>
+                <span>Bu işlem biraz sürebilir.</span>
+            </div>
+        `;
+    }
+
+
+    try {
+
+        const response =
+            await apiRequest(
+                "/api/media/image",
+                {
+                    method: "POST",
+                    timeout: 120000,
+                    body: {
+                        prompt
+                    }
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                response.data?.error ||
+                response.data?.message ||
+                "Görsel üretilemedi."
+            );
+        }
+
+
+        const data =
+            response.data || {};
+
+
+        const imageUrl =
+            data.url ||
+            data.imageUrl ||
+            data.image ||
+            data.result?.url;
+
+
+        if (!imageUrl) {
+
+            throw new Error(
+                "Sunucu görsel adresi döndürmedi."
+            );
+        }
+
+
+        if (result) {
+
+            result.innerHTML = `
+                <div class="generated-media">
+                    <img
+                        src="${escapeHTML(imageUrl)}"
+                        alt="TürkAI tarafından oluşturulan görsel"
+                        loading="lazy">
+
+                    <div class="media-actions">
+                        <a
+                            href="${escapeHTML(imageUrl)}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="button">
+                            Görseli aç
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+
+        showToast(
+            "Görsel oluşturuldu.",
+            "success"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Image generation:",
+            error
+        );
+
+
+        if (result) {
+
+            result.innerHTML = `
+                <div class="error-state">
+                    <strong>Görsel oluşturulamadı</strong>
+                    <p>${escapeHTML(error.message)}</p>
+                </div>
+            `;
+        }
+
+
+        showToast(
+            "Görsel oluşturulamadı.",
+            "danger"
+        );
+    }
+}
+
+
+/* =========================================================
+   43. VIDEO GENERATION
+   ========================================================= */
+
+async function generateVideo(prompt) {
+
+    prompt =
+        String(prompt || "").trim();
+
+
+    if (!prompt) {
+
+        showToast(
+            "Video açıklaması yaz.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    const result =
+        byId("videoGenerationResult") ||
+        byId("videoResult");
+
+
+    if (result) {
+
+        result.innerHTML = `
+            <div class="media-loading">
+                <div class="loading-spinner"></div>
+                <strong>Video hazırlanıyor...</strong>
+                <span>Video üretimi zaman alabilir.</span>
+            </div>
+        `;
+    }
+
+
+    try {
+
+        const response =
+            await apiRequest(
+                "/api/media/video",
+                {
+                    method: "POST",
+                    timeout: 180000,
+                    body: {
+                        prompt
+                    }
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                response.data?.error ||
+                response.data?.message ||
+                "Video üretilemedi."
+            );
+        }
+
+
+        const data =
+            response.data || {};
+
+
+        const videoUrl =
+            data.url ||
+            data.videoUrl ||
+            data.video ||
+            data.result?.url;
+
+
+        if (!videoUrl) {
+
+            /* Job sistemi varsa */
+
+            const jobId =
+                data.jobId ||
+                data.id;
+
+
+            if (jobId) {
+
+                monitorMediaJob(
+                    jobId,
+                    result
+                );
+
+                return;
+            }
+
+
+            throw new Error(
+                "Sunucu video adresi döndürmedi."
+            );
+        }
+
+
+        if (result) {
+
+            result.innerHTML = `
+                <div class="generated-media">
+                    <video
+                        controls
+                        playsinline
+                        preload="metadata">
+                        <source
+                            src="${escapeHTML(videoUrl)}">
+                    </video>
+
+                    <div class="media-actions">
+                        <a
+                            href="${escapeHTML(videoUrl)}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="button">
+                            Videoyu aç
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+
+        showToast(
+            "Video oluşturuldu.",
+            "success"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Video generation:",
+            error
+        );
+
+
+        if (result) {
+
+            result.innerHTML = `
+                <div class="error-state">
+                    <strong>Video oluşturulamadı</strong>
+                    <p>${escapeHTML(error.message)}</p>
+                </div>
+            `;
+        }
+
+
+        showToast(
+            "Video oluşturulamadı.",
+            "danger"
+        );
+    }
+}
+
+
+/* =========================================================
+   44. MEDIA JOB MONITOR
+   ========================================================= */
+
+async function monitorMediaJob(
+    jobId,
+    target
+) {
+
+    let attempts = 0;
+
+    const maxAttempts = 120;
+
+
+    const check = async () => {
+
+        attempts++;
+
+
+        if (attempts > maxAttempts) {
+
+            if (target) {
+
+                target.innerHTML = `
+                    <div class="error-state">
+                        Video işlemi zaman aşımına uğradı.
+                    </div>
+                `;
+            }
+
+            return;
+        }
+
+
+        try {
+
+            const response =
+                await apiRequest(
+                    `/api/media/jobs/${encodeURIComponent(jobId)}`
+                );
+
+
+            const data =
+                response.data || {};
+
+
+            const status =
+                data.status ||
+                data.job?.status ||
+                "processing";
+
+
+            if (
+                status === "completed" ||
+                status === "complete" ||
+                status === "success"
+            ) {
+
+                const url =
+                    data.url ||
+                    data.videoUrl ||
+                    data.result?.url ||
+                    data.job?.url;
+
+
+                if (url && target) {
+
+                    target.innerHTML = `
+                        <div class="generated-media">
+                            <video
+                                controls
+                                playsinline>
+                                <source
+                                    src="${escapeHTML(url)}">
+                            </video>
+                        </div>
+                    `;
+                }
+
+
+                showToast(
+                    "Video hazır.",
+                    "success"
+                );
+
+                return;
+            }
+
+
+            if (
+                status === "failed" ||
+                status === "error"
+            ) {
+
+                throw new Error(
+                    data.error ||
+                    "Video üretimi başarısız."
+                );
+            }
+
+
+            if (target) {
+
+                const percent =
+                    data.progress ??
+                    data.job?.progress ??
+                    0;
+
+
+                target.innerHTML = `
+                    <div class="media-loading">
+                        <div class="loading-spinner"></div>
+                        <strong>Video hazırlanıyor... ${percent}%</strong>
+                    </div>
+                `;
+            }
+
+
+            setTimeout(
+                check,
+                3000
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Media job:",
+                error
+            );
+
+
+            if (target) {
+
+                target.innerHTML = `
+                    <div class="error-state">
+                        ${escapeHTML(error.message)}
+                    </div>
+                `;
+            }
+        }
+    };
+
+
+    check();
+}
+
+
+/* =========================================================
+   45. MEDIA EVENTS
+   ========================================================= */
+
+function initMedia() {
+
+    const imageButton =
+        byId("generateImageButton");
+
+
+    if (imageButton) {
+
+        imageButton.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+
+                const input =
+                    byId("imagePrompt") ||
+                    byId("imageGenerationPrompt");
+
+
+                generateImage(
+                    input?.value || ""
+                );
+            }
+        );
+    }
+
+
+    const videoButton =
+        byId("generateVideoButton");
+
+
+    if (videoButton) {
+
+        videoButton.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+
+                const input =
+                    byId("videoPrompt") ||
+                    byId("videoGenerationPrompt");
+
+
+                generateVideo(
+                    input?.value || ""
+                );
+            }
+        );
+    }
+
+
+    document.addEventListener(
+        "click",
+        event => {
+
+            const imageOpen =
+                event.target.closest(
+                    "[data-action='generate-image']"
+                );
+
+
+            if (imageOpen) {
+
+                event.preventDefault();
+
+                openModal(
+                    "imageCreateModal"
+                );
+
+                return;
+            }
+
+
+            const videoOpen =
+                event.target.closest(
+                    "[data-action='generate-video']"
+                );
+
+
+            if (videoOpen) {
+
+                event.preventDefault();
+
+                openModal(
+                    "videoCreateModal"
+                );
+            }
+        }
+    );
+}
+
+
+/* =========================================================
+   46. VOICE INPUT
+   ========================================================= */
+
+function initVoice() {
+
+    const button =
+        byId("voiceButton") ||
+        $("[data-action='voice']");
+
+
+    if (!button) return;
+
+
+    const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+
+    if (!SpeechRecognition) {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                showToast(
+                    "Tarayıcın sesli girişi desteklemiyor.",
+                    "warning"
+                );
+            }
+        );
+
+        return;
+    }
+
+
+    const recognition =
+        new SpeechRecognition();
+
+
+    recognition.lang =
+        "tr-TR";
+
+
+    recognition.continuous =
+        false;
+
+
+    recognition.interimResults =
+        true;
+
+
+    recognition.onstart = () => {
+
+        TURKAI.state.isRecording =
+            true;
+
+        button.classList.add(
+            "recording"
+        );
+
+        showToast(
+            "Dinliyorum...",
+            "info"
+        );
+    };
+
+
+    recognition.onresult = event => {
+
+        let transcript = "";
+
+
+        for (
+            let i = event.resultIndex;
+            i < event.results.length;
+            i++
+        ) {
+
+            transcript +=
+                event.results[i][0].transcript;
+        }
+
+
+        const input =
+            byId("messageInput");
+
+
+        if (input) {
+
+            input.value =
+                transcript;
+
+            updateCharacterCounter();
+
+            autoResizeInput(input);
+        }
+    };
+
+
+    recognition.onerror = error => {
+
+        console.error(
+            "Voice:",
+            error
+        );
+
+        showToast(
+            "Ses algılanamadı.",
+            "warning"
+        );
+    };
+
+
+    recognition.onend = () => {
+
+        TURKAI.state.isRecording =
+            false;
+
+        button.classList.remove(
+            "recording"
+        );
+    };
+
+
+    button.addEventListener(
+        "click",
+        event => {
+
+            event.preventDefault();
+
+
+            if (
+                TURKAI.state.isRecording
+            ) {
+
+                recognition.stop();
+
+            } else {
+
+                recognition.start();
+            }
+        }
+    );
+}
+
+
+/* =========================================================
+   47. AUTH
+   ========================================================= */
+
+async function loadCurrentUser() {
+
+    try {
+
+        const response =
+            await apiRequest(
+                "/api/auth/me"
+            );
+
+
+        if (!response.ok) {
+
+            TURKAI.state.currentUser =
+                null;
+
+            updateUserUI();
+
+            return;
+        }
+
+
+        const data =
+            response.data || {};
+
+
+        TURKAI.state.currentUser =
+            data.user ||
+            data.account ||
+            data;
+
+
+        updateUserUI();
+
+    } catch (error) {
+
+        console.warn(
+            "Auth check:",
+            error.message
+        );
+
+        TURKAI.state.currentUser =
+            null;
+
+        updateUserUI();
+    }
+}
+
+
+function updateUserUI() {
+
+    const user =
+        TURKAI.state.currentUser;
+
+
+    if (!user) return;
+
+
+    const name =
+        user.name ||
+        user.displayName ||
+        user.fullName ||
+        "Kullanıcı";
+
+
+    const email =
+        user.email ||
+        "";
+
+
+    $$(
+        "[data-user-name], .user-name"
+    ).forEach(element => {
+
+        element.textContent =
+            name;
+    });
+
+
+    $$(
+        "[data-user-email], .user-email"
+    ).forEach(element => {
+
+        element.textContent =
+            email;
+    });
+
+
+    $$(
+        "[data-user-avatar], .user-avatar"
+    ).forEach(element => {
+
+        if (
+            user.avatar ||
+            user.picture ||
+            user.photoURL
+        ) {
+
+            element.style.backgroundImage =
+                `url("${user.avatar || user.picture || user.photoURL}")`;
+
+            element.classList.add(
+                "has-image"
+            );
+        }
+    });
+}
+
+
+/* =========================================================
+   48. LOGOUT
+   ========================================================= */
+
+async function logoutUser() {
+
+    try {
+
+        const response =
+            await apiRequest(
+                "/api/auth/logout",
+                {
+                    method: "POST"
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                response.data?.error ||
+                "Çıkış yapılamadı."
+            );
+        }
+
+
+        TURKAI.state.currentUser =
+            null;
+
+
+        updateUserUI();
+
+
+        closeUserMenu();
+
+
+        showToast(
+            "Çıkış yapıldı.",
+            "success"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Logout:",
+            error
+        );
+
+
+        showToast(
+            error.message ||
+            "Çıkış yapılamadı.",
+            "danger"
+        );
+    }
+}
+
+
+/* =========================================================
+   49. AUTH EVENTS
+   ========================================================= */
+
+function initAuth() {
+
+    document.addEventListener(
+        "click",
+        event => {
+
+            const logout =
+                event.target.closest(
+                    "[data-action='logout'], #logoutButton"
+                );
+
+
+            if (logout) {
+
+                event.preventDefault();
+
+                logoutUser();
+
+                return;
+            }
+
+
+            const login =
+                event.target.closest(
+                    "[data-action='login'], #loginButton"
+                );
+
+
+            if (login) {
+
+                event.preventDefault();
+
+                openModal(
+                    "authModal"
+                );
+            }
+        }
     );
 
-    turkAIRenderModelMenu();
 
-    turkAIShowToast(
-        `${model.name} seçildi.`,
+    loadCurrentUser();
+}
+
+
+/* =========================================================
+   50. GOOGLE LOGIN
+   ========================================================= */
+
+function initGoogleLogin() {
+
+    const button =
+        byId("googleLoginButton") ||
+        $(".google-login-button");
+
+
+    if (!button) return;
+
+
+    button.addEventListener(
+        "click",
+        async event => {
+
+            event.preventDefault();
+
+
+            if (
+                window.google &&
+                window.google.accounts
+            ) {
+
+                try {
+
+                    if (
+                        window.google.accounts.id
+                    ) {
+
+                        window.google.accounts.id.prompt();
+
+                    } else {
+
+                        showToast(
+                            "Google giriş sistemi hazır değil.",
+                            "warning"
+                        );
+                    }
+
+                } catch (error) {
+
+                    console.error(
+                        "Google login:",
+                        error
+                    );
+
+                    showToast(
+                        "Google giriş başlatılamadı.",
+                        "danger"
+                    );
+                }
+
+            } else {
+
+                showToast(
+                    "Google bağlantısı yüklenmedi.",
+                    "warning"
+                );
+            }
+        }
+    );
+}
+
+
+/* =========================================================
+   51. SETTINGS CONTROLS
+   ========================================================= */
+
+function initSettingsControls() {
+
+    document.addEventListener(
+        "change",
+        event => {
+
+            const toggle =
+                event.target.closest(
+                    "[data-setting]"
+                );
+
+
+            if (!toggle) return;
+
+
+            const setting =
+                toggle.dataset.setting;
+
+
+            if (
+                setting === "notifications"
+            ) {
+
+                localStorage.setItem(
+                    "turkai_notifications",
+                    toggle.checked
+                        ? "1"
+                        : "0"
+                );
+            }
+
+
+            if (
+                setting === "sound"
+            ) {
+
+                localStorage.setItem(
+                    "turkai_sound",
+                    toggle.checked
+                        ? "1"
+                        : "0"
+                );
+            }
+
+
+            if (
+                setting === "memory"
+            ) {
+
+                localStorage.setItem(
+                    "turkai_memory",
+                    toggle.checked
+                        ? "1"
+                        : "0"
+                );
+            }
+
+
+            if (
+                setting === "research"
+            ) {
+
+                localStorage.setItem(
+                    "turkai_research",
+                    toggle.checked
+                        ? "1"
+                        : "0"
+                );
+            }
+
+
+            showToast(
+                "Ayar kaydedildi.",
+                "success"
+            );
+        }
+    );
+}
+
+
+/* =========================================================
+   52. THEME
+   ========================================================= */
+
+function initTheme() {
+
+    const saved =
+        localStorage.getItem(
+            "turkai_theme"
+        );
+
+
+    if (saved) {
+
+        applyTheme(saved);
+    }
+
+
+    document.addEventListener(
+        "click",
+        event => {
+
+            const button =
+                event.target.closest(
+                    "[data-theme]"
+                );
+
+
+            if (!button) return;
+
+
+            const theme =
+                button.dataset.theme;
+
+
+            applyTheme(theme);
+        }
+    );
+}
+
+
+function applyTheme(theme) {
+
+    if (!theme) return;
+
+
+    if (theme === "light") {
+
+        document.documentElement.dataset.theme =
+            "light";
+
+    } else {
+
+        document.documentElement.dataset.theme =
+            "dark";
+    }
+
+
+    localStorage.setItem(
+        "turkai_theme",
+        theme
+    );
+
+
+    showToast(
+        "Tema güncellendi.",
         "success"
     );
 }
 
 
-TURKAI_DOM.modelButton
-    ?.addEventListener(
-        "click",
-        () => {
-
-            TURKAI_STATE.ui
-                .modelMenuOpen =
-                !TURKAI_STATE.ui
-                    .modelMenuOpen;
-
-            TURKAI_DOM.modelMenu
-                ?.classList.toggle(
-                    "open",
-                    TURKAI_STATE.ui
-                        .modelMenuOpen
-                );
-
-            turkAIRenderModelMenu();
-        }
-    );
-
-
-document.addEventListener(
-    "click",
-    event => {
-
-        const button =
-            event.target.closest(
-                "[data-model-id]"
-            );
-
-        if (!button) {
-            return;
-        }
-
-        turkAISelectModel(
-            button.dataset.modelId
-        );
-    }
-);
-
-
 /* =========================================================
-   LOAD MODEL
+   53. SOCKET.IO
    ========================================================= */
 
-function turkAILoadModel() {
-
-    const saved =
-        turkAIStorageGet(
-            "turkai_model",
-            "auto"
-        );
-
-    if (
-        typeof saved === "string"
-    ) {
-
-        TURKAI_STATE.activeModel =
-            saved;
-    }
-}
-
-
-/* =========================================================
-   NOTIFICATION SYSTEM
-   ========================================================= */
-
-const TURKAI_NOTIFICATION_STATE = {
-    loading: false
-};
-
-
-async function turkAILoadNotifications() {
-
-    if (
-        TURKAI_NOTIFICATION_STATE.loading
-    ) {
-        return;
-    }
-
-    TURKAI_NOTIFICATION_STATE.loading =
-        true;
-
-    try {
-
-        const result =
-            await turkAIApi(
-                "/api/realtime/notifications"
-            );
-
-        const notifications =
-            result?.notifications ||
-            result?.data ||
-            result;
-
-        TURKAI_STATE.notifications =
-            Array.isArray(
-                notifications
-            )
-                ? notifications
-                : [];
-
-        TURKAI_STATE.unreadNotifications =
-            TURKAI_STATE.notifications
-                .filter(
-                    item =>
-                        !item.read
-                )
-                .length;
-
-        turkAIRenderNotifications();
-
-    } catch (_) {
-
-        /*
-          Bildirim sistemi opsiyoneldir.
-        */
-
-    } finally {
-
-        TURKAI_NOTIFICATION_STATE.loading =
-            false;
-    }
-}
-
-
-/* =========================================================
-   NOTIFICATION RENDER
-   ========================================================= */
-
-function turkAIRenderNotifications() {
-
-    const panel =
-        TURKAI_DOM.notificationPanel ||
-        document.querySelector(
-            "#notificationPanel"
-        );
-
-    if (!panel) {
-        return;
-    }
-
-    if (
-        TURKAI_STATE.notifications
-            .length === 0
-    ) {
-
-        panel.innerHTML = `
-            <div class="turkai-empty-notifications">
-                Bildirim yok.
-            </div>
-        `;
-
-        return;
-    }
-
-    panel.innerHTML =
-        TURKAI_STATE.notifications
-            .map(
-                notification => `
-                    <div
-                        class="
-                            turkai-notification
-                            ${
-                                notification.read
-                                    ? ""
-                                    : "unread"
-                            }
-                        "
-                        data-notification-id="${
-                            notification.id ||
-                            notification.notificationId ||
-                            ""
-                        }"
-                    >
-
-                        <div
-                            class="turkai-notification-title"
-                        >
-                            ${turkAIEscapeHTML(
-                                notification.title ||
-                                "TürkAI"
-                            )}
-                        </div>
-
-                        <div
-                            class="turkai-notification-message"
-                        >
-                            ${turkAIEscapeHTML(
-                                notification.message ||
-                                notification.body ||
-                                ""
-                            )}
-                        </div>
-
-                    </div>
-                `
-            )
-            .join("");
-}
-
-
-/* =========================================================
-   MARK NOTIFICATION READ
-   ========================================================= */
-
-async function turkAIMarkNotificationRead(
-    notificationId
-) {
-
-    if (!notificationId) {
-        return;
-    }
-
-    try {
-
-        await turkAIApi(
-            `/api/realtime/notifications/${encodeURIComponent(
-                notificationId
-            )}/read`,
-            {
-                method: "POST"
-            }
-        );
-
-        const item =
-            TURKAI_STATE.notifications
-                .find(
-                    notification =>
-                        (
-                            notification.id ||
-                            notification.notificationId
-                        ) ===
-                        notificationId
-                );
-
-        if (item) {
-            item.read = true;
-        }
-
-        TURKAI_STATE.unreadNotifications =
-            TURKAI_STATE.notifications
-                .filter(
-                    item =>
-                        !item.read
-                )
-                .length;
-
-        turkAIRenderNotifications();
-
-    } catch (_) {}
-}
-
-
-/* =========================================================
-   NOTIFICATION BUTTON
-   ========================================================= */
-
-TURKAI_DOM.notificationButton
-    ?.addEventListener(
-        "click",
-        async () => {
-
-            TURKAI_STATE.ui
-                .notificationOpen =
-                !TURKAI_STATE.ui
-                    .notificationOpen;
-
-            TURKAI_DOM.notificationPanel
-                ?.classList.toggle(
-                    "open",
-                    TURKAI_STATE.ui
-                        .notificationOpen
-                );
-
-            if (
-                TURKAI_STATE.ui
-                    .notificationOpen
-            ) {
-
-                await turkAILoadNotifications();
-            }
-        }
-    );
-
-
-/* =========================================================
-   SOCKET.IO REALTIME
-   ========================================================= */
-
-function turkAIConnectRealtime() {
-
-    if (
-        !TURKAI_APP_CONFIG.features
-            .realtime
-    ) {
-        return;
-    }
+function initSocket() {
 
     if (
         typeof window.io !==
         "function"
     ) {
+
+        console.log(
+            "Socket.IO bulunamadı; HTTP modu kullanılacak."
+        );
+
         return;
     }
 
-    if (
-        TURKAI_STATE.socket &&
-        TURKAI_STATE.socket.connected
-    ) {
-        return;
-    }
 
     try {
 
         const socket =
             window.io(
-                TURKAI_APP_CONFIG.apiBase,
+                TURKAI.apiBase || undefined,
                 {
                     transports: [
                         "websocket",
                         "polling"
-                    ],
-
-                    auth: {
-                        token:
-                            TURKAI_STATE
-                                .accessToken ||
-                            undefined,
-
-                        userId:
-                            TURKAI_STATE
-                                .user?.id ||
-                            TURKAI_STATE
-                                .user?.userId ||
-                            undefined
-                    }
+                    ]
                 }
             );
 
-        TURKAI_STATE.socket =
+
+        window.turkAISocket =
             socket;
+
 
         socket.on(
             "connect",
             () => {
 
-                TURKAI_STATE
-                    .socketConnected =
-                    true;
-
-                socket.emit(
-                    "subscribe",
-                    {
-                        userId:
-                            TURKAI_STATE
-                                .user?.id ||
-                            TURKAI_STATE
-                                .user?.userId,
-
-                        conversationId:
-                            TURKAI_STATE
-                                .conversationId
-                    }
-                );
-
                 console.log(
                     "TürkAI realtime bağlantısı aktif."
                 );
+
+
+                $$(
+                    "[data-realtime-status]"
+                ).forEach(element => {
+
+                    element.classList.add(
+                        "online"
+                    );
+                });
             }
         );
+
 
         socket.on(
             "disconnect",
             () => {
 
-                TURKAI_STATE
-                    .socketConnected =
-                    false;
+                $$(
+                    "[data-realtime-status]"
+                ).forEach(element => {
+
+                    element.classList.remove(
+                        "online"
+                    );
+                });
             }
         );
+
 
         socket.on(
             "connect_error",
             error => {
 
-                TURKAI_STATE
-                    .socketConnected =
-                    false;
-
                 console.warn(
-                    "Realtime bağlantısı:",
-                    error?.message
+                    "Socket bağlantısı:",
+                    error.message
                 );
             }
         );
+
+
+        /* Genel task */
+
+        socket.on(
+            "task:update",
+            task => {
+
+                updateTaskUI(task);
+            }
+        );
+
+
+        socket.on(
+            "media:progress",
+            task => {
+
+                updateTaskUI(task);
+            }
+        );
+
 
         socket.on(
             "notification",
             notification => {
 
-                if (!notification) {
-                    return;
-                }
-
-                TURKAI_STATE
-                    .notifications
-                    .unshift(
-                        notification
-                    );
-
-                TURKAI_STATE
-                    .unreadNotifications++;
-
-                turkAIRenderNotifications();
-
-                turkAIShowToast(
-                    notification.title ||
-                    notification.message ||
-                    "Yeni bildirim",
-                    "info"
+                addNotification(
+                    notification
                 );
             }
         );
 
-        socket.on(
-            "task:progress",
-            data => {
 
-                turkAIHandleTaskProgress(
-                    data
+        socket.on(
+            "chat:stream",
+            payload => {
+
+                handleChatStream(
+                    payload
                 );
             }
         );
 
-        socket.on(
-            "task:started",
-            data => {
-
-                turkAIHandleTaskProgress({
-                    ...data,
-                    status:
-                        "running"
-                });
-            }
-        );
-
-        socket.on(
-            "task:completed",
-            data => {
-
-                turkAIHandleTaskProgress({
-                    ...data,
-                    status:
-                        "completed",
-                    progress:
-                        100
-                });
-            }
-        );
-
-        socket.on(
-            "task:failed",
-            data => {
-
-                turkAIHandleTaskProgress({
-                    ...data,
-                    status:
-                        "failed"
-                });
-            }
-        );
-
-        socket.on(
-            "assistant:message",
-            data => {
-
-                const answer =
-                    turkAIExtractResponse(
-                        data
-                    );
-
-                if (!answer) {
-                    return;
-                }
-
-                turkAIAddMessage(
-                    "assistant",
-                    answer,
-                    {
-                        metadata: {
-                            realtime: true
-                        }
-                    }
-                );
-            }
-        );
 
     } catch (error) {
 
         console.warn(
-            "Realtime başlatılamadı:",
+            "Socket.IO başlatılamadı:",
             error
         );
     }
@@ -4342,2768 +4217,817 @@ function turkAIConnectRealtime() {
 
 
 /* =========================================================
-   TASK PROGRESS
+   54. CHAT STREAM
    ========================================================= */
 
-const TURKAI_TASK_STATE = {
-    active: new Map()
-};
+function handleChatStream(payload) {
+
+    if (!payload) return;
 
 
-function turkAIHandleTaskProgress(
-    data
-) {
+    const text =
+        payload.text ||
+        payload.delta ||
+        payload.content ||
+        "";
 
-    if (!data) {
-        return;
+
+    if (!text) return;
+
+
+    let row =
+        byId("streamingAssistantMessage");
+
+
+    if (!row) {
+
+        addMessage({
+            role: "assistant",
+            content: ""
+        });
+
+
+        const messages =
+            byId("messages");
+
+
+        row =
+            messages?.lastElementChild;
+
+
+        if (row) {
+
+            row.id =
+                "streamingAssistantMessage";
+        }
     }
 
-    const taskId =
-        data.taskId ||
-        data.id;
 
-    if (!taskId) {
-        return;
-    }
-
-    const task = {
-        ...(
-            TURKAI_TASK_STATE
-                .active
-                .get(taskId) ||
-            {}
-        ),
-
-        ...data,
-
-        taskId
-    };
-
-    TURKAI_TASK_STATE
-        .active
-        .set(
-            taskId,
-            task
+    const content =
+        row?.querySelector(
+            ".message-content"
         );
 
-    turkAIRenderTaskProgress(
-        task
-    );
+
+    if (!content) return;
+
+
+    const current =
+        content.dataset.raw ||
+        "";
+
+
+    const updated =
+        current + text;
+
+
+    content.dataset.raw =
+        updated;
+
+
+    content.innerHTML =
+        formatMessage(updated);
+
+
+    scrollMessages();
 }
 
 
 /* =========================================================
-   TASK PROGRESS UI
+   55. TASK UI
    ========================================================= */
 
-function turkAIRenderTaskProgress(
-    task
-) {
+function updateTaskUI(task) {
 
-    let element =
-        document.querySelector(
-            `[data-task-id="${CSS.escape(
-                task.taskId
-            )}"]`
-        );
+    if (!task) return;
 
-    if (!element) {
-
-        element =
-            document.createElement(
-                "div"
-            );
-
-        element.className =
-            "turkai-task-progress";
-
-        element.dataset.taskId =
-            task.taskId;
-
-        const container =
-            TURKAI_DOM.messages ||
-            document.querySelector(
-                "#messages"
-            );
-
-        container?.appendChild(
-            element
-        );
-    }
 
     const progress =
-        Math.max(
-            0,
-            Math.min(
-                100,
-                Number(
-                    task.progress
-                ) || 0
-            )
-        );
+        task.progress ??
+        task.percent ??
+        0;
 
-    const status =
-        task.status ||
-        "queued";
 
-    element.innerHTML = `
-        <div class="turkai-task-header">
+    const progressBars =
+        $$("[data-task-progress]");
 
-            <span>
-                ${turkAIEscapeHTML(
-                    task.type ||
-                    "Görev"
-                )}
-            </span>
 
-            <span>
-                ${progress}%
-            </span>
+    progressBars.forEach(bar => {
 
+        bar.style.width =
+            `${Math.max(
+                0,
+                Math.min(100, progress)
+            )}%`;
+    });
+
+
+    const labels =
+        $$("[data-task-status]");
+
+
+    labels.forEach(label => {
+
+        label.textContent =
+            task.status ||
+            `${progress}%`;
+    });
+}
+
+
+/* =========================================================
+   56. NOTIFICATIONS
+   ========================================================= */
+
+function addNotification(notification) {
+
+    if (!notification) return;
+
+
+    const title =
+        notification.title ||
+        "TürkAI";
+
+
+    const message =
+        notification.message ||
+        notification.text ||
+        "";
+
+
+    const list =
+        byId("notificationList");
+
+
+    if (!list) return;
+
+
+    const item =
+        document.createElement("div");
+
+
+    item.className =
+        "notification-item";
+
+
+    item.innerHTML = `
+        <div class="notification-title">
+            ${escapeHTML(title)}
         </div>
 
-        <div class="turkai-task-bar">
-            <div
-                style="width:${progress}%"
-            ></div>
-        </div>
-
-        <div class="turkai-task-status">
-            ${turkAIEscapeHTML(
-                status
-            )}
+        <div class="notification-message">
+            ${escapeHTML(message)}
         </div>
     `;
 
-    if (
-        status === "completed" ||
-        status === "failed" ||
-        status === "cancelled"
-    ) {
 
-        setTimeout(
-            () => {
-                element.remove();
-            },
-            5000
-        );
-    }
-
-    turkAIScrollToBottom();
+    list.prepend(item);
 }
 
 
 /* =========================================================
-   CREATE BACKGROUND TASK
+   57. INIT ALL
    ========================================================= */
 
-async function turkAICreateTask(
-    type,
-    payload = {},
-    options = {}
-) {
+function initEverything() {
 
-    try {
+    initResearch();
 
-        const result =
-            await turkAIApi(
-                "/api/tasks",
-                {
-                    method: "POST",
+    initWeather();
 
-                    body: {
-                        type,
+    initFileActions();
 
-                        payload,
+    initMedia();
 
-                        priority:
-                            options.priority ||
-                            "normal",
+    initVoice();
 
-                        userId:
-                            TURKAI_STATE
-                                .user?.id ||
-                            TURKAI_STATE
-                                .user?.userId,
+    initAuth();
 
-                        conversationId:
-                            TURKAI_STATE
-                                .conversationId
-                    }
-                }
-            );
+    initGoogleLogin();
 
-        const task =
-            result?.task ||
-            result?.data ||
-            result;
+    initSettingsControls();
 
-        if (
-            task?.id ||
-            task?.taskId
-        ) {
+    initTheme();
 
-            const taskId =
-                task.id ||
-                task.taskId;
+    initSocket();
 
-            TURKAI_TASK_STATE
-                .active
-                .set(
-                    taskId,
-                    task
-                );
 
-            TURKAI_STATE
-                .currentTaskId =
-                taskId;
-        }
+    /* Drag & Drop */
 
-        return task;
+    initDragDrop();
 
-    } catch (error) {
 
-        turkAIShowToast(
-            error.message ||
-            "Görev oluşturulamadı.",
-            "error"
-        );
+    /* Tool buttons */
 
-        return null;
-    }
-}
+    initExtraToolButtons();
 
 
-/* =========================================================
-   CANCEL TASK
-   ========================================================= */
-
-async function turkAICancelTask(
-    taskId
-) {
-
-    if (!taskId) {
-        return;
-    }
-
-    try {
-
-        await turkAIApi(
-            `/api/tasks/${encodeURIComponent(
-                taskId
-            )}/cancel`,
-            {
-                method: "POST"
-            }
-        );
-
-        const task =
-            TURKAI_TASK_STATE
-                .active
-                .get(taskId);
-
-        if (task) {
-
-            task.status =
-                "cancelled";
-
-            turkAIRenderTaskProgress(
-                task
-            );
-        }
-
-        turkAIShowToast(
-            "Görev iptal edildi.",
-            "info"
-        );
-
-    } catch (error) {
-
-        turkAIShowToast(
-            error.message ||
-            "Görev iptal edilemedi.",
-            "error"
-        );
-    }
-}
-
-
-/* =========================================================
-   IMAGE GENERATION
-   ========================================================= */
-
-const TURKAI_MEDIA_STATE = {
-    imageJob: null,
-    videoJob: null
-};
-
-
-async function turkAIGenerateImage(
-    prompt,
-    options = {}
-) {
-
-    prompt =
-        turkAIText(prompt);
-
-    if (!prompt) {
-
-        turkAIShowToast(
-            "Bir görsel açıklaması yaz.",
-            "warning"
-        );
-
-        return null;
-    }
-
-    if (
-        TURKAI_STATE.isGeneratingImage
-    ) {
-        return null;
-    }
-
-    TURKAI_STATE.isGeneratingImage =
-        true;
-
-    try {
-
-        const result =
-            await turkAIApi(
-                "/api/media/image",
-                {
-                    method: "POST",
-
-                    body: {
-                        prompt,
-
-                        size:
-                            options.size ||
-                            "square",
-
-                        style:
-                            options.style ||
-                            "realistic",
-
-                        userId:
-                            TURKAI_STATE
-                                .user?.id ||
-                            TURKAI_STATE
-                                .user?.userId,
-
-                        conversationId:
-                            TURKAI_STATE
-                                .conversationId
-                    }
-                }
-            );
-
-        const job =
-            result?.job ||
-            result?.data ||
-            result;
-
-        TURKAI_MEDIA_STATE
-            .imageJob =
-            job;
-
-        const taskId =
-            job?.id ||
-            job?.jobId ||
-            job?.taskId;
-
-        if (taskId) {
-
-            turkAIHandleTaskProgress({
-                taskId,
-
-                type:
-                    "media_image",
-
-                status:
-                    job.status ||
-                    "queued",
-
-                progress:
-                    job.progress || 0
-            });
-        }
-
-        turkAIShowToast(
-            "Görsel oluşturma görevi başlatıldı.",
-            "success"
-        );
-
-        return job;
-
-    } catch (error) {
-
-        turkAIShowToast(
-            error.message ||
-            "Görsel oluşturulamadı.",
-            "error"
-        );
-
-        return null;
-
-    } finally {
-
-        TURKAI_STATE.isGeneratingImage =
-            false;
-    }
-}
-
-
-/* =========================================================
-   VIDEO GENERATION
-   ========================================================= */
-
-async function turkAIGenerateVideo(
-    prompt,
-    options = {}
-) {
-
-    prompt =
-        turkAIText(prompt);
-
-    if (!prompt) {
-
-        turkAIShowToast(
-            "Bir video açıklaması yaz.",
-            "warning"
-        );
-
-        return null;
-    }
-
-    if (
-        TURKAI_STATE.isGeneratingVideo
-    ) {
-        return null;
-    }
-
-    TURKAI_STATE.isGeneratingVideo =
-        true;
-
-    try {
-
-        const result =
-            await turkAIApi(
-                "/api/media/video",
-                {
-                    method: "POST",
-
-                    body: {
-                        prompt,
-
-                        duration:
-                            Number(
-                                options.duration ||
-                                5
-                            ),
-
-                        resolution:
-                            options.resolution ||
-                            "720p",
-
-                        userId:
-                            TURKAI_STATE
-                                .user?.id ||
-                            TURKAI_STATE
-                                .user?.userId,
-
-                        conversationId:
-                            TURKAI_STATE
-                                .conversationId
-                    }
-                }
-            );
-
-        const job =
-            result?.job ||
-            result?.data ||
-            result;
-
-        TURKAI_MEDIA_STATE
-            .videoJob =
-            job;
-
-        const taskId =
-            job?.id ||
-            job?.jobId ||
-            job?.taskId;
-
-        if (taskId) {
-
-            turkAIHandleTaskProgress({
-                taskId,
-
-                type:
-                    "media_video",
-
-                status:
-                    job.status ||
-                    "queued",
-
-                progress:
-                    job.progress || 0
-            });
-        }
-
-        turkAIShowToast(
-            "Video oluşturma görevi başlatıldı.",
-            "success"
-        );
-
-        return job;
-
-    } catch (error) {
-
-        turkAIShowToast(
-            error.message ||
-            "Video oluşturulamadı.",
-            "error"
-        );
-
-        return null;
-
-    } finally {
-
-        TURKAI_STATE.isGeneratingVideo =
-            false;
-    }
-}
-
-
-/* =========================================================
-   MEDIA BUTTONS
-   ========================================================= */
-
-TURKAI_DOM.imageButton
-    ?.addEventListener(
-        "click",
-        () => {
-
-            const modal =
-                TURKAI_DOM.imageModal ||
-                document.querySelector(
-                    "#imageCreateModal"
-                );
-
-            modal?.classList.add(
-                "open"
-            );
-        }
-    );
-
-
-TURKAI_DOM.videoButton
-    ?.addEventListener(
-        "click",
-        () => {
-
-            const modal =
-                TURKAI_DOM.videoModal ||
-                document.querySelector(
-                    "#videoCreateModal"
-                );
-
-            modal?.classList.add(
-                "open"
-            );
-        }
-    );
-
-
-/* =========================================================
-   CLOSE MEDIA MODALS
-   ========================================================= */
-
-TURKAI_DOM.closeImageModal
-    ?.addEventListener(
-        "click",
-        () => {
-
-            TURKAI_DOM.imageModal
-                ?.classList.remove(
-                    "open"
-                );
-        }
-    );
-
-
-TURKAI_DOM.closeVideoModal
-    ?.addEventListener(
-        "click",
-        () => {
-
-            TURKAI_DOM.videoModal
-                ?.classList.remove(
-                    "open"
-                );
-        }
-    );
-
-
-/* =========================================================
-   AUTO INITIALIZATION PART 2
-   ========================================================= */
-
-turkAILoadModel();
-
-turkAIGetFileLimits();
-
-turkAIRenderModelMenu();
-
-if (
-    TURKAI_STATE.authenticated
-) {
-
-    turkAILoadNotifications();
-
-    turkAIConnectRealtime();
-}
-
-
-/* =========================================================
-   PART 2 / 3 END
-   PART 3 BURADAN SONRA GELECEK
-   ========================================================= */
-/* =========================================================
-   TÜRKAI — APP.JS
-   PART 3 / 3
-   AUTH + SETTINGS + VOICE + UI + PLANS + FINAL ENGINE
-   ========================================================= */
-
-
-/* =========================================================
-   ACCOUNT / AUTH STATE
-   ========================================================= */
-
-const TURKAI_AUTH_STATE = {
-    loading: false,
-    googleLoading: false,
-    initialized: false
-};
-
-
-/* =========================================================
-   CURRENT USER
-   ========================================================= */
-
-function turkAIGetCurrentUser() {
-
-    return (
-        TURKAI_STATE.user ||
-        null
-    );
-}
-
-
-function turkAIGetUserId() {
-
-    const user =
-        turkAIGetCurrentUser();
-
-    return (
-        user?.id ||
-        user?.userId ||
-        user?.googleId ||
-        null
-    );
-}
-
-
-function turkAIGetUserName() {
-
-    const user =
-        turkAIGetCurrentUser();
-
-    return (
-        user?.name ||
-        user?.displayName ||
-        user?.givenName ||
-        "Kullanıcı"
+    console.log(
+        "TürkAI tüm sistemleri aktif."
     );
 }
 
 
 /* =========================================================
-   AUTH ME
+   58. DRAG & DROP
    ========================================================= */
 
-async function turkAILoadCurrentUser() {
+function initDragDrop() {
 
-    if (
-        TURKAI_AUTH_STATE.loading
-    ) {
-        return null;
-    }
+    const area =
+        byId("composer") ||
+        $(".composer-shell") ||
+        byId("chatPage");
 
-    TURKAI_AUTH_STATE.loading =
-        true;
 
-    try {
+    if (!area) return;
 
-        const result =
-            await turkAIApi(
-                "/api/auth/me"
-            );
 
-        const user =
-            result?.user ||
-            result?.data?.user ||
-            result?.account ||
-            result?.data ||
-            null;
+    ["dragenter", "dragover"].forEach(
+        eventName => {
 
-        if (user) {
-
-            TURKAI_STATE.user =
-                user;
-
-            TURKAI_STATE.authenticated =
-                true;
-
-            if (
-                user.plan
-            ) {
-
-                TURKAI_STATE.plan =
-                    String(
-                        user.plan
-                    ).toLowerCase();
-            }
-
-            turkAIUpdateUserUI();
-
-            return user;
-        }
-
-        return null;
-
-    } catch (error) {
-
-        if (
-            error?.status === 401 ||
-            error?.status === 403
-        ) {
-
-            TURKAI_STATE.authenticated =
-                false;
-
-            TURKAI_STATE.user =
-                null;
-        }
-
-        return null;
-
-    } finally {
-
-        TURKAI_AUTH_STATE.loading =
-            false;
-    }
-}
-
-
-/* =========================================================
-   USER UI
-   ========================================================= */
-
-function turkAIUpdateUserUI() {
-
-    const name =
-        turkAIGetUserName();
-
-    const plan =
-        turkAIGetPlan();
-
-    const elements = [
-        document.querySelector(
-            "#userName"
-        ),
-
-        document.querySelector(
-            "#profileName"
-        ),
-
-        document.querySelector(
-            "[data-user-name]"
-        )
-    ];
-
-    elements.forEach(
-        element => {
-
-            if (!element) {
-                return;
-            }
-
-            element.textContent =
-                name;
-        }
-    );
-
-    const planElements = [
-        document.querySelector(
-            "#userPlan"
-        ),
-
-        document.querySelector(
-            "[data-user-plan]"
-        )
-    ];
-
-    planElements.forEach(
-        element => {
-
-            if (!element) {
-                return;
-            }
-
-            element.textContent =
-                plan.toUpperCase();
-        }
-    );
-
-    document
-        .querySelectorAll(
-            "[data-user-greeting]"
-        )
-        .forEach(
-            element => {
-
-                element.textContent =
-                    `Merhaba, ${name}`;
-            }
-        );
-}
-
-
-/* =========================================================
-   GOOGLE IDENTITY
-   ========================================================= */
-
-function turkAIInitializeGoogle() {
-
-    if (
-        typeof window.google ===
-        "undefined"
-    ) {
-        return;
-    }
-
-    const clientId =
-        TURKAI_APP_CONFIG
-            .googleClientId;
-
-    if (!clientId) {
-        return;
-    }
-
-    const container =
-        document.querySelector(
-            "#googleLogin"
-        );
-
-    if (!container) {
-        return;
-    }
-
-    try {
-
-        window.google.accounts.id
-            .initialize({
-
-                client_id:
-                    clientId,
-
-                callback:
-                    turkAIHandleGoogleCredential,
-
-                auto_select:
-                    false,
-
-                cancel_on_tap_outside:
-                    true
-            });
-
-        window.google.accounts.id
-            .renderButton(
-                container,
-                {
-                    theme:
-                        "outline",
-
-                    size:
-                        "large",
-
-                    shape:
-                        "pill",
-
-                    width:
-                        320
-                }
-            );
-
-    } catch (error) {
-
-        console.warn(
-            "Google giriş başlatılamadı:",
-            error
-        );
-    }
-}
-
-
-/* =========================================================
-   GOOGLE CREDENTIAL
-   ========================================================= */
-
-async function turkAIHandleGoogleCredential(
-    response
-) {
-
-    if (
-        !response?.credential
-    ) {
-        return;
-    }
-
-    if (
-        TURKAI_AUTH_STATE
-            .googleLoading
-    ) {
-        return;
-    }
-
-    TURKAI_AUTH_STATE
-        .googleLoading =
-        true;
-
-    try {
-
-        const result =
-            await turkAIApi(
-                "/api/auth/google/link",
-                {
-                    method: "POST",
-
-                    body: {
-                        credential:
-                            response.credential
-                    }
-                }
-            );
-
-        const user =
-            result?.user ||
-            result?.account ||
-            result?.data?.user ||
-            null;
-
-        if (user) {
-
-            TURKAI_STATE.user =
-                user;
-
-            TURKAI_STATE.authenticated =
-                true;
-
-            if (
-                user.plan
-            ) {
-
-                TURKAI_STATE.plan =
-                    String(
-                        user.plan
-                    ).toLowerCase();
-            }
-
-            turkAIStorageSet(
-                "turkai_google_login",
-                "true"
-            );
-
-            turkAIUpdateUserUI();
-
-            turkAIShowToast(
-                "Google hesabın bağlandı.",
-                "success"
-            );
-
-            turkAIConnectRealtime();
-
-            turkAILoadNotifications();
-        }
-
-    } catch (error) {
-
-        turkAIShowToast(
-            error.message ||
-            "Google ile giriş başarısız.",
-            "error"
-        );
-
-    } finally {
-
-        TURKAI_AUTH_STATE
-            .googleLoading =
-            false;
-    }
-}
-
-
-/* =========================================================
-   LOGOUT
-   ========================================================= */
-
-async function turkAILogout() {
-
-    try {
-
-        await turkAIApi(
-            "/api/auth/logout",
-            {
-                method: "POST"
-            }
-        );
-
-    } catch (_) {}
-
-    try {
-
-        TURKAI_STATE.socket
-            ?.disconnect();
-
-    } catch (_) {}
-
-    TURKAI_STATE.socket =
-        null;
-
-    TURKAI_STATE
-        .socketConnected =
-        false;
-
-    TURKAI_STATE.user =
-        null;
-
-    TURKAI_STATE.authenticated =
-        false;
-
-    TURKAI_STATE.plan =
-        "free";
-
-    TURKAI_STATE.accessToken =
-        null;
-
-    turkAIStorageRemove(
-        "turkai_access_token"
-    );
-
-    turkAIStorageRemove(
-        "turkai_refresh_token"
-    );
-
-    turkAIStorageRemove(
-        "turkai_google_login"
-    );
-
-    turkAIUpdateUserUI();
-
-    turkAIShowToast(
-        "Oturum kapatıldı.",
-        "success"
-    );
-}
-
-
-/* =========================================================
-   LOGOUT BUTTON
-   ========================================================= */
-
-document.addEventListener(
-    "click",
-    event => {
-
-        const button =
-            event.target.closest(
-                "[data-action='logout'], #logoutButton"
-            );
-
-        if (!button) {
-            return;
-        }
-
-        turkAILogout();
-    }
-);
-
-
-/* =========================================================
-   SETTINGS STATE
-   ========================================================= */
-
-const TURKAI_SETTINGS = {
-
-    theme:
-        turkAIStorageGet(
-            "turkai_theme",
-            "dark"
-        ),
-
-    sound:
-        turkAIStorageGet(
-            "turkai_sound",
-            true
-        ) !== false,
-
-    enterToSend:
-        turkAIStorageGet(
-            "turkai_enter_send",
-            true
-        ) !== false,
-
-    autoResearch:
-        turkAIStorageGet(
-            "turkai_auto_research",
-            true
-        ) !== false,
-
-    memory:
-        turkAIStorageGet(
-            "turkai_memory",
-            true
-        ) !== false,
-
-    compact:
-        turkAIStorageGet(
-            "turkai_compact",
-            false
-        ) === true
-};
-
-
-/* =========================================================
-   APPLY SETTINGS
-   ========================================================= */
-
-function turkAIApplySettings() {
-
-    document.documentElement
-        .dataset.theme =
-        TURKAI_SETTINGS.theme;
-
-    document.documentElement
-        .classList.toggle(
-            "turkai-no-sound",
-            !TURKAI_SETTINGS.sound
-        );
-
-    document.documentElement
-        .classList.toggle(
-            "turkai-compact",
-            TURKAI_SETTINGS.compact
-        );
-
-    const settings = [
-        [
-            "soundToggle",
-            TURKAI_SETTINGS.sound
-        ],
-
-        [
-            "enterToSendToggle",
-            TURKAI_SETTINGS.enterToSend
-        ],
-
-        [
-            "autoResearchToggle",
-            TURKAI_SETTINGS.autoResearch
-        ],
-
-        [
-            "memoryToggle",
-            TURKAI_SETTINGS.memory
-        ],
-
-        [
-            "compactToggle",
-            TURKAI_SETTINGS.compact
-        ]
-    ];
-
-    settings.forEach(
-        ([id, value]) => {
-
-            const element =
-                document.querySelector(
-                    `#${id}`
-                );
-
-            if (!element) {
-                return;
-            }
-
-            element.checked =
-                Boolean(value);
-        }
-    );
-}
-
-
-/* =========================================================
-   SAVE SETTING
-   ========================================================= */
-
-function turkAISetSetting(
-    key,
-    value
-) {
-
-    if (
-        !Object.prototype.hasOwnProperty
-            .call(
-                TURKAI_SETTINGS,
-                key
-            )
-    ) {
-        return;
-    }
-
-    TURKAI_SETTINGS[key] =
-        value;
-
-    turkAIStorageSet(
-        `turkai_${key}`,
-        value
-    );
-
-    turkAIApplySettings();
-}
-
-
-/* =========================================================
-   SETTINGS EVENTS
-   ========================================================= */
-
-const TURKAI_SETTING_MAP = {
-    soundToggle:
-        "sound",
-
-    enterToSendToggle:
-        "enterToSend",
-
-    autoResearchToggle:
-        "autoResearch",
-
-    memoryToggle:
-        "memory",
-
-    compactToggle:
-        "compact"
-};
-
-
-Object.entries(
-    TURKAI_SETTING_MAP
-).forEach(
-    ([id, key]) => {
-
-        document
-            .querySelector(
-                `#${id}`
-            )
-            ?.addEventListener(
-                "change",
+            area.addEventListener(
+                eventName,
                 event => {
-
-                    turkAISetSetting(
-                        key,
-                        event.target.checked
-                    );
-                }
-            );
-    }
-);
-
-
-/* =========================================================
-   THEME
-   ========================================================= */
-
-function turkAISetTheme(
-    theme
-) {
-
-    const allowed = [
-        "dark",
-        "light",
-        "system"
-    ];
-
-    if (
-        !allowed.includes(
-            theme
-        )
-    ) {
-        theme = "dark";
-    }
-
-    TURKAI_SETTINGS.theme =
-        theme;
-
-    turkAIStorageSet(
-        "turkai_theme",
-        theme
-    );
-
-    if (
-        theme === "system"
-    ) {
-
-        const dark =
-            window.matchMedia(
-                "(prefers-color-scheme: dark)"
-            ).matches;
-
-        document.documentElement
-            .dataset.theme =
-            dark
-                ? "dark"
-                : "light";
-
-    } else {
-
-        document.documentElement
-            .dataset.theme =
-            theme;
-    }
-}
-
-
-/* =========================================================
-   SETTINGS BUTTON
-   ========================================================= */
-
-document.addEventListener(
-    "click",
-    event => {
-
-        const button =
-            event.target.closest(
-                "#settingsButton, [data-action='settings']"
-            );
-
-        if (!button) {
-            return;
-        }
-
-        const panel =
-            document.querySelector(
-                "#settingsPanel"
-            );
-
-        panel?.classList.toggle(
-            "open"
-        );
-    }
-);
-
-
-/* =========================================================
-   SIDEBAR
-   ========================================================= */
-
-function turkAIToggleSidebar(
-    force
-) {
-
-    const sidebar =
-        TURKAI_DOM.sidebar ||
-        document.querySelector(
-            "#sidebar"
-        );
-
-    if (!sidebar) {
-        return;
-    }
-
-    const shouldOpen =
-        typeof force ===
-        "boolean"
-            ? force
-            : !sidebar.classList
-                .contains("open");
-
-    sidebar.classList.toggle(
-        "open",
-        shouldOpen
-    );
-
-    document.body
-        .classList.toggle(
-            "turkai-sidebar-open",
-            shouldOpen
-        );
-
-    TURKAI_STATE.ui
-        .sidebarOpen =
-        shouldOpen;
-}
-
-
-document.addEventListener(
-    "click",
-    event => {
-
-        const button =
-            event.target.closest(
-                "#sidebarToggle, [data-action='sidebar']"
-            );
-
-        if (!button) {
-            return;
-        }
-
-        turkAIToggleSidebar();
-    }
-);
-
-
-/* =========================================================
-   MOBILE OVERLAY
-   ========================================================= */
-
-document.addEventListener(
-    "click",
-    event => {
-
-        const overlay =
-            event.target.closest(
-                "#sidebarOverlay"
-            );
-
-        if (!overlay) {
-            return;
-        }
-
-        turkAIToggleSidebar(
-            false
-        );
-    }
-);
-
-
-/* =========================================================
-   VOICE INPUT
-   ========================================================= */
-
-const TURKAI_VOICE_STATE = {
-    active: false,
-    recognition: null,
-    supported: false
-};
-
-
-function turkAIInitializeVoice() {
-
-    const Recognition =
-        window.SpeechRecognition ||
-        window.webkitSpeechRecognition;
-
-    if (!Recognition) {
-
-        TURKAI_VOICE_STATE
-            .supported =
-            false;
-
-        return;
-    }
-
-    const recognition =
-        new Recognition();
-
-    recognition.lang =
-        "tr-TR";
-
-    recognition.continuous =
-        false;
-
-    recognition.interimResults =
-        true;
-
-    recognition.maxAlternatives =
-        1;
-
-    recognition.onstart =
-        () => {
-
-            TURKAI_VOICE_STATE
-                .active =
-                true;
-
-            TURKAI_DOM.voiceButton
-                ?.classList.add(
-                    "active"
-                );
-
-            turkAIShowToast(
-                "Dinliyorum...",
-                "info"
-            );
-        };
-
-    recognition.onresult =
-        event => {
-
-            let text = "";
-
-            for (
-                let i =
-                    event.resultIndex;
-                i <
-                    event.results.length;
-                i++
-            ) {
-
-                text +=
-                    event.results[i][0]
-                        ?.transcript ||
-                    "";
-            }
-
-            text =
-                turkAIText(text);
-
-            const input =
-                turkAIGetInput();
-
-            if (
-                input &&
-                text
-            ) {
-
-                input.value =
-                    text;
-
-                turkAIResizeInput?.();
-            }
-        };
-
-    recognition.onerror =
-        event => {
-
-            console.warn(
-                "Voice error:",
-                event.error
-            );
-
-            turkAIShowToast(
-                "Sesli giriş kullanılamadı.",
-                "error"
-            );
-        };
-
-    recognition.onend =
-        () => {
-
-            TURKAI_VOICE_STATE
-                .active =
-                false;
-
-            TURKAI_DOM.voiceButton
-                ?.classList.remove(
-                    "active"
-                );
-        };
-
-    TURKAI_VOICE_STATE
-        .recognition =
-        recognition;
-
-    TURKAI_VOICE_STATE
-        .supported =
-        true;
-}
-
-
-function turkAIToggleVoice() {
-
-    if (
-        !TURKAI_VOICE_STATE
-            .supported
-    ) {
-
-        turkAIShowToast(
-            "Tarayıcın sesli girişi desteklemiyor.",
-            "warning"
-        );
-
-        return;
-    }
-
-    try {
-
-        if (
-            TURKAI_VOICE_STATE.active
-        ) {
-
-            TURKAI_VOICE_STATE
-                .recognition
-                .stop();
-
-        } else {
-
-            TURKAI_VOICE_STATE
-                .recognition
-                .start();
-        }
-
-    } catch (error) {
-
-        console.warn(
-            "Voice:",
-            error
-        );
-    }
-}
-
-
-TURKAI_DOM.voiceButton
-    ?.addEventListener(
-        "click",
-        turkAIToggleVoice
-    );
-
-
-/* =========================================================
-   KEYBOARD SHORTCUTS
-   ========================================================= */
-
-document.addEventListener(
-    "keydown",
-    event => {
-
-        /*
-          Ctrl + K
-          Arama / yeni sohbet
-        */
-
-        if (
-            event.ctrlKey &&
-            event.key.toLowerCase() ===
-                "k"
-        ) {
-
-            event.preventDefault();
-
-            const input =
-                turkAIGetInput();
-
-            input?.focus();
-
-            return;
-        }
-
-
-        /*
-          Escape
-          Modalları kapat
-        */
-
-        if (
-            event.key ===
-            "Escape"
-        ) {
-
-            document
-                .querySelectorAll(
-                    ".open"
-                )
-                .forEach(
-                    element => {
-
-                        if (
-                            element.matches(
-                                ".modal, .panel, .drawer"
-                            )
-                        ) {
-
-                            element.classList
-                                .remove(
-                                    "open"
-                                );
-                        }
-                    }
-                );
-
-            return;
-        }
-
-
-        /*
-          Enter ile gönder
-        */
-
-        if (
-            event.key ===
-            "Enter" &&
-            !event.shiftKey &&
-            !event.ctrlKey &&
-            !event.altKey
-        ) {
-
-            if (
-                !TURKAI_SETTINGS
-                    .enterToSend
-            ) {
-                return;
-            }
-
-            const target =
-                event.target;
-
-            if (
-                target?.tagName ===
-                    "TEXTAREA" ||
-                target?.tagName ===
-                    "INPUT"
-            ) {
-
-                /*
-                  Shift+Enter yeni satır.
-                */
-
-                if (
-                    target.tagName ===
-                    "TEXTAREA"
-                ) {
 
                     event.preventDefault();
 
-                    turkAISendMessage();
+                    area.classList.add(
+                        "drag-over"
+                    );
                 }
-            }
-        }
-    }
-);
-
-
-/* =========================================================
-   DRAG & DROP FILES
-   ========================================================= */
-
-document.addEventListener(
-    "dragover",
-    event => {
-
-        event.preventDefault();
-
-        document.body.classList
-            .add(
-                "turkai-dragging"
             );
-    }
-);
-
-
-document.addEventListener(
-    "dragleave",
-    event => {
-
-        if (
-            event.target ===
-            document.body
-        ) {
-
-            document.body.classList
-                .remove(
-                    "turkai-dragging"
-                );
         }
-    }
-);
+    );
 
 
-document.addEventListener(
-    "drop",
-    event => {
+    ["dragleave", "drop"].forEach(
+        eventName => {
 
-        event.preventDefault();
+            area.addEventListener(
+                eventName,
+                event => {
 
-        document.body.classList
-            .remove(
-                "turkai-dragging"
+                    event.preventDefault();
+
+                    area.classList.remove(
+                        "drag-over"
+                    );
+                }
             );
+        }
+    );
 
-        const files =
-            Array.from(
+
+    area.addEventListener(
+        "drop",
+        event => {
+
+            const file =
                 event.dataTransfer
-                    ?.files ||
-                []
-            );
-
-        if (
-            files.length === 0
-        ) {
-            return;
-        }
-
-        turkAIHandleFile(
-            files[0]
-        );
-    }
-);
+                    ?.files?.[0];
 
 
-/* =========================================================
-   PLAN SYSTEM
-   ========================================================= */
+            if (file) {
 
-const TURKAI_PLANS = {
-
-    free: {
-        name:
-            "Free",
-
-        price:
-            0,
-
-        color:
-            "default",
-
-        features: [
-            "AI sohbet",
-            "Hafıza",
-            "Temel araştırma",
-            "Kodlama",
-            "Hava durumu"
-        ]
-    },
-
-    pro: {
-        name:
-            "Pro",
-
-        price:
-            250,
-
-        color:
-            "purple",
-
-        features: [
-            "Daha yüksek kullanım",
-            "Gelişmiş araştırma",
-            "Görsel oluşturma",
-            "Gelişmiş kodlama",
-            "Öncelikli AI"
-        ]
-    },
-
-    plus: {
-        name:
-            "Plus",
-
-        price:
-            500,
-
-        color:
-            "gold",
-
-        features: [
-            "Yüksek kullanım",
-            "Gelişmiş araştırma",
-            "Görsel oluşturma",
-            "Video oluşturma",
-            "Gelişmiş modeller"
-        ]
-    },
-
-    ultra: {
-        name:
-            "Ultra",
-
-        price:
-            1000,
-
-        color:
-            "ultra",
-
-        features: [
-            "100.000 satıra kadar kod",
-            "1 GB dosya desteği",
-            "Gelişmiş AI",
-            "Yüksek araştırma limiti",
-            "Gelişmiş medya"
-        ]
-    }
-};
-
-
-/* =========================================================
-   PLAN RENDER
-   ========================================================= */
-
-function turkAIRenderPlans() {
-
-    const container =
-        document.querySelector(
-            "#plansContainer"
-        );
-
-    if (!container) {
-        return;
-    }
-
-    const currentPlan =
-        turkAIGetPlan();
-
-    container.innerHTML =
-        Object.entries(
-            TURKAI_PLANS
-        )
-        .map(
-            ([id, plan]) => {
-
-                const current =
-                    id === currentPlan;
-
-                return `
-                    <div
-                        class="
-                            turkai-plan-card
-                            ${plan.color}
-                            ${
-                                current
-                                    ? "current"
-                                    : ""
-                            }
-                        "
-                    >
-
-                        <div
-                            class="turkai-plan-title"
-                        >
-                            ${turkAIEscapeHTML(
-                                plan.name
-                            )}
-                        </div>
-
-                        <div
-                            class="turkai-plan-price"
-                        >
-                            ${
-                                plan.price === 0
-                                    ? "Ücretsiz"
-                                    : `₺${plan.price}/ay`
-                            }
-                        </div>
-
-                        <ul>
-                            ${plan.features
-                                .map(
-                                    feature =>
-                                        `<li>${turkAIEscapeHTML(
-                                            feature
-                                        )}</li>`
-                                )
-                                .join("")}
-                        </ul>
-
-                        <button
-                            type="button"
-                            data-plan="${
-                                id
-                            }"
-                            ${
-                                current
-                                    ? "disabled"
-                                    : ""
-                            }
-                        >
-                            ${
-                                current
-                                    ? "Mevcut plan"
-                                    : "İncele"
-                            }
-                        </button>
-
-                    </div>
-                `;
+                handleSelectedFile(file);
             }
-        )
-        .join("");
+        }
+    );
 }
 
 
 /* =========================================================
-   PLAN CLICK
+   59. EXTRA TOOL BUTTONS
    ========================================================= */
 
-document.addEventListener(
-    "click",
-    event => {
+function initExtraToolButtons() {
 
-        const button =
-            event.target.closest(
-                "[data-plan]"
-            );
+    document.addEventListener(
+        "click",
+        event => {
 
-        if (!button) {
-            return;
-        }
+            /* Research */
 
-        const plan =
-            button.dataset.plan;
-
-        if (!plan) {
-            return;
-        }
-
-        turkAIShowToast(
-            `${TURKAI_PLANS[plan]?.name || plan} planı seçildi.`,
-            "info"
-        );
-
-        /*
-          Gerçek ödeme backend'deki
-          Iyzico entegrasyonuna bağlanabilir.
-        */
-    }
-);
-
-
-/* =========================================================
-   USAGE PANEL
-   ========================================================= */
-
-async function turkAILoadUsage() {
-
-    try {
-
-        const result =
-            await turkAIApi(
-                "/api/usage"
-            );
-
-        const usage =
-            result?.usage ||
-            result?.data ||
-            result;
-
-        TURKAI_STATE.usage =
-            usage;
-
-        turkAIRenderUsage(
-            usage
-        );
-
-        return usage;
-
-    } catch (_) {
-
-        return null;
-    }
-}
-
-
-function turkAIRenderUsage(
-    usage
-) {
-
-    if (!usage) {
-        return;
-    }
-
-    const container =
-        document.querySelector(
-            "#usagePanel"
-        );
-
-    if (!container) {
-        return;
-    }
-
-    const messages =
-        usage.messages ||
-        usage.dailyMessages ||
-        {};
-
-    const used =
-        Number(
-            messages.used ||
-            0
-        );
-
-    const limit =
-        Number(
-            messages.limit ||
-            usage.messageLimit ||
-            0
-        );
-
-    const percent =
-        limit > 0
-            ? Math.min(
-                100,
-                (
-                    used /
-                    limit
-                ) *
-                100
-            )
-            : 0;
-
-    container.innerHTML = `
-        <div class="turkai-usage-title">
-            Günlük kullanım
-        </div>
-
-        <div class="turkai-usage-count">
-            ${used} / ${
-                limit || "∞"
-            }
-        </div>
-
-        <div class="turkai-usage-bar">
-            <div
-                style="width:${percent}%"
-            ></div>
-        </div>
-    `;
-}
-
-
-/* =========================================================
-   COPY MESSAGE
-   ========================================================= */
-
-document.addEventListener(
-    "click",
-    async event => {
-
-        const button =
-            event.target.closest(
-                "[data-copy-message]"
-            );
-
-        if (!button) {
-            return;
-        }
-
-        const message =
-            button.closest(
-                "[data-message]"
-            );
-
-        const text =
-            message?.innerText ||
-            message?.textContent ||
-            "";
-
-        if (!text) {
-            return;
-        }
-
-        try {
-
-            await navigator.clipboard
-                .writeText(
-                    text.trim()
+            const research =
+                event.target.closest(
+                    "[data-tool='research']"
                 );
 
-            turkAIShowToast(
-                "Mesaj kopyalandı.",
-                "success"
-            );
 
-        } catch (_) {
+            if (research) {
 
-            turkAIShowToast(
-                "Kopyalama başarısız.",
-                "error"
-            );
+                event.preventDefault();
+
+                navigateTo("research");
+
+                return;
+            }
+
+
+            /* Weather */
+
+            const weather =
+                event.target.closest(
+                    "[data-tool='weather']"
+                );
+
+
+            if (weather) {
+
+                event.preventDefault();
+
+                navigateTo("chat");
+
+
+                const input =
+                    byId("messageInput");
+
+
+                if (input) {
+
+                    input.value =
+                        "Bugün hava durumu nasıl?";
+
+                    updateCharacterCounter();
+
+                    autoResizeInput(input);
+
+                    input.focus();
+                }
+
+                return;
+            }
+
+
+            /* Code */
+
+            const code =
+                event.target.closest(
+                    "[data-tool='code']"
+                );
+
+
+            if (code) {
+
+                event.preventDefault();
+
+                navigateTo("code");
+
+                return;
+            }
+
+
+            /* Files */
+
+            const files =
+                event.target.closest(
+                    "[data-tool='files']"
+                );
+
+
+            if (files) {
+
+                event.preventDefault();
+
+                navigateTo("files");
+
+                return;
+            }
+
+
+            /* Media */
+
+            const media =
+                event.target.closest(
+                    "[data-tool='media']"
+                );
+
+
+            if (media) {
+
+                event.preventDefault();
+
+                navigateTo("media");
+
+                return;
+            }
         }
-    }
-);
-
-
-/* =========================================================
-   RETRY MESSAGE
-   ========================================================= */
-
-document.addEventListener(
-    "click",
-    event => {
-
-        const button =
-            event.target.closest(
-                "[data-retry-message]"
-            );
-
-        if (!button) {
-            return;
-        }
-
-        const message =
-            button.closest(
-                "[data-message]"
-            );
-
-        const text =
-            message?.dataset?.text ||
-            message?.innerText ||
-            "";
-
-        if (!text) {
-            return;
-        }
-
-        const input =
-            turkAIGetInput();
-
-        if (!input) {
-            return;
-        }
-
-        input.value =
-            text.trim();
-
-        turkAIResizeInput?.();
-
-        turkAISendMessage();
-    }
-);
-
-
-/* =========================================================
-   NEW CHAT
-   ========================================================= */
-
-function turkAINewChat() {
-
-    TURKAI_STATE
-        .conversationId =
-        turkAIGenerateId(
-            "conversation"
-        );
-
-    TURKAI_STATE.messages =
-        [];
-
-    const container =
-        TURKAI_DOM.messages ||
-        document.querySelector(
-            "#messages"
-        );
-
-    if (container) {
-        container.innerHTML = "";
-    }
-
-    turkAIStorageSet(
-        "turkai_conversation_id",
-        TURKAI_STATE
-            .conversationId
-    );
-
-    turkAIShowWelcome();
-
-    turkAIShowToast(
-        "Yeni sohbet hazır.",
-        "success"
     );
 }
 
 
-document.addEventListener(
-    "click",
-    event => {
-
-        const button =
-            event.target.closest(
-                "#newChatButton, [data-action='new-chat']"
-            );
-
-        if (!button) {
-            return;
-        }
-
-        turkAINewChat();
-    }
-);
-
-
 /* =========================================================
-   SCROLL TOP / BOTTOM
+   60. PAGE BUTTON AUTO BIND
    ========================================================= */
 
-document.addEventListener(
-    "keydown",
-    event => {
+function bindPageButtons() {
 
-        if (
-            event.key ===
-            "Home" &&
-            event.ctrlKey
-        ) {
+    const mapping = {
 
-            const container =
-                TURKAI_DOM.messages;
+        chat:
+            [
+                "#chatButton",
+                "[data-nav='chat']"
+            ],
 
-            if (container) {
+        research:
+            [
+                "#researchPageButton",
+                "[data-nav='research']"
+            ],
 
-                container.scrollTo({
-                    top: 0,
-                    behavior:
-                        "smooth"
+        files:
+            [
+                "#filesPageButton",
+                "[data-nav='files']"
+            ],
+
+        media:
+            [
+                "#mediaPageButton",
+                "[data-nav='media']"
+            ],
+
+        code:
+            [
+                "#codePageButton",
+                "[data-nav='code']"
+            ]
+    };
+
+
+    Object.entries(mapping)
+        .forEach(([page, selectors]) => {
+
+            selectors.forEach(selector => {
+
+                $$(selector).forEach(button => {
+
+                    button.addEventListener(
+                        "click",
+                        event => {
+
+                            event.preventDefault();
+
+                            navigateTo(page);
+                        }
+                    );
                 });
-            }
-        }
-
-        if (
-            event.key ===
-            "End" &&
-            event.ctrlKey
-        ) {
-
-            turkAIScrollToBottom();
-        }
-    }
-);
-
-
-/* =========================================================
-   ONLINE STATUS
-   ========================================================= */
-
-function turkAIUpdateOnlineStatus() {
-
-    const online =
-        navigator.onLine;
-
-    document.body
-        .classList.toggle(
-            "turkai-offline",
-            !online
-        );
-
-    document
-        .querySelectorAll(
-            "[data-online-status]"
-        )
-        .forEach(
-            element => {
-
-                element.textContent =
-                    online
-                        ? "Çevrimiçi"
-                        : "Çevrimdışı";
-            }
-        );
+            });
+        });
 }
 
 
-window.addEventListener(
-    "online",
-    () => {
-
-        turkAIUpdateOnlineStatus();
-
-        turkAIShowToast(
-            "İnternet bağlantısı geri geldi.",
-            "success"
-        );
-
-        turkAIConnectRealtime();
-    }
-);
-
-
-window.addEventListener(
-    "offline",
-    () => {
-
-        turkAIUpdateOnlineStatus();
-
-        turkAIShowToast(
-            "İnternet bağlantısı kesildi.",
-            "warning"
-        );
-    }
-);
-
-
 /* =========================================================
-   PAGE VISIBILITY
+   61. GLOBAL CLOSE MENUS
    ========================================================= */
 
-document.addEventListener(
-    "visibilitychange",
-    () => {
+function initOutsideClick() {
 
-        if (
-            document.visibilityState ===
-            "visible"
-        ) {
+    document.addEventListener(
+        "click",
+        event => {
 
-            turkAIUpdateOnlineStatus();
+            const modelMenu =
+                byId("modelMenu") ||
+                $(".model-menu");
+
+
+            const modelButton =
+                byId("modelSelector") ||
+                $(".model-selector");
+
 
             if (
-                TURKAI_STATE
-                    .authenticated &&
-                !TURKAI_STATE
-                    .socketConnected
+                modelMenu &&
+                !modelMenu.contains(event.target) &&
+                !modelButton?.contains(event.target)
             ) {
 
-                turkAIConnectRealtime();
+                modelMenu.classList.remove(
+                    "active"
+                );
+
+                modelMenu.hidden = true;
+
+                TURKAI.state.modelMenuOpen =
+                    false;
+            }
+
+
+            const userMenu =
+                byId("userMenu") ||
+                $(".user-menu");
+
+
+            if (
+                userMenu &&
+                !userMenu.contains(event.target) &&
+                !event.target.closest(
+                    "[data-action='user-menu'], #userMenuButton"
+                )
+            ) {
+
+                closeUserMenu();
+            }
+
+
+            const notification =
+                byId("notificationPanel") ||
+                $(".notification-panel");
+
+
+            if (
+                notification &&
+                !notification.contains(event.target) &&
+                !event.target.closest(
+                    "[data-action='notifications'], #notificationButton"
+                )
+            ) {
+
+                closeNotificationPanel();
             }
         }
-    }
-);
-
-
-/* =========================================================
-   BEFORE UNLOAD
-   ========================================================= */
-
-window.addEventListener(
-    "beforeunload",
-    () => {
-
-        try {
-
-            turkAIStorageSet(
-                "turkai_last_active",
-                Date.now()
-            );
-
-            turkAIStorageSet(
-                "turkai_conversation_id",
-                TURKAI_STATE
-                    .conversationId
-            );
-
-        } catch (_) {}
-    }
-);
-
-
-/* =========================================================
-   FINAL APP INITIALIZATION
-   ========================================================= */
-
-async function turkAIInitializeApp() {
-
-    if (
-        TURKAI_AUTH_STATE
-            .initialized
-    ) {
-        return;
-    }
-
-    TURKAI_AUTH_STATE
-        .initialized =
-        true;
-
-    console.log(
-        "TürkAI başlatılıyor..."
     );
-
-    try {
-
-        turkAIApplySettings();
-
-    } catch (error) {
-
-        console.warn(
-            "Settings:",
-            error
-        );
-    }
-
-    try {
-
-        turkAIUpdateOnlineStatus();
-
-    } catch (_) {}
+}
 
 
-    try {
+/* =========================================================
+   62. PLAN BUTTONS
+   ========================================================= */
 
-        turkAIInitializeVoice();
+function initPlanButtons() {
 
-    } catch (error) {
+    document.addEventListener(
+        "click",
+        async event => {
 
-        console.warn(
-            "Voice:",
-            error
-        );
-    }
-
-
-    try {
-
-        turkAIInitializeGoogle();
-
-    } catch (error) {
-
-        console.warn(
-            "Google:",
-            error
-        );
-    }
+            const button =
+                event.target.closest(
+                    "[data-plan]"
+                );
 
 
-    try {
-
-        await turkAILoadCurrentUser();
-
-    } catch (_) {}
+            if (!button) return;
 
 
-    try {
-
-        turkAIUpdateUserUI();
-
-    } catch (_) {}
+            event.preventDefault();
 
 
-    try {
-
-        turkAIRenderPlans();
-
-    } catch (_) {}
+            const plan =
+                button.dataset.plan;
 
 
-    try {
+            if (!plan) return;
 
-        await turkAILoadUsage();
-
-    } catch (_) {}
-
-
-    try {
-
-        turkAIRenderModelMenu();
-
-    } catch (_) {}
-
-
-    try {
-
-        if (
-            TURKAI_STATE
-                .authenticated
-        ) {
-
-            await turkAILoadNotifications();
-
-            turkAIConnectRealtime();
-        }
-
-    } catch (_) {}
-
-
-    /*
-      Welcome ekranını yalnızca sohbet
-      boşsa göster.
-    */
-
-    try {
-
-        if (
-            !TURKAI_STATE.messages ||
-            TURKAI_STATE.messages
-                .length === 0
-        ) {
-
-            turkAIShowWelcome();
-        }
-
-    } catch (_) {}
-
-
-    /*
-      Input'a otomatik odaklan.
-    */
-
-    setTimeout(
-        () => {
 
             try {
 
+                const response =
+                    await apiRequest(
+                        "/api/pro/activate",
+                        {
+                            method: "POST",
+                            body: {
+                                plan
+                            }
+                        }
+                    );
+
+
                 if (
-                    window.innerWidth >
-                    700
+                    response.ok &&
+                    response.data
                 ) {
 
-                    turkAIGetInput()
-                        ?.focus();
+                    showToast(
+                        response.data.message ||
+                        `${plan} plan seçildi.`,
+                        "success"
+                    );
+
+                } else {
+
+                    showToast(
+                        response.data?.message ||
+                        "Plan işlemi sunucu tarafından reddedildi.",
+                        "warning"
+                    );
                 }
 
-            } catch (_) {}
-        },
-        250
-    );
+            } catch (error) {
+
+                console.error(
+                    "Plan:",
+                    error
+                );
 
 
-    console.log(
-        "TürkAI hazır."
-    );
-}
-
-
-/* =========================================================
-   DOM READY
-   ========================================================= */
-
-if (
-    document.readyState ===
-    "loading"
-) {
-
-    document.addEventListener(
-        "DOMContentLoaded",
-        turkAIInitializeApp,
-        {
-            once: true
-        }
-    );
-
-} else {
-
-    turkAIInitializeApp();
-}
-
-
-/* =========================================================
-   GLOBAL API
-   ========================================================= */
-
-window.TurkAI = {
-
-    version:
-        "10.0.0",
-
-    state:
-        TURKAI_STATE,
-
-    settings:
-        TURKAI_SETTINGS,
-
-    send:
-        turkAISendMessage,
-
-    newChat:
-        turkAINewChat,
-
-    research:
-        turkAIRunResearch,
-
-    weather:
-        turkAIGetWeather,
-
-    upload:
-        turkAIUploadFile,
-
-    image:
-        turkAIGenerateImage,
-
-    video:
-        turkAIGenerateVideo,
-
-    createTask:
-        turkAICreateTask,
-
-    cancelTask:
-        turkAICancelTask,
-
-    logout:
-        turkAILogout,
-
-    voice:
-        turkAIToggleVoice,
-
-    sidebar:
-        turkAIToggleSidebar,
-
-    setTheme:
-        turkAISetTheme,
-
-    setSetting:
-        turkAISetSetting,
-
-    usage:
-        turkAILoadUsage
-};
-
-
-/* =========================================================
-   DEBUG INFORMATION
-   ========================================================= */
-
-window.TurkAIDebug = {
-
-    state:
-        () =>
-            TURKAI_STATE,
-
-    auth:
-        () =>
-            TURKAI_AUTH_STATE,
-
-    file:
-        () =>
-            TURKAI_FILE_STATE,
-
-    research:
-        () =>
-            TURKAI_RESEARCH_STATE,
-
-    media:
-        () =>
-            TURKAI_MEDIA_STATE,
-
-    task:
-        () =>
-            TURKAI_TASK_STATE,
-
-    voice:
-        () =>
-            TURKAI_VOICE_STATE,
-
-    settings:
-        () =>
-            TURKAI_SETTINGS
-};
-
-
-/* =========================================================
-   FINAL READY EVENT
-   ========================================================= */
-
-window.dispatchEvent(
-    new CustomEvent(
-        "turkai:ready",
-        {
-            detail: {
-                version:
-                    "10.0.0",
-
-                plan:
-                    turkAIGetPlan(),
-
-                authenticated:
-                    TURKAI_STATE
-                        .authenticated
+                showToast(
+                    "Plan işlemi gerçekleştirilemedi.",
+                    "danger"
+                );
             }
         }
-    )
+    );
+}
+
+
+/* =========================================================
+   63. HEALTH CHECK
+   ========================================================= */
+
+async function checkServerHealth() {
+
+    try {
+
+        const response =
+            await apiRequest(
+                "/api/system/health",
+                {
+                    timeout: 10000
+                }
+            );
+
+
+        const healthy =
+            response.ok;
+
+
+        $$(
+            "[data-server-health]"
+        ).forEach(element => {
+
+            element.classList.toggle(
+                "healthy",
+                healthy
+            );
+
+            element.classList.toggle(
+                "unhealthy",
+                !healthy
+            );
+
+
+            element.textContent =
+                healthy
+                    ? "Sistem aktif"
+                    : "Sistem kontrol ediliyor";
+        });
+
+
+        return healthy;
+
+    } catch {
+
+        $$(
+            "[data-server-health]"
+        ).forEach(element => {
+
+            element.textContent =
+                "Sunucu bağlantısı yok";
+        });
+
+
+        return false;
+    }
+}
+
+
+/* =========================================================
+   64. GLOBAL ERROR HANDLING
+   ========================================================= */
+
+window.addEventListener(
+    "error",
+    event => {
+
+        console.error(
+            "TürkAI frontend error:",
+            event.error || event.message
+        );
+    }
+);
+
+
+window.addEventListener(
+    "unhandledrejection",
+    event => {
+
+        console.error(
+            "TürkAI promise error:",
+            event.reason
+        );
+    }
 );
 
 
 /* =========================================================
-   PART 3 / 3 END
-   APP.JS TAMAMLANDI
+   65. FINAL STARTUP
+   ========================================================= */
+
+(function finalStartup() {
+
+    try {
+
+        initEverything();
+
+        bindPageButtons();
+
+        initOutsideClick();
+
+        initPlanButtons();
+
+        checkServerHealth();
+
+
+        /* İlk sayfa */
+
+        setTimeout(
+            () => {
+
+                navigateTo(
+                    TURKAI.state.currentPage ||
+                    "chat"
+                );
+
+            },
+            50
+        );
+
+
+        console.log(
+            "%c TÜRKAI 20.0 ",
+            "background:#20c7d6;color:#070a0f;font-weight:800;padding:6px 12px;border-radius:8px"
+        );
+
+        console.log(
+            "Frontend tamamen başlatıldı."
+        );
+
+    } catch (error) {
+
+        console.error(
+            "TürkAI startup error:",
+            error
+        );
+
+
+        showToast(
+            "Arayüz başlatılırken hata oluştu.",
+            "danger"
+        );
+    }
+
+})();
+
+
+/* =========================================================
+   66. PUBLIC API
+   ========================================================= */
+
+window.TURKAI_APP = {
+
+    version: TURKAI.version,
+
+    sendMessage,
+
+    createNewChat,
+
+    navigateTo,
+
+    openModal,
+
+    closeModal,
+
+    runResearch,
+
+    getWeather,
+
+    generateImage,
+
+    generateVideo,
+
+    uploadSelectedFile,
+
+    removeSelectedFile,
+
+    logoutUser,
+
+    showToast,
+
+    checkServerHealth,
+
+    state: TURKAI.state
+};
+
+
+console.log(
+    "TürkAI App.js PART 2/2 yüklendi."
+);
+
+
+/* =========================================================
+   TÜRKAI APP.JS — 20/20 COMPLETE
    ========================================================= */
