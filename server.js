@@ -33900,8 +33900,7 @@ function sanitizeAuditBody9(
 // ============================================================
 // AUDIT RECORD
 // ============================================================
-
-function securityAudit9(
+function writeSecurityAudit9(
     req,
     responseStatus,
     durationMS,
@@ -34895,7 +34894,7 @@ try {
                                 Date.now() -
                                 started;
 
-                            securityAudit9(
+                            writeSecurityAudit9(
                                 req,
                                 res.statusCode,
                                 duration
