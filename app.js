@@ -1,23 +1,27 @@
 (() => {
   "use strict";
 
-  if (window.__TURKAI_APP_REBUILT__) return;
-  window.__TURKAI_APP_REBUILT__ = true;
-
   /* =========================================================
-     TÜRKAI FRONTEND — REBUILT
-     Tek kapsam / tüm fonksiyonlar birbirine doğrudan erişir
+     TÜRKAI FRONTEND — STABLE BUILD 42.0
+     Tek dosya / tek scope / merkezi event sistemi
      ========================================================= */
 
-  const CONFIG = {
-    version: "41.0.0",
-    timeout: 45000,
+  if (window.__TURKAI_STABLE_42__) {
+    console.warn("[TürkAI] app.js zaten yüklü.");
+    return;
+  }
 
-    endpoints: {
+  window.__TURKAI_STABLE_42__ = true;
+
+  const APP = {
+    version: "42.0.0",
+
+    api: {
       chatSmart: "/api/chat/smart",
       chat: "/api/chat",
+
       health: "/api/health",
-      systemStatus: "/api/system/status",
+      system: "/api/system/status",
 
       authMe: "/api/auth/me",
       authLogin: "/api/auth/login",
@@ -38,288 +42,283 @@
 
       notifications: "/api/notifications",
 
-      mediaImage: "/api/media/image",
-      mediaVideo: "/api/media/video",
-
-      voiceTTS: "/api/voice/tts",
-      voiceSTT: "/api/voice/stt",
-
-      adminUnlock: "/api/security/admin/unlock"
+      image: "/api/media/image",
+      video: "/api/media/video"
     },
 
     storage: {
-      draft: "turkai_draft_v41",
-      settings: "turkai_settings_v41",
-      chats: "turkai_chats_v41",
-      guest: "turkai_guest_v41",
-      model: "turkai_model_v41"
+      settings: "turkai_settings_42",
+      draft: "turkai_draft_42",
+      chats: "turkai_chats_42",
+      account: "turkai_account_42",
+      model: "turkai_model_42"
     },
 
-    defaults: {
-      model: "auto",
-      settings: {
-        enterToSend: true,
-        draftSave: true,
-        autoSpeak: false,
-        freshInfo: true
-      }
-    }
+    timeout: 45000
   };
 
   const state = {
-    initialized: false,
+    ready: false,
+
     connected: navigator.onLine,
     sending: false,
-    loading: false,
+    recording: false,
+    speaking: false,
 
     sidebarOpen: false,
-    activePanel: "chat",
-    activeModal: null,
+
+    currentPanel: "chat",
+    currentModal: null,
 
     conversationId: null,
+
     messages: [],
 
     attachments: [],
     files: [],
+
     notifications: [],
+    unreadNotifications: 0,
+
     plans: [],
 
     account: null,
-    system: null,
-    memoryResults: [],
-    researchResults: [],
-    weatherData: null,
 
-    recording: false,
-    speaking: false,
+    memoryResults: [],
+    researchResults: null,
+    weatherResult: null,
+    systemResult: null,
 
     recognition: null,
-    synthUtterance: null,
-
     abortController: null,
 
     settings: {
-      ...CONFIG.defaults.settings
+      enterToSend: true,
+      draftSave: true,
+      autoSpeak: false,
+      freshInfo: true
     },
 
-    selectedModel: "auto",
-
-    commandItems: [],
-    commandIndex: 0,
-
-    notificationUnread: 0
-  };
-
-  const $ = (id) => document.getElementById(id);
-
-  const el = {
-    sidebar: $("sidebar"),
-    mobileSidebarClose: $("mobileSidebarClose"),
-
-    newChatButton: $("newChatButton"),
-    mainNavigation: $("mainNavigation"),
-
-    quickResearchButton: $("quickResearchButton"),
-    quickMemoryButton: $("quickMemoryButton"),
-    quickFilesButton: $("quickFilesButton"),
-    settingsButton: $("settingsButton"),
-    systemButton: $("systemButton"),
-    accountButton: $("accountButton"),
-
-    accountName: $("accountName"),
-    accountPlan: $("accountPlan"),
-    accountStatusDot: $("accountStatusDot"),
-
-    sidebarToggle: $("sidebarToggle"),
-    connectionDot: $("connectionDot"),
-    connectionText: $("connectionText"),
-    workspaceTitle: $("workspaceTitle"),
-    searchButton: $("searchButton"),
-    notificationButton: $("notificationButton"),
-    notificationBadge: $("notificationBadge"),
-    topSettingsButton: $("topSettingsButton"),
-    topAccountButton: $("topAccountButton"),
-
-    chatView: $("chatView"),
-    welcomeState: $("welcomeState"),
-    welcomeTitle: $("welcomeTitle"),
-    messages: $("messages"),
-    typingIndicator: $("typingIndicator"),
-
-    composerArea: $("composerArea"),
-    composerBox: $("composerBox"),
-    messageInput: $("messageInput"),
-    sendButton: $("sendButton"),
-    stopButton: $("stopButton"),
-    voiceButton: $("voiceButton"),
-    attachmentButton: $("attachmentButton"),
-    researchToolButton: $("researchToolButton"),
-    weatherToolButton: $("weatherToolButton"),
-    memoryToolButton: $("memoryToolButton"),
-    imageToolButton: $("imageToolButton"),
-    videoToolButton: $("videoToolButton"),
-
-    attachmentPreview: $("attachmentPreview"),
-    modelSelect: $("modelSelect"),
-    composerTokenInfo: $("composerTokenInfo"),
-
-    workspacePanel: $("workspacePanel"),
-
-    researchPanel: $("researchPanel"),
-    researchInput: $("researchInput"),
-    researchRunButton: $("researchRunButton"),
-    researchClearButton: $("researchClearButton"),
-    researchStatus: $("researchStatus"),
-    researchResults: $("researchResults"),
-
-    weatherPanel: $("weatherPanel"),
-    weatherInput: $("weatherInput"),
-    weatherRunButton: $("weatherRunButton"),
-    weatherResults: $("weatherResults"),
-
-    memoryPanel: $("memoryPanel"),
-    memoryInput: $("memoryInput"),
-    memorySearchButton: $("memorySearchButton"),
-    memorySaveCurrentButton: $("memorySaveCurrentButton"),
-    memoryOverviewButton: $("memoryOverviewButton"),
-    memoryStats: $("memoryStats"),
-    memoryResults: $("memoryResults"),
-
-    fileCenterPanel: $("fileCenterPanel"),
-    fileDropZone: $("fileDropZone"),
-    fileSelectButton: $("fileSelectButton"),
-    refreshFilesButton: $("refreshFilesButton"),
-    fileCount: $("fileCount"),
-    fileList: $("fileList"),
-
-    mediaPanel: $("mediaPanel"),
-    openImageModalButton: $("openImageModalButton"),
-    openVideoModalButton: $("openVideoModalButton"),
-
-    plansPanel: $("plansPanel"),
-    plansList: $("plansList"),
-
-    notificationPanel: $("notificationPanel"),
-    notificationList: $("notificationList"),
-    notificationSummary: $("notificationSummary"),
-    markNotificationsReadButton: $("markNotificationsReadButton"),
-
-    systemPanel: $("systemPanel"),
-    systemOverallStatus: $("systemOverallStatus"),
-    refreshSystemButton: $("refreshSystemButton"),
-    systemStats: $("systemStats"),
-
-    mobileNav: $("mobileNav"),
-
-    globalFilePicker: $("globalFilePicker"),
-    dropOverlay: $("dropOverlay"),
-    globalOverlay: $("globalOverlay"),
-    toastStack: $("toastStack"),
-    liveRegion: $("liveRegion"),
-
-    commandCenter: $("commandCenter"),
-    commandInput: $("commandInput"),
-    commandList: $("commandList"),
-
-    chatSearchPanel: $("chatSearchPanel"),
-    chatSearchInput: $("chatSearchInput"),
-    chatSearchResults: $("chatSearchResults"),
-
-    settingsModal: $("settingsModal"),
-    enterSendToggle: $("enterSendToggle"),
-    draftSaveToggle: $("draftSaveToggle"),
-    autoSpeakToggle: $("autoSpeakToggle"),
-    freshInfoToggle: $("freshInfoToggle"),
-    resetSettingsButton: $("resetSettingsButton"),
-    saveSettingsButton: $("saveSettingsButton"),
-
-    accountModal: $("accountModal"),
-    accountModalName: $("accountModalName"),
-    accountModalEmail: $("accountModalEmail"),
-    accountModalVerified: $("accountModalVerified"),
-    accountModalPlan: $("accountModalPlan"),
-    accountModalUsage: $("accountModalUsage"),
-    accountModalStatus: $("accountModalStatus"),
-    loginButton: $("loginButton"),
-    logoutButton: $("logoutButton"),
-    accountPlansButton: $("accountPlansButton"),
-
-    authModal: $("authModal"),
-    authForm: $("authForm"),
-    authIdentifier: $("authIdentifier"),
-    authPassword: $("authPassword"),
-    authMessage: $("authMessage"),
-    guestLoginButton: $("guestLoginButton"),
-
-    imageCreateModal: $("imageCreateModal"),
-    imagePromptInput: $("imagePromptInput"),
-    imageSizeSelect: $("imageSizeSelect"),
-    imageQualitySelect: $("imageQualitySelect"),
-    generateImageButton: $("generateImageButton"),
-    imageResult: $("imageResult"),
-
-    videoModal: $("videoModal"),
-    videoPromptInput: $("videoPromptInput"),
-    videoDurationSelect: $("videoDurationSelect"),
-    generateVideoButton: $("generateVideoButton"),
-    videoResult: $("videoResult"),
-
-    commandHelpModal: $("commandHelpModal"),
-
-    confirmModal: $("confirmModal"),
-    confirmModalTitle: $("confirmModalTitle"),
-    confirmModalText: $("confirmModalText"),
-    confirmCancelButton: $("confirmCancelButton"),
-    confirmActionButton: $("confirmActionButton"),
-
-    adminUnlockModal: $("adminUnlockModal"),
-    adminUnlockForm: $("adminUnlockForm"),
-    adminUnlockInput: $("adminUnlockInput"),
-    adminUnlockMessage: $("adminUnlockMessage"),
-
-    adminPanel: $("adminPanel"),
-    adminSystemButton: $("adminSystemButton"),
-    adminUsersButton: $("adminUsersButton"),
-    adminMemoryButton: $("adminMemoryButton"),
-    adminLogsButton: $("adminLogsButton"),
-    adminOutput: $("adminOutput"),
-
-    systemDetailModal: $("systemDetailModal"),
-    systemDetailContent: $("systemDetailContent"),
-
-    globalLoading: $("globalLoading"),
-    globalLoadingTitle: $("globalLoadingTitle"),
-    globalLoadingText: $("globalLoadingText"),
-
-    voiceStatus: $("voiceStatus"),
-    voiceStatusTitle: $("voiceStatusTitle"),
-    voiceStatusText: $("voiceStatusText"),
-    voiceCancelButton: $("voiceCancelButton"),
-
-    uploadStatusBar: $("uploadStatusBar"),
-    uploadStatusTitle: $("uploadStatusTitle"),
-    uploadStatusText: $("uploadStatusText"),
-    uploadProgressBar: $("uploadProgressBar"),
-
-    purchaseButton: $("purchaseButton"),
-    proCodeInput: $("proCodeInput")
+    model: "auto"
   };
 
   /* =========================================================
-     TEMEL YARDIMCILAR
+     DOM
      ========================================================= */
 
-  function exists(node) {
-    return !!node;
+  const $ = (id) => document.getElementById(id);
+
+  const dom = {};
+
+  const IDS = [
+    "sidebar",
+    "mobileSidebarClose",
+    "newChatButton",
+    "mainNavigation",
+    "quickResearchButton",
+    "quickMemoryButton",
+    "quickFilesButton",
+    "settingsButton",
+    "systemButton",
+    "accountButton",
+    "accountName",
+    "accountPlan",
+    "accountStatusDot",
+
+    "sidebarToggle",
+    "connectionDot",
+    "connectionText",
+    "workspaceTitle",
+    "searchButton",
+    "notificationButton",
+    "notificationBadge",
+    "topSettingsButton",
+    "topAccountButton",
+
+    "chatView",
+    "welcomeState",
+    "welcomeTitle",
+    "messages",
+    "typingIndicator",
+    "composerArea",
+    "composerBox",
+    "messageInput",
+    "sendButton",
+    "stopButton",
+    "voiceButton",
+    "attachmentButton",
+    "researchToolButton",
+    "weatherToolButton",
+    "memoryToolButton",
+    "imageToolButton",
+    "videoToolButton",
+    "attachmentPreview",
+    "modelSelect",
+    "composerTokenInfo",
+
+    "workspacePanel",
+
+    "researchPanel",
+    "researchInput",
+    "researchRunButton",
+    "researchClearButton",
+    "researchStatus",
+    "researchResults",
+
+    "weatherPanel",
+    "weatherInput",
+    "weatherRunButton",
+    "weatherResults",
+
+    "memoryPanel",
+    "memoryInput",
+    "memorySearchButton",
+    "memorySaveCurrentButton",
+    "memoryOverviewButton",
+    "memoryStats",
+    "memoryResults",
+
+    "fileCenterPanel",
+    "fileDropZone",
+    "fileSelectButton",
+    "refreshFilesButton",
+    "fileCount",
+    "fileList",
+
+    "mediaPanel",
+    "openImageModalButton",
+    "openVideoModalButton",
+
+    "plansPanel",
+    "plansList",
+
+    "notificationPanel",
+    "notificationList",
+    "notificationSummary",
+    "markNotificationsReadButton",
+
+    "systemPanel",
+    "systemOverallStatus",
+    "refreshSystemButton",
+    "systemStats",
+
+    "mobileNav",
+    "mobileSettingsButton",
+
+    "globalFilePicker",
+    "dropOverlay",
+    "globalOverlay",
+    "toastStack",
+    "liveRegion",
+
+    "commandCenter",
+    "commandInput",
+    "commandList",
+
+    "chatSearchPanel",
+    "chatSearchInput",
+    "chatSearchResults",
+
+    "settingsModal",
+    "enterSendToggle",
+    "draftSaveToggle",
+    "autoSpeakToggle",
+    "freshInfoToggle",
+    "resetSettingsButton",
+    "saveSettingsButton",
+
+    "accountModal",
+    "accountModalName",
+    "accountModalEmail",
+    "accountModalVerified",
+    "accountModalPlan",
+    "accountModalUsage",
+    "accountModalStatus",
+    "loginButton",
+    "logoutButton",
+    "accountPlansButton",
+
+    "authModal",
+    "authForm",
+    "authIdentifier",
+    "authPassword",
+    "authMessage",
+    "guestLoginButton",
+
+    "imageCreateModal",
+    "imagePromptInput",
+    "imageSizeSelect",
+    "imageQualitySelect",
+    "generateImageButton",
+    "imageResult",
+
+    "videoModal",
+    "videoPromptInput",
+    "videoDurationSelect",
+    "generateVideoButton",
+    "videoResult",
+
+    "commandHelpModal",
+
+    "confirmModal",
+    "confirmModalTitle",
+    "confirmModalText",
+    "confirmCancelButton",
+    "confirmActionButton",
+
+    "adminUnlockModal",
+    "adminUnlockForm",
+    "adminUnlockInput",
+    "adminUnlockMessage",
+
+    "adminPanel",
+    "adminSystemButton",
+    "adminUsersButton",
+    "adminMemoryButton",
+    "adminLogsButton",
+    "adminOutput",
+
+    "systemDetailModal",
+    "systemDetailContent",
+
+    "globalLoading",
+    "globalLoadingTitle",
+    "globalLoadingText",
+
+    "voiceStatus",
+    "voiceStatusTitle",
+    "voiceStatusText",
+    "voiceCancelButton",
+
+    "uploadStatusBar",
+    "uploadStatusTitle",
+    "uploadStatusText",
+    "uploadProgressBar",
+
+    "purchaseButton",
+    "proCodeInput"
+  ];
+
+  function cacheDOM() {
+    IDS.forEach((id) => {
+      dom[id] = $(id);
+    });
   }
 
-  function safeText(value, fallback = "") {
-    if (value === null || value === undefined) return fallback;
+  /* =========================================================
+     TEMEL
+     ========================================================= */
+
+  function text(value, fallback = "") {
+    if (value === null || value === undefined) {
+      return fallback;
+    }
+
     return String(value);
   }
 
   function escapeHTML(value) {
-    return safeText(value)
+    return text(value)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
@@ -327,18 +326,28 @@
       .replace(/'/g, "&#039;");
   }
 
+  function uid(prefix = "id") {
+    return (
+      prefix +
+      "_" +
+      Date.now() +
+      "_" +
+      Math.random().toString(36).slice(2, 9)
+    );
+  }
+
   function formatTime(date = new Date()) {
     try {
       return new Intl.DateTimeFormat("tr-TR", {
         hour: "2-digit",
         minute: "2-digit"
-      }).format(date);
+      }).format(new Date(date));
     } catch {
       return new Date(date).toLocaleTimeString("tr-TR");
     }
   }
 
-  function formatDateTime(date = new Date()) {
+  function formatDate(date = new Date()) {
     try {
       return new Intl.DateTimeFormat("tr-TR", {
         dateStyle: "medium",
@@ -349,38 +358,32 @@
     }
   }
 
-  function formatBytes(bytes) {
-    const size = Number(bytes) || 0;
+  function formatBytes(size) {
+    const n = Number(size) || 0;
 
-    if (size < 1024) return `${size} B`;
-    if (size < 1024 * 1024) {
-      return `${(size / 1024).toFixed(1)} KB`;
-    }
-    if (size < 1024 * 1024 * 1024) {
-      return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    if (n < 1024) {
+      return `${n} B`;
     }
 
-    return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-  }
+    if (n < 1024 * 1024) {
+      return `${(n / 1024).toFixed(1)} KB`;
+    }
 
-  function generateId(prefix = "id") {
-    return `${prefix}_${Date.now()}_${Math.random()
-      .toString(36)
-      .slice(2, 10)}`;
-  }
+    if (n < 1024 * 1024 * 1024) {
+      return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    }
 
-  function clamp(value, min, max) {
-    return Math.min(Math.max(value, min), max);
-  }
-
-  function sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   }
 
   function storageGet(key, fallback = null) {
     try {
       const raw = localStorage.getItem(key);
-      if (raw === null) return fallback;
+
+      if (raw === null) {
+        return fallback;
+      }
+
       return JSON.parse(raw);
     } catch {
       return fallback;
@@ -389,7 +392,11 @@
 
   function storageSet(key, value) {
     try {
-      localStorage.setItem(key, JSON.stringify(value));
+      localStorage.setItem(
+        key,
+        JSON.stringify(value)
+      );
+
       return true;
     } catch {
       return false;
@@ -402,130 +409,137 @@
     } catch {}
   }
 
-  function announce(message) {
-    if (!el.liveRegion) return;
-    el.liveRegion.textContent = "";
-    requestAnimationFrame(() => {
-      el.liveRegion.textContent = safeText(message);
-    });
-  }
-
   /* =========================================================
      TOAST
      ========================================================= */
 
-  function toast(message, type = "info", duration = 3200) {
-    if (!el.toastStack) return;
+  function toast(
+    message,
+    type = "info",
+    duration = 3500
+  ) {
+    const stack = dom.toastStack;
+
+    if (!stack) {
+      console.log("[TürkAI]", message);
+      return;
+    }
 
     const item = document.createElement("div");
-    item.className = `toast toast-${type}`;
+
+    item.className =
+      "toast toast-" + type;
+
+    let icon = "i-info";
+
+    if (type === "success") {
+      icon = "i-check";
+    }
+
+    if (type === "error") {
+      icon = "i-alert";
+    }
+
+    if (type === "warning") {
+      icon = "i-alert";
+    }
 
     item.innerHTML = `
       <div class="toast-icon">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <use href="#${
-            type === "success"
-              ? "i-check"
-              : type === "error"
-              ? "i-alert"
-              : type === "warning"
-              ? "i-alert"
-              : "i-info"
-          }"></use>
+        <svg viewBox="0 0 24 24">
+          <use href="#${icon}"></use>
         </svg>
       </div>
-      <div class="toast-text">${escapeHTML(message)}</div>
-      <button class="toast-close" type="button" aria-label="Kapat">
+
+      <div class="toast-text">
+        ${escapeHTML(message)}
+      </div>
+
+      <button
+        type="button"
+        class="toast-close"
+        aria-label="Kapat"
+      >
         <svg viewBox="0 0 24 24">
           <use href="#i-close"></use>
         </svg>
       </button>
     `;
 
-    item
-      .querySelector(".toast-close")
-      ?.addEventListener("click", () => item.remove());
+    const closeButton =
+      item.querySelector(".toast-close");
 
-    el.toastStack.appendChild(item);
+    closeButton?.addEventListener(
+      "click",
+      () => item.remove()
+    );
+
+    stack.appendChild(item);
 
     window.setTimeout(() => {
-      item.style.opacity = "0";
-      item.style.transform = "translateY(8px)";
-
-      window.setTimeout(() => item.remove(), 220);
+      item.remove();
     }, duration);
-
-    announce(message);
   }
 
-  /* =========================================================
-     LOADING
-     ========================================================= */
+  function announce(message) {
+    if (!dom.liveRegion) return;
 
-  function showLoading(title = "TürkAI çalışıyor", message = "Hazırlanıyor...") {
-    state.loading = true;
-
-    if (el.globalLoading) {
-      el.globalLoading.classList.remove("hidden");
-      if (el.globalLoadingTitle) {
-        el.globalLoadingTitle.textContent = title;
-      }
-      if (el.globalLoadingText) {
-        el.globalLoadingText.textContent = message;
-      }
-    }
-  }
-
-  function hideLoading() {
-    state.loading = false;
-
-    if (el.globalLoading) {
-      el.globalLoading.classList.add("hidden");
-    }
+    dom.liveRegion.textContent =
+      text(message);
   }
 
   /* =========================================================
      MODAL
      ========================================================= */
 
-  function openModal(modal) {
-    const node =
-      typeof modal === "string"
-        ? document.getElementById(modal)
-        : modal;
+  function openModal(id) {
+    const modal = $(id);
 
-    if (!node) return;
+    if (!modal) {
+      console.warn(
+        "[TürkAI] Modal bulunamadı:",
+        id
+      );
+      return false;
+    }
 
-    document.querySelectorAll(".modal-shell").forEach((item) => {
-      if (item !== node) {
-        item.classList.add("hidden");
-      }
-    });
+    document
+      .querySelectorAll(".modal-shell")
+      .forEach((node) => {
+        node.classList.add("hidden");
+      });
 
-    node.classList.remove("hidden");
-    state.activeModal = node.id;
+    modal.classList.remove("hidden");
 
-    document.body.classList.add("modal-open");
+    state.currentModal = id;
 
-    const focusTarget = node.querySelector(
-      "input, textarea, select, button"
+    document.body.classList.add(
+      "modal-open"
     );
 
-    window.setTimeout(() => focusTarget?.focus(), 40);
+    const input =
+      modal.querySelector(
+        "input, textarea, select, button"
+      );
+
+    window.setTimeout(() => {
+      input?.focus();
+    }, 50);
+
+    return true;
   }
 
-  function closeModal(modal) {
-    const node =
-      typeof modal === "string"
-        ? document.getElementById(modal)
-        : modal;
+  function closeModal(id) {
+    const modal = $(id);
 
-    if (!node) return;
+    if (!modal) return;
 
-    node.classList.add("hidden");
+    modal.classList.add("hidden");
 
-    if (state.activeModal === node.id) {
-      state.activeModal = null;
+    if (
+      state.currentModal === id
+    ) {
+      state.currentModal = null;
     }
 
     if (
@@ -533,90 +547,229 @@
         ".modal-shell:not(.hidden)"
       )
     ) {
-      document.body.classList.remove("modal-open");
+      document.body.classList.remove(
+        "modal-open"
+      );
     }
   }
 
   function closeAllModals() {
     document
       .querySelectorAll(".modal-shell")
-      .forEach((node) => node.classList.add("hidden"));
+      .forEach((node) => {
+        node.classList.add("hidden");
+      });
 
-    state.activeModal = null;
-    document.body.classList.remove("modal-open");
+    state.currentModal = null;
+
+    document.body.classList.remove(
+      "modal-open"
+    );
   }
 
-  function bindModals() {
-    document.addEventListener("click", (event) => {
-      const closeButton = event.target.closest(
-        "[data-close-modal]"
-      );
+  /* =========================================================
+     PANEL
+     ========================================================= */
 
-      if (closeButton) {
-        closeModal(
-          closeButton.getAttribute("data-close-modal")
+  const PANEL_IDS = [
+    "chat",
+    "research",
+    "weather",
+    "memory",
+    "files",
+    "media",
+    "plans",
+    "notifications",
+    "system"
+  ];
+
+  const PANEL_TITLES = {
+    chat: "Yeni sohbet",
+    research: "Araştırma",
+    weather: "Hava durumu",
+    memory: "Hafıza",
+    files: "Dosyalar",
+    media: "Medya",
+    plans: "Planlar",
+    notifications: "Bildirimler",
+    system: "Sistem"
+  };
+
+  function openPanel(name) {
+    const panel =
+      PANEL_IDS.includes(name)
+        ? name
+        : "chat";
+
+    PANEL_IDS.forEach((id) => {
+      if (id === "chat") {
+        dom.chatView?.classList.toggle(
+          "hidden",
+          panel !== "chat"
         );
         return;
       }
 
-      const commandClose = event.target.closest(
-        "[data-close-command]"
+      const node = $(
+        id === "research"
+          ? "researchPanel"
+          : id === "weather"
+          ? "weatherPanel"
+          : id === "memory"
+          ? "memoryPanel"
+          : id === "files"
+          ? "fileCenterPanel"
+          : id === "media"
+          ? "mediaPanel"
+          : id === "plans"
+          ? "plansPanel"
+          : id === "notifications"
+          ? "notificationPanel"
+          : "systemPanel"
       );
 
-      if (commandClose) {
-        closeModal("commandCenter");
-        return;
-      }
+      if (!node) return;
 
-      const searchClose = event.target.closest(
-        "[data-close-chat-search]"
+      node.classList.toggle(
+        "hidden",
+        panel !== id
       );
 
-      if (searchClose) {
-        closeModal("chatSearchPanel");
-      }
+      node.classList.toggle(
+        "active",
+        panel === id
+      );
     });
 
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        if (state.recording) {
-          stopVoiceInput();
-        } else {
-          closeAllModals();
-        }
-      }
-    });
+    state.currentPanel = panel;
+
+    if (dom.workspaceTitle) {
+      dom.workspaceTitle.textContent =
+        PANEL_TITLES[panel];
+    }
+
+    document
+      .querySelectorAll(
+        "[data-panel], [data-mobile-panel]"
+      )
+      .forEach((button) => {
+        const target =
+          button.dataset.panel ||
+          button.dataset.mobilePanel;
+
+        button.classList.toggle(
+          "active",
+          target === panel
+        );
+      });
+
+    closeSidebarMobile();
+
+    if (panel === "research") {
+      loadResearchPanel();
+    }
+
+    if (panel === "memory") {
+      loadMemoryOverview();
+    }
+
+    if (panel === "files") {
+      loadFiles();
+    }
+
+    if (panel === "plans") {
+      loadPlans();
+    }
+
+    if (panel === "notifications") {
+      loadNotifications();
+    }
+
+    if (panel === "system") {
+      loadSystem();
+    }
+  }
+
+  function openSidebar() {
+    if (!dom.sidebar) return;
+
+    state.sidebarOpen = true;
+
+    dom.sidebar.classList.add("open");
+
+    document.body.classList.add(
+      "sidebar-open"
+    );
+  }
+
+  function closeSidebarMobile() {
+    if (!dom.sidebar) return;
+
+    state.sidebarOpen = false;
+
+    dom.sidebar.classList.remove(
+      "open"
+    );
+
+    document.body.classList.remove(
+      "sidebar-open"
+    );
+  }
+
+  function toggleSidebar() {
+    if (state.sidebarOpen) {
+      closeSidebarMobile();
+    } else {
+      openSidebar();
+    }
   }
 
   /* =========================================================
      API
      ========================================================= */
 
-  async function apiRequest(
+  async function api(
     url,
     options = {},
-    timeoutMs = CONFIG.timeout
+    timeout = APP.timeout
   ) {
     const controller =
       options.signal
         ? null
         : new AbortController();
 
-    const signal = options.signal || controller.signal;
+    const signal =
+      options.signal ||
+      controller?.signal;
 
-    const timer = window.setTimeout(() => {
-      controller?.abort();
-    }, timeoutMs);
+    let timer = null;
+
+    if (controller) {
+      timer = window.setTimeout(
+        () => {
+          controller.abort();
+        },
+        timeout
+      );
+    }
 
     const headers = new Headers(
       options.headers || {}
     );
 
-    headers.set("Accept", "application/json, text/plain, */*");
-    headers.set("X-TurkAI-Version", CONFIG.version);
+    headers.set(
+      "Accept",
+      "application/json, text/plain, */*"
+    );
+
+    headers.set(
+      "X-TurkAI-Version",
+      APP.version
+    );
+
     headers.set(
       "X-TurkAI-Request-ID",
-      generateId("req")
+      uid("request")
     );
 
     let body = options.body;
@@ -629,6 +782,7 @@
       !(body instanceof URLSearchParams)
     ) {
       body = JSON.stringify(body);
+
       headers.set(
         "Content-Type",
         "application/json; charset=UTF-8"
@@ -636,26 +790,43 @@
     }
 
     try {
-      const response = await fetch(url, {
-        method: options.method || "GET",
-        headers,
-        body,
-        credentials: "same-origin",
-        cache: "no-store",
-        redirect: "follow",
-        signal
-      });
+      const response = await fetch(
+        url,
+        {
+          method:
+            options.method ||
+            "GET",
+
+          headers,
+          body,
+
+          credentials:
+            "same-origin",
+
+          cache: "no-store",
+
+          redirect: "follow",
+
+          signal
+        }
+      );
 
       const contentType =
-        response.headers.get("content-type") || "";
+        response.headers.get(
+          "content-type"
+        ) || "";
 
       let data;
 
-      if (contentType.includes("application/json")) {
+      if (
+        contentType.includes(
+          "application/json"
+        )
+      ) {
         try {
           data = await response.json();
         } catch {
-          data = null;
+          data = {};
         }
       } else {
         try {
@@ -667,93 +838,90 @@
 
       if (!response.ok) {
         const message =
-          typeof data === "object" && data
-            ? data.error ||
-              data.message ||
-              data.details ||
+          typeof data === "object"
+            ? data?.error ||
+              data?.message ||
               `HTTP ${response.status}`
-            : safeText(data) ||
-              `HTTP ${response.status}`;
+            : text(
+                data,
+                `HTTP ${response.status}`
+              );
 
-        const error = new Error(message);
-        error.status = response.status;
+        const error = new Error(
+          message
+        );
+
+        error.status =
+          response.status;
+
         error.data = data;
+
         throw error;
       }
 
       return data;
     } finally {
-      window.clearTimeout(timer);
-    }
-  }
-
-  async function safeRequest(
-    url,
-    options = {},
-    fallback = null
-  ) {
-    try {
-      return await apiRequest(url, options);
-    } catch (error) {
-      if (error?.name === "AbortError") {
-        throw error;
+      if (timer) {
+        window.clearTimeout(timer);
       }
-
-      return fallback;
     }
   }
 
-  function extractAnswer(payload) {
-    if (payload === null || payload === undefined) {
-      return "";
+  function answerFrom(data) {
+    if (!data) return "";
+
+    if (typeof data === "string") {
+      return data.trim();
     }
 
-    if (typeof payload === "string") {
-      return payload.trim();
-    }
+    const direct = [
+      data.answer,
+      data.response,
+      data.message,
+      data.text,
+      data.content,
+      data.reply,
+      data.output,
 
-    const directKeys = [
-      "answer",
-      "response",
-      "message",
-      "text",
-      "content",
-      "reply"
+      data.data?.answer,
+      data.data?.response,
+      data.data?.message,
+      data.data?.text,
+      data.data?.content,
+
+      data.result?.answer,
+      data.result?.response,
+      data.result?.message,
+      data.result?.text,
+      data.result?.content
     ];
 
-    for (const key of directKeys) {
+    for (const item of direct) {
       if (
-        typeof payload?.[key] === "string" &&
-        payload[key].trim()
+        typeof item === "string" &&
+        item.trim()
       ) {
-        return payload[key].trim();
+        return item.trim();
       }
     }
 
-    const nestedKeys = [
-      payload?.data,
-      payload?.result,
-      payload?.output,
-      payload?.response?.data,
-      payload?.result?.data
-    ];
-
-    for (const item of nestedKeys) {
-      const found = extractAnswer(item);
-      if (found) return found;
-    }
-
-    if (Array.isArray(payload?.choices)) {
-      for (const choice of payload.choices) {
-        const found =
+    if (
+      Array.isArray(
+        data.choices
+      )
+    ) {
+      for (
+        const choice of data.choices
+      ) {
+        const value =
           choice?.message?.content ||
           choice?.text;
 
         if (
-          typeof found === "string" &&
-          found.trim()
+          typeof value === "string" &&
+          value.trim()
         ) {
-          return found.trim();
+          return value.trim();
         }
       }
     }
@@ -761,72 +929,74 @@
     return "";
   }
 
-  function extractConversationId(payload) {
-    return (
-      payload?.conversationId ||
-      payload?.conversation_id ||
-      payload?.chatId ||
-      payload?.chat_id ||
-      payload?.data?.conversationId ||
-      payload?.result?.conversationId ||
-      null
-    );
-  }
-
-  function isLocalFailureAnswer(answer) {
-    const text = safeText(answer)
+  function isBadLocalFallback(answer) {
+    const value = text(answer)
       .toLocaleLowerCase("tr-TR")
       .replace(/\s+/g, " ")
       .trim();
 
-    if (!text) return true;
+    if (!value) {
+      return true;
+    }
 
-    const patterns = [
+    const bad = [
       "bu soruyu yerel motorla doğrudan cevaplayamadım",
-      "daha kapsamlı bir yanıt için uygun ai sağlayıcısı",
       "uygun ai sağlayıcısı veya araştırma motoru kullanılabilir",
+      "daha kapsamlı bir yanıt için uygun ai sağlayıcısı",
       "yerel motorla doğrudan cevaplayamadım"
     ];
 
-    return patterns.some((pattern) =>
-      text.includes(pattern)
+    return bad.some((item) =>
+      value.includes(item)
     );
   }
 
   /* =========================================================
-     MARKDOWN / RICH TEXT
+     RICH TEXT
      ========================================================= */
 
   function renderRichText(value) {
-    let source = safeText(value).replace(/\u0000/g, "").trim();
+    let source =
+      text(value)
+        .replace(/\u0000/g, "")
+        .trim();
 
     if (!source) return "";
 
-    /*
-      Önce code blocklarını ayırıyoruz.
-      Böylece kod içerisindeki SVG/HTML silinmez.
-    */
-    const codeBlocks = [];
+    /* Önce kodları ayır */
+    const codes = [];
 
     source = source.replace(
-      /```([\w#+.\-]*)[ \t]*\n?([\s\S]*?)```/g,
-      (_, language = "", code = "") => {
-        const index = codeBlocks.length;
+      /```([a-zA-Z0-9_#+.\-]*)[ \t]*\n?([\s\S]*?)```/g,
+      (
+        _all,
+        language,
+        code
+      ) => {
+        const index =
+          codes.length;
 
-        codeBlocks.push({
+        codes.push({
           language:
-            language.trim() || "code",
-          code: safeText(code)
-            .replace(/\r\n/g, "\n")
-            .trim()
+            language ||
+            "code",
+
+          code:
+            text(code)
+              .replace(
+                /\r\n/g,
+                "\n"
+              )
+              .trim()
         });
 
-        return `___TURKAI_CODE_BLOCK_${index}___`;
+        return `___TURKAI_CODE_${index}___`;
       }
     );
 
     /*
-      Code dışındaki bozuk svg yazılarını temizle.
+      AI cevabının yanlışlıkla HTML/SVG üretmesi
+      halinde sohbet içine ham öğe olarak koyma.
     */
     source = source.replace(
       /<svg\b[^>]*>[\s\S]*?<\/svg>/gi,
@@ -838,10 +1008,6 @@
       ""
     );
 
-    source = source
-      .replace(/\bsvgsvg\b/gi, "")
-      .replace(/(^|\s)svg(?=\s|$)/gi, "$1");
-
     source = source.replace(
       /<script\b[^>]*>[\s\S]*?<\/script>/gi,
       ""
@@ -852,7 +1018,18 @@
       ""
     );
 
-    let html = escapeHTML(source);
+    source = source.replace(
+      /\bsvgsvg\b/gi,
+      ""
+    );
+
+    source = source.replace(
+      /(^|\s)svg(?=\s|$)/gi,
+      "$1"
+    );
+
+    let html =
+      escapeHTML(source);
 
     html = html.replace(
       /\*\*(.+?)\*\*/g,
@@ -867,11 +1044,6 @@
     html = html.replace(
       /`([^`\n]+)`/g,
       "<code>$1</code>"
-    );
-
-    html = html.replace(
-      /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
     );
 
     html = html.replace(
@@ -890,135 +1062,168 @@
     );
 
     html = html.replace(
-      /^\s*[-*] (.+)$/gm,
-      "<div class=\"rich-list-item\">• $1</div>"
+      /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
     );
 
     html = html.replace(
-      /^\s*(\d+)\. (.+)$/gm,
-      "<div class=\"rich-list-item\">$1. $2</div>"
+      /^\s*[-*]\s+(.+)$/gm,
+      '<div class="rich-list-item">• $1</div>'
     );
 
-    html = html.replace(/\n/g, "<br>");
+    html = html.replace(
+      /^\s*(\d+)\.\s+(.+)$/gm,
+      '<div class="rich-list-item">$1. $2</div>'
+    );
 
-    codeBlocks.forEach((block, index) => {
-      const safeCode = escapeHTML(block.code);
-      const encodedCode = encodeURIComponent(
-        block.code
-      );
+    html = html.replace(
+      /\n/g,
+      "<br>"
+    );
 
-      const blockHTML = `
-        <div class="code-block">
-          <div class="code-block-header">
-            <span class="code-language">
-              ${escapeHTML(block.language)}
-            </span>
+    codes.forEach(
+      (block, index) => {
+        const encoded =
+          encodeURIComponent(
+            block.code
+          );
 
-            <button
-              type="button"
-              class="code-copy-button"
-              data-code="${encodedCode}"
-              title="Kodu kopyala"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <use href="#i-copy"></use>
-              </svg>
-              <span>Kopyala</span>
-            </button>
+        const safeCode =
+          escapeHTML(
+            block.code
+          );
+
+        const blockHtml = `
+          <div class="code-block">
+            <div class="code-block-header">
+              <span class="code-language">
+                ${escapeHTML(
+                  block.language
+                )}
+              </span>
+
+              <button
+                type="button"
+                class="code-copy-button"
+                data-code="${encoded}"
+                title="Kodu kopyala"
+              >
+                <svg viewBox="0 0 24 24">
+                  <use href="#i-copy"></use>
+                </svg>
+
+                <span>Kopyala</span>
+              </button>
+            </div>
+
+            <pre><code>${safeCode}</code></pre>
           </div>
+        `;
 
-          <pre><code>${safeCode}</code></pre>
-        </div>
-      `;
+        html =
+          html.replace(
+            `___TURKAI_CODE_${index}___`,
+            blockHtml
+          );
+      }
+    );
 
-      html = html.replace(
-        `___TURKAI_CODE_BLOCK_${index}___`,
-        blockHTML
-      );
-    });
-
-    return html.trim();
+    return html;
   }
 
   /* =========================================================
-     CHAT RENDER
+     CHAT
      ========================================================= */
 
   function renderMessages() {
-    if (!el.messages) return;
+    if (!dom.messages) return;
 
-    el.messages.innerHTML = "";
+    dom.messages.innerHTML =
+      "";
 
-    state.messages.forEach((message) => {
-      el.messages.appendChild(
-        renderMessage(message)
+    for (
+      const message of state.messages
+    ) {
+      renderMessage(
+        message
       );
-    });
-
-    bindMessageActions();
-    scrollMessagesToBottom(false);
+    }
 
     const hasMessages =
       state.messages.length > 0;
 
-    el.welcomeState?.classList.toggle(
+    dom.welcomeState?.classList.toggle(
       "hidden",
       hasMessages
     );
+
+    scrollChat(false);
   }
 
   function renderMessage(message) {
-    const row = document.createElement("div");
+    if (!dom.messages) return;
+
+    const row =
+      document.createElement(
+        "div"
+      );
 
     row.className =
-      `message-row message-${message.role || "assistant"}`;
+      `message-row message-${message.role}`;
 
     row.dataset.messageId =
-      message.id || generateId("msg");
+      message.id;
 
-    const isUser = message.role === "user";
+    const user =
+      message.role === "user";
 
-    const avatarIcon = isUser
-      ? "i-user"
-      : "i-logo";
-
-    const bubble = renderRichText(
-      message.content || ""
-    );
+    const content =
+      renderRichText(
+        message.content
+      );
 
     row.innerHTML = `
       <div class="message-avatar">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <use href="#${avatarIcon}"></use>
+        <svg viewBox="0 0 24 24">
+          <use href="#${
+            user
+              ? "i-user"
+              : "i-logo"
+          }"></use>
         </svg>
       </div>
 
       <div class="message-main">
         <div class="message-meta">
           <strong>
-            ${isUser ? "Sen" : "TürkAI"}
+            ${
+              user
+                ? "Sen"
+                : "TürkAI"
+            }
           </strong>
+
           <span>
             ${formatTime(
-              message.createdAt || new Date()
+              message.createdAt
             )}
           </span>
         </div>
 
         <div class="message-content">
           <div class="message-bubble">
-            ${bubble}
+            ${content}
           </div>
 
           <div class="message-actions">
             ${
-              isUser
-                ? ""
-                : `
+              !user
+                ? `
                   <button
                     type="button"
                     class="message-action"
-                    data-action="speak"
+                    data-message-action="speak"
+                    data-message-id="${message.id}"
                     title="Sesli oku"
                   >
                     <svg viewBox="0 0 24 24">
@@ -1026,12 +1231,14 @@
                     </svg>
                   </button>
                 `
+                : ""
             }
 
             <button
               type="button"
               class="message-action"
-              data-action="copy"
+              data-message-action="copy"
+              data-message-id="${message.id}"
               title="Kopyala"
             >
               <svg viewBox="0 0 24 24">
@@ -1040,12 +1247,13 @@
             </button>
 
             ${
-              !isUser
+              !user
                 ? `
                   <button
                     type="button"
                     class="message-action"
-                    data-action="save-memory"
+                    data-message-action="memory"
+                    data-message-id="${message.id}"
                     title="Hafızaya kaydet"
                   >
                     <svg viewBox="0 0 24 24">
@@ -1060,677 +1268,510 @@
       </div>
     `;
 
-    return row;
+    dom.messages.appendChild(
+      row
+    );
   }
 
-  function appendMessage(role, content, extra = {}) {
-    const item = {
-      id: generateId("msg"),
+  function appendMessage(
+    role,
+    content,
+    extra = {}
+  ) {
+    const message = {
+      id: uid("message"),
       role,
-      content: safeText(content),
-      createdAt: new Date().toISOString(),
+      content: text(content),
+      createdAt:
+        new Date().toISOString(),
       ...extra
     };
 
-    state.messages.push(item);
-    return item;
+    state.messages.push(
+      message
+    );
+
+    return message;
   }
 
-  function scrollMessagesToBottom(smooth = true) {
-    if (!el.messages) return;
+  function scrollChat(smooth = true) {
+    if (!dom.messages) return;
 
     requestAnimationFrame(() => {
-      el.messages.scrollTo({
-        top: el.messages.scrollHeight,
-        behavior: smooth ? "smooth" : "auto"
+      dom.messages.scrollTo({
+        top:
+          dom.messages
+            .scrollHeight,
+        behavior:
+          smooth
+            ? "smooth"
+            : "auto"
       });
     });
   }
 
-  function bindMessageActions() {
-    document
-      .querySelectorAll(".message-action")
-      .forEach((button) => {
-        button.onclick = async () => {
-          const row =
-            button.closest(".message-row");
-
-          const id =
-            row?.dataset.messageId;
-
-          const message =
-            state.messages.find(
-              (item) => item.id === id
-            );
-
-          if (!message) return;
-
-          const action =
-            button.dataset.action;
-
-          if (action === "copy") {
-            await copyText(message.content);
-            toast(
-              "Mesaj panoya kopyalandı.",
-              "success"
-            );
-          }
-
-          if (action === "speak") {
-            speakText(message.content);
-          }
-
-          if (action === "save-memory") {
-            await saveMemory(
-              message.content,
-              "chat"
-            );
-          }
-        };
-      });
-
-    document
-      .querySelectorAll(".code-copy-button")
-      .forEach((button) => {
-        button.onclick = async () => {
-          const raw =
-            button.dataset.code || "";
-
-          let value = raw;
-
-          try {
-            value = decodeURIComponent(raw);
-          } catch {}
-
-          await copyText(value);
-
-          const old =
-            button.innerHTML;
-
-          button.innerHTML = `
-            <svg viewBox="0 0 24 24">
-              <use href="#i-check"></use>
-            </svg>
-            <span>Kopyalandı</span>
-          `;
-
-          window.setTimeout(() => {
-            button.innerHTML = old;
-          }, 1200);
-        };
-      });
+  function setTyping(value) {
+    dom.typingIndicator?.classList.toggle(
+      "hidden",
+      !value
+    );
   }
 
-  async function copyText(value) {
-    const textValue = safeText(value);
+  function setSendingUI(value) {
+    if (dom.sendButton) {
+      dom.sendButton.disabled =
+        value;
+
+      dom.sendButton.innerHTML =
+        value
+          ? `
+            <svg viewBox="0 0 24 24">
+              <use href="#i-stop"></use>
+            </svg>
+          `
+          : `
+            <svg viewBox="0 0 24 24">
+              <use href="#i-send"></use>
+            </svg>
+          `;
+    }
+
+    dom.stopButton?.classList.toggle(
+      "hidden",
+      !value
+    );
+  }
+
+  function buildChatPayload(
+    question
+  ) {
+    return {
+      message: question,
+      text: question,
+
+      model: state.model,
+
+      mode: "chat",
+
+      conversationId:
+        state.conversationId,
+
+      conversation_id:
+        state.conversationId,
+
+      messages:
+        state.messages
+          .slice(-20)
+          .map((message) => ({
+            role:
+              message.role,
+            content:
+              message.content
+          })),
+
+      attachments:
+        state.attachments.map(
+          (file) => ({
+            id: file.id,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            url:
+              file.url ||
+              file.downloadUrl ||
+              null
+          })
+        ),
+
+      options: {
+        memory: true,
+
+        freshInfo:
+          !!state.settings.freshInfo,
+
+        autoResearch:
+          !!state.settings.freshInfo
+      }
+    };
+  }
+
+  async function chatRequest(
+    question
+  ) {
+    const payload =
+      buildChatPayload(
+        question
+      );
 
     try {
-      await navigator.clipboard.writeText(textValue);
-      return true;
-    } catch {
-      const textarea =
-        document.createElement("textarea");
-
-      textarea.value = textValue;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-
-      document.body.appendChild(textarea);
-      textarea.select();
-
-      try {
-        document.execCommand("copy");
-      } catch {}
-
-      textarea.remove();
-
-      return true;
-    }
-  }
-
-  /* =========================================================
-     INPUT / DRAFT
-     ========================================================= */
-
-  function autoResizeInput() {
-    if (!el.messageInput) return;
-
-    el.messageInput.style.height = "auto";
-
-    const maxHeight = 220;
-
-    el.messageInput.style.height =
-      `${Math.min(
-        el.messageInput.scrollHeight,
-        maxHeight
-      )}px`;
-  }
-
-  function saveDraft() {
-    if (!state.settings.draftSave) return;
-    if (!el.messageInput) return;
-
-    const value =
-      el.messageInput.value || "";
-
-    storageSet(
-      CONFIG.storage.draft,
-      value
-    );
-  }
-
-  function loadDraft() {
-    if (!el.messageInput) return;
-
-    const value = storageGet(
-      CONFIG.storage.draft,
-      ""
-    );
-
-    if (
-      typeof value === "string" &&
-      value
-    ) {
-      el.messageInput.value = value;
-      autoResizeInput();
-    }
-  }
-
-  function clearDraft() {
-    storageRemove(
-      CONFIG.storage.draft
-    );
-  }
-
-  /* =========================================================
-     SETTINGS
-     ========================================================= */
-
-  function loadSettings() {
-    const saved =
-      storageGet(
-        CONFIG.storage.settings,
-        {}
-      );
-
-    state.settings = {
-      ...CONFIG.defaults.settings,
-      ...(saved || {})
-    };
-
-    state.selectedModel =
-      storageGet(
-        CONFIG.storage.model,
-        CONFIG.defaults.model
-      );
-
-    if (el.modelSelect) {
-      el.modelSelect.value =
-        state.selectedModel;
-    }
-
-    syncSettingsUI();
-  }
-
-  function syncSettingsUI() {
-    if (el.enterSendToggle) {
-      el.enterSendToggle.checked =
-        !!state.settings.enterToSend;
-    }
-
-    if (el.draftSaveToggle) {
-      el.draftSaveToggle.checked =
-        !!state.settings.draftSave;
-    }
-
-    if (el.autoSpeakToggle) {
-      el.autoSpeakToggle.checked =
-        !!state.settings.autoSpeak;
-    }
-
-    if (el.freshInfoToggle) {
-      el.freshInfoToggle.checked =
-        !!state.settings.freshInfo;
-    }
-  }
-
-  function saveSettings() {
-    state.settings = {
-      enterToSend:
-        !!el.enterSendToggle?.checked,
-
-      draftSave:
-        !!el.draftSaveToggle?.checked,
-
-      autoSpeak:
-        !!el.autoSpeakToggle?.checked,
-
-      freshInfo:
-        !!el.freshInfoToggle?.checked
-    };
-
-    storageSet(
-      CONFIG.storage.settings,
-      state.settings
-    );
-
-    toast(
-      "Ayarlar kaydedildi.",
-      "success"
-    );
-  }
-
-  function resetSettings() {
-    state.settings = {
-      ...CONFIG.defaults.settings
-    };
-
-    syncSettingsUI();
-
-    storageSet(
-      CONFIG.storage.settings,
-      state.settings
-    );
-
-    toast(
-      "Ayarlar varsayılana döndürüldü.",
-      "success"
-    );
-  }
-
-  /* =========================================================
-     SIDEBAR / PANELLER
-     ========================================================= */
-
-  const panelMap = {
-    chat: el.chatView,
-    research: el.researchPanel,
-    weather: el.weatherPanel,
-    memory: el.memoryPanel,
-    files: el.fileCenterPanel,
-    media: el.mediaPanel,
-    plans: el.plansPanel,
-    notifications: el.notificationPanel,
-    system: el.systemPanel
-  };
-
-  function closeAllPanels() {
-    Object.values(panelMap).forEach(
-      (panel) =>
-        panel?.classList.remove("active")
-    );
-
-    if (el.chatView) {
-      el.chatView.classList.remove("hidden");
-    }
-
-    state.activePanel = "chat";
-    updateNavigation("chat");
-  }
-
-  async function openPanel(panelName) {
-    const name =
-      panelMap[panelName]
-        ? panelName
-        : "chat";
-
-    Object.entries(panelMap).forEach(
-      ([key, panel]) => {
-        if (!panel) return;
-
-        if (key === name) {
-          panel.classList.add("active");
-          panel.classList.remove("hidden");
-        } else {
-          panel.classList.remove("active");
-          if (key !== "chat") {
-            panel.classList.add("hidden");
-          }
+      return await api(
+        APP.api.chatSmart,
+        {
+          method: "POST",
+          body: payload,
+          signal:
+            state.abortController
+              ?.signal
         }
+      );
+    } catch (error) {
+      if (
+        error?.name ===
+        "AbortError"
+      ) {
+        throw error;
       }
-    );
 
-    if (
-      name === "chat" &&
-      el.chatView
-    ) {
-      el.chatView.classList.remove("hidden");
-    } else if (el.chatView) {
-      el.chatView.classList.add("hidden");
-    }
+      if (
+        error?.status !== 404 &&
+        error?.status !== 405
+      ) {
+        /*
+          Smart route hata verse de standart
+          route'u yine deniyoruz.
+        */
+      }
 
-    state.activePanel = name;
-
-    updateNavigation(name);
-
-    switch (name) {
-      case "research":
-        await loadResearchPanel();
-        break;
-
-      case "weather":
-        break;
-
-      case "memory":
-        await loadMemoryOverview();
-        break;
-
-      case "files":
-        await loadFiles();
-        break;
-
-      case "plans":
-        await loadPlans();
-        break;
-
-      case "notifications":
-        await loadNotifications();
-        break;
-
-      case "system":
-        await loadSystemStatus();
-        break;
-    }
-
-    closeMobileSidebar();
-  }
-
-  function updateNavigation(active) {
-    document
-      .querySelectorAll(
-        "[data-panel], [data-mobile-panel]"
-      )
-      .forEach((button) => {
-        const name =
-          button.dataset.panel ||
-          button.dataset.mobilePanel;
-
-        button.classList.toggle(
-          "active",
-          name === active
-        );
-      });
-
-    const titleMap = {
-      chat: "Yeni sohbet",
-      research: "Araştırma",
-      weather: "Hava durumu",
-      memory: "Hafıza",
-      files: "Dosyalar",
-      media: "Medya",
-      plans: "Planlar",
-      notifications: "Bildirimler",
-      system: "Sistem"
-    };
-
-    if (el.workspaceTitle) {
-      el.workspaceTitle.textContent =
-        titleMap[active] || "TürkAI";
-    }
-  }
-
-  function openSidebar() {
-    if (!el.sidebar) return;
-
-    state.sidebarOpen = true;
-
-    el.sidebar.classList.add("open");
-    document.body.classList.add(
-      "sidebar-open"
-    );
-  }
-
-  function closeMobileSidebar() {
-    if (!el.sidebar) return;
-
-    state.sidebarOpen = false;
-
-    el.sidebar.classList.remove("open");
-    document.body.classList.remove(
-      "sidebar-open"
-    );
-  }
-
-  function toggleSidebar() {
-    if (state.sidebarOpen) {
-      closeMobileSidebar();
-    } else {
-      openSidebar();
-    }
-  }
-
-  /* =========================================================
-     COMMANDS
-     ========================================================= */
-
-  state.commandItems = [
-    {
-      id: "new-chat",
-      title: "Yeni sohbet",
-      description: "Temiz bir sohbet başlat",
-      icon: "i-plus",
-      action: () => createNewChat()
-    },
-    {
-      id: "research",
-      title: "Araştırmayı aç",
-      description: "Web araştırma panelini aç",
-      icon: "i-search",
-      action: () => openPanel("research")
-    },
-    {
-      id: "weather",
-      title: "Hava durumunu aç",
-      description: "Hava durumunu kontrol et",
-      icon: "i-cloud",
-      action: () => openPanel("weather")
-    },
-    {
-      id: "memory",
-      title: "Hafızayı aç",
-      description: "TürkAI hafıza alanına git",
-      icon: "i-memory",
-      action: () => openPanel("memory")
-    },
-    {
-      id: "files",
-      title: "Dosyaları aç",
-      description: "Dosya merkezini aç",
-      icon: "i-folder",
-      action: () => openPanel("files")
-    },
-    {
-      id: "media",
-      title: "Medya",
-      description: "Görsel ve video araçları",
-      icon: "i-image",
-      action: () => openPanel("media")
-    },
-    {
-      id: "plans",
-      title: "Planlar",
-      description: "TürkAI planlarını görüntüle",
-      icon: "i-crown",
-      action: () => openPanel("plans")
-    },
-    {
-      id: "notifications",
-      title: "Bildirimler",
-      description: "Bildirim panelini aç",
-      icon: "i-bell",
-      action: () => openPanel("notifications")
-    },
-    {
-      id: "system",
-      title: "Sistem",
-      description: "Sunucu durumunu göster",
-      icon: "i-command",
-      action: () => openPanel("system")
-    },
-    {
-      id: "settings",
-      title: "Ayarlar",
-      description: "TürkAI ayarlarını aç",
-      icon: "i-settings",
-      action: () => openModal("settingsModal")
-    },
-    {
-      id: "account",
-      title: "Hesap",
-      description: "Hesap bilgilerini aç",
-      icon: "i-user",
-      action: () => openModal("accountModal")
-    }
-  ];
-
-  function renderCommands(query = "") {
-    if (!el.commandList) return;
-
-    const normalized =
-      safeText(query)
-        .toLocaleLowerCase("tr-TR")
-        .trim();
-
-    const filtered =
-      state.commandItems.filter(
-        (item) => {
-          const text = (
-            item.title +
-            " " +
-            item.description
-          ).toLocaleLowerCase("tr-TR");
-
-          return !normalized ||
-            text.includes(normalized);
+      return await api(
+        APP.api.chat,
+        {
+          method: "POST",
+          body: payload,
+          signal:
+            state.abortController
+              ?.signal
         }
       );
-
-    el.commandList.innerHTML = "";
-
-    filtered.forEach((item, index) => {
-      const button =
-        document.createElement("button");
-
-      button.type = "button";
-      button.className =
-        `command-item ${
-          index === state.commandIndex
-            ? "active"
-            : ""
-        }`;
-
-      button.dataset.commandId =
-        item.id;
-
-      button.innerHTML = `
-        <div class="command-item-icon">
-          <svg viewBox="0 0 24 24">
-            <use href="#${item.icon}"></use>
-          </svg>
-        </div>
-
-        <div class="command-item-content">
-          <strong>
-            ${escapeHTML(item.title)}
-          </strong>
-          <span>
-            ${escapeHTML(item.description)}
-          </span>
-        </div>
-
-        <svg
-          class="command-item-arrow"
-          viewBox="0 0 24 24"
-        >
-          <use href="#i-chevron-right"></use>
-        </svg>
-      `;
-
-      button.onclick = () => {
-        closeModal("commandCenter");
-        item.action();
-      };
-
-      el.commandList.appendChild(button);
-    });
-
-    state.commandIndex = clamp(
-      state.commandIndex,
-      0,
-      Math.max(filtered.length - 1, 0)
-    );
+    }
   }
 
-  function openCommandCenter() {
-    openModal("commandCenter");
-
-    state.commandIndex = 0;
-
-    if (el.commandInput) {
-      el.commandInput.value = "";
+  async function tryResearchForChat(
+    question,
+    firstAnswer
+  ) {
+    if (!isBadLocalFallback(firstAnswer)) {
+      return firstAnswer;
     }
 
-    renderCommands();
+    if (
+      !state.settings.freshInfo
+    ) {
+      return firstAnswer;
+    }
 
-    window.setTimeout(() => {
-      el.commandInput?.focus();
-    }, 50);
+    try {
+      const research =
+        await api(
+          APP.api.research,
+          {
+            method: "POST",
+            body: {
+              query: question,
+              question,
+              text: question,
+              language: "tr",
+              mode: "answer"
+            },
+            signal:
+              state.abortController
+                ?.signal
+          }
+        );
+
+      const researchText =
+        extractResearchText(
+          research
+        );
+
+      if (!researchText) {
+        return firstAnswer;
+      }
+
+      const prompt = `
+Kullanıcının sorusunu aşağıdaki araştırma verisine göre Türkçe cevapla.
+
+SORU:
+${question}
+
+ARAŞTIRMA:
+${researchText}
+
+Kurallar:
+- Doğrudan cevap ver.
+- Araştırma verisinde olmayan bilgileri uydurma.
+- Gereksiz açıklama yapma.
+- Türkçe yaz.
+`;
+
+      const second =
+        await api(
+          APP.api.chat,
+          {
+            method: "POST",
+            body:
+              buildChatPayload(
+                prompt
+              ),
+            signal:
+              state.abortController
+                ?.signal
+          }
+        );
+
+      const finalAnswer =
+        answerFrom(second);
+
+      if (
+        finalAnswer &&
+        !isBadLocalFallback(
+          finalAnswer
+        )
+      ) {
+        return finalAnswer;
+      }
+    } catch (error) {
+      if (
+        error?.name ===
+        "AbortError"
+      ) {
+        throw error;
+      }
+    }
+
+    return firstAnswer;
   }
 
-  /* =========================================================
-     NEW CHAT
-     ========================================================= */
+  async function sendMessage() {
+    if (state.sending) {
+      return;
+    }
 
-  function createNewChat() {
-    state.conversationId = null;
-    state.messages = [];
-    state.attachments = [];
+    if (!dom.messageInput) {
+      return;
+    }
+
+    const question =
+      dom.messageInput.value.trim();
+
+    if (!question) {
+      return;
+    }
+
+    /*
+      Slash komutları
+    */
+    if (
+      await handleSlashCommand(
+        question
+      )
+    ) {
+      dom.messageInput.value =
+        "";
+
+      resizeComposer();
+      clearDraft();
+
+      return;
+    }
+
+    state.sending = true;
+
+    state.abortController =
+      new AbortController();
+
+    const original =
+      question;
+
+    setSendingUI(true);
+    setTyping(true);
+
+    appendMessage(
+      "user",
+      question
+    );
 
     renderMessages();
-    renderAttachments();
 
-    clearDraft();
+    try {
+      const response =
+        await chatRequest(
+          question
+        );
 
-    if (el.messageInput) {
-      el.messageInput.value = "";
-      autoResizeInput();
-      el.messageInput.focus();
+      let answer =
+        answerFrom(response);
+
+      answer =
+        await tryResearchForChat(
+          question,
+          answer
+        );
+
+      if (!answer) {
+        throw new Error(
+          "Sunucudan boş cevap geldi."
+        );
+      }
+
+      if (
+        isBadLocalFallback(
+          answer
+        )
+      ) {
+        throw new Error(
+          "TürkAI bu soruya şu anda gerçek bir yanıt üretemedi."
+        );
+      }
+
+      const conversationId =
+        response?.conversationId ||
+        response?.conversation_id ||
+        response?.chatId ||
+        response?.data
+          ?.conversationId ||
+        response?.result
+          ?.conversationId;
+
+      if (
+        conversationId
+      ) {
+        state.conversationId =
+          conversationId;
+      }
+
+      appendMessage(
+        "assistant",
+        answer,
+        {
+          model:
+            response?.model ||
+            response?.data
+              ?.model ||
+            state.model
+        }
+      );
+
+      renderMessages();
+
+      /*
+        Başarılı cevap geldikten sonra temizle.
+      */
+      dom.messageInput.value =
+        "";
+
+      resizeComposer();
+      clearDraft();
+
+      saveChats();
+
+      if (
+        state.settings.autoSpeak
+      ) {
+        speakText(answer);
+      }
+    } catch (error) {
+      if (
+        error?.name ===
+        "AbortError"
+      ) {
+        dom.messageInput.value =
+          original;
+
+        resizeComposer();
+        saveDraft();
+
+        toast(
+          "Yanıt durduruldu.",
+          "warning"
+        );
+
+        return;
+      }
+
+      /*
+        Kullanıcının mesajı hata durumunda
+        kesinlikle kaybolmaz.
+      */
+      dom.messageInput.value =
+        original;
+
+      resizeComposer();
+      saveDraft();
+
+      toast(
+        error?.message ||
+          "Mesaj gönderilemedi.",
+        "error",
+        6000
+      );
+
+      console.error(
+        "[TürkAI] Chat:",
+        error
+      );
+    } finally {
+      state.sending = false;
+
+      state.abortController =
+        null;
+
+      setSendingUI(false);
+      setTyping(false);
+      updateComposerInfo();
     }
+  }
 
-    openPanel("chat");
+  function stopGeneration() {
+    try {
+      state.abortController?.abort();
+    } catch {}
+
+    state.sending = false;
+
+    setSendingUI(false);
+    setTyping(false);
 
     toast(
-      "Yeni sohbet hazır.",
-      "success"
+      "Yanıt üretimi durduruldu.",
+      "warning"
     );
   }
 
   /* =========================================================
-     SLASH COMMAND
+     SLASH KOMUTLARI
      ========================================================= */
 
-  async function handleSlashCommand(message) {
-    const textValue =
-      safeText(message).trim();
+  async function handleSlashCommand(
+    value
+  ) {
+    const input =
+      text(value).trim();
 
-    if (!textValue.startsWith("/")) {
+    if (
+      !input.startsWith("/")
+    ) {
       return false;
     }
 
-    const parts =
-      textValue.split(/\s+/);
+    const pieces =
+      input.split(/\s+/);
 
     const command =
-      parts[0]
-        .toLocaleLowerCase("tr-TR");
+      pieces[0]
+        .toLocaleLowerCase(
+          "tr-TR"
+        );
 
     const argument =
-      parts.slice(1).join(" ");
+      pieces
+        .slice(1)
+        .join(" ")
+        .trim();
 
     switch (command) {
       case "/yeni":
       case "/new":
-        createNewChat();
+        newChat();
         return true;
 
       case "/araştır":
@@ -1740,9 +1781,9 @@
 
         if (
           argument &&
-          el.researchInput
+          dom.researchInput
         ) {
-          el.researchInput.value =
+          dom.researchInput.value =
             argument;
         }
 
@@ -1754,9 +1795,9 @@
 
         if (
           argument &&
-          el.weatherInput
+          dom.weatherInput
         ) {
-          el.weatherInput.value =
+          dom.weatherInput.value =
             argument;
         }
 
@@ -1769,9 +1810,9 @@
 
         if (
           argument &&
-          el.memoryInput
+          dom.memoryInput
         ) {
-          el.memoryInput.value =
+          dom.memoryInput.value =
             argument;
         }
 
@@ -1798,10 +1839,17 @@
         openPanel("system");
         return true;
 
+      case "/plan":
+      case "/plans":
+        openPanel("plans");
+        return true;
+
       case "/yardım":
       case "/yardim":
       case "/help":
-        openModal("commandHelpModal");
+        openModal(
+          "commandHelpModal"
+        );
         return true;
 
       case "/temizle":
@@ -1816,679 +1864,420 @@
   }
 
   /* =========================================================
-     CHAT REQUEST
+     DRAFT / INPUT
      ========================================================= */
 
-  function setSendingUI(isSending) {
-    if (el.sendButton) {
-      el.sendButton.disabled = isSending;
-
-      el.sendButton.innerHTML = isSending
-        ? `
-          <svg viewBox="0 0 24 24">
-            <use href="#i-stop"></use>
-          </svg>
-        `
-        : `
-          <svg viewBox="0 0 24 24">
-            <use href="#i-send"></use>
-          </svg>
-        `;
-    }
-
-    if (el.stopButton) {
-      el.stopButton.classList.toggle(
-        "hidden",
-        !isSending
-      );
-    }
-  }
-
-  function showTyping() {
-    el.typingIndicator?.classList.remove(
-      "hidden"
-    );
-  }
-
-  function hideTyping() {
-    el.typingIndicator?.classList.add(
-      "hidden"
-    );
-  }
-
-  function buildChatPayload(message) {
-    const recent =
-      state.messages
-        .slice(-14)
-        .map((item) => ({
-          role: item.role,
-          content: item.content
-        }));
-
-    return {
-      message,
-      text: message,
-
-      model: state.selectedModel,
-      mode: "chat",
-
-      conversationId:
-        state.conversationId,
-
-      conversation_id:
-        state.conversationId,
-
-      messages: recent,
-
-      attachments:
-        state.attachments.map(
-          (item) => ({
-            id: item.id,
-            name: item.name,
-            type: item.type,
-            size: item.size,
-            url: item.url || null
-          })
-        ),
-
-      options: {
-        freshInfo:
-          !!state.settings.freshInfo,
-
-        autoResearch:
-          !!state.settings.freshInfo,
-
-        memory: true
-      }
-    };
-  }
-
-  async function requestChat(message) {
-    const payload =
-      buildChatPayload(message);
-
-    let result = null;
-
-    try {
-      result = await apiRequest(
-        CONFIG.endpoints.chatSmart,
-        {
-          method: "POST",
-          body: payload,
-          signal:
-            state.abortController?.signal
-        }
-      );
-
-      return result;
-    } catch (error) {
-      if (
-        error?.name === "AbortError"
-      ) {
-        throw error;
-      }
-
-      if (
-        error?.status !== 404 &&
-        error?.status !== 405
-      ) {
-        /*
-          Smart endpoint mevcut ama hata verdi.
-          Normal chat'i yine deneyelim.
-        */
-      }
-    }
-
-    result = await apiRequest(
-      CONFIG.endpoints.chat,
-      {
-        method: "POST",
-        body: payload,
-        signal:
-          state.abortController?.signal
-      }
-    );
-
-    return result;
-  }
-
-  async function researchThenChat(
-    originalQuestion,
-    firstAnswer
-  ) {
-    if (!state.settings.freshInfo) {
-      return firstAnswer;
-    }
-
-    if (
-      !isLocalFailureAnswer(firstAnswer)
-    ) {
-      return firstAnswer;
-    }
-
-    let researchData;
-
-    try {
-      researchData = await apiRequest(
-        CONFIG.endpoints.research,
-        {
-          method: "POST",
-          body: {
-            query: originalQuestion,
-            question: originalQuestion,
-            mode: "answer",
-            language: "tr"
-          },
-          signal:
-            state.abortController?.signal
-        }
-      );
-    } catch {
-      return firstAnswer;
-    }
-
-    const researchText =
-      extractResearchText(researchData);
-
-    if (!researchText) {
-      return firstAnswer;
-    }
-
-    const enrichedMessage = `
-Aşağıdaki araştırma verisini kullanarak
-kullanıcı sorusuna Türkçe ve doğrudan cevap ver.
-
-Kullanıcı sorusu:
-${originalQuestion}
-
-Araştırma verisi:
-${researchText}
-
-Kurallar:
-- Araştırma verisini temel al.
-- Bilgi uydurma.
-- Gereksiz şekilde "araştırma yapıldı" deme.
-- Kullanıcının sorusuna doğrudan cevap ver.
-`;
-
-    const result =
-      await apiRequest(
-        CONFIG.endpoints.chat,
-        {
-          method: "POST",
-          body: buildChatPayload(
-            enrichedMessage
-          ),
-          signal:
-            state.abortController?.signal
-        }
-      );
-
-    const finalAnswer =
-      extractAnswer(result);
-
-    return finalAnswer || firstAnswer;
-  }
-
-  async function sendMessage() {
-    if (state.sending) return;
-    if (!el.messageInput) return;
-
-    const message =
-      el.messageInput.value.trim();
-
-    if (!message) return;
-
-    const slashHandled =
-      await handleSlashCommand(message);
-
-    if (slashHandled) {
-      el.messageInput.value = "";
-      autoResizeInput();
-      clearDraft();
+  function resizeComposer() {
+    if (!dom.messageInput) {
       return;
     }
 
-    state.sending = true;
-    state.loading = true;
+    dom.messageInput.style.height =
+      "auto";
 
-    state.abortController =
-      new AbortController();
-
-    const originalText = message;
-
-    setSendingUI(true);
-    showTyping();
-
-    el.welcomeState?.classList.add(
-      "hidden"
-    );
-
-    appendMessage(
-      "user",
-      originalText
-    );
-
-    renderMessages();
-
-    try {
-      const result =
-        await requestChat(
-          originalText
-        );
-
-      let answer =
-        extractAnswer(result);
-
-      answer =
-        await researchThenChat(
-          originalText,
-          answer
-        );
-
-      if (
-        !answer ||
-        isLocalFailureAnswer(answer)
-      ) {
-        throw new Error(
-          "TürkAI bu soruya şu anda kullanılabilir bir yanıt üretemedi."
-        );
-      }
-
-      const conversationId =
-        extractConversationId(result);
-
-      if (conversationId) {
-        state.conversationId =
-          conversationId;
-      }
-
-      appendMessage(
-        "assistant",
-        answer,
-        {
-          model:
-            result?.model ||
-            result?.data?.model ||
-            state.selectedModel
-        }
-      );
-
-      renderMessages();
-
-      /*
-        Mesaj ancak başarıyla geldikten sonra temizlenir.
-        Böylece hata olduğunda kullanıcı yazdığını kaybetmez.
-      */
-      el.messageInput.value = "";
-      autoResizeInput();
-      clearDraft();
-
-      updateComposerInfo();
-
-      saveCurrentChat();
-
-      if (
-        state.settings.autoSpeak
-      ) {
-        speakText(answer);
-      }
-    } catch (error) {
-      if (
-        error?.name === "AbortError"
-      ) {
-        /*
-          Kullanıcı durdurduysa yazıyı geri
-          komut kutusuna al.
-        */
-        el.messageInput.value =
-          originalText;
-
-        autoResizeInput();
-        saveDraft();
-
-        toast(
-          "Yanıt oluşturma durduruldu.",
-          "warning"
-        );
-
-        return;
-      }
-
-      el.messageInput.value =
-        originalText;
-
-      autoResizeInput();
-      saveDraft();
-
-      toast(
-        error?.message ||
-          "Mesaj gönderilemedi.",
-        "error",
-        5000
-      );
-
-      console.error(
-        "[TürkAI] Chat error:",
-        error
-      );
-    } finally {
-      state.sending = false;
-      state.loading = false;
-
-      hideTyping();
-      setSendingUI(false);
-
-      state.abortController = null;
-
-      updateComposerInfo();
-
-      if (
-        document.visibilityState ===
-        "visible"
-      ) {
-        el.messageInput?.focus();
-      }
-    }
-  }
-
-  function stopGeneration() {
-    if (
-      state.abortController
-    ) {
-      try {
-        state.abortController.abort();
-      } catch {}
-    }
-
-    state.sending = false;
-    state.loading = false;
-
-    hideTyping();
-    setSendingUI(false);
-
-    toast(
-      "Yanıt üretimi durduruldu.",
-      "warning"
-    );
+    dom.messageInput.style.height =
+      Math.min(
+        dom.messageInput
+          .scrollHeight,
+        220
+      ) + "px";
   }
 
   function updateComposerInfo() {
-    if (!el.composerTokenInfo) return;
+    if (
+      !dom.composerTokenInfo
+    ) {
+      return;
+    }
 
-    const chars =
-      el.messageInput?.value.length || 0;
+    const count =
+      dom.messageInput
+        ?.value
+        ?.length || 0;
 
-    el.composerTokenInfo.textContent =
-      `${chars.toLocaleString("tr-TR")} karakter`;
+    dom.composerTokenInfo.textContent =
+      `${count.toLocaleString(
+        "tr-TR"
+      )} karakter`;
+  }
+
+  function saveDraft() {
+    if (
+      !state.settings.draftSave
+    ) {
+      return;
+    }
+
+    const value =
+      dom.messageInput
+        ?.value || "";
+
+    storageSet(
+      APP.storage.draft,
+      value
+    );
+  }
+
+  function clearDraft() {
+    storageRemove(
+      APP.storage.draft
+    );
+  }
+
+  function loadDraft() {
+    if (!dom.messageInput) return;
+
+    const draft =
+      storageGet(
+        APP.storage.draft,
+        ""
+      );
+
+    if (
+      typeof draft ===
+        "string" &&
+      draft
+    ) {
+      dom.messageInput.value =
+        draft;
+
+      resizeComposer();
+      updateComposerInfo();
+    }
+  }
+
+  /* =========================================================
+     YENİ SOHBET
+     ========================================================= */
+
+  function newChat() {
+    state.conversationId =
+      null;
+
+    state.messages = [];
+
+    state.attachments = [];
+
+    if (dom.messageInput) {
+      dom.messageInput.value =
+        "";
+    }
+
+    clearDraft();
+
+    renderMessages();
+    renderAttachments();
+
+    resizeComposer();
+    updateComposerInfo();
+
+    openPanel("chat");
+
+    toast(
+      "Yeni sohbet hazır.",
+      "success"
+    );
+
+    dom.messageInput?.focus();
+  }
+
+  function saveChats() {
+    storageSet(
+      APP.storage.chats,
+      {
+        conversationId:
+          state.conversationId,
+
+        messages:
+          state.messages.slice(
+            -100
+          ),
+
+        updatedAt:
+          new Date().toISOString()
+      }
+    );
   }
 
   /* =========================================================
      SES
      ========================================================= */
 
-  function speakText(textValue) {
-    const textToSpeak =
-      safeText(textValue).trim();
-
+  function speakText(value) {
     if (
-      !textToSpeak ||
       !("speechSynthesis" in window)
     ) {
       toast(
-        "Bu cihazda sesli okuma desteklenmiyor.",
+        "Bu tarayıcı sesli okumayı desteklemiyor.",
         "warning"
       );
       return;
     }
+
+    const phrase =
+      text(value).trim();
+
+    if (!phrase) return;
 
     try {
       window.speechSynthesis.cancel();
 
       const utterance =
         new SpeechSynthesisUtterance(
-          textToSpeak
+          phrase
         );
 
-      utterance.lang = "tr-TR";
-      utterance.rate = 0.95;
-      utterance.pitch = 1;
+      utterance.lang =
+        "tr-TR";
 
-      utterance.onstart = () => {
-        state.speaking = true;
-      };
+      utterance.rate =
+        0.95;
 
-      utterance.onend = () => {
-        state.speaking = false;
-      };
+      utterance.pitch =
+        1;
 
-      utterance.onerror = () => {
-        state.speaking = false;
-      };
+      utterance.onstart =
+        () => {
+          state.speaking =
+            true;
+        };
 
-      state.synthUtterance =
-        utterance;
+      utterance.onend =
+        () => {
+          state.speaking =
+            false;
+        };
+
+      utterance.onerror =
+        () => {
+          state.speaking =
+            false;
+        };
 
       window.speechSynthesis.speak(
         utterance
       );
     } catch (error) {
       console.error(
-        "[TürkAI] TTS error:",
+        "[TürkAI] TTS:",
         error
       );
     }
   }
 
   function stopSpeaking() {
-    if (
-      "speechSynthesis" in window
-    ) {
-      window.speechSynthesis.cancel();
-    }
+    try {
+      window.speechSynthesis?.cancel();
+    } catch {}
 
-    state.speaking = false;
+    state.speaking =
+      false;
   }
 
-  function initSpeechRecognition() {
+  function startVoice() {
     const Recognition =
       window.SpeechRecognition ||
       window.webkitSpeechRecognition;
 
     if (!Recognition) {
-      return null;
-    }
-
-    const recognition =
-      new Recognition();
-
-    recognition.lang = "tr-TR";
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      state.recording = true;
-
-      el.voiceButton?.classList.add(
-        "active"
-      );
-
-      showVoiceStatus(
-        "Dinliyorum",
-        "Konuşabilirsiniz..."
-      );
-    };
-
-    recognition.onresult = (event) => {
-      let transcript = "";
-
-      for (
-        let i = event.resultIndex;
-        i < event.results.length;
-        i++
-      ) {
-        transcript +=
-          event.results[i][0].transcript;
-      }
-
-      transcript =
-        transcript.trim();
-
-      if (transcript && el.messageInput) {
-        el.messageInput.value =
-          transcript;
-
-        autoResizeInput();
-        updateComposerInfo();
-      }
-    };
-
-    recognition.onerror = (event) => {
-      state.recording = false;
-
-      el.voiceButton?.classList.remove(
-        "active"
-      );
-
-      hideVoiceStatus();
-
-      if (
-        event?.error ===
-          "not-allowed"
-      ) {
-        toast(
-          "Mikrofon izni verilmedi.",
-          "error"
-        );
-      } else if (
-        event?.error !== "aborted"
-      ) {
-        toast(
-          "Ses algılama başarısız oldu.",
-          "error"
-        );
-      }
-    };
-
-    recognition.onend = () => {
-      state.recording = false;
-
-      el.voiceButton?.classList.remove(
-        "active"
-      );
-
-      hideVoiceStatus();
-    };
-
-    return recognition;
-  }
-
-  function showVoiceStatus(
-    title,
-    message
-  ) {
-    if (!el.voiceStatus) return;
-
-    el.voiceStatus.classList.remove(
-      "hidden"
-    );
-
-    if (el.voiceStatusTitle) {
-      el.voiceStatusTitle.textContent =
-        title;
-    }
-
-    if (el.voiceStatusText) {
-      el.voiceStatusText.textContent =
-        message;
-    }
-  }
-
-  function hideVoiceStatus() {
-    el.voiceStatus?.classList.add(
-      "hidden"
-    );
-  }
-
-  function startVoiceInput() {
-    if (!state.recognition) {
-      state.recognition =
-        initSpeechRecognition();
-    }
-
-    if (!state.recognition) {
       toast(
-        "Tarayıcınız sesli giriş özelliğini desteklemiyor.",
+        "Tarayıcınız sesli girişi desteklemiyor.",
         "warning"
       );
       return;
     }
 
+    if (state.recording) {
+      stopVoice();
+      return;
+    }
+
     try {
-      state.recognition.start();
-    } catch {
-      stopVoiceInput();
+      const recognition =
+        new Recognition();
+
+      recognition.lang =
+        "tr-TR";
+
+      recognition.continuous =
+        false;
+
+      recognition.interimResults =
+        true;
+
+      recognition.onstart =
+        () => {
+          state.recording =
+            true;
+
+          dom.voiceButton?.classList.add(
+            "active"
+          );
+
+          dom.voiceStatus?.classList.remove(
+            "hidden"
+          );
+
+          if (
+            dom.voiceStatusTitle
+          ) {
+            dom.voiceStatusTitle.textContent =
+              "Dinliyorum";
+          }
+
+          if (
+            dom.voiceStatusText
+          ) {
+            dom.voiceStatusText.textContent =
+              "Konuşabilirsiniz...";
+          }
+        };
+
+      recognition.onresult =
+        (event) => {
+          let transcript =
+            "";
+
+          for (
+            let i =
+              event.resultIndex;
+            i <
+              event.results.length;
+            i++
+          ) {
+            transcript +=
+              event.results[
+                i
+              ][0]
+                .transcript;
+          }
+
+          if (
+            transcript.trim() &&
+            dom.messageInput
+          ) {
+            dom.messageInput.value =
+              transcript.trim();
+
+            resizeComposer();
+            updateComposerInfo();
+          }
+        };
+
+      recognition.onerror =
+        (event) => {
+          state.recording =
+            false;
+
+          dom.voiceButton?.classList.remove(
+            "active"
+          );
+
+          dom.voiceStatus?.classList.add(
+            "hidden"
+          );
+
+          if (
+            event.error ===
+            "not-allowed"
+          ) {
+            toast(
+              "Mikrofon izni verilmedi.",
+              "error"
+            );
+          }
+        };
+
+      recognition.onend =
+        () => {
+          state.recording =
+            false;
+
+          dom.voiceButton?.classList.remove(
+            "active"
+          );
+
+          dom.voiceStatus?.classList.add(
+            "hidden"
+          );
+        };
+
+      state.recognition =
+        recognition;
+
+      recognition.start();
+    } catch (error) {
+      console.error(
+        "[TürkAI] Voice:",
+        error
+      );
+
+      stopVoice();
     }
   }
 
-  function stopVoiceInput() {
+  function stopVoice() {
     try {
       state.recognition?.stop();
     } catch {}
 
-    state.recording = false;
-    el.voiceButton?.classList.remove(
+    state.recording =
+      false;
+
+    dom.voiceButton?.classList.remove(
       "active"
     );
 
-    hideVoiceStatus();
-  }
-
-  function toggleVoiceInput() {
-    if (state.recording) {
-      stopVoiceInput();
-    } else {
-      startVoiceInput();
-    }
+    dom.voiceStatus?.classList.add(
+      "hidden"
+    );
   }
 
   /* =========================================================
      ARAŞTIRMA
      ========================================================= */
 
-  function extractResearchText(data) {
+  function extractResearchText(
+    data
+  ) {
     if (!data) return "";
 
-    if (typeof data === "string") {
+    if (
+      typeof data === "string"
+    ) {
       return data.trim();
     }
 
     const parts = [];
 
-    const answer =
-      extractAnswer(data);
+    const first =
+      answerFrom(data);
 
-    if (answer) {
-      parts.push(answer);
+    if (first) {
+      parts.push(first);
     }
 
-    const candidates = [
+    const extras = [
       data.summary,
       data.description,
       data.text,
       data.content,
-      data.result?.summary,
-      data.data?.summary
+      data.data?.summary,
+      data.result?.summary
     ];
 
-    candidates.forEach((item) => {
+    extras.forEach((item) => {
       if (
-        typeof item === "string" &&
+        typeof item ===
+          "string" &&
         item.trim() &&
-        !parts.includes(item.trim())
+        !parts.includes(
+          item.trim()
+        )
       ) {
-        parts.push(item.trim());
+        parts.push(
+          item.trim()
+        );
       }
     });
 
@@ -2496,99 +2285,141 @@ Kurallar:
       data.sources ||
       data.results ||
       data.data?.sources ||
-      data.data?.results;
+      data.data?.results ||
+      [];
 
     if (Array.isArray(sources)) {
       sources
-        .slice(0, 8)
+        .slice(0, 20)
         .forEach((item) => {
-          const title =
-            item?.title ||
-            item?.name ||
-            "";
-
-          const snippet =
-            item?.snippet ||
-            item?.description ||
-            item?.summary ||
-            "";
-
-          const url =
-            item?.url ||
-            item?.link ||
-            "";
-
           const line = [
-            title,
-            snippet,
-            url
+            item?.title ||
+              item?.name,
+
+            item?.snippet ||
+              item?.description ||
+              item?.summary,
+
+            item?.url ||
+              item?.link
           ]
             .filter(Boolean)
             .join(" — ");
 
-          if (line) parts.push(line);
+          if (line) {
+            parts.push(line);
+          }
         });
     }
 
-    return parts.join("\n\n").trim();
+    return parts.join(
+      "\n\n"
+    );
+  }
+
+  async function loadResearchPanel() {
+    if (
+      dom.researchStatus
+    ) {
+      dom.researchStatus.textContent =
+        "Hazır.";
+    }
   }
 
   async function runResearch() {
     const query =
-      el.researchInput?.value.trim();
+      dom.researchInput
+        ?.value.trim();
 
     if (!query) {
       toast(
-        "Araştırmak için bir konu yaz.",
+        "Araştırma konusu yaz.",
         "warning"
       );
       return;
     }
 
-    if (el.researchRunButton) {
-      el.researchRunButton.disabled = true;
+    if (
+      dom.researchRunButton
+    ) {
+      dom.researchRunButton.disabled =
+        true;
     }
 
-    if (el.researchStatus) {
-      el.researchStatus.textContent =
+    if (
+      dom.researchStatus
+    ) {
+      dom.researchStatus.textContent =
         "Araştırılıyor...";
     }
 
-    showLoading(
-      "Araştırma yapılıyor",
-      query
-    );
+    if (
+      dom.researchResults
+    ) {
+      dom.researchResults.innerHTML = `
+        <div class="empty-state">
+          Araştırma yapılıyor...
+        </div>
+      `;
+    }
 
     try {
       const data =
-        await apiRequest(
-          CONFIG.endpoints.research,
+        await api(
+          APP.api.research,
           {
             method: "POST",
             body: {
               query,
               question: query,
+              text: query,
               language: "tr",
               mode: "research"
             }
           }
         );
 
-      state.researchResults = data;
+      state.researchResults =
+        data;
 
-      renderResearch(data);
+      renderResearch(
+        data
+      );
 
-      if (el.researchStatus) {
-        el.researchStatus.textContent =
+      if (
+        dom.researchStatus
+      ) {
+        dom.researchStatus.textContent =
           "Araştırma tamamlandı.";
       }
+
+      toast(
+        "Araştırma tamamlandı.",
+        "success"
+      );
     } catch (error) {
-      if (el.researchStatus) {
-        el.researchStatus.textContent =
+      if (
+        dom.researchStatus
+      ) {
+        dom.researchStatus.textContent =
           "Araştırma başarısız.";
       }
 
-      renderResearchError(error);
+      if (
+        dom.researchResults
+      ) {
+        dom.researchResults.innerHTML = `
+          <div class="empty-state">
+            <strong>Araştırma yapılamadı.</strong>
+            <div>
+              ${escapeHTML(
+                error?.message ||
+                  "Bilinmeyen hata."
+              )}
+            </div>
+          </div>
+        `;
+      }
 
       toast(
         error?.message ||
@@ -2596,19 +2427,26 @@ Kurallar:
         "error"
       );
     } finally {
-      hideLoading();
-
-      if (el.researchRunButton) {
-        el.researchRunButton.disabled = false;
+      if (
+        dom.researchRunButton
+      ) {
+        dom.researchRunButton.disabled =
+          false;
       }
     }
   }
 
-  function renderResearch(data) {
-    if (!el.researchResults) return;
+  function renderResearch(
+    data
+  ) {
+    if (
+      !dom.researchResults
+    ) {
+      return;
+    }
 
     const answer =
-      extractAnswer(data);
+      answerFrom(data);
 
     const sources =
       data?.sources ||
@@ -2621,14 +2459,17 @@ Kurallar:
 
     if (answer) {
       html += `
-        <div class="result-card">
+        <article class="result-card">
           <div class="result-card-title">
             Sonuç
           </div>
+
           <div class="result-card-text">
-            ${renderRichText(answer)}
+            ${renderRichText(
+              answer
+            )}
           </div>
-        </div>
+        </article>
       `;
     }
 
@@ -2639,14 +2480,14 @@ Kurallar:
       html += `
         <div class="result-list">
           ${sources
-            .slice(0, 20)
+            .slice(0, 30)
             .map((item) => {
               const title =
                 item?.title ||
                 item?.name ||
                 "Kaynak";
 
-              const desc =
+              const description =
                 item?.snippet ||
                 item?.description ||
                 item?.summary ||
@@ -2660,14 +2501,18 @@ Kurallar:
               return `
                 <article class="result-card">
                   <div class="result-card-title">
-                    ${escapeHTML(title)}
+                    ${escapeHTML(
+                      title
+                    )}
                   </div>
 
                   ${
-                    desc
+                    description
                       ? `
                         <div class="result-card-text">
-                          ${escapeHTML(desc)}
+                          ${escapeHTML(
+                            description
+                          )}
                         </div>
                       `
                       : ""
@@ -2677,7 +2522,9 @@ Kurallar:
                     url
                       ? `
                         <a
-                          href="${escapeHTML(url)}"
+                          href="${escapeHTML(
+                            url
+                          )}"
                           target="_blank"
                           rel="noopener noreferrer"
                           class="result-link"
@@ -2703,909 +2550,8 @@ Kurallar:
       `;
     }
 
-    el.researchResults.innerHTML = html;
-  }
-
-  function renderResearchError(error) {
-    if (!el.researchResults) return;
-
-    el.researchResults.innerHTML = `
-      <div class="empty-state">
-        <strong>Araştırma başarısız.</strong>
-        <div>
-          ${escapeHTML(
-            error?.message ||
-              "Bilinmeyen hata."
-          )}
-        </div>
-      </div>
-    `;
-  }
-
-  async function loadResearchPanel() {
-    if (el.researchStatus) {
-      el.researchStatus.textContent =
-        "Hazır.";
-    }
-  }
-
-  /* =========================================================
-     WEATHER
-     ========================================================= */
-
-  async function runWeather() {
-    const location =
-      el.weatherInput?.value.trim();
-
-    if (!location) {
-      toast(
-        "Şehir yaz.",
-        "warning"
-      );
-      return;
-    }
-
-    if (el.weatherRunButton) {
-      el.weatherRunButton.disabled = true;
-    }
-
-    showLoading(
-      "Hava durumu",
-      location
-    );
-
-    try {
-      const data =
-        await apiRequest(
-          CONFIG.endpoints.weather,
-          {
-            method: "POST",
-            body: {
-              city: location,
-              location,
-              query: location,
-              language: "tr"
-            }
-          }
-        );
-
-      state.weatherData = data;
-      renderWeather(data);
-    } catch (error) {
-      renderWeatherError(error);
-
-      toast(
-        error?.message ||
-          "Hava durumu alınamadı.",
-        "error"
-      );
-    } finally {
-      hideLoading();
-
-      if (el.weatherRunButton) {
-        el.weatherRunButton.disabled =
-          false;
-      }
-    }
-  }
-
-  function renderWeather(data) {
-    if (!el.weatherResults) return;
-
-    const current =
-      data?.current ||
-      data?.data?.current ||
-      data?.result?.current ||
-      data;
-
-    const location =
-      data?.location?.name ||
-      data?.city ||
-      current?.city ||
-      el.weatherInput?.value ||
-      "Konum";
-
-    const temperature =
-      current?.temperature ??
-      current?.temp ??
-      data?.temperature ??
-      data?.temp ??
-      "--";
-
-    const condition =
-      current?.condition ||
-      current?.description ||
-      data?.condition ||
-      "Bilgi yok";
-
-    const humidity =
-      current?.humidity ??
-      data?.humidity ??
-      "--";
-
-    const wind =
-      current?.wind ??
-      current?.windSpeed ??
-      data?.wind ??
-      "--";
-
-    el.weatherResults.innerHTML = `
-      <div class="weather-card result-card">
-        <div class="result-card-title">
-          ${escapeHTML(location)}
-        </div>
-
-        <div class="weather-main-value">
-          ${escapeHTML(temperature)}°
-        </div>
-
-        <div class="result-card-text">
-          ${escapeHTML(condition)}
-        </div>
-
-        <div class="weather-details">
-          <div>
-            <span>Nem</span>
-            <strong>
-              ${escapeHTML(humidity)}%
-            </strong>
-          </div>
-
-          <div>
-            <span>Rüzgar</span>
-            <strong>
-              ${escapeHTML(wind)}
-            </strong>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function renderWeatherError(error) {
-    if (!el.weatherResults) return;
-
-    el.weatherResults.innerHTML = `
-      <div class="empty-state">
-        Hava durumu alınamadı.
-        <div>
-          ${escapeHTML(
-            error?.message || ""
-          )}
-        </div>
-      </div>
-    `;
-  }
-
-  /* =========================================================
-     HAFIZA
-     ========================================================= */
-
-  async function searchMemory() {
-    const query =
-      el.memoryInput?.value.trim();
-
-    if (!query) {
-      await loadMemoryOverview();
-      return;
-    }
-
-    if (el.memorySearchButton) {
-      el.memorySearchButton.disabled =
-        true;
-    }
-
-    showLoading(
-      "Hafıza aranıyor",
-      query
-    );
-
-    try {
-      const data =
-        await apiRequest(
-          CONFIG.endpoints.memorySearch,
-          {
-            method: "POST",
-            body: {
-              query,
-              q: query,
-              text: query
-            }
-          }
-        );
-
-      state.memoryResults =
-        Array.isArray(data)
-          ? data
-          : data?.results ||
-            data?.data ||
-            data?.items ||
-            [];
-
-      renderMemoryResults(
-        state.memoryResults
-      );
-    } catch (error) {
-      toast(
-        error?.message ||
-          "Hafıza aranamadı.",
-        "error"
-      );
-    } finally {
-      hideLoading();
-
-      if (el.memorySearchButton) {
-        el.memorySearchButton.disabled =
-          false;
-      }
-    }
-  }
-
-  async function loadMemoryOverview() {
-    if (!el.memoryStats) return;
-
-    const data =
-      await safeRequest(
-        CONFIG.endpoints.memorySearch,
-        {
-          method: "POST",
-          body: {
-            query: "*",
-            q: "*",
-            overview: true
-          }
-        },
-        null
-      );
-
-    if (!data) {
-      el.memoryStats.innerHTML = `
-        <div class="empty-state">
-          Hafıza özeti alınamadı.
-        </div>
-      `;
-
-      return;
-    }
-
-    const list =
-      Array.isArray(data)
-        ? data
-        : data?.results ||
-          data?.data ||
-          data?.items ||
-          [];
-
-    state.memoryResults = list;
-
-    const count =
-      data?.count ??
-      data?.total ??
-      data?.stats?.count ??
-      list.length;
-
-    el.memoryStats.innerHTML = `
-      <div class="memory-stat-card">
-        <span>Toplam kayıt</span>
-        <strong>
-          ${escapeHTML(count)}
-        </strong>
-      </div>
-    `;
-
-    renderMemoryResults(list);
-  }
-
-  function renderMemoryResults(list) {
-    if (!el.memoryResults) return;
-
-    if (
-      !Array.isArray(list) ||
-      !list.length
-    ) {
-      el.memoryResults.innerHTML = `
-        <div class="empty-state">
-          Hafızada sonuç bulunamadı.
-        </div>
-      `;
-      return;
-    }
-
-    el.memoryResults.innerHTML =
-      list
-        .slice(0, 50)
-        .map((item) => {
-          const title =
-            item?.title ||
-            item?.question ||
-            item?.key ||
-            "Hafıza kaydı";
-
-          const content =
-            item?.answer ||
-            item?.content ||
-            item?.value ||
-            item?.text ||
-            "";
-
-          const category =
-            item?.category ||
-            item?.type ||
-            "memory";
-
-          return `
-            <article class="result-card">
-              <div class="result-card-title">
-                ${escapeHTML(title)}
-              </div>
-
-              <div class="result-card-text">
-                ${renderRichText(content)}
-              </div>
-
-              <div class="result-card-meta">
-                ${escapeHTML(category)}
-              </div>
-            </article>
-          `;
-        })
-        .join("");
-  }
-
-  async function saveMemory(
-    content,
-    type = "chat"
-  ) {
-    const value =
-      safeText(content).trim();
-
-    if (!value) return false;
-
-    try {
-      await apiRequest(
-        CONFIG.endpoints.memorySave,
-        {
-          method: "POST",
-          body: {
-            content: value,
-            text: value,
-            answer: value,
-            type
-          }
-        }
-      );
-
-      toast(
-        "Hafızaya kaydedildi.",
-        "success"
-      );
-
-      return true;
-    } catch (error) {
-      toast(
-        error?.message ||
-          "Hafızaya kaydedilemedi.",
-        "error"
-      );
-
-      return false;
-    }
-  }
-
-  async function saveCurrentConversationToMemory() {
-    if (!state.messages.length) {
-      toast(
-        "Kaydedilecek sohbet yok.",
-        "warning"
-      );
-      return;
-    }
-
-    const transcript =
-      state.messages
-        .map(
-          (item) =>
-            `${item.role === "user" ? "Kullanıcı" : "TürkAI"}: ${item.content}`
-        )
-        .join("\n\n");
-
-    await saveMemory(
-      transcript,
-      "conversation"
-    );
-  }
-/* =========================================================
-   TÜRKAI FRONTEND 41.0 — PART 2/2
-   Paneller, dosya, hafıza, araştırma, hesap, medya,
-   bildirimler, sistem, admin, kısayollar ve başlangıç
-   ========================================================= */
-
-(() => {
-  "use strict";
-
-  if (window.__TURKAI_APP_PART2__) return;
-  window.__TURKAI_APP_PART2__ = true;
-
-  const T = window.TURKAI;
-
-  if (!T) {
-    console.error(
-      "[TürkAI] PART 1 yüklenmeden PART 2 başlatılamadı."
-    );
-    return;
-  }
-
-  const state = T.state;
-  const config = T.config;
-
-  const $ = (id) => document.getElementById(id);
-
-  const E = {
-    researchInput: $("researchInput"),
-    researchRunButton: $("researchRunButton"),
-    researchClearButton: $("researchClearButton"),
-    researchStatus: $("researchStatus"),
-    researchResults: $("researchResults"),
-
-    weatherInput: $("weatherInput"),
-    weatherRunButton: $("weatherRunButton"),
-    weatherResults: $("weatherResults"),
-
-    memoryInput: $("memoryInput"),
-    memorySearchButton: $("memorySearchButton"),
-    memorySaveCurrentButton: $("memorySaveCurrentButton"),
-    memoryOverviewButton: $("memoryOverviewButton"),
-    memoryStats: $("memoryStats"),
-    memoryResults: $("memoryResults"),
-
-    fileDropZone: $("fileDropZone"),
-    fileSelectButton: $("fileSelectButton"),
-    refreshFilesButton: $("refreshFilesButton"),
-    globalFilePicker: $("globalFilePicker"),
-    fileCount: $("fileCount"),
-    fileList: $("fileList"),
-    attachmentPreview: $("attachmentPreview"),
-
-    mediaPanel: $("mediaPanel"),
-    openImageModalButton: $("openImageModalButton"),
-    openVideoModalButton: $("openVideoModalButton"),
-
-    imageCreateModal: $("imageCreateModal"),
-    imagePromptInput: $("imagePromptInput"),
-    imageSizeSelect: $("imageSizeSelect"),
-    imageQualitySelect: $("imageQualitySelect"),
-    generateImageButton: $("generateImageButton"),
-    imageResult: $("imageResult"),
-
-    videoModal: $("videoModal"),
-    videoPromptInput: $("videoPromptInput"),
-    videoDurationSelect: $("videoDurationSelect"),
-    generateVideoButton: $("generateVideoButton"),
-    videoResult: $("videoResult"),
-
-    plansList: $("plansList"),
-
-    notificationPanel: $("notificationPanel"),
-    notificationList: $("notificationList"),
-    notificationSummary: $("notificationSummary"),
-    notificationBadge: $("notificationBadge"),
-    markNotificationsReadButton: $("markNotificationsReadButton"),
-
-    systemOverallStatus: $("systemOverallStatus"),
-    systemStats: $("systemStats"),
-    refreshSystemButton: $("refreshSystemButton"),
-    systemDetailContent: $("systemDetailContent"),
-
-    accountModal: $("accountModal"),
-    accountModalName: $("accountModalName"),
-    accountModalEmail: $("accountModalEmail"),
-    accountModalVerified: $("accountModalVerified"),
-    accountModalPlan: $("accountModalPlan"),
-    accountModalUsage: $("accountModalUsage"),
-    accountModalStatus: $("accountModalStatus"),
-
-    authModal: $("authModal"),
-    authForm: $("authForm"),
-    authIdentifier: $("authIdentifier"),
-    authPassword: $("authPassword"),
-    authMessage: $("authMessage"),
-    loginButton: $("loginButton"),
-    logoutButton: $("logoutButton"),
-    guestLoginButton: $("guestLoginButton"),
-    accountPlansButton: $("accountPlansButton"),
-
-    accountName: $("accountName"),
-    accountPlan: $("accountPlan"),
-    accountStatusDot: $("accountStatusDot"),
-
-    chatSearchPanel: $("chatSearchPanel"),
-    chatSearchInput: $("chatSearchInput"),
-    chatSearchResults: $("chatSearchResults"),
-
-    commandCenter: $("commandCenter"),
-    commandInput: $("commandInput"),
-    commandList: $("commandList"),
-
-    settingsModal: $("settingsModal"),
-    enterSendToggle: $("enterSendToggle"),
-    draftSaveToggle: $("draftSaveToggle"),
-    autoSpeakToggle: $("autoSpeakToggle"),
-    freshInfoToggle: $("freshInfoToggle"),
-    saveSettingsButton: $("saveSettingsButton"),
-    resetSettingsButton: $("resetSettingsButton"),
-
-    voiceStatus: $("voiceStatus"),
-    voiceStatusTitle: $("voiceStatusTitle"),
-    voiceStatusText: $("voiceStatusText"),
-    voiceCancelButton: $("voiceCancelButton"),
-
-    uploadStatusBar: $("uploadStatusBar"),
-    uploadStatusTitle: $("uploadStatusTitle"),
-    uploadStatusText: $("uploadStatusText"),
-    uploadProgressBar: $("uploadProgressBar"),
-
-    dropOverlay: $("dropOverlay"),
-
-    adminPanel: $("adminPanel"),
-    adminUnlockModal: $("adminUnlockModal"),
-    adminUnlockForm: $("adminUnlockForm"),
-    adminUnlockInput: $("adminUnlockInput"),
-    adminUnlockMessage: $("adminUnlockMessage"),
-    adminSystemButton: $("adminSystemButton"),
-    adminUsersButton: $("adminUsersButton"),
-    adminMemoryButton: $("adminMemoryButton"),
-    adminLogsButton: $("adminLogsButton"),
-    adminOutput: $("adminOutput")
-  };
-
-  /* =========================================================
-     YARDIMCILAR
-     ========================================================= */
-
-  function text(value, fallback = "") {
-    if (value === null || value === undefined) {
-      return fallback;
-    }
-
-    return String(value);
-  }
-
-  function esc(value) {
-    return text(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
-
-  function bytes(value) {
-    const n = Number(value) || 0;
-
-    if (n < 1024) {
-      return `${n} B`;
-    }
-
-    if (n < 1024 * 1024) {
-      return `${(n / 1024).toFixed(1)} KB`;
-    }
-
-    if (n < 1024 * 1024 * 1024) {
-      return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-    }
-
-    return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-  }
-
-  function dateText(value) {
-    try {
-      return new Intl.DateTimeFormat("tr-TR", {
-        dateStyle: "medium",
-        timeStyle: "short"
-      }).format(new Date(value));
-    } catch {
-      return text(value);
-    }
-  }
-
-  async function request(url, options = {}, timeout) {
-    return T.apiRequest(
-      url,
-      options,
-      timeout || config.timeout
-    );
-  }
-
-  function safeArray(data, keys = []) {
-    if (Array.isArray(data)) {
-      return data;
-    }
-
-    for (const key of keys) {
-      if (Array.isArray(data?.[key])) {
-        return data[key];
-      }
-    }
-
-    return [];
-  }
-
-  function answerFrom(data) {
-    if (!data) return "";
-
-    if (typeof data === "string") {
-      return data.trim();
-    }
-
-    return (
-      data.answer ||
-      data.response ||
-      data.message ||
-      data.text ||
-      data.content ||
-      data.result?.answer ||
-      data.result?.response ||
-      data.result?.text ||
-      data.data?.answer ||
-      data.data?.response ||
-      data.data?.text ||
-      data.data?.content ||
-      ""
-    );
-  }
-
-  function resultUrl(data, type) {
-    if (!data) return "";
-
-    if (type === "image") {
-      return (
-        data.url ||
-        data.imageUrl ||
-        data.image_url ||
-        data.data?.url ||
-        data.data?.imageUrl ||
-        data.result?.url ||
-        ""
-      );
-    }
-
-    return (
-      data.url ||
-      data.videoUrl ||
-      data.video_url ||
-      data.data?.url ||
-      data.data?.videoUrl ||
-      data.result?.url ||
-      ""
-    );
-  }
-
-  function setLoadingButton(button, loading, label) {
-    if (!button) return;
-
-    button.disabled = loading;
-
-    if (loading) {
-      button.dataset.originalText =
-        button.textContent;
-      button.textContent =
-        label || "Bekleyin...";
-    } else if (
-      button.dataset.originalText
-    ) {
-      button.textContent =
-        button.dataset.originalText;
-      delete button.dataset.originalText;
-    }
-  }
-
-  /* =========================================================
-     ARAŞTIRMA
-     ========================================================= */
-
-  async function runResearch() {
-    const query =
-      E.researchInput?.value.trim();
-
-    if (!query) {
-      T.toast(
-        "Araştırmak için bir konu yaz.",
-        "warning"
-      );
-      return;
-    }
-
-    setLoadingButton(
-      E.researchRunButton,
-      true,
-      "Araştırılıyor..."
-    );
-
-    if (E.researchStatus) {
-      E.researchStatus.textContent =
-        "Araştırma motoru çalışıyor...";
-    }
-
-    if (E.researchResults) {
-      E.researchResults.innerHTML = `
-        <div class="empty-state">
-          <strong>Araştırma yapılıyor</strong>
-          <div>
-            ${esc(query)}
-          </div>
-        </div>
-      `;
-    }
-
-    try {
-      const data = await request(
-        config.endpoints.research,
-        {
-          method: "POST",
-          body: {
-            query,
-            question: query,
-            text: query,
-            language: "tr",
-            mode: "research"
-          }
-        }
-      );
-
-      renderResearch(data);
-
-      if (E.researchStatus) {
-        E.researchStatus.textContent =
-          "Araştırma tamamlandı.";
-      }
-
-      T.toast(
-        "Araştırma tamamlandı.",
-        "success"
-      );
-    } catch (error) {
-      if (E.researchStatus) {
-        E.researchStatus.textContent =
-          "Araştırma başarısız.";
-      }
-
-      if (E.researchResults) {
-        E.researchResults.innerHTML = `
-          <div class="empty-state">
-            <strong>Araştırma yapılamadı.</strong>
-            <div>
-              ${esc(
-                error?.message ||
-                "Bilinmeyen hata."
-              )}
-            </div>
-          </div>
-        `;
-      }
-
-      T.toast(
-        error?.message ||
-        "Araştırma yapılamadı.",
-        "error"
-      );
-    } finally {
-      setLoadingButton(
-        E.researchRunButton,
-        false
-      );
-    }
-  }
-
-  function renderResearch(data) {
-    if (!E.researchResults) return;
-
-    const answer =
-      answerFrom(data);
-
-    const sources = safeArray(
-      data,
-      [
-        "sources",
-        "results",
-        "items",
-        "data",
-        "result"
-      ]
-    );
-
-    let output = "";
-
-    if (answer) {
-      output += `
-        <article class="result-card">
-          <div class="result-card-title">
-            Sonuç
-          </div>
-          <div class="result-card-text">
-            ${T.renderRichText(answer)}
-          </div>
-        </article>
-      `;
-    }
-
-    if (sources.length) {
-      output += `
-        <div class="result-list">
-          ${sources
-            .slice(0, 30)
-            .map((source) => {
-              const title =
-                source?.title ||
-                source?.name ||
-                "Kaynak";
-
-              const snippet =
-                source?.snippet ||
-                source?.description ||
-                source?.summary ||
-                source?.content ||
-                "";
-
-              const url =
-                source?.url ||
-                source?.link ||
-                "";
-
-              return `
-                <article class="result-card">
-                  <div class="result-card-title">
-                    ${esc(title)}
-                  </div>
-
-                  ${
-                    snippet
-                      ? `
-                        <div class="result-card-text">
-                          ${esc(snippet)}
-                        </div>
-                      `
-                      : ""
-                  }
-
-                  ${
-                    url
-                      ? `
-                        <a
-                          class="result-link"
-                          href="${esc(url)}"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Kaynağı aç
-                        </a>
-                      `
-                      : ""
-                  }
-                </article>
-              `;
-            })
-            .join("")}
-        </div>
-      `;
-    }
-
-    if (!output) {
-      output = `
-        <div class="empty-state">
-          Araştırma sonucu bulunamadı.
-        </div>
-      `;
-    }
-
-    E.researchResults.innerHTML =
-      output;
-  }
-
-  async function loadResearchPanel() {
-    if (E.researchStatus) {
-      E.researchStatus.textContent =
-        "Hazır.";
-    }
+    dom.researchResults.innerHTML =
+      html;
   }
 
   /* =========================================================
@@ -3613,69 +2559,93 @@ Kurallar:
      ========================================================= */
 
   async function runWeather() {
-    const location =
-      E.weatherInput?.value.trim();
+    const city =
+      dom.weatherInput
+        ?.value.trim();
 
-    if (!location) {
-      T.toast(
-        "Şehir veya konum yaz.",
+    if (!city) {
+      toast(
+        "Şehir yaz.",
         "warning"
       );
       return;
     }
 
-    setLoadingButton(
-      E.weatherRunButton,
-      true,
-      "Alınıyor..."
-    );
+    dom.weatherRunButton &&
+      (dom.weatherRunButton.disabled =
+        true);
+
+    if (
+      dom.weatherResults
+    ) {
+      dom.weatherResults.innerHTML = `
+        <div class="empty-state">
+          Hava durumu alınıyor...
+        </div>
+      `;
+    }
 
     try {
-      const data = await request(
-        config.endpoints.weather,
-        {
-          method: "POST",
-          body: {
-            city: location,
-            location,
-            query: location,
-            language: "tr"
+      const data =
+        await api(
+          APP.api.weather,
+          {
+            method: "POST",
+            body: {
+              city,
+              location: city,
+              query: city,
+              language: "tr"
+            }
           }
-        }
-      );
+        );
 
-      state.weatherData = data;
+      state.weatherResult =
+        data;
 
       renderWeather(data);
+
+      toast(
+        "Hava durumu güncellendi.",
+        "success"
+      );
     } catch (error) {
-      if (E.weatherResults) {
-        E.weatherResults.innerHTML = `
+      if (
+        dom.weatherResults
+      ) {
+        dom.weatherResults.innerHTML = `
           <div class="empty-state">
             <strong>Hava durumu alınamadı.</strong>
             <div>
-              ${esc(
-                error?.message || ""
+              ${escapeHTML(
+                error?.message ||
+                  ""
               )}
             </div>
           </div>
         `;
       }
 
-      T.toast(
+      toast(
         error?.message ||
-        "Hava durumu alınamadı.",
+          "Hava durumu alınamadı.",
         "error"
       );
     } finally {
-      setLoadingButton(
-        E.weatherRunButton,
-        false
-      );
+      dom.weatherRunButton &&
+        (dom.weatherRunButton.disabled =
+          false);
     }
   }
 
-  function renderWeather(data) {
-    if (!E.weatherResults) return;
+  function renderWeather(
+    data
+  ) {
+    if (
+      !dom.weatherResults
+    ) {
+      return;
+    }
 
     const current =
       data?.current ||
@@ -3683,25 +2653,19 @@ Kurallar:
       data?.result?.current ||
       data;
 
-    const location =
-      data?.location?.name ||
-      data?.location ||
+    const city =
       data?.city ||
+      data?.location?.name ||
       current?.city ||
-      E.weatherInput?.value ||
+      dom.weatherInput
+        ?.value ||
       "Konum";
 
-    const temperature =
+    const temp =
       current?.temperature ??
       current?.temp ??
       data?.temperature ??
       data?.temp ??
-      "--";
-
-    const feelsLike =
-      current?.feelsLike ??
-      current?.feels_like ??
-      data?.feelsLike ??
       "--";
 
     const condition =
@@ -3723,39 +2687,38 @@ Kurallar:
       data?.wind ??
       "--";
 
-    E.weatherResults.innerHTML = `
+    dom.weatherResults.innerHTML = `
       <article class="result-card weather-card">
         <div class="result-card-title">
-          ${esc(location)}
+          ${escapeHTML(city)}
         </div>
 
         <div class="weather-main-value">
-          ${esc(temperature)}°
+          ${escapeHTML(temp)}°
         </div>
 
         <div class="result-card-text">
-          ${esc(condition)}
+          ${escapeHTML(
+            condition
+          )}
         </div>
 
         <div class="weather-details">
           <div>
-            <span>Hissedilen</span>
-            <strong>
-              ${esc(feelsLike)}°
-            </strong>
-          </div>
-
-          <div>
             <span>Nem</span>
             <strong>
-              ${esc(humidity)}%
+              ${escapeHTML(
+                humidity
+              )}%
             </strong>
           </div>
 
           <div>
             <span>Rüzgar</span>
             <strong>
-              ${esc(wind)}
+              ${escapeHTML(
+                wind
+              )}
             </strong>
           </div>
         </div>
@@ -3767,119 +2730,64 @@ Kurallar:
      HAFIZA
      ========================================================= */
 
-  async function searchMemory() {
-    const query =
-      E.memoryInput?.value.trim();
-
-    if (!query) {
-      await loadMemoryOverview();
-      return;
-    }
-
-    setLoadingButton(
-      E.memorySearchButton,
-      true,
-      "Aranıyor..."
-    );
-
-    try {
-      const data = await request(
-        config.endpoints.memorySearch,
-        {
-          method: "POST",
-          body: {
-            query,
-            q: query,
-            text: query
-          }
-        }
-      );
-
-      const list = safeArray(
-        data,
-        [
-          "results",
-          "items",
-          "data",
-          "memories"
-        ]
-      );
-
-      state.memoryResults = list;
-
-      renderMemoryResults(list);
-    } catch (error) {
-      if (E.memoryResults) {
-        E.memoryResults.innerHTML = `
-          <div class="empty-state">
-            ${esc(
-              error?.message ||
-              "Hafıza aranamadı."
-            )}
-          </div>
-        `;
-      }
-
-      T.toast(
-        error?.message ||
-        "Hafıza aranamadı.",
-        "error"
-      );
-    } finally {
-      setLoadingButton(
-        E.memorySearchButton,
-        false
-      );
-    }
-  }
-
   async function loadMemoryOverview() {
     try {
-      const data = await request(
-        config.endpoints.memorySearch,
-        {
-          method: "POST",
-          body: {
-            query: "*",
-            q: "*",
-            overview: true
+      const data =
+        await api(
+          APP.api.memorySearch,
+          {
+            method: "POST",
+            body: {
+              query: "*",
+              q: "*",
+              overview: true
+            }
           }
-        }
-      );
+        );
 
-      const list = safeArray(
-        data,
-        [
-          "results",
-          "items",
-          "data",
-          "memories"
-        ]
-      );
+      const list =
+        Array.isArray(data)
+          ? data
+          : data?.results ||
+            data?.items ||
+            data?.data ||
+            data?.memories ||
+            [];
 
-      state.memoryResults = list;
+      state.memoryResults =
+        Array.isArray(list)
+          ? list
+          : [];
 
-      const total =
-        data?.total ??
-        data?.count ??
-        data?.stats?.count ??
-        list.length;
+      if (
+        dom.memoryStats
+      ) {
+        const count =
+          data?.total ??
+          data?.count ??
+          data?.stats?.count ??
+          state.memoryResults.length;
 
-      if (E.memoryStats) {
-        E.memoryStats.innerHTML = `
+        dom.memoryStats.innerHTML = `
           <div class="memory-stat-card">
             <span>Toplam kayıt</span>
             <strong>
-              ${esc(total)}
+              ${escapeHTML(
+                count
+              )}
             </strong>
           </div>
         `;
       }
 
-      renderMemoryResults(list);
+      renderMemory(
+        state.memoryResults
+      );
     } catch {
-      if (E.memoryStats) {
-        E.memoryStats.innerHTML = `
+      if (
+        dom.memoryStats
+      ) {
+        dom.memoryStats.innerHTML = `
           <div class="empty-state">
             Hafıza özeti alınamadı.
           </div>
@@ -3888,22 +2796,93 @@ Kurallar:
     }
   }
 
-  function renderMemoryResults(list) {
-    if (!E.memoryResults) return;
+  async function searchMemory() {
+    const query =
+      dom.memoryInput
+        ?.value.trim();
 
-    if (
-      !Array.isArray(list) ||
-      list.length === 0
-    ) {
-      E.memoryResults.innerHTML = `
-        <div class="empty-state">
-          Hafızada sonuç bulunamadı.
-        </div>
-      `;
+    if (!query) {
+      loadMemoryOverview();
       return;
     }
 
-    E.memoryResults.innerHTML =
+    if (
+      dom.memorySearchButton
+    ) {
+      dom.memorySearchButton.disabled =
+        true;
+    }
+
+    try {
+      const data =
+        await api(
+          APP.api.memorySearch,
+          {
+            method: "POST",
+            body: {
+              query,
+              q: query,
+              text: query
+            }
+          }
+        );
+
+      const list =
+        Array.isArray(data)
+          ? data
+          : data?.results ||
+            data?.items ||
+            data?.data ||
+            data?.memories ||
+            [];
+
+      state.memoryResults =
+        Array.isArray(list)
+          ? list
+          : [];
+
+      renderMemory(
+        state.memoryResults
+      );
+    } catch (error) {
+      toast(
+        error?.message ||
+          "Hafıza aranamadı.",
+        "error"
+      );
+    } finally {
+      if (
+        dom.memorySearchButton
+      ) {
+        dom.memorySearchButton.disabled =
+          false;
+      }
+    }
+  }
+
+  function renderMemory(
+    list
+  ) {
+    if (
+      !dom.memoryResults
+    ) {
+      return;
+    }
+
+    if (
+      !Array.isArray(list) ||
+      !list.length
+    ) {
+      dom.memoryResults.innerHTML = `
+        <div class="empty-state">
+          Hafızada kayıt bulunamadı.
+        </div>
+      `;
+
+      return;
+    }
+
+    dom.memoryResults.innerHTML =
       list
         .slice(0, 100)
         .map((item) => {
@@ -3928,15 +2907,21 @@ Kurallar:
           return `
             <article class="result-card">
               <div class="result-card-title">
-                ${esc(title)}
+                ${escapeHTML(
+                  title
+                )}
               </div>
 
               <div class="result-card-text">
-                ${T.renderRichText(content)}
+                ${renderRichText(
+                  content
+                )}
               </div>
 
               <div class="result-card-meta">
-                ${esc(category)}
+                ${escapeHTML(
+                  category
+                )}
               </div>
             </article>
           `;
@@ -3944,38 +2929,41 @@ Kurallar:
         .join("");
   }
 
-  async function saveMemory(content, type = "chat") {
-    const value =
-      text(content).trim();
+  async function saveMemory(
+    value,
+    type = "chat"
+  ) {
+    const content =
+      text(value).trim();
 
-    if (!value) {
+    if (!content) {
       return false;
     }
 
     try {
-      await request(
-        config.endpoints.memorySave,
+      await api(
+        APP.api.memorySave,
         {
           method: "POST",
           body: {
-            content: value,
-            text: value,
-            answer: value,
+            content,
+            text: content,
+            answer: content,
             type
           }
         }
       );
 
-      T.toast(
+      toast(
         "Hafızaya kaydedildi.",
         "success"
       );
 
       return true;
     } catch (error) {
-      T.toast(
+      toast(
         error?.message ||
-        "Hafızaya kaydedilemedi.",
+          "Hafızaya kaydedilemedi.",
         "error"
       );
 
@@ -3983,56 +2971,68 @@ Kurallar:
     }
   }
 
-  async function saveCurrentConversation() {
+  async function saveConversationToMemory() {
     if (!state.messages.length) {
-      T.toast(
+      toast(
         "Kaydedilecek sohbet yok.",
         "warning"
       );
+
       return;
     }
 
-    const transcript =
+    const conversation =
       state.messages
-        .map((message) => {
-          const role =
-            message.role === "user"
+        .map((item) => {
+          const who =
+            item.role ===
+            "user"
               ? "Kullanıcı"
               : "TürkAI";
 
-          return `${role}: ${message.content}`;
+          return (
+            who +
+            ": " +
+            item.content
+          );
         })
         .join("\n\n");
 
     await saveMemory(
-      transcript,
+      conversation,
       "conversation"
     );
   }
 
   /* =========================================================
-     DOSYA MERKEZİ
+     DOSYALAR
      ========================================================= */
 
   function renderAttachments() {
-    if (!E.attachmentPreview) {
+    if (
+      !dom.attachmentPreview
+    ) {
       return;
     }
 
-    if (!state.attachments.length) {
-      E.attachmentPreview.innerHTML =
+    if (
+      !state.attachments.length
+    ) {
+      dom.attachmentPreview.innerHTML =
         "";
-      E.attachmentPreview.classList.add(
+
+      dom.attachmentPreview.classList.add(
         "hidden"
       );
+
       return;
     }
 
-    E.attachmentPreview.classList.remove(
+    dom.attachmentPreview.classList.remove(
       "hidden"
     );
 
-    E.attachmentPreview.innerHTML =
+    dom.attachmentPreview.innerHTML =
       state.attachments
         .map(
           (file, index) => `
@@ -4045,17 +3045,21 @@ Kurallar:
 
               <div class="attachment-chip-info">
                 <strong>
-                  ${esc(file.name)}
+                  ${escapeHTML(
+                    file.name
+                  )}
                 </strong>
 
                 <span>
-                  ${bytes(file.size)}
+                  ${formatBytes(
+                    file.size
+                  )}
                 </span>
               </div>
 
               <button
                 type="button"
-                data-remove-file="${index}"
+                data-remove-attachment="${index}"
                 title="Kaldır"
               >
                 <svg viewBox="0 0 24 24">
@@ -4066,128 +3070,107 @@ Kurallar:
           `
         )
         .join("");
-
-    E.attachmentPreview
-      .querySelectorAll(
-        "[data-remove-file]"
-      )
-      .forEach((button) => {
-        button.addEventListener(
-          "click",
-          () => {
-            const index =
-              Number(
-                button.dataset
-                  .removeFile
-              );
-
-            state.attachments.splice(
-              index,
-              1
-            );
-
-            renderAttachments();
-          }
-        );
-      });
   }
 
-  function showUploadProgress(
+  function showUpload(
     title,
     message,
     progress
   ) {
-    const bar = E.uploadStatusBar;
+    if (
+      !dom.uploadStatusBar
+    ) {
+      return;
+    }
 
-    if (!bar) return;
-
-    bar.classList.remove(
+    dom.uploadStatusBar.classList.remove(
       "hidden"
     );
 
-    if (E.uploadStatusTitle) {
-      E.uploadStatusTitle.textContent =
+    if (
+      dom.uploadStatusTitle
+    ) {
+      dom.uploadStatusTitle.textContent =
         title;
     }
 
-    if (E.uploadStatusText) {
-      E.uploadStatusText.textContent =
+    if (
+      dom.uploadStatusText
+    ) {
+      dom.uploadStatusText.textContent =
         message;
     }
 
-    if (E.uploadProgressBar) {
-      E.uploadProgressBar.style.width =
+    if (
+      dom.uploadProgressBar
+    ) {
+      dom.uploadProgressBar.style.width =
         `${Math.max(
           0,
-          Math.min(100, progress)
+          Math.min(
+            100,
+            progress
+          )
         )}%`;
     }
   }
 
-  function hideUploadProgress() {
-    E.uploadStatusBar?.classList.add(
+  function hideUpload() {
+    dom.uploadStatusBar?.classList.add(
       "hidden"
     );
   }
 
-  async function uploadFiles(fileList) {
+  async function uploadFiles(
+    fileList
+  ) {
     const files =
-      Array.from(fileList || []);
+      Array.from(
+        fileList || []
+      );
 
-    if (!files.length) return;
+    if (!files.length) {
+      return;
+    }
 
-    const maxSize =
-      1024 * 1024 * 1024;
+    const oneGB =
+      1024 *
+      1024 *
+      1024;
 
-    const validFiles = files.filter(
-      (file) =>
-        Number(file.size || 0) <=
-        maxSize
-    );
+    const valid =
+      files.filter(
+        (file) =>
+          Number(
+            file.size || 0
+          ) <= oneGB
+      );
 
-    if (!validFiles.length) {
-      T.toast(
-        "Seçilen dosyalar uygun değil.",
+    if (!valid.length) {
+      toast(
+        "Dosya boyutu uygun değil.",
         "error"
       );
       return;
     }
 
-    showUploadProgress(
-      "Dosyalar hazırlanıyor",
-      `${validFiles.length} dosya`,
-      10
-    );
-
-    /*
-      Önce local attachment:
-      backend upload başarısız olsa bile
-      kullanıcı seçtiği dosyayı kaybetmez.
-    */
-    const localItems =
-      validFiles.map((file) => ({
-        id:
-          `${Date.now()}_${Math.random()
-            .toString(36)
-            .slice(2, 8)}`,
-
+    valid.forEach((file) => {
+      state.attachments.push({
+        id: uid("file"),
         name: file.name,
         type: file.type,
         size: file.size,
         file,
         localOnly: true
-      }));
-
-    state.attachments.push(
-      ...localItems
-    );
+      });
+    });
 
     renderAttachments();
 
     const form =
       new FormData();
 
-    validFiles.forEach((file) => {
+    valid.forEach((file) => {
       form.append(
         "files",
         file,
@@ -4195,28 +3178,31 @@ Kurallar:
       );
     });
 
-    form.append(
-      "count",
-      String(validFiles.length)
-    );
-
-    if (state.conversationId) {
+    if (
+      state.conversationId
+    ) {
       form.append(
         "conversationId",
         state.conversationId
       );
     }
 
+    showUpload(
+      "Dosyalar hazırlanıyor",
+      `${valid.length} dosya seçildi`,
+      10
+    );
+
     try {
-      showUploadProgress(
+      showUpload(
         "Yükleniyor",
-        "TürkAI sunucusuna aktarılıyor...",
-        35
+        "Sunucuya aktarılıyor...",
+        45
       );
 
       const data =
-        await request(
-          config.endpoints.filesUpload,
+        await api(
+          APP.api.filesUpload,
           {
             method: "POST",
             body: form
@@ -4224,137 +3210,157 @@ Kurallar:
         );
 
       const uploaded =
-        safeArray(
-          data,
-          [
-            "files",
-            "results",
-            "items",
-            "data"
-          ]
-        );
+        Array.isArray(data)
+          ? data
+          : data?.files ||
+            data?.results ||
+            data?.items ||
+            data?.data ||
+            [];
 
-      uploaded.forEach(
-        (serverFile, index) => {
-          const original =
-            localItems[index];
+      if (
+        Array.isArray(
+          uploaded
+        )
+      ) {
+        uploaded.forEach(
+          (serverFile, index) => {
+            const local =
+              state.attachments[
+                state.attachments
+                  .length -
+                valid.length +
+                index
+              ];
 
-          if (!original) return;
-
-          const target =
-            state.attachments.find(
-              (file) =>
-                file.id ===
-                original.id
-            );
-
-          if (!target) return;
-
-          Object.assign(
-            target,
-            serverFile,
-            {
-              localOnly: false,
-              file: undefined
+            if (
+              local &&
+              serverFile
+            ) {
+              Object.assign(
+                local,
+                serverFile,
+                {
+                  localOnly:
+                    false
+                }
+              );
             }
-          );
-        }
-      );
+          }
+        );
+      }
 
-      showUploadProgress(
+      showUpload(
         "Tamamlandı",
         "Dosyalar hazır.",
         100
       );
 
-      T.toast(
-        `${validFiles.length} dosya eklendi.`,
+      toast(
+        `${valid.length} dosya hazır.`,
         "success"
       );
     } catch (error) {
       /*
-        Upload endpoint yoksa bile local attachment
-        korunuyor. Chat payload dosya bilgisini taşıyor.
+        Backend upload endpointi yoksa seçilen
+        dosyalar yine attachment olarak korunuyor.
       */
-      showUploadProgress(
+      showUpload(
         "Dosyalar eklendi",
         "Sohbete bağlandı.",
         100
       );
 
-      T.toast(
+      toast(
         "Dosyalar sohbete eklendi.",
         "warning"
       );
 
       console.warn(
-        "[TürkAI] upload warning:",
+        "[TürkAI] Upload:",
         error
       );
-    }
+    } finally {
+      if (
+        dom.globalFilePicker
+      ) {
+        dom.globalFilePicker.value =
+          "";
+      }
 
-    window.setTimeout(
-      hideUploadProgress,
-      800
-    );
-
-    if (E.globalFilePicker) {
-      E.globalFilePicker.value =
-        "";
+      window.setTimeout(
+        hideUpload,
+        700
+      );
     }
   }
 
   async function loadFiles() {
-    if (!E.fileList) return;
+    if (!dom.fileList) {
+      return;
+    }
 
     try {
       const data =
-        await request(
-          config.endpoints.files
+        await api(
+          APP.api.files
         );
 
-      state.files = safeArray(
-        data,
-        [
-          "files",
-          "results",
-          "items",
-          "data"
-        ]
-      );
+      state.files =
+        Array.isArray(data)
+          ? data
+          : data?.files ||
+            data?.results ||
+            data?.items ||
+            data?.data ||
+            [];
 
-      renderFiles(state.files);
+      if (
+        !Array.isArray(
+          state.files
+        )
+      ) {
+        state.files = [];
+      }
+
+      renderFiles();
     } catch {
-      renderFiles([]);
+      state.files = [];
+      renderFiles();
     }
   }
 
-  function renderFiles(list) {
-    if (!E.fileList) return;
-
-    const files =
-      Array.isArray(list)
-        ? list
-        : [];
-
-    if (E.fileCount) {
-      E.fileCount.textContent =
-        files.length.toLocaleString(
-          "tr-TR"
-        );
+  function renderFiles() {
+    if (
+      !dom.fileList
+    ) {
+      return;
     }
 
-    if (!files.length) {
-      E.fileList.innerHTML = `
+    if (
+      dom.fileCount
+    ) {
+      dom.fileCount.textContent =
+        state.files.length
+          .toLocaleString(
+            "tr-TR"
+          );
+    }
+
+    if (
+      !state.files.length
+    ) {
+      dom.fileList.innerHTML = `
         <div class="empty-state">
           Henüz dosya yok.
         </div>
       `;
+
       return;
     }
 
-    E.fileList.innerHTML =
-      files
+    dom.fileList.innerHTML =
+      state.files
         .map((file) => {
           const name =
             file?.name ||
@@ -4386,13 +3392,19 @@ Kurallar:
 
               <div class="file-card-main">
                 <strong>
-                  ${esc(name)}
+                  ${escapeHTML(
+                    name
+                  )}
                 </strong>
 
                 <span>
-                  ${esc(type)}
+                  ${escapeHTML(
+                    type
+                  )}
                   ·
-                  ${bytes(size)}
+                  ${formatBytes(
+                    size
+                  )}
                 </span>
               </div>
 
@@ -4401,7 +3413,9 @@ Kurallar:
                   ? `
                     <a
                       class="file-card-action"
-                      href="${esc(url)}"
+                      href="${escapeHTML(
+                        url
+                      )}"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -4418,305 +3432,6 @@ Kurallar:
         .join("");
   }
 
-  function setupDrop() {
-    const zone =
-      E.fileDropZone;
-
-    if (!zone) return;
-
-    zone.addEventListener(
-      "dragenter",
-      (event) => {
-        event.preventDefault();
-
-        E.dropOverlay?.classList.remove(
-          "hidden"
-        );
-      }
-    );
-
-    zone.addEventListener(
-      "dragover",
-      (event) => {
-        event.preventDefault();
-      }
-    );
-
-    zone.addEventListener(
-      "dragleave",
-      (event) => {
-        event.preventDefault();
-
-        if (
-          !zone.contains(
-            event.relatedTarget
-          )
-        ) {
-          E.dropOverlay?.classList.add(
-            "hidden"
-          );
-        }
-      }
-    );
-
-    zone.addEventListener(
-      "drop",
-      (event) => {
-        event.preventDefault();
-
-        E.dropOverlay?.classList.add(
-          "hidden"
-        );
-
-        uploadFiles(
-          event.dataTransfer?.files
-        );
-      }
-    );
-  }
-
-  /* =========================================================
-     MEDYA
-     ========================================================= */
-
-  function openImageModal() {
-    T.openModal(
-      "imageCreateModal"
-    );
-  }
-
-  function openVideoModal() {
-    T.openModal(
-      "videoModal"
-    );
-  }
-
-  async function generateImage() {
-    const prompt =
-      E.imagePromptInput?.value.trim();
-
-    if (!prompt) {
-      T.toast(
-        "Görsel açıklaması yaz.",
-        "warning"
-      );
-      return;
-    }
-
-    setLoadingButton(
-      E.generateImageButton,
-      true,
-      "Oluşturuluyor..."
-    );
-
-    if (E.imageResult) {
-      E.imageResult.innerHTML = `
-        <div class="empty-state">
-          Görsel hazırlanıyor...
-        </div>
-      `;
-    }
-
-    try {
-      const data =
-        await request(
-          config.endpoints.mediaImage,
-          {
-            method: "POST",
-            body: {
-              prompt,
-              size:
-                E.imageSizeSelect?.value ||
-                "1024x1024",
-              quality:
-                E.imageQualitySelect?.value ||
-                "standard"
-            }
-          },
-          90000
-        );
-
-      const url =
-        resultUrl(
-          data,
-          "image"
-        );
-
-      if (!url) {
-        throw new Error(
-          "Sunucu görsel sonucu döndürmedi."
-        );
-      }
-
-      if (E.imageResult) {
-        E.imageResult.innerHTML = `
-          <div class="generated-media-card">
-            <img
-              src="${esc(url)}"
-              alt="TürkAI görsel sonucu"
-              loading="lazy"
-            />
-
-            <div class="generated-media-actions">
-              <a
-                href="${esc(url)}"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="secondary-button"
-              >
-                <svg viewBox="0 0 24 24">
-                  <use href="#i-download"></use>
-                </svg>
-                Görseli aç
-              </a>
-            </div>
-          </div>
-        `;
-      }
-
-      T.toast(
-        "Görsel hazır.",
-        "success"
-      );
-    } catch (error) {
-      if (E.imageResult) {
-        E.imageResult.innerHTML = `
-          <div class="empty-state">
-            <strong>Görsel oluşturulamadı.</strong>
-            <div>
-              ${esc(
-                error?.message || ""
-              )}
-            </div>
-          </div>
-        `;
-      }
-
-      T.toast(
-        error?.message ||
-        "Görsel oluşturulamadı.",
-        "error"
-      );
-    } finally {
-      setLoadingButton(
-        E.generateImageButton,
-        false
-      );
-    }
-  }
-
-  async function generateVideo() {
-    const prompt =
-      E.videoPromptInput?.value.trim();
-
-    if (!prompt) {
-      T.toast(
-        "Video açıklaması yaz.",
-        "warning"
-      );
-      return;
-    }
-
-    setLoadingButton(
-      E.generateVideoButton,
-      true,
-      "Hazırlanıyor..."
-    );
-
-    if (E.videoResult) {
-      E.videoResult.innerHTML = `
-        <div class="empty-state">
-          Video hazırlanıyor...
-        </div>
-      `;
-    }
-
-    try {
-      const data =
-        await request(
-          config.endpoints.mediaVideo,
-          {
-            method: "POST",
-            body: {
-              prompt,
-              duration:
-                E.videoDurationSelect?.value ||
-                "5"
-            }
-          },
-          120000
-        );
-
-      const url =
-        resultUrl(
-          data,
-          "video"
-        );
-
-      if (!url) {
-        throw new Error(
-          "Sunucu video sonucu döndürmedi."
-        );
-      }
-
-      if (E.videoResult) {
-        E.videoResult.innerHTML = `
-          <div class="generated-media-card">
-            <video
-              src="${esc(url)}"
-              controls
-              playsinline
-              preload="metadata"
-            ></video>
-
-            <div class="generated-media-actions">
-              <a
-                href="${esc(url)}"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="secondary-button"
-              >
-                <svg viewBox="0 0 24 24">
-                  <use href="#i-download"></use>
-                </svg>
-                Videoyu aç
-              </a>
-            </div>
-          </div>
-        `;
-      }
-
-      T.toast(
-        "Video hazır.",
-        "success"
-      );
-    } catch (error) {
-      if (E.videoResult) {
-        E.videoResult.innerHTML = `
-          <div class="empty-state">
-            <strong>Video oluşturulamadı.</strong>
-            <div>
-              ${esc(
-                error?.message || ""
-              )}
-            </div>
-          </div>
-        `;
-      }
-
-      T.toast(
-        error?.message ||
-        "Video oluşturulamadı.",
-        "error"
-      );
-    } finally {
-      setLoadingButton(
-        E.generateVideoButton,
-        false
-      );
-    }
-  }
-
   /* =========================================================
      PLANLAR
      ========================================================= */
@@ -4727,11 +3442,11 @@ Kurallar:
       name: "Free",
       price: 0,
       description:
-        "TürkAI'nin temel özellikleri.",
+        "TürkAI'nin temel deneyimi.",
       features: [
         "Temel sohbet",
         "Hafıza",
-        "Araştırma araçları"
+        "Araştırma"
       ]
     },
 
@@ -4754,7 +3469,7 @@ Kurallar:
       name: "Plus",
       price: 500,
       description:
-        "Üretim ve medya araçları için genişletilmiş plan.",
+        "Gelişmiş üretim araçları.",
       features: [
         "Daha yüksek limit",
         "Görsel üretim",
@@ -4778,44 +3493,49 @@ Kurallar:
   ];
 
   async function loadPlans() {
-    let plans = [];
-
     try {
       const data =
-        await request(
-          config.endpoints.plans
+        await api(
+          APP.api.plans
         );
 
-      plans = safeArray(
-        data,
-        [
-          "plans",
-          "items",
-          "data"
-        ]
-      );
+      const remote =
+        Array.isArray(data)
+          ? data
+          : data?.plans ||
+            data?.items ||
+            data?.data ||
+            [];
+
+      state.plans =
+        Array.isArray(
+          remote
+        ) &&
+        remote.length
+          ? remote
+          : DEFAULT_PLANS;
     } catch {
-      plans = [];
+      state.plans =
+        DEFAULT_PLANS;
     }
 
-    state.plans =
-      plans.length
-        ? plans
-        : DEFAULT_PLANS;
-
-    renderPlans(
-      state.plans
-    );
+    renderPlans();
   }
 
-  function renderPlans(plans) {
-    if (!E.plansList) return;
+  function renderPlans() {
+    if (
+      !dom.plansList
+    ) {
+      return;
+    }
 
-    E.plansList.innerHTML =
-      plans
+    dom.plansList.innerHTML =
+      state.plans
         .map((plan) => {
           const price =
-            Number(plan.price) || 0;
+            Number(
+              plan.price
+            ) || 0;
 
           return `
             <article
@@ -4828,9 +3548,9 @@ Kurallar:
               <div class="plan-card-header">
                 <div>
                   <div class="plan-card-name">
-                    ${esc(
+                    ${escapeHTML(
                       plan.name ||
-                      plan.id
+                        plan.id
                     )}
                   </div>
 
@@ -4863,41 +3583,39 @@ Kurallar:
               </div>
 
               <div class="plan-card-description">
-                ${esc(
+                ${escapeHTML(
                   plan.description ||
-                  ""
+                    ""
                 )}
               </div>
 
               <div class="plan-card-features">
-                ${
-                  (
-                    plan.features ||
-                    []
-                  )
-                    .map(
-                      (feature) => `
-                        <div>
-                          <svg viewBox="0 0 24 24">
-                            <use href="#i-check"></use>
-                          </svg>
+                ${(
+                  plan.features ||
+                  []
+                )
+                  .map(
+                    (feature) => `
+                      <div>
+                        <svg viewBox="0 0 24 24">
+                          <use href="#i-check"></use>
+                        </svg>
 
-                          <span>
-                            ${esc(
-                              feature
-                            )}
-                          </span>
-                        </div>
-                      `
-                    )
-                    .join("")
-                }
+                        <span>
+                          ${escapeHTML(
+                            feature
+                          )}
+                        </span>
+                      </div>
+                    `
+                  )
+                  .join("")}
               </div>
 
               <button
                 type="button"
-                class="primary-button plan-action-button"
-                data-plan-id="${esc(
+                class="primary-button"
+                data-plan-id="${escapeHTML(
                   plan.id
                 )}"
                 ${
@@ -4919,30 +3637,6 @@ Kurallar:
           `;
         })
         .join("");
-
-    E.plansList
-      .querySelectorAll(
-        ".plan-action-button"
-      )
-      .forEach((button) => {
-        button.onclick = () => {
-          const id =
-            button.dataset.planId;
-
-          if (id === "free") {
-            T.toast(
-              "Free plan aktif.",
-              "info"
-            );
-            return;
-          }
-
-          T.toast(
-            `${id} planı seçildi.`,
-            "info"
-          );
-        };
-      });
   }
 
   /* =========================================================
@@ -4952,25 +3646,33 @@ Kurallar:
   async function loadNotifications() {
     try {
       const data =
-        await request(
-          config.endpoints.notifications
+        await api(
+          APP.api.notifications
         );
 
       state.notifications =
-        safeArray(
-          data,
-          [
-            "notifications",
-            "items",
-            "results",
-            "data"
-          ]
-        );
+        Array.isArray(data)
+          ? data
+          : data?.notifications ||
+            data?.items ||
+            data?.results ||
+            data?.data ||
+            [];
+
+      if (
+        !Array.isArray(
+          state.notifications
+        )
+      ) {
+        state.notifications =
+          [];
+      }
     } catch {
-      state.notifications = [];
+      state.notifications =
+        [];
     }
 
-    state.notificationUnread =
+    state.unreadNotifications =
       state.notifications.filter(
         (item) =>
           !item?.read &&
@@ -4981,28 +3683,50 @@ Kurallar:
   }
 
   function renderNotifications() {
-    if (!E.notificationList) {
-      updateNotificationBadge();
+    if (
+      dom.notificationBadge
+    ) {
+      dom.notificationBadge.textContent =
+        state.unreadNotifications >
+        99
+          ? "99+"
+          : String(
+              state.unreadNotifications
+            );
+
+      dom.notificationBadge.classList.toggle(
+        "hidden",
+        state.unreadNotifications ===
+          0
+      );
+    }
+
+    if (
+      !dom.notificationList
+    ) {
       return;
     }
 
-    if (!state.notifications.length) {
-      E.notificationList.innerHTML = `
+    if (
+      !state.notifications.length
+    ) {
+      dom.notificationList.innerHTML = `
         <div class="empty-state">
           Yeni bildirim yok.
         </div>
       `;
 
-      if (E.notificationSummary) {
-        E.notificationSummary.textContent =
+      if (
+        dom.notificationSummary
+      ) {
+        dom.notificationSummary.textContent =
           "0 okunmamış";
       }
 
-      updateNotificationBadge();
       return;
     }
 
-    E.notificationList.innerHTML =
+    dom.notificationList.innerHTML =
       state.notifications
         .slice(0, 50)
         .map((item) => {
@@ -5015,7 +3739,7 @@ Kurallar:
             item?.text ||
             "";
 
-          const created =
+          const date =
             item?.createdAt ||
             item?.created_at ||
             item?.date ||
@@ -5028,7 +3752,9 @@ Kurallar:
           return `
             <article
               class="notification-card ${
-                unread ? "unread" : ""
+                unread
+                  ? "unread"
+                  : ""
               }"
             >
               <div class="notification-card-icon">
@@ -5039,17 +3765,21 @@ Kurallar:
 
               <div class="notification-card-main">
                 <strong>
-                  ${esc(title)}
+                  ${escapeHTML(
+                    title
+                  )}
                 </strong>
 
                 <span>
-                  ${esc(message)}
+                  ${escapeHTML(
+                    message
+                  )}
                 </span>
 
                 <small>
-                  ${esc(
-                    dateText(
-                      created
+                  ${escapeHTML(
+                    formatDate(
+                      date
                     )
                   )}
                 </small>
@@ -5059,118 +3789,114 @@ Kurallar:
         })
         .join("");
 
-    if (E.notificationSummary) {
-      E.notificationSummary.textContent =
-        `${state.notificationUnread} okunmamış`;
-    }
-
-    updateNotificationBadge();
-  }
-
-  function updateNotificationBadge() {
-    const count =
-      Number(
-        state.notificationUnread
-      ) || 0;
-
-    if (E.notificationBadge) {
-      E.notificationBadge.textContent =
-        count > 99
-          ? "99+"
-          : String(count);
-
-      E.notificationBadge.classList.toggle(
-        "hidden",
-        count === 0
-      );
+    if (
+      dom.notificationSummary
+    ) {
+      dom.notificationSummary.textContent =
+        `${state.unreadNotifications} okunmamış`;
     }
   }
 
-  async function markNotificationsRead() {
+  function markNotificationsRead() {
     state.notifications =
       state.notifications.map(
-        (notification) => ({
-          ...notification,
+        (item) => ({
+          ...item,
           read: true,
           isRead: true
         })
       );
 
-    state.notificationUnread =
+    state.unreadNotifications =
       0;
 
     renderNotifications();
 
-    T.toast(
+    toast(
       "Bildirimler okundu.",
       "success"
     );
-
-    /*
-      Backend'in farklı endpoint isimlerine
-      sahip olabilmesi nedeniyle UI burada kesin
-      olarak güncelleniyor.
-    */
-    try {
-      await request(
-        "/api/notifications/read",
-        {
-          method: "POST",
-          body: {}
-        }
-      );
-    } catch {}
   }
 
   /* =========================================================
      SİSTEM
      ========================================================= */
 
-  async function loadSystemStatus() {
+  async function loadSystem() {
     try {
       const data =
-        await request(
-          config.endpoints.systemStatus
+        await api(
+          APP.api.system
         );
 
-      state.system = data;
+      state.systemResult =
+        data;
 
       renderSystem(data);
     } catch (error) {
-      renderSystemError(error);
+      if (
+        dom.systemOverallStatus
+      ) {
+        dom.systemOverallStatus.textContent =
+          "Ulaşılamıyor";
+      }
+
+      if (
+        dom.systemStats
+      ) {
+        dom.systemStats.innerHTML = `
+          <div class="empty-state">
+            Sistem bilgisi alınamadı.
+            <div>
+              ${escapeHTML(
+                error?.message ||
+                  ""
+              )}
+            </div>
+          </div>
+        `;
+      }
     }
   }
 
-  function renderSystem(data) {
-    if (!E.systemStats) return;
+  function renderSystem(
+    data
+  ) {
+    if (
+      !dom.systemStats
+    ) {
+      return;
+    }
 
     const status =
       data?.status ??
       (
-        data?.integration?.degraded ===
-        false
+        data?.integration
+          ?.degraded === false
           ? "ready"
           : "unknown"
       );
 
-    const normalized =
-      text(status)
-        .toLocaleLowerCase(
-          "tr-TR"
-        );
-
     const ready =
-      normalized === "ready" ||
-      normalized === "ok" ||
-      normalized === "healthy";
+      [
+        "ready",
+        "ok",
+        "healthy"
+      ].includes(
+        text(status)
+          .toLocaleLowerCase(
+            "tr-TR"
+          )
+      );
 
-    if (E.systemOverallStatus) {
-      E.systemOverallStatus.textContent =
+    if (
+      dom.systemOverallStatus
+    ) {
+      dom.systemOverallStatus.textContent =
         ready
           ? "Hazır"
           : text(
-              status,
-              "Bilinmiyor"
+              status
             );
     }
 
@@ -5182,12 +3908,7 @@ Kurallar:
       data?.modules ||
       {};
 
-    const moduleRows =
-      Object.entries(
-        modules
-      );
-
-    E.systemStats.innerHTML = `
+    dom.systemStats.innerHTML = `
       <div class="system-card">
         <div class="system-card-title">
           Sunucu
@@ -5196,16 +3917,18 @@ Kurallar:
         <div class="system-card-row">
           <span>Durum</span>
           <strong>
-            ${esc(status)}
+            ${escapeHTML(
+              status
+            )}
           </strong>
         </div>
 
         <div class="system-card-row">
           <span>Ad</span>
           <strong>
-            ${esc(
+            ${escapeHTML(
               server.name ||
-              "TürkAI Master Server"
+                "TürkAI Master Server"
             )}
           </strong>
         </div>
@@ -5213,10 +3936,10 @@ Kurallar:
         <div class="system-card-row">
           <span>Sürüm</span>
           <strong>
-            ${esc(
+            ${escapeHTML(
               server.version ||
-              data?.version ||
-              "unknown"
+                data?.version ||
+                APP.version
             )}
           </strong>
         </div>
@@ -5224,9 +3947,9 @@ Kurallar:
         <div class="system-card-row">
           <span>Port</span>
           <strong>
-            ${esc(
+            ${escapeHTML(
               server.port ||
-              "3000"
+                "3000"
             )}
           </strong>
         </div>
@@ -5238,19 +3961,25 @@ Kurallar:
         </div>
 
         ${
-          moduleRows.length
-            ? moduleRows
+          Object.keys(
+            modules
+          ).length
+            ? Object.entries(
+                modules
+              )
                 .map(
-                  ([name, value]) => `
+                  ([name, info]) => `
                     <div class="system-card-row">
                       <span>
-                        ${esc(name)}
+                        ${escapeHTML(
+                          name
+                        )}
                       </span>
 
                       <strong>
                         ${
-                          value?.available ===
-                            false
+                          info?.available ===
+                          false
                             ? "Pasif"
                             : "Aktif"
                         }
@@ -5261,46 +3990,21 @@ Kurallar:
                 .join("")
             : `
               <div class="empty-state">
-                Modül bilgisi bulunamadı.
+                Modül bilgisi yok.
               </div>
             `
         }
       </div>
     `;
-
-    if (E.systemOverallStatus) {
-      E.systemOverallStatus.classList.toggle(
-        "status-error",
-        !ready
-      );
-    }
-  }
-
-  function renderSystemError(error) {
-    if (E.systemOverallStatus) {
-      E.systemOverallStatus.textContent =
-        "Ulaşılamıyor";
-    }
-
-    if (E.systemStats) {
-      E.systemStats.innerHTML = `
-        <div class="empty-state">
-          <strong>Sistem bilgisi alınamadı.</strong>
-          <div>
-            ${esc(
-              error?.message || ""
-            )}
-          </div>
-        </div>
-      `;
-    }
   }
 
   /* =========================================================
      HESAP
      ========================================================= */
 
-  function normalizeAccount(data) {
+  function normalizeAccount(
+    data
+  ) {
     const raw =
       data?.account ||
       data?.user ||
@@ -5325,9 +4029,9 @@ Kurallar:
         "",
 
       verified:
-        !!(
+        Boolean(
           raw.verified ||
-          raw.emailVerified
+            raw.emailVerified
         ),
 
       plan:
@@ -5338,58 +4042,49 @@ Kurallar:
       usage:
         raw.usage ??
         raw.used ??
-        raw.monthlyUsage ??
         0,
 
       limit:
         raw.limit ??
         raw.maxUsage ??
-        raw.monthlyLimit ??
         50,
 
       status:
         raw.status ||
-        "active"
+        "guest"
     };
   }
 
   async function loadAccount() {
     try {
       const data =
-        await request(
-          config.endpoints.authMe
+        await api(
+          APP.api.authMe
         );
 
       state.account =
-        normalizeAccount(data);
-    } catch {
-      const guest =
-        localStorage.getItem(
-          "turkai_guest_v41"
+        normalizeAccount(
+          data
         );
 
-      if (guest) {
-        try {
-          state.account =
-            normalizeAccount(
-              JSON.parse(guest)
-            );
-        } catch {
-          state.account =
-            normalizeAccount({
+      storageSet(
+        APP.storage.account,
+        state.account
+      );
+    } catch {
+      state.account =
+        normalizeAccount(
+          storageGet(
+            APP.storage.account,
+            {
               name: "Misafir",
               plan: "Free",
-              status: "guest"
-            });
-        }
-      } else {
-        state.account =
-          normalizeAccount({
-            name: "Misafir",
-            plan: "Free",
-            status: "guest"
-          });
-      }
+              status: "guest",
+              usage: 0,
+              limit: 50
+            }
+          )
+        );
     }
 
     renderAccount();
@@ -5398,146 +4093,169 @@ Kurallar:
   function renderAccount() {
     const account =
       state.account ||
-      normalizeAccount({
-        name: "Misafir",
-        plan: "Free",
-        status: "guest"
-      });
+      normalizeAccount({});
 
-    if (E.accountName) {
-      E.accountName.textContent =
+    if (
+      dom.accountName
+    ) {
+      dom.accountName.textContent =
         account.name;
     }
 
-    if (E.accountPlan) {
-      E.accountPlan.textContent =
+    if (
+      dom.accountPlan
+    ) {
+      dom.accountPlan.textContent =
         account.plan;
     }
 
-    if (E.accountStatusDot) {
-      E.accountStatusDot.classList.toggle(
+    if (
+      dom.accountStatusDot
+    ) {
+      dom.accountStatusDot.classList.toggle(
         "online",
-        account.status === "active" ||
-        account.status === "guest"
+        account.status ===
+          "active" ||
+          account.status ===
+            "guest"
       );
     }
 
-    if (E.accountModalName) {
-      E.accountModalName.textContent =
+    if (
+      dom.accountModalName
+    ) {
+      dom.accountModalName.textContent =
         account.name;
     }
 
-    if (E.accountModalEmail) {
-      E.accountModalEmail.textContent =
+    if (
+      dom.accountModalEmail
+    ) {
+      dom.accountModalEmail.textContent =
         account.email ||
         "Misafir oturumu";
     }
 
-    if (E.accountModalVerified) {
-      E.accountModalVerified.textContent =
+    if (
+      dom.accountModalVerified
+    ) {
+      dom.accountModalVerified.textContent =
         account.verified
           ? "Doğrulanmış"
           : "Doğrulanmamış";
     }
 
-    if (E.accountModalPlan) {
-      E.accountModalPlan.textContent =
+    if (
+      dom.accountModalPlan
+    ) {
+      dom.accountModalPlan.textContent =
         account.plan;
     }
 
-    if (E.accountModalUsage) {
-      E.accountModalUsage.textContent =
-        `${account.usage || 0} / ${
-          account.limit ?? "∞"
-        }`;
+    if (
+      dom.accountModalUsage
+    ) {
+      dom.accountModalUsage.textContent =
+        `${account.usage} / ${account.limit}`;
     }
 
-    if (E.accountModalStatus) {
-      E.accountModalStatus.textContent =
+    if (
+      dom.accountModalStatus
+    ) {
+      dom.accountModalStatus.textContent =
         account.status;
     }
   }
 
-  async function loginUser() {
+  async function login() {
     const identifier =
-      E.authIdentifier?.value.trim();
+      dom.authIdentifier
+        ?.value.trim();
 
     const password =
-      E.authPassword?.value ||
-      "";
+      dom.authPassword
+        ?.value || "";
 
     if (!identifier || !password) {
-      if (E.authMessage) {
-        E.authMessage.textContent =
+      if (
+        dom.authMessage
+      ) {
+        dom.authMessage.textContent =
           "Giriş bilgilerini doldur.";
       }
 
       return;
     }
 
-    if (E.authMessage) {
-      E.authMessage.textContent =
+    if (
+      dom.authMessage
+    ) {
+      dom.authMessage.textContent =
         "Giriş yapılıyor...";
     }
 
     try {
       const data =
-        await request(
-          config.endpoints.authLogin,
+        await api(
+          APP.api.authLogin,
           {
             method: "POST",
             body: {
               identifier,
-              email: identifier,
-              username: identifier,
+              username:
+                identifier,
+              email:
+                identifier,
               password
             }
           }
         );
 
       state.account =
-        normalizeAccount(data);
+        normalizeAccount(
+          data
+        );
 
-      localStorage.setItem(
-        "turkai_guest_v41",
-        JSON.stringify(
-          state.account
-        )
+      storageSet(
+        APP.storage.account,
+        state.account
       );
 
       renderAccount();
 
-      T.closeModal(
+      closeModal(
         "authModal"
       );
 
-      T.openModal(
+      openModal(
         "accountModal"
       );
 
-      T.toast(
+      toast(
         "Giriş başarılı.",
         "success"
       );
     } catch (error) {
-      if (E.authMessage) {
-        E.authMessage.textContent =
+      if (
+        dom.authMessage
+      ) {
+        dom.authMessage.textContent =
           error?.message ||
           "Giriş başarısız.";
       }
 
-      T.toast(
+      toast(
         error?.message ||
-        "Giriş yapılamadı.",
+          "Giriş başarısız.",
         "error"
       );
     }
   }
 
-  async function logoutUser() {
+  async function logout() {
     try {
-      await request(
-        config.endpoints.authLogout,
+      await api(
+        APP.api.authLogout,
         {
           method: "POST",
           body: {}
@@ -5545,8 +4263,8 @@ Kurallar:
       );
     } catch {}
 
-    localStorage.removeItem(
-      "turkai_guest_v41"
+    storageRemove(
+      APP.storage.account
     );
 
     state.account =
@@ -5560,11 +4278,11 @@ Kurallar:
 
     renderAccount();
 
-    T.closeModal(
+    closeModal(
       "accountModal"
     );
 
-    T.toast(
+    toast(
       "Oturum kapatıldı.",
       "success"
     );
@@ -5580,292 +4298,183 @@ Kurallar:
         limit: 50
       });
 
-    localStorage.setItem(
-      "turkai_guest_v41",
-      JSON.stringify(
-        state.account
-      )
+    storageSet(
+      APP.storage.account,
+      state.account
     );
 
     renderAccount();
 
-    T.closeModal(
+    closeModal(
       "authModal"
     );
 
-    T.toast(
+    toast(
       "Misafir olarak devam ediliyor.",
       "success"
     );
   }
 
   /* =========================================================
-     SOHBET ARAMA
+     KOMUT MERKEZİ
      ========================================================= */
 
-  function searchChat(query) {
-    if (!E.chatSearchResults) {
-      return;
-    }
+  const COMMANDS = [
+    [
+      "Yeni sohbet",
+      "Yeni konuşma başlat",
+      "i-plus",
+      () => newChat()
+    ],
 
-    const q =
-      text(query)
-        .toLocaleLowerCase(
-          "tr-TR"
-        )
-        .trim();
-
-    if (!q) {
-      E.chatSearchResults.innerHTML = `
-        <div class="empty-state">
-          Sohbet içinde aramak için yaz.
-        </div>
-      `;
-
-      return;
-    }
-
-    const matches =
-      state.messages.filter(
-        (message) =>
-          text(message.content)
-            .toLocaleLowerCase(
-              "tr-TR"
-            )
-            .includes(q)
-      );
-
-    if (!matches.length) {
-      E.chatSearchResults.innerHTML = `
-        <div class="empty-state">
-          Sonuç bulunamadı.
-        </div>
-      `;
-
-      return;
-    }
-
-    E.chatSearchResults.innerHTML =
-      matches
-        .map(
-          (message) => `
-            <button
-              type="button"
-              class="result-card chat-search-result"
-              data-chat-message="${esc(
-                message.id
-              )}"
-            >
-              <div class="result-card-title">
-                ${
-                  message.role ===
-                  "user"
-                    ? "Sen"
-                    : "TürkAI"
-                }
-              </div>
-
-              <div class="result-card-text">
-                ${esc(
-                  text(
-                    message.content
-                  ).slice(
-                    0,
-                    400
-                  )
-                )}
-              </div>
-            </button>
-          `
-        )
-        .join("");
-
-    E.chatSearchResults
-      .querySelectorAll(
-        "[data-chat-message]"
-      )
-      .forEach((node) => {
-        node.onclick = () => {
-          const id =
-            node.dataset
-              .chatMessage;
-
-          T.closeModal(
-            "chatSearchPanel"
-          );
-
-          const target =
-            document.querySelector(
-              `[data-message-id="${CSS.escape(
-                id
-              )}"]`
-            );
-
-          target?.scrollIntoView({
-            behavior: "smooth",
-            block: "center"
-          });
-        };
-      });
-  }
-
-  /* =========================================================
-     COMMAND CENTER
-     ========================================================= */
-
-  const commands = [
-    {
-      title: "Yeni sohbet",
-      description:
-        "Yeni bir konuşma başlat",
-      icon: "i-plus",
-      run: () =>
-        T.createNewChat()
-    },
-
-    {
-      title: "Araştırma",
-      description:
-        "Web araştırma paneli",
-      icon: "i-search",
-      run: () =>
-        T.openPanel(
+    [
+      "Araştırma",
+      "Web araştırma paneli",
+      "i-search",
+      () =>
+        openPanel(
           "research"
         )
-    },
+    ],
 
-    {
-      title: "Hava durumu",
-      description:
-        "Hava durumu aracını aç",
-      icon: "i-cloud",
-      run: () =>
-        T.openPanel(
+    [
+      "Hava durumu",
+      "Hava durumu aracını aç",
+      "i-cloud",
+      () =>
+        openPanel(
           "weather"
         )
-    },
+    ],
 
-    {
-      title: "Hafıza",
-      description:
-        "TürkAI hafızasını aç",
-      icon: "i-memory",
-      run: () =>
-        T.openPanel(
+    [
+      "Hafıza",
+      "TürkAI hafızası",
+      "i-memory",
+      () =>
+        openPanel(
           "memory"
         )
-    },
+    ],
 
-    {
-      title: "Dosyalar",
-      description:
-        "Dosya merkezini aç",
-      icon: "i-folder",
-      run: () =>
-        T.openPanel(
+    [
+      "Dosyalar",
+      "Dosya merkezini aç",
+      "i-folder",
+      () =>
+        openPanel(
           "files"
         )
-    },
+    ],
 
-    {
-      title: "Medya",
-      description:
-        "Görsel ve video araçları",
-      icon: "i-image",
-      run: () =>
-        T.openPanel(
+    [
+      "Medya",
+      "Görsel ve video",
+      "i-image",
+      () =>
+        openPanel(
           "media"
         )
-    },
+    ],
 
-    {
-      title: "Planlar",
-      description:
-        "TürkAI planlarını aç",
-      icon: "i-crown",
-      run: () =>
-        T.openPanel(
+    [
+      "Planlar",
+      "TürkAI planları",
+      "i-crown",
+      () =>
+        openPanel(
           "plans"
         )
-    },
+    ],
 
-    {
-      title: "Bildirimler",
-      description:
-        "Bildirim panelini aç",
-      icon: "i-bell",
-      run: () =>
-        T.openPanel(
+    [
+      "Bildirimler",
+      "Bildirim merkezi",
+      "i-bell",
+      () =>
+        openPanel(
           "notifications"
         )
-    },
+    ],
 
-    {
-      title: "Sistem",
-      description:
-        "Sunucu durumunu görüntüle",
-      icon: "i-command",
-      run: () =>
-        T.openPanel(
+    [
+      "Sistem",
+      "Sunucu durumu",
+      "i-command",
+      () =>
+        openPanel(
           "system"
         )
-    },
+    ],
 
-    {
-      title: "Ayarlar",
-      description:
-        "TürkAI ayarlarını yönet",
-      icon: "i-settings",
-      run: () =>
-        T.openModal(
+    [
+      "Ayarlar",
+      "Uygulama ayarları",
+      "i-settings",
+      () =>
+        openModal(
           "settingsModal"
         )
-    },
+    ],
 
-    {
-      title: "Hesap",
-      description:
-        "Hesap bilgilerini aç",
-      icon: "i-user",
-      run: () =>
-        T.openModal(
+    [
+      "Hesap",
+      "Hesap bilgileri",
+      "i-user",
+      () =>
+        openModal(
           "accountModal"
         )
-    }
+    ]
   ];
 
-  function renderCommands(query = "") {
-    if (!E.commandList) {
+  let commandIndex = 0;
+
+  function renderCommands(
+    query = ""
+  ) {
+    if (
+      !dom.commandList
+    ) {
       return;
     }
 
-    const q =
+    const normalized =
       text(query)
         .toLocaleLowerCase(
           "tr-TR"
         )
         .trim();
 
-    const filtered =
-      commands.filter(
-        (command) =>
-          !q ||
-          `${command.title} ${command.description}`
+    const list =
+      COMMANDS.filter(
+        ([title, description]) =>
+          !normalized ||
+          `${title} ${description}`
             .toLocaleLowerCase(
               "tr-TR"
             )
-            .includes(q)
+            .includes(
+              normalized
+            )
       );
 
-    E.commandList.innerHTML =
-      filtered
+    dom.commandList.innerHTML =
+      list
         .map(
-          (command, index) => `
+          (
+            [
+              title,
+              description,
+              icon
+            ],
+            index
+          ) => `
             <button
               type="button"
               class="command-item ${
                 index ===
-                state.commandIndex
+                commandIndex
                   ? "active"
                   : ""
               }"
@@ -5873,20 +4482,20 @@ Kurallar:
             >
               <div class="command-item-icon">
                 <svg viewBox="0 0 24 24">
-                  <use href="#${command.icon}"></use>
+                  <use href="#${icon}"></use>
                 </svg>
               </div>
 
               <div class="command-item-content">
                 <strong>
-                  ${esc(
-                    command.title
+                  ${escapeHTML(
+                    title
                   )}
                 </strong>
 
                 <span>
-                  ${esc(
-                    command.description
+                  ${escapeHTML(
+                    description
                   )}
                 </span>
               </div>
@@ -5901,55 +4510,429 @@ Kurallar:
           `
         )
         .join("");
+  }
 
-    E.commandList
-      .querySelectorAll(
-        "[data-command-index]"
-      )
-      .forEach((node) => {
-        node.onclick = () => {
-          const index =
-            Number(
-              node.dataset
-                .commandIndex
-            );
+  function openCommandCenter() {
+    commandIndex = 0;
 
-          const command =
-            filtered[index];
+    openModal(
+      "commandCenter"
+    );
 
-          if (!command) return;
+    if (
+      dom.commandInput
+    ) {
+      dom.commandInput.value =
+        "";
+    }
 
-          T.closeModal(
-            "commandCenter"
-          );
+    renderCommands();
+  }
 
-          command.run();
-        };
-      });
+  /* =========================================================
+     ARAMA
+     ========================================================= */
+
+  function searchCurrentChat(
+    query
+  ) {
+    if (
+      !dom.chatSearchResults
+    ) {
+      return;
+    }
+
+    const q =
+      text(query)
+        .toLocaleLowerCase(
+          "tr-TR"
+        )
+        .trim();
+
+    if (!q) {
+      dom.chatSearchResults.innerHTML = `
+        <div class="empty-state">
+          Sohbette aramak için yaz.
+        </div>
+      `;
+
+      return;
+    }
+
+    const found =
+      state.messages.filter(
+        (message) =>
+          text(
+            message.content
+          )
+            .toLocaleLowerCase(
+              "tr-TR"
+            )
+            .includes(q)
+      );
+
+    if (!found.length) {
+      dom.chatSearchResults.innerHTML = `
+        <div class="empty-state">
+          Sonuç bulunamadı.
+        </div>
+      `;
+
+      return;
+    }
+
+    dom.chatSearchResults.innerHTML =
+      found
+        .map(
+          (message) => `
+            <button
+              type="button"
+              class="result-card"
+              data-search-message-id="${message.id}"
+            >
+              <div class="result-card-title">
+                ${
+                  message.role ===
+                  "user"
+                    ? "Sen"
+                    : "TürkAI"
+                }
+              </div>
+
+              <div class="result-card-text">
+                ${escapeHTML(
+                  message.content
+                    .slice(
+                      0,
+                      400
+                    )
+                )}
+              </div>
+            </button>
+          `
+        )
+        .join("");
+  }
+
+  /* =========================================================
+     MEDYA
+     ========================================================= */
+
+  async function generateImage() {
+    const prompt =
+      dom.imagePromptInput
+        ?.value.trim();
+
+    if (!prompt) {
+      toast(
+        "Görsel açıklaması yaz.",
+        "warning"
+      );
+      return;
+    }
+
+    dom.generateImageButton &&
+      (dom.generateImageButton.disabled =
+        true);
+
+    if (
+      dom.imageResult
+    ) {
+      dom.imageResult.innerHTML = `
+        <div class="empty-state">
+          Görsel hazırlanıyor...
+        </div>
+      `;
+    }
+
+    try {
+      const data =
+        await api(
+          APP.api.image,
+          {
+            method: "POST",
+            body: {
+              prompt,
+
+              size:
+                dom.imageSizeSelect
+                  ?.value ||
+                "1024x1024",
+
+              quality:
+                dom.imageQualitySelect
+                  ?.value ||
+                "standard"
+            }
+          },
+          90000
+        );
+
+      const url =
+        data?.url ||
+        data?.imageUrl ||
+        data?.image_url ||
+        data?.data?.url ||
+        data?.data?.imageUrl ||
+        data?.result?.url ||
+        "";
+
+      if (!url) {
+        throw new Error(
+          "Sunucu görsel URL'si döndürmedi."
+        );
+      }
+
+      if (
+        dom.imageResult
+      ) {
+        dom.imageResult.innerHTML = `
+          <div class="generated-media-card">
+            <img
+              src="${escapeHTML(
+                url
+              )}"
+              alt="TürkAI görsel sonucu"
+              loading="lazy"
+            />
+
+            <div class="generated-media-actions">
+              <a
+                href="${escapeHTML(
+                  url
+                )}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="secondary-button"
+              >
+                <svg viewBox="0 0 24 24">
+                  <use href="#i-download"></use>
+                </svg>
+                Görseli aç
+              </a>
+            </div>
+          </div>
+        `;
+      }
+
+      toast(
+        "Görsel hazır.",
+        "success"
+      );
+    } catch (error) {
+      if (
+        dom.imageResult
+      ) {
+        dom.imageResult.innerHTML = `
+          <div class="empty-state">
+            <strong>Görsel oluşturulamadı.</strong>
+            <div>
+              ${escapeHTML(
+                error?.message ||
+                  ""
+              )}
+            </div>
+          </div>
+        `;
+      }
+
+      toast(
+        error?.message ||
+          "Görsel oluşturulamadı.",
+        "error"
+      );
+    } finally {
+      dom.generateImageButton &&
+        (dom.generateImageButton.disabled =
+          false);
+    }
+  }
+
+  async function generateVideo() {
+    const prompt =
+      dom.videoPromptInput
+        ?.value.trim();
+
+    if (!prompt) {
+      toast(
+        "Video açıklaması yaz.",
+        "warning"
+      );
+      return;
+    }
+
+    dom.generateVideoButton &&
+      (dom.generateVideoButton.disabled =
+        true);
+
+    if (
+      dom.videoResult
+    ) {
+      dom.videoResult.innerHTML = `
+        <div class="empty-state">
+          Video hazırlanıyor...
+        </div>
+      `;
+    }
+
+    try {
+      const data =
+        await api(
+          APP.api.video,
+          {
+            method: "POST",
+            body: {
+              prompt,
+              duration:
+                dom.videoDurationSelect
+                  ?.value ||
+                "5"
+            }
+          },
+          120000
+        );
+
+      const url =
+        data?.url ||
+        data?.videoUrl ||
+        data?.video_url ||
+        data?.data?.url ||
+        data?.data?.videoUrl ||
+        data?.result?.url ||
+        "";
+
+      if (!url) {
+        throw new Error(
+          "Sunucu video URL'si döndürmedi."
+        );
+      }
+
+      if (
+        dom.videoResult
+      ) {
+        dom.videoResult.innerHTML = `
+          <div class="generated-media-card">
+            <video
+              src="${escapeHTML(
+                url
+              )}"
+              controls
+              playsinline
+            ></video>
+
+            <div class="generated-media-actions">
+              <a
+                href="${escapeHTML(
+                  url
+                )}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="secondary-button"
+              >
+                <svg viewBox="0 0 24 24">
+                  <use href="#i-download"></use>
+                </svg>
+                Videoyu aç
+              </a>
+            </div>
+          </div>
+        `;
+      }
+
+      toast(
+        "Video hazır.",
+        "success"
+      );
+    } catch (error) {
+      if (
+        dom.videoResult
+      ) {
+        dom.videoResult.innerHTML = `
+          <div class="empty-state">
+            <strong>Video oluşturulamadı.</strong>
+            <div>
+              ${escapeHTML(
+                error?.message ||
+                  ""
+              )}
+            </div>
+          </div>
+        `;
+      }
+
+      toast(
+        error?.message ||
+          "Video oluşturulamadı.",
+        "error"
+      );
+    } finally {
+      dom.generateVideoButton &&
+        (dom.generateVideoButton.disabled =
+          false);
+    }
   }
 
   /* =========================================================
      AYARLAR
      ========================================================= */
 
-  function syncSettings() {
-    if (E.enterSendToggle) {
-      E.enterSendToggle.checked =
+  function loadSettings() {
+    const saved =
+      storageGet(
+        APP.storage.settings,
+        {}
+      );
+
+    state.settings = {
+      enterToSend: true,
+      draftSave: true,
+      autoSpeak: false,
+      freshInfo: true,
+      ...(saved || {})
+    };
+
+    state.model =
+      storageGet(
+        APP.storage.model,
+        "auto"
+      );
+
+    if (
+      dom.modelSelect
+    ) {
+      dom.modelSelect.value =
+        state.model;
+    }
+
+    syncSettingsUI();
+  }
+
+  function syncSettingsUI() {
+    if (
+      dom.enterSendToggle
+    ) {
+      dom.enterSendToggle.checked =
         !!state.settings.enterToSend;
     }
 
-    if (E.draftSaveToggle) {
-      E.draftSaveToggle.checked =
+    if (
+      dom.draftSaveToggle
+    ) {
+      dom.draftSaveToggle.checked =
         !!state.settings.draftSave;
     }
 
-    if (E.autoSpeakToggle) {
-      E.autoSpeakToggle.checked =
+    if (
+      dom.autoSpeakToggle
+    ) {
+      dom.autoSpeakToggle.checked =
         !!state.settings.autoSpeak;
     }
 
-    if (E.freshInfoToggle) {
-      E.freshInfoToggle.checked =
+    if (
+      dom.freshInfoToggle
+    ) {
+      dom.freshInfoToggle.checked =
         !!state.settings.freshInfo;
     }
   }
@@ -5957,32 +4940,32 @@ Kurallar:
   function saveSettings() {
     state.settings = {
       enterToSend:
-        !!E.enterSendToggle?.checked,
+        !!dom.enterSendToggle
+          ?.checked,
 
       draftSave:
-        !!E.draftSaveToggle?.checked,
+        !!dom.draftSaveToggle
+          ?.checked,
 
       autoSpeak:
-        !!E.autoSpeakToggle?.checked,
+        !!dom.autoSpeakToggle
+          ?.checked,
 
       freshInfo:
-        !!E.freshInfoToggle?.checked
+        !!dom.freshInfoToggle
+          ?.checked
     };
 
-    localStorage.setItem(
-      config.storage.settings,
-      JSON.stringify(
-        state.settings
-      )
+    storageSet(
+      APP.storage.settings,
+      state.settings
     );
 
-    syncSettings();
-
-    T.closeModal(
+    closeModal(
       "settingsModal"
     );
 
-    T.toast(
+    toast(
       "Ayarlar kaydedildi.",
       "success"
     );
@@ -5990,170 +4973,603 @@ Kurallar:
 
   function resetSettings() {
     state.settings = {
-      ...config.defaults.settings
+      enterToSend: true,
+      draftSave: true,
+      autoSpeak: false,
+      freshInfo: true
     };
 
-    syncSettings();
+    syncSettingsUI();
 
-    localStorage.setItem(
-      config.storage.settings,
-      JSON.stringify(
-        state.settings
-      )
+    storageSet(
+      APP.storage.settings,
+      state.settings
     );
 
-    T.toast(
+    toast(
       "Ayarlar sıfırlandı.",
       "success"
     );
   }
 
   /* =========================================================
-     ADMIN
+     CONNECTION
      ========================================================= */
 
-  async function unlockAdmin() {
-    const code =
-      E.adminUnlockInput?.value.trim();
+  function updateConnection() {
+    state.connected =
+      navigator.onLine;
 
-    if (!code) {
-      if (E.adminUnlockMessage) {
-        E.adminUnlockMessage.textContent =
-          "Kod gerekli.";
-      }
-
-      return;
+    if (
+      dom.connectionText
+    ) {
+      dom.connectionText.textContent =
+        state.connected
+          ? "Bağlı"
+          : "Çevrimdışı";
     }
 
-    try {
-      const data =
-        await request(
-          config.endpoints.adminUnlock,
-          {
-            method: "POST",
-            body: { code }
-          }
-        );
-
-      if (
-        !(
-          data?.ok ||
-          data?.success ||
-          data?.unlocked
-        )
-      ) {
-        throw new Error(
-          data?.message ||
-          "Yetki alınamadı."
-        );
-      }
-
-      state.adminUnlocked =
-        true;
-
-      T.closeModal(
-        "adminUnlockModal"
-      );
-
-      E.adminPanel?.classList.remove(
-        "hidden"
-      );
-
-      T.toast(
-        "Admin modu aktif.",
-        "success"
-      );
-    } catch (error) {
-      if (E.adminUnlockMessage) {
-        E.adminUnlockMessage.textContent =
-          error?.message ||
-          "Doğrulama başarısız.";
-      }
-
-      T.toast(
-        "Admin doğrulaması başarısız.",
-        "error"
-      );
-    }
-  }
-
-  async function adminRequest(
-    url,
-    options = {}
-  ) {
-    if (!state.adminUnlocked) {
-      T.toast(
-        "Önce admin doğrulaması gerekli.",
-        "warning"
-      );
-      return;
-    }
-
-    try {
-      const data =
-        await request(
-          url,
-          options
-        );
-
-      if (E.adminOutput) {
-        E.adminOutput.textContent =
-          JSON.stringify(
-            data,
-            null,
-            2
-          );
-      }
-
-      return data;
-    } catch (error) {
-      if (E.adminOutput) {
-        E.adminOutput.textContent =
-          error?.message ||
-          "İşlem başarısız.";
-      }
-    }
+    dom.connectionDot?.classList.toggle(
+      "offline",
+      !state.connected
+    );
   }
 
   /* =========================================================
-     EVENTLER
+     EVENT SYSTEM
      ========================================================= */
 
-  function bindPart2Events() {
-    E.researchRunButton?.addEventListener(
+  function bindEvents() {
+    /*
+      Merkezi click sistemi.
+      Bir butonun kendi listener'ı hata verse bile
+      diğer butonların çalışmasını engellemez.
+    */
+    document.addEventListener(
+      "click",
+      (event) => {
+        const target =
+          event.target.closest(
+            "button, a, [data-panel], [data-mobile-panel], [data-action]"
+          );
+
+        if (!target) return;
+
+        const panel =
+          target.dataset.panel ||
+          target.dataset.mobilePanel;
+
+        if (panel) {
+          event.preventDefault();
+
+          openPanel(
+            panel
+          );
+
+          return;
+        }
+
+        const action =
+          target.dataset.action;
+
+        if (
+          action ===
+          "new-chat"
+        ) {
+          event.preventDefault();
+          newChat();
+          return;
+        }
+
+        if (
+          action ===
+          "settings"
+        ) {
+          event.preventDefault();
+
+          openModal(
+            "settingsModal"
+          );
+
+          return;
+        }
+
+        if (
+          action ===
+          "account"
+        ) {
+          event.preventDefault();
+
+          openModal(
+            "accountModal"
+          );
+
+          return;
+        }
+
+        if (
+          action ===
+          "close-modal"
+        ) {
+          event.preventDefault();
+
+          const id =
+            target.dataset.modal;
+
+          if (id) {
+            closeModal(id);
+          }
+
+          return;
+        }
+
+        const messageAction =
+          target.dataset
+            .messageAction;
+
+        if (
+          messageAction
+        ) {
+          event.preventDefault();
+
+          handleMessageAction(
+            messageAction,
+            target.dataset
+              .messageId
+          );
+
+          return;
+        }
+
+        const removeAttachment =
+          target.dataset
+            .removeAttachment;
+
+        if (
+          removeAttachment !==
+          undefined
+        ) {
+          event.preventDefault();
+
+          state.attachments.splice(
+            Number(
+              removeAttachment
+            ),
+            1
+          );
+
+          renderAttachments();
+
+          return;
+        }
+
+        const command =
+          target.dataset
+            .commandIndex;
+
+        if (
+          command !==
+          undefined
+        ) {
+          event.preventDefault();
+
+          const query =
+            dom.commandInput
+              ?.value || "";
+
+          const filtered =
+            COMMANDS.filter(
+              ([
+                title,
+                description
+              ]) =>
+                !query ||
+                `${title} ${description}`
+                  .toLocaleLowerCase(
+                    "tr-TR"
+                  )
+                  .includes(
+                    query
+                      .toLocaleLowerCase(
+                        "tr-TR"
+                      )
+                  )
+            );
+
+          const selected =
+            filtered[
+              Number(command)
+            ];
+
+          if (selected) {
+            closeModal(
+              "commandCenter"
+            );
+
+            selected[3]();
+          }
+
+          return;
+        }
+
+        const searchMessageId =
+          target.dataset
+            .searchMessageId;
+
+        if (
+          searchMessageId
+        ) {
+          const message =
+            state.messages.find(
+              (item) =>
+                item.id ===
+                searchMessageId
+            );
+
+          closeModal(
+            "chatSearchPanel"
+          );
+
+          if (message) {
+            document
+              .querySelector(
+                `[data-message-id="${CSS.escape(
+                  message.id
+                )}"]`
+              )
+              ?.scrollIntoView({
+                behavior:
+                  "smooth",
+                block:
+                  "center"
+              });
+          }
+
+          return;
+        }
+
+        const planId =
+          target.dataset
+            .planId;
+
+        if (planId) {
+          event.preventDefault();
+
+          if (
+            planId ===
+            "free"
+          ) {
+            toast(
+              "Free plan aktif.",
+              "info"
+            );
+          } else {
+            toast(
+              `${planId} planı seçildi.`,
+              "info"
+            );
+          }
+
+          return;
+        }
+
+        if (
+          target.classList.contains(
+            "code-copy-button"
+          )
+        ) {
+          const raw =
+            target.dataset.code ||
+            "";
+
+          let code =
+            raw;
+
+          try {
+            code =
+              decodeURIComponent(
+                raw
+              );
+          } catch {}
+
+          navigator.clipboard
+            ?.writeText(code)
+            .then(() => {
+              toast(
+                "Kod kopyalandı.",
+                "success"
+              );
+            })
+            .catch(() => {
+              toast(
+                "Kod kopyalanamadı.",
+                "error"
+              );
+            });
+
+          return;
+        }
+      }
+    );
+
+    dom.sendButton?.addEventListener(
+      "click",
+      () => {
+        if (state.sending) {
+          stopGeneration();
+        } else {
+          sendMessage();
+        }
+      }
+    );
+
+    dom.stopButton?.addEventListener(
+      "click",
+      stopGeneration
+    );
+
+    dom.voiceButton?.addEventListener(
+      "click",
+      startVoice
+    );
+
+    dom.voiceCancelButton?.addEventListener(
+      "click",
+      stopVoice
+    );
+
+    dom.sidebarToggle?.addEventListener(
+      "click",
+      toggleSidebar
+    );
+
+    dom.mobileSidebarClose?.addEventListener(
+      "click",
+      closeSidebarMobile
+    );
+
+    dom.newChatButton?.addEventListener(
+      "click",
+      newChat
+    );
+
+    dom.quickResearchButton?.addEventListener(
+      "click",
+      () =>
+        openPanel(
+          "research"
+        )
+    );
+
+    dom.quickMemoryButton?.addEventListener(
+      "click",
+      () =>
+        openPanel(
+          "memory"
+        )
+    );
+
+    dom.quickFilesButton?.addEventListener(
+      "click",
+      () =>
+        openPanel(
+          "files"
+        )
+    );
+
+    dom.settingsButton?.addEventListener(
+      "click",
+      () =>
+        openModal(
+          "settingsModal"
+        )
+    );
+
+    dom.topSettingsButton?.addEventListener(
+      "click",
+      () =>
+        openModal(
+          "settingsModal"
+        )
+    );
+
+    dom.accountButton?.addEventListener(
+      "click",
+      () =>
+        openModal(
+          "accountModal"
+        )
+    );
+
+    dom.topAccountButton?.addEventListener(
+      "click",
+      () =>
+        openModal(
+          "accountModal"
+        )
+    );
+
+    dom.searchButton?.addEventListener(
+      "click",
+      () =>
+        openModal(
+          "chatSearchPanel"
+        )
+    );
+
+    dom.notificationButton?.addEventListener(
+      "click",
+      () =>
+        openPanel(
+          "notifications"
+        )
+    );
+
+    dom.researchToolButton?.addEventListener(
+      "click",
+      () =>
+        openPanel(
+          "research"
+        )
+    );
+
+    dom.weatherToolButton?.addEventListener(
+      "click",
+      () =>
+        openPanel(
+          "weather"
+        )
+    );
+
+    dom.memoryToolButton?.addEventListener(
+      "click",
+      () =>
+        openPanel(
+          "memory"
+        )
+    );
+
+    dom.imageToolButton?.addEventListener(
+      "click",
+      () =>
+        openModal(
+          "imageCreateModal"
+        )
+    );
+
+    dom.videoToolButton?.addEventListener(
+      "click",
+      () =>
+        openModal(
+          "videoModal"
+        )
+    );
+
+    dom.openImageModalButton?.addEventListener(
+      "click",
+      () =>
+        openModal(
+          "imageCreateModal"
+        )
+    );
+
+    dom.openVideoModalButton?.addEventListener(
+      "click",
+      () =>
+        openModal(
+          "videoModal"
+        )
+    );
+
+    dom.attachmentButton?.addEventListener(
+      "click",
+      () =>
+        dom.globalFilePicker?.click()
+    );
+
+    dom.fileSelectButton?.addEventListener(
+      "click",
+      () =>
+        dom.globalFilePicker?.click()
+    );
+
+    dom.globalFilePicker?.addEventListener(
+      "change",
+      (event) => {
+        uploadFiles(
+          event.target.files
+        );
+      }
+    );
+
+    dom.messageInput?.addEventListener(
+      "input",
+      () => {
+        resizeComposer();
+        updateComposerInfo();
+        saveDraft();
+      }
+    );
+
+    dom.messageInput?.addEventListener(
+      "keydown",
+      (event) => {
+        if (
+          event.key !==
+          "Enter"
+        ) {
+          return;
+        }
+
+        if (
+          event.shiftKey
+        ) {
+          return;
+        }
+
+        if (
+          event.isComposing
+        ) {
+          return;
+        }
+
+        if (
+          !state.settings
+            .enterToSend
+        ) {
+          return;
+        }
+
+        event.preventDefault();
+
+        if (state.sending) {
+          stopGeneration();
+        } else {
+          sendMessage();
+        }
+      }
+    );
+
+    dom.researchRunButton?.addEventListener(
       "click",
       runResearch
     );
 
-    E.researchClearButton?.addEventListener(
+    dom.researchClearButton?.addEventListener(
       "click",
       () => {
-        if (E.researchInput) {
-          E.researchInput.value =
+        if (
+          dom.researchInput
+        ) {
+          dom.researchInput.value =
             "";
         }
 
-        if (E.researchStatus) {
-          E.researchStatus.textContent =
-            "Hazır.";
-        }
-
-        if (E.researchResults) {
-          E.researchResults.innerHTML = `
+        if (
+          dom.researchResults
+        ) {
+          dom.researchResults.innerHTML = `
             <div class="empty-state">
               Araştırma sonucu burada görünecek.
             </div>
           `;
         }
+
+        if (
+          dom.researchStatus
+        ) {
+          dom.researchStatus.textContent =
+            "Hazır.";
+        }
       }
     );
 
-    E.researchInput?.addEventListener(
+    dom.researchInput?.addEventListener(
       "keydown",
       (event) => {
         if (
-          event.key === "Enter" &&
-          !event.shiftKey
+          event.key ===
+          "Enter"
         ) {
           event.preventDefault();
           runResearch();
@@ -6161,16 +5577,17 @@ Kurallar:
       }
     );
 
-    E.weatherRunButton?.addEventListener(
+    dom.weatherRunButton?.addEventListener(
       "click",
       runWeather
     );
 
-    E.weatherInput?.addEventListener(
+    dom.weatherInput?.addEventListener(
       "keydown",
       (event) => {
         if (
-          event.key === "Enter"
+          event.key ===
+          "Enter"
         ) {
           event.preventDefault();
           runWeather();
@@ -6178,26 +5595,27 @@ Kurallar:
       }
     );
 
-    E.memorySearchButton?.addEventListener(
+    dom.memorySearchButton?.addEventListener(
       "click",
       searchMemory
     );
 
-    E.memoryOverviewButton?.addEventListener(
+    dom.memoryOverviewButton?.addEventListener(
       "click",
       loadMemoryOverview
     );
 
-    E.memorySaveCurrentButton?.addEventListener(
+    dom.memorySaveCurrentButton?.addEventListener(
       "click",
-      saveCurrentConversation
+      saveConversationToMemory
     );
 
-    E.memoryInput?.addEventListener(
+    dom.memoryInput?.addEventListener(
       "keydown",
       (event) => {
         if (
-          event.key === "Enter"
+          event.key ===
+          "Enter"
         ) {
           event.preventDefault();
           searchMemory();
@@ -6205,128 +5623,109 @@ Kurallar:
       }
     );
 
-    E.fileSelectButton?.addEventListener(
-      "click",
-      () =>
-        E.globalFilePicker?.click()
-    );
-
-    E.globalFilePicker?.addEventListener(
-      "change",
-      (event) =>
-        uploadFiles(
-          event.target.files
-        )
-    );
-
-    E.refreshFilesButton?.addEventListener(
+    dom.refreshFilesButton?.addEventListener(
       "click",
       loadFiles
     );
 
-    E.openImageModalButton?.addEventListener(
-      "click",
-      openImageModal
-    );
-
-    E.openVideoModalButton?.addEventListener(
-      "click",
-      openVideoModal
-    );
-
-    E.generateImageButton?.addEventListener(
+    dom.generateImageButton?.addEventListener(
       "click",
       generateImage
     );
 
-    E.generateVideoButton?.addEventListener(
+    dom.generateVideoButton?.addEventListener(
       "click",
       generateVideo
     );
 
-    E.markNotificationsReadButton?.addEventListener(
+    dom.refreshSystemButton?.addEventListener(
+      "click",
+      loadSystem
+    );
+
+    dom.markNotificationsReadButton?.addEventListener(
       "click",
       markNotificationsRead
     );
 
-    E.refreshSystemButton?.addEventListener(
+    dom.saveSettingsButton?.addEventListener(
       "click",
-      loadSystemStatus
+      saveSettings
     );
 
-    E.authForm?.addEventListener(
-      "submit",
-      (event) => {
-        event.preventDefault();
-        loginUser();
-      }
+    dom.resetSettingsButton?.addEventListener(
+      "click",
+      resetSettings
     );
 
-    E.loginButton?.addEventListener(
+    dom.loginButton?.addEventListener(
       "click",
       () => {
-        T.closeModal(
+        closeModal(
           "accountModal"
         );
 
-        T.openModal(
+        openModal(
           "authModal"
         );
       }
     );
 
-    E.logoutButton?.addEventListener(
+    dom.logoutButton?.addEventListener(
       "click",
-      logoutUser
+      logout
     );
 
-    E.guestLoginButton?.addEventListener(
+    dom.guestLoginButton?.addEventListener(
       "click",
       guestLogin
     );
 
-    E.accountPlansButton?.addEventListener(
+    dom.authForm?.addEventListener(
+      "submit",
+      (event) => {
+        event.preventDefault();
+        login();
+      }
+    );
+
+    dom.accountPlansButton?.addEventListener(
       "click",
       () => {
-        T.closeModal(
+        closeModal(
           "accountModal"
         );
 
-        T.openPanel(
+        openPanel(
           "plans"
         );
       }
     );
 
-    E.chatSearchInput?.addEventListener(
-      "input",
-      () =>
-        searchChat(
-          E.chatSearchInput.value
-        )
-    );
-
-    E.commandInput?.addEventListener(
+    dom.commandInput?.addEventListener(
       "input",
       () => {
-        state.commandIndex =
-          0;
+        commandIndex = 0;
 
         renderCommands(
-          E.commandInput.value
+          dom.commandInput.value
         );
       }
     );
 
-    E.commandInput?.addEventListener(
+    dom.commandInput?.addEventListener(
       "keydown",
       (event) => {
-        const items =
-          E.commandList?.querySelectorAll(
-            ".command-item"
-          ) || [];
+        const count =
+          dom.commandList
+            ?.querySelectorAll(
+              ".command-item"
+            )
+            .length || 0;
 
-        if (!items.length) return;
+        if (!count) {
+          return;
+        }
 
         if (
           event.key ===
@@ -6334,15 +5733,15 @@ Kurallar:
         ) {
           event.preventDefault();
 
-          state.commandIndex =
+          commandIndex =
             Math.min(
-              state.commandIndex +
-                1,
-              items.length - 1
+              commandIndex + 1,
+              count - 1
             );
 
           renderCommands(
-            E.commandInput.value
+            dom.commandInput
+              .value
           );
         }
 
@@ -6352,15 +5751,15 @@ Kurallar:
         ) {
           event.preventDefault();
 
-          state.commandIndex =
+          commandIndex =
             Math.max(
-              state.commandIndex -
-                1,
+              commandIndex - 1,
               0
             );
 
           renderCommands(
-            E.commandInput.value
+            dom.commandInput
+              .value
           );
         }
 
@@ -6370,210 +5769,386 @@ Kurallar:
         ) {
           event.preventDefault();
 
-          items[
-            state.commandIndex
-          ]?.click();
+          dom.commandList
+            ?.querySelector(
+              `[data-command-index="${commandIndex}"]`
+            )
+            ?.click();
         }
       }
     );
 
-    E.saveSettingsButton?.addEventListener(
-      "click",
-      saveSettings
+    dom.chatSearchInput?.addEventListener(
+      "input",
+      () =>
+        searchCurrentChat(
+          dom.chatSearchInput.value
+        )
     );
 
-    E.resetSettingsButton?.addEventListener(
-      "click",
-      resetSettings
-    );
+    dom.modelSelect?.addEventListener(
+      "change",
+      () => {
+        state.model =
+          dom.modelSelect.value ||
+          "auto";
 
-    E.adminUnlockForm?.addEventListener(
-      "submit",
-      (event) => {
-        event.preventDefault();
-        unlockAdmin();
+        storageSet(
+          APP.storage.model,
+          state.model
+        );
       }
-    );
-
-    E.adminSystemButton?.addEventListener(
-      "click",
-      () =>
-        adminRequest(
-          config.endpoints.systemStatus
-        )
-    );
-
-    E.adminUsersButton?.addEventListener(
-      "click",
-      () =>
-        adminRequest(
-          "/api/admin/users"
-        )
-    );
-
-    E.adminMemoryButton?.addEventListener(
-      "click",
-      () =>
-        adminRequest(
-          config.endpoints.memorySearch,
-          {
-            method: "POST",
-            body: {
-              query: "*",
-              overview: true
-            }
-          }
-        )
-    );
-
-    E.adminLogsButton?.addEventListener(
-      "click",
-      () =>
-        adminRequest(
-          "/api/admin/logs"
-        )
     );
 
     window.addEventListener(
       "online",
       () => {
-        state.connected = true;
+        updateConnection();
+
+        toast(
+          "İnternet bağlantısı geri geldi.",
+          "success"
+        );
       }
     );
 
     window.addEventListener(
       "offline",
       () => {
-        state.connected = false;
+        updateConnection();
 
-        T.toast(
+        toast(
           "İnternet bağlantısı kesildi.",
           "warning"
         );
       }
     );
-  }
 
-  /* =========================================================
-     PERİYODİK DURUM
-     ========================================================= */
-
-  function startRefresh() {
-    window.setInterval(
-      async () => {
+    document.addEventListener(
+      "keydown",
+      (event) => {
         if (
-          document.hidden ||
-          !navigator.onLine
+          event.key ===
+          "Escape"
         ) {
+          if (state.recording) {
+            stopVoice();
+          } else {
+            closeAllModals();
+          }
+
           return;
         }
 
-        await Promise.allSettled([
-          loadAccount(),
-          loadNotifications(),
-          loadSystemStatus()
-        ]);
-      },
-      60000
+        const modifier =
+          event.ctrlKey ||
+          event.metaKey;
+
+        if (!modifier) {
+          return;
+        }
+
+        const key =
+          event.key.toLowerCase();
+
+        if (
+          key === "k"
+        ) {
+          event.preventDefault();
+          openCommandCenter();
+        }
+
+        if (
+          key === "f"
+        ) {
+          event.preventDefault();
+
+          openModal(
+            "chatSearchPanel"
+          );
+        }
+
+        if (
+          key === "n"
+        ) {
+          event.preventDefault();
+
+          newChat();
+        }
+
+        if (
+          key === "b"
+        ) {
+          event.preventDefault();
+
+          toggleSidebar();
+        }
+      }
+    );
+
+    document.addEventListener(
+      "click",
+      (event) => {
+        const close =
+          event.target.closest(
+            "[data-close-modal]"
+          );
+
+        if (!close) {
+          return;
+        }
+
+        const id =
+          close.dataset
+            .closeModal;
+
+        if (id) {
+          closeModal(id);
+        }
+      }
+    );
+
+    /*
+      Drag & drop
+    */
+    if (
+      dom.fileDropZone
+    ) {
+      dom.fileDropZone.addEventListener(
+        "dragover",
+        (event) => {
+          event.preventDefault();
+
+          dom.dropOverlay?.classList.remove(
+            "hidden"
+          );
+        }
+      );
+
+      dom.fileDropZone.addEventListener(
+        "dragleave",
+        () => {
+          dom.dropOverlay?.classList.add(
+            "hidden"
+          );
+        }
+      );
+
+      dom.fileDropZone.addEventListener(
+        "drop",
+        (event) => {
+          event.preventDefault();
+
+          dom.dropOverlay?.classList.add(
+            "hidden"
+          );
+
+          uploadFiles(
+            event.dataTransfer
+              ?.files
+          );
+        }
+      );
+    }
+
+    window.addEventListener(
+      "beforeunload",
+      () => {
+        saveDraft();
+        saveChats();
+      }
     );
   }
 
   /* =========================================================
-     BAŞLAT
+     MESAJ ACTION
      ========================================================= */
 
-  async function start() {
-    bindPart2Events();
-    setupDrop();
+  async function handleMessageAction(
+    action,
+    messageId
+  ) {
+    const message =
+      state.messages.find(
+        (item) =>
+          item.id ===
+          messageId
+      );
 
-    syncSettings();
+    if (!message) return;
+
+    if (
+      action === "copy"
+    ) {
+      try {
+        await navigator.clipboard.writeText(
+          message.content
+        );
+
+        toast(
+          "Mesaj kopyalandı.",
+          "success"
+        );
+      } catch {
+        toast(
+          "Mesaj kopyalanamadı.",
+          "error"
+        );
+      }
+    }
+
+    if (
+      action === "speak"
+    ) {
+      speakText(
+        message.content
+      );
+    }
+
+    if (
+      action === "memory"
+    ) {
+      await saveMemory(
+        message.content,
+        "chat"
+      );
+    }
+  }
+
+  /* =========================================================
+     INIT
+     ========================================================= */
+
+  async function init() {
+    cacheDOM();
 
     /*
-      İlk veriler yükleniyor.
-      Bir endpoint hata verse bile diğerleri çalışmaya devam eder.
+      Ayarlar önce yükleniyor.
+    */
+    loadSettings();
+
+    /*
+      Event'ler hemen bağlanıyor.
+      Ağ istekleri sonra başlıyor.
+    */
+    bindEvents();
+
+    loadDraft();
+
+    resizeComposer();
+    updateComposerInfo();
+    updateConnection();
+
+    renderMessages();
+    renderAttachments();
+
+    openPanel("chat");
+
+    /*
+      Sayfa açılışındaki endpointlerden biri
+      hata verse diğerleri çalışmaya devam eder.
     */
     await Promise.allSettled([
       loadAccount(),
       loadPlans(),
       loadFiles(),
       loadNotifications(),
-      loadSystemStatus(),
-      loadMemoryOverview(),
-      loadResearchPanel()
+      loadSystem()
     ]);
 
-    T.renderMessages();
-
-    renderAttachments();
-
-    startRefresh();
-
-    /*
-      Part 1'in açık panel sistemi için bütün
-      fonksiyonları burada global bridge olarak
-      sunuyoruz.
-    */
-    window.TURKAI = {
-      ...window.TURKAI,
-
-      loadResearchPanel,
-      runResearch,
-
-      runWeather,
-
-      searchMemory,
-      loadMemoryOverview,
-      saveMemory,
-      saveCurrentConversation,
-
-      loadFiles,
-      renderFiles,
-      uploadFiles,
-
-      loadPlans,
-      renderPlans,
-
-      loadNotifications,
-      markNotificationsRead,
-
-      loadSystemStatus,
-      renderSystem,
-
-      loadAccount,
-      renderAccount,
-
-      openImageModal,
-      openVideoModal,
-      generateImage,
-      generateVideo,
-
-      searchChat,
-      renderCommands,
-
-      loginUser,
-      logoutUser,
-      guestLogin,
-
-      startVoiceInput: T.startVoiceInput,
-      stopVoiceInput: T.stopVoiceInput
-    };
+    state.ready =
+      true;
 
     console.log(
-      "%cTürkAI Frontend 41.0 PART 2 hazır.",
+      "%cTürkAI Frontend 42.0 hazır.",
       "font-weight:700"
+    );
+
+    console.log(
+      "Send:",
+      !!dom.sendButton
+    );
+
+    console.log(
+      "Input:",
+      !!dom.messageInput
+    );
+
+    console.log(
+      "Chat:",
+      !!dom.chatView
     );
   }
 
+  /* =========================================================
+     GLOBAL API
+     ========================================================= */
+
+  window.TURKAI = {
+    version:
+      APP.version,
+
+    state,
+
+    config:
+      APP,
+
+    api,
+
+    sendMessage,
+    stopGeneration,
+
+    newChat,
+
+    openPanel,
+    openModal,
+    closeModal,
+    closeAllModals,
+
+    runResearch,
+    runWeather,
+
+    searchMemory,
+    saveMemory,
+
+    loadFiles,
+    uploadFiles,
+
+    loadPlans,
+
+    loadNotifications,
+
+    loadSystem,
+
+    loadAccount,
+
+    speakText,
+    stopSpeaking,
+
+    startVoice,
+    stopVoice,
+
+    generateImage,
+    generateVideo,
+
+    renderMessages
+  };
+
+  /*
+    Tek bootstrap.
+  */
   if (
     document.readyState ===
     "loading"
   ) {
     document.addEventListener(
       "DOMContentLoaded",
-      start,
-      { once: true }
+      init,
+      {
+        once: true
+      }
     );
   } else {
-    start();
+    init();
   }
 })();
