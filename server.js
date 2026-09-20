@@ -100008,34 +100008,35 @@ if (typeof app?.use === "function") {
         turkai19SafeErrorObject(
           error19
         );
+const errorRecord19 = {
+  timestamp: nowISO(),
 
-      const errorRecord19 = {
-        timestamp: nowISO(),
-        requestId:
-          req19?.requestId ||
-          req19?.id ||
-          null,
+  requestId:
+    req19?.turkaiRequestId ||
+    req19?.requestId ||
+    req19?.id ||
+    null,
 
-        method:
-          req19?.method || null,
+  method:
+    req19?.method || null,
 
-        path:
-          req19?.originalUrl ||
-          req19?.url ||
-          null,
+  path:
+    req19?.originalUrl ||
+    req19?.url ||
+    null,
 
-        ip:
-          req19?.ip ||
-          req19?.socket?.remoteAddress ||
-          null,
+  ip:
+    req19?.ip ||
+    req19?.socket?.remoteAddress ||
+    null,
 
-        headers:
-          turkai19SafeHeaderObject(
-            req19?.headers
-          ),
+  headers:
+    turkai19SafeHeaderObject(
+      req19?.headers
+    ),
 
-        error: normalized19
-      };
+  error: normalized19
+};
 
       try {
         const integrationErrorLog19 =
@@ -100091,14 +100092,15 @@ if (typeof app?.use === "function") {
             process.env.NODE_ENV === "production"
               ? "İstek işlenirken bir sunucu hatası oluştu."
               : normalized19.message,
+ requestId:
+  req19?.turkaiRequestId ||
+  req19?.requestId ||
+  req19?.id ||
+  null,
 
-          requestId:
-            req19?.requestId ||
-            req19?.id ||
-            null,
+timestamp: nowISO()
 
-          timestamp: nowISO()
-        });
+                 });
     }
   );
 }
@@ -101918,6 +101920,160 @@ try {
   DİKKAT:
   BÜTÜN PROJECTTEKİ TEK httpServer.listen() ÇAĞRISI BUDUR.
 */
+/* ============================================================
+   FINAL DIAGNOSTIC COMPATIBILITY LAYER
+   ============================================================ */
+
+app.get(
+  "/api/account",
+  (req, res) => {
+    try {
+      const userId =
+        req.query.userId ||
+        req.query.user ||
+        "anonymous";
+
+      if (
+        typeof plan7GetAccountSnapshot ===
+        "function"
+      ) {
+        const account =
+          plan7GetAccountSnapshot(
+            userId
+          );
+
+        return res.json({
+          success: true,
+          ...account
+        });
+      }
+
+      return res.json({
+        success: true,
+        userId,
+        plan: {
+          id: "free",
+          name: "Free",
+          displayName: "Free"
+        }
+      });
+    } catch (error) {
+      console.error(
+        "[ACCOUNT COMPAT ERROR]",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: "ACCOUNT_ENDPOINT_FAILED",
+        message:
+          process.env.NODE_ENV ===
+          "production"
+            ? "Account endpoint failed"
+            : error.message
+      });
+    }
+  }
+);
+
+
+app.get(
+  "/api/plans",
+  (req, res) => {
+    try {
+      const userId =
+        req.query.userId ||
+        req.query.user ||
+        "anonymous";
+
+      const plans =
+        typeof plan7GetAllPlans ===
+        "function"
+          ? plan7GetAllPlans({
+              includeInternal:
+                false
+            })
+          : [];
+
+      let account = null;
+
+      if (
+        typeof plan7GetAccountSnapshot ===
+        "function"
+      ) {
+        account =
+          plan7GetAccountSnapshot(
+            userId
+          );
+      }
+
+      return res.json({
+        success: true,
+        plans,
+        account
+      });
+    } catch (error) {
+      console.error(
+        "[PLANS COMPAT ERROR]",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: "PLANS_ENDPOINT_FAILED",
+        message:
+          process.env.NODE_ENV ===
+          "production"
+            ? "Plans endpoint failed"
+            : error.message
+      });
+    }
+  }
+);
+
+
+/* ============================================================
+   REQUEST ID COMPATIBILITY FIX
+   ============================================================ */
+
+app.use(
+  (req, res, next) => {
+    if (
+      !req.requestId &&
+      req.turkaiRequestId
+    ) {
+      req.requestId =
+        req.turkaiRequestId;
+    }
+
+    next();
+  }
+);
+
+
+/* ============================================================
+   FINAL ERROR LOGGING
+   ============================================================ */
+
+process.on(
+  "uncaughtException",
+  (error) => {
+    console.error(
+      "\n[TÜRKAI FATAL ERROR]",
+      error
+    );
+  }
+);
+
+process.on(
+  "unhandledRejection",
+  (reason) => {
+    console.error(
+      "\n[TÜRKAI UNHANDLED REJECTION]",
+      reason
+    );
+  }
+);
 turkai20StartServer();
 
 
