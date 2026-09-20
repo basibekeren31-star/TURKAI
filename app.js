@@ -1,37 +1,21 @@
-"use strict";
-
-/* =========================================================
-   TÜRKAI 40.0
-   PREMIUM FRONTEND ENGINE
-   PART 1 / 2
-   ========================================================= */
-
 (() => {
+  "use strict";
 
-  /* =======================================================
-     ÇİFT YÜKLENME KORUMASI
-     ======================================================= */
+  if (window.__TURKAI_APP_REBUILT__) return;
+  window.__TURKAI_APP_REBUILT__ = true;
 
-  if (window.__TURKAI_40_FRONTEND__) {
-    console.warn("[TürkAI] app.js zaten yüklendi.");
-    return;
-  }
+  /* =========================================================
+     TÜRKAI FRONTEND — REBUILT
+     Tek kapsam / tüm fonksiyonlar birbirine doğrudan erişir
+     ========================================================= */
 
-  window.__TURKAI_40_FRONTEND__ = true;
+  const CONFIG = {
+    version: "41.0.0",
+    timeout: 45000,
 
-
-  /* =======================================================
-     CONFIG
-     ======================================================= */
-
-  const CONFIG = Object.freeze({
-
-    version: "40.0.0",
-
-    api: {
+    endpoints: {
+      chatSmart: "/api/chat/smart",
       chat: "/api/chat",
-      smartChat: "/api/chat/smart",
-
       health: "/api/health",
       systemStatus: "/api/system/status",
 
@@ -50,12 +34,12 @@
       memorySave: "/api/memory/save",
 
       files: "/api/files",
-      fileUpload: "/api/files/upload",
+      filesUpload: "/api/files/upload",
 
       notifications: "/api/notifications",
 
-      image: "/api/media/image",
-      video: "/api/media/video",
+      mediaImage: "/api/media/image",
+      mediaVideo: "/api/media/video",
 
       voiceTTS: "/api/voice/tts",
       voiceSTT: "/api/voice/stt",
@@ -64,472 +48,1205 @@
     },
 
     storage: {
-      draft: "turkai40_draft",
-      settings: "turkai40_settings",
-      guest: "turkai40_guest",
-      chats: "turkai40_chats",
-      model: "turkai40_model"
+      draft: "turkai_draft_v41",
+      settings: "turkai_settings_v41",
+      chats: "turkai_chats_v41",
+      guest: "turkai_guest_v41",
+      model: "turkai_model_v41"
     },
 
-    request: {
-      timeout: 60000
-    },
-
-    chat: {
-      maxMessages: 100,
-      maxContextMessages: 20,
-      maxInputLength: 20000
+    defaults: {
+      model: "auto",
+      settings: {
+        enterToSend: true,
+        draftSave: true,
+        autoSpeak: false,
+        freshInfo: true
+      }
     }
-
-  });
-
-
-  /* =======================================================
-     STATE
-     ======================================================= */
+  };
 
   const state = {
-
     initialized: false,
-
-    connected: false,
-
+    connected: navigator.onLine,
     sending: false,
-
-    recording: false,
-
-    speaking: false,
-
-    researching: false,
-
     loading: false,
 
-    sidebarOpen: true,
-
-    panelOpen: false,
-
+    sidebarOpen: false,
     activePanel: "chat",
-
     activeModal: null,
 
     conversationId: null,
-
     messages: [],
 
     attachments: [],
-
-    searchResults: [],
-
-    notifications: [],
-
     files: [],
-
+    notifications: [],
     plans: [],
 
     account: null,
-
     system: null,
-
     memoryResults: [],
+    researchResults: [],
+    weatherData: null,
 
-    adminUnlocked: false,
+    recording: false,
+    speaking: false,
 
     recognition: null,
+    synthUtterance: null,
 
     abortController: null,
 
     settings: {
-      enterSend: true,
-      draftSave: true,
-      autoSpeak: false,
-      freshInfo: true
+      ...CONFIG.defaults.settings
     },
 
     selectedModel: "auto",
 
-    commandIndex: 0
+    commandItems: [],
+    commandIndex: 0,
 
+    notificationUnread: 0
   };
 
+  const $ = (id) => document.getElementById(id);
 
-  /* =======================================================
-     DOM CACHE
-     ======================================================= */
+  const el = {
+    sidebar: $("sidebar"),
+    mobileSidebarClose: $("mobileSidebarClose"),
 
-  const el = {};
+    newChatButton: $("newChatButton"),
+    mainNavigation: $("mainNavigation"),
 
-  function cacheDOM() {
+    quickResearchButton: $("quickResearchButton"),
+    quickMemoryButton: $("quickMemoryButton"),
+    quickFilesButton: $("quickFilesButton"),
+    settingsButton: $("settingsButton"),
+    systemButton: $("systemButton"),
+    accountButton: $("accountButton"),
 
-    const ids = [
+    accountName: $("accountName"),
+    accountPlan: $("accountPlan"),
+    accountStatusDot: $("accountStatusDot"),
 
-      "appShell",
-      "sidebar",
-      "mainWorkspace",
-      "topbar",
-      "workspace",
+    sidebarToggle: $("sidebarToggle"),
+    connectionDot: $("connectionDot"),
+    connectionText: $("connectionText"),
+    workspaceTitle: $("workspaceTitle"),
+    searchButton: $("searchButton"),
+    notificationButton: $("notificationButton"),
+    notificationBadge: $("notificationBadge"),
+    topSettingsButton: $("topSettingsButton"),
+    topAccountButton: $("topAccountButton"),
 
-      "sidebarToggle",
-      "mobileSidebarClose",
+    chatView: $("chatView"),
+    welcomeState: $("welcomeState"),
+    welcomeTitle: $("welcomeTitle"),
+    messages: $("messages"),
+    typingIndicator: $("typingIndicator"),
 
-      "newChatButton",
+    composerArea: $("composerArea"),
+    composerBox: $("composerBox"),
+    messageInput: $("messageInput"),
+    sendButton: $("sendButton"),
+    stopButton: $("stopButton"),
+    voiceButton: $("voiceButton"),
+    attachmentButton: $("attachmentButton"),
+    researchToolButton: $("researchToolButton"),
+    weatherToolButton: $("weatherToolButton"),
+    memoryToolButton: $("memoryToolButton"),
+    imageToolButton: $("imageToolButton"),
+    videoToolButton: $("videoToolButton"),
 
-      "connectionDot",
-      "connectionText",
+    attachmentPreview: $("attachmentPreview"),
+    modelSelect: $("modelSelect"),
+    composerTokenInfo: $("composerTokenInfo"),
 
-      "workspaceTitle",
+    workspacePanel: $("workspacePanel"),
 
-      "searchButton",
-      "notificationButton",
-      "notificationBadge",
-      "sidebarNotificationBadge",
+    researchPanel: $("researchPanel"),
+    researchInput: $("researchInput"),
+    researchRunButton: $("researchRunButton"),
+    researchClearButton: $("researchClearButton"),
+    researchStatus: $("researchStatus"),
+    researchResults: $("researchResults"),
 
-      "topSettingsButton",
-      "topAccountButton",
+    weatherPanel: $("weatherPanel"),
+    weatherInput: $("weatherInput"),
+    weatherRunButton: $("weatherRunButton"),
+    weatherResults: $("weatherResults"),
 
-      "accountButton",
+    memoryPanel: $("memoryPanel"),
+    memoryInput: $("memoryInput"),
+    memorySearchButton: $("memorySearchButton"),
+    memorySaveCurrentButton: $("memorySaveCurrentButton"),
+    memoryOverviewButton: $("memoryOverviewButton"),
+    memoryStats: $("memoryStats"),
+    memoryResults: $("memoryResults"),
 
-      "accountName",
-      "accountPlan",
-      "accountStatusDot",
+    fileCenterPanel: $("fileCenterPanel"),
+    fileDropZone: $("fileDropZone"),
+    fileSelectButton: $("fileSelectButton"),
+    refreshFilesButton: $("refreshFilesButton"),
+    fileCount: $("fileCount"),
+    fileList: $("fileList"),
 
-      "chatView",
-      "welcomeState",
-      "welcomeTitle",
+    mediaPanel: $("mediaPanel"),
+    openImageModalButton: $("openImageModalButton"),
+    openVideoModalButton: $("openVideoModalButton"),
 
-      "messages",
-      "typingIndicator",
+    plansPanel: $("plansPanel"),
+    plansList: $("plansList"),
 
-      "composerArea",
-      "composerBox",
+    notificationPanel: $("notificationPanel"),
+    notificationList: $("notificationList"),
+    notificationSummary: $("notificationSummary"),
+    markNotificationsReadButton: $("markNotificationsReadButton"),
 
-      "messageInput",
-      "sendButton",
-      "stopButton",
-      "voiceButton",
+    systemPanel: $("systemPanel"),
+    systemOverallStatus: $("systemOverallStatus"),
+    refreshSystemButton: $("refreshSystemButton"),
+    systemStats: $("systemStats"),
 
-      "attachmentButton",
-      "researchToolButton",
-      "weatherToolButton",
-      "memoryToolButton",
-      "imageToolButton",
-      "videoToolButton",
+    mobileNav: $("mobileNav"),
 
-      "attachmentPreview",
-      "globalFilePicker",
+    globalFilePicker: $("globalFilePicker"),
+    dropOverlay: $("dropOverlay"),
+    globalOverlay: $("globalOverlay"),
+    toastStack: $("toastStack"),
+    liveRegion: $("liveRegion"),
 
-      "modelSelect",
-      "composerTokenInfo",
+    commandCenter: $("commandCenter"),
+    commandInput: $("commandInput"),
+    commandList: $("commandList"),
 
-      "workspacePanel",
+    chatSearchPanel: $("chatSearchPanel"),
+    chatSearchInput: $("chatSearchInput"),
+    chatSearchResults: $("chatSearchResults"),
 
-      "researchPanel",
-      "researchInput",
-      "researchRunButton",
-      "researchClearButton",
-      "researchStatus",
-      "researchResults",
+    settingsModal: $("settingsModal"),
+    enterSendToggle: $("enterSendToggle"),
+    draftSaveToggle: $("draftSaveToggle"),
+    autoSpeakToggle: $("autoSpeakToggle"),
+    freshInfoToggle: $("freshInfoToggle"),
+    resetSettingsButton: $("resetSettingsButton"),
+    saveSettingsButton: $("saveSettingsButton"),
 
-      "weatherPanel",
-      "weatherInput",
-      "weatherRunButton",
-      "weatherResults",
+    accountModal: $("accountModal"),
+    accountModalName: $("accountModalName"),
+    accountModalEmail: $("accountModalEmail"),
+    accountModalVerified: $("accountModalVerified"),
+    accountModalPlan: $("accountModalPlan"),
+    accountModalUsage: $("accountModalUsage"),
+    accountModalStatus: $("accountModalStatus"),
+    loginButton: $("loginButton"),
+    logoutButton: $("logoutButton"),
+    accountPlansButton: $("accountPlansButton"),
 
-      "memoryPanel",
-      "memoryInput",
-      "memorySearchButton",
-      "memorySaveCurrentButton",
-      "memoryOverviewButton",
-      "memoryStats",
-      "memoryResults",
+    authModal: $("authModal"),
+    authForm: $("authForm"),
+    authIdentifier: $("authIdentifier"),
+    authPassword: $("authPassword"),
+    authMessage: $("authMessage"),
+    guestLoginButton: $("guestLoginButton"),
 
-      "fileCenterPanel",
-      "fileDropZone",
-      "fileSelectButton",
-      "refreshFilesButton",
-      "fileCount",
-      "fileList",
+    imageCreateModal: $("imageCreateModal"),
+    imagePromptInput: $("imagePromptInput"),
+    imageSizeSelect: $("imageSizeSelect"),
+    imageQualitySelect: $("imageQualitySelect"),
+    generateImageButton: $("generateImageButton"),
+    imageResult: $("imageResult"),
 
-      "mediaPanel",
-      "openImageModalButton",
-      "openVideoModalButton",
+    videoModal: $("videoModal"),
+    videoPromptInput: $("videoPromptInput"),
+    videoDurationSelect: $("videoDurationSelect"),
+    generateVideoButton: $("generateVideoButton"),
+    videoResult: $("videoResult"),
 
-      "plansPanel",
-      "plansList",
+    commandHelpModal: $("commandHelpModal"),
 
-      "notificationPanel",
-      "notificationList",
-      "notificationSummary",
-      "markNotificationsReadButton",
+    confirmModal: $("confirmModal"),
+    confirmModalTitle: $("confirmModalTitle"),
+    confirmModalText: $("confirmModalText"),
+    confirmCancelButton: $("confirmCancelButton"),
+    confirmActionButton: $("confirmActionButton"),
 
-      "systemPanel",
-      "systemOverallStatus",
-      "refreshSystemButton",
-      "systemStats",
+    adminUnlockModal: $("adminUnlockModal"),
+    adminUnlockForm: $("adminUnlockForm"),
+    adminUnlockInput: $("adminUnlockInput"),
+    adminUnlockMessage: $("adminUnlockMessage"),
 
-      "mobileNav",
-      "mobileSettingsButton",
+    adminPanel: $("adminPanel"),
+    adminSystemButton: $("adminSystemButton"),
+    adminUsersButton: $("adminUsersButton"),
+    adminMemoryButton: $("adminMemoryButton"),
+    adminLogsButton: $("adminLogsButton"),
+    adminOutput: $("adminOutput"),
 
-      "commandCenter",
-      "commandInput",
-      "commandList",
+    systemDetailModal: $("systemDetailModal"),
+    systemDetailContent: $("systemDetailContent"),
 
-      "chatSearchPanel",
-      "chatSearchInput",
-      "chatSearchResults",
+    globalLoading: $("globalLoading"),
+    globalLoadingTitle: $("globalLoadingTitle"),
+    globalLoadingText: $("globalLoadingText"),
 
-      "settingsModal",
-      "enterSendToggle",
-      "draftSaveToggle",
-      "autoSpeakToggle",
-      "freshInfoToggle",
-      "resetSettingsButton",
-      "saveSettingsButton",
+    voiceStatus: $("voiceStatus"),
+    voiceStatusTitle: $("voiceStatusTitle"),
+    voiceStatusText: $("voiceStatusText"),
+    voiceCancelButton: $("voiceCancelButton"),
 
-      "accountModal",
-      "accountModalName",
-      "accountModalEmail",
-      "accountModalVerified",
-      "accountModalPlan",
-      "accountModalUsage",
-      "accountModalStatus",
-      "loginButton",
-      "logoutButton",
-      "accountPlansButton",
+    uploadStatusBar: $("uploadStatusBar"),
+    uploadStatusTitle: $("uploadStatusTitle"),
+    uploadStatusText: $("uploadStatusText"),
+    uploadProgressBar: $("uploadProgressBar"),
 
-      "authModal",
-      "authForm",
-      "authIdentifier",
-      "authPassword",
-      "authMessage",
-      "guestLoginButton",
+    purchaseButton: $("purchaseButton"),
+    proCodeInput: $("proCodeInput")
+  };
 
-      "imageCreateModal",
-      "imagePromptInput",
-      "imageSizeSelect",
-      "imageQualitySelect",
-      "generateImageButton",
-      "imageResult",
+  /* =========================================================
+     TEMEL YARDIMCILAR
+     ========================================================= */
 
-      "videoModal",
-      "videoPromptInput",
-      "videoDurationSelect",
-      "generateVideoButton",
-      "videoResult",
-
-      "commandHelpModal",
-
-      "confirmModal",
-      "confirmModalTitle",
-      "confirmModalText",
-      "confirmCancelButton",
-      "confirmActionButton",
-
-      "adminUnlockModal",
-      "adminUnlockForm",
-      "adminUnlockInput",
-      "adminUnlockMessage",
-
-      "adminPanel",
-      "adminSystemButton",
-      "adminUsersButton",
-      "adminMemoryButton",
-      "adminLogsButton",
-      "adminOutput",
-
-      "systemDetailModal",
-      "systemDetailContent",
-
-      "globalOverlay",
-      "dropOverlay",
-
-      "globalLoading",
-      "globalLoadingTitle",
-      "globalLoadingText",
-
-      "voiceStatus",
-      "voiceStatusTitle",
-      "voiceStatusText",
-      "voiceCancelButton",
-
-      "uploadStatusBar",
-      "uploadStatusTitle",
-      "uploadStatusText",
-      "uploadProgressBar",
-
-      "toastStack",
-      "liveRegion"
-
-    ];
-
-    for (const id of ids) {
-      el[id] = document.getElementById(id);
-    }
-
-    return el;
+  function exists(node) {
+    return !!node;
   }
 
-
-  /* =======================================================
-     HELPERS
-     ======================================================= */
-
-  function qs(selector, root = document) {
-    return root.querySelector(selector);
+  function safeText(value, fallback = "") {
+    if (value === null || value === undefined) return fallback;
+    return String(value);
   }
-
-
-  function qsa(selector, root = document) {
-    return [...root.querySelectorAll(selector)];
-  }
-
-
-  function exists(element) {
-    return !!element;
-  }
-
-
-  function text(value) {
-    return String(
-      value === undefined ||
-      value === null
-        ? ""
-        : value
-    );
-  }
-
 
   function escapeHTML(value) {
-
-    return text(value)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+    return safeText(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
-
 
   function formatTime(date = new Date()) {
-
     try {
-
-      return new Intl.DateTimeFormat(
-        "tr-TR",
-        {
-          hour: "2-digit",
-          minute: "2-digit"
-        }
-      ).format(date);
-
+      return new Intl.DateTimeFormat("tr-TR", {
+        hour: "2-digit",
+        minute: "2-digit"
+      }).format(date);
     } catch {
-
-      return "";
+      return new Date(date).toLocaleTimeString("tr-TR");
     }
   }
 
-
-  function generateId(prefix = "tk") {
-
-    return (
-      prefix +
-      "_" +
-      Date.now().toString(36) +
-      "_" +
-      Math.random()
-        .toString(36)
-        .slice(2, 9)
-    );
+  function formatDateTime(date = new Date()) {
+    try {
+      return new Intl.DateTimeFormat("tr-TR", {
+        dateStyle: "medium",
+        timeStyle: "short"
+      }).format(new Date(date));
+    } catch {
+      return new Date(date).toLocaleString("tr-TR");
+    }
   }
 
+  function formatBytes(bytes) {
+    const size = Number(bytes) || 0;
+
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) {
+      return `${(size / 1024).toFixed(1)} KB`;
+    }
+    if (size < 1024 * 1024 * 1024) {
+      return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  }
+
+  function generateId(prefix = "id") {
+    return `${prefix}_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2, 10)}`;
+  }
 
   function clamp(value, min, max) {
-
-    return Math.min(
-      Math.max(value, min),
-      max
-    );
+    return Math.min(Math.max(value, min), max);
   }
-
 
   function sleep(ms) {
-
-    return new Promise(resolve => {
-      setTimeout(resolve, ms);
-    });
-
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
-
-
-  /* =======================================================
-     LOCAL STORAGE
-     ======================================================= */
 
   function storageGet(key, fallback = null) {
-
     try {
-
-      const raw =
-        localStorage.getItem(key);
-
-      if (raw === null) {
-        return fallback;
-      }
-
+      const raw = localStorage.getItem(key);
+      if (raw === null) return fallback;
       return JSON.parse(raw);
-
     } catch {
-
-      try {
-        return localStorage.getItem(key) ?? fallback;
-      } catch {
-        return fallback;
-      }
-
+      return fallback;
     }
-
   }
-
 
   function storageSet(key, value) {
-
     try {
-
-      localStorage.setItem(
-        key,
-        JSON.stringify(value)
-      );
-
+      localStorage.setItem(key, JSON.stringify(value));
       return true;
-
-    } catch (error) {
-
-      console.warn(
-        "[TürkAI] Storage yazılamadı:",
-        error
-      );
-
+    } catch {
       return false;
     }
-
   }
 
-
-  function storageDelete(key) {
-
+  function storageRemove(key) {
     try {
-
       localStorage.removeItem(key);
-
     } catch {}
   }
 
+  function announce(message) {
+    if (!el.liveRegion) return;
+    el.liveRegion.textContent = "";
+    requestAnimationFrame(() => {
+      el.liveRegion.textContent = safeText(message);
+    });
+  }
 
-  /* =======================================================
+  /* =========================================================
+     TOAST
+     ========================================================= */
+
+  function toast(message, type = "info", duration = 3200) {
+    if (!el.toastStack) return;
+
+    const item = document.createElement("div");
+    item.className = `toast toast-${type}`;
+
+    item.innerHTML = `
+      <div class="toast-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <use href="#${
+            type === "success"
+              ? "i-check"
+              : type === "error"
+              ? "i-alert"
+              : type === "warning"
+              ? "i-alert"
+              : "i-info"
+          }"></use>
+        </svg>
+      </div>
+      <div class="toast-text">${escapeHTML(message)}</div>
+      <button class="toast-close" type="button" aria-label="Kapat">
+        <svg viewBox="0 0 24 24">
+          <use href="#i-close"></use>
+        </svg>
+      </button>
+    `;
+
+    item
+      .querySelector(".toast-close")
+      ?.addEventListener("click", () => item.remove());
+
+    el.toastStack.appendChild(item);
+
+    window.setTimeout(() => {
+      item.style.opacity = "0";
+      item.style.transform = "translateY(8px)";
+
+      window.setTimeout(() => item.remove(), 220);
+    }, duration);
+
+    announce(message);
+  }
+
+  /* =========================================================
+     LOADING
+     ========================================================= */
+
+  function showLoading(title = "TürkAI çalışıyor", message = "Hazırlanıyor...") {
+    state.loading = true;
+
+    if (el.globalLoading) {
+      el.globalLoading.classList.remove("hidden");
+      if (el.globalLoadingTitle) {
+        el.globalLoadingTitle.textContent = title;
+      }
+      if (el.globalLoadingText) {
+        el.globalLoadingText.textContent = message;
+      }
+    }
+  }
+
+  function hideLoading() {
+    state.loading = false;
+
+    if (el.globalLoading) {
+      el.globalLoading.classList.add("hidden");
+    }
+  }
+
+  /* =========================================================
+     MODAL
+     ========================================================= */
+
+  function openModal(modal) {
+    const node =
+      typeof modal === "string"
+        ? document.getElementById(modal)
+        : modal;
+
+    if (!node) return;
+
+    document.querySelectorAll(".modal-shell").forEach((item) => {
+      if (item !== node) {
+        item.classList.add("hidden");
+      }
+    });
+
+    node.classList.remove("hidden");
+    state.activeModal = node.id;
+
+    document.body.classList.add("modal-open");
+
+    const focusTarget = node.querySelector(
+      "input, textarea, select, button"
+    );
+
+    window.setTimeout(() => focusTarget?.focus(), 40);
+  }
+
+  function closeModal(modal) {
+    const node =
+      typeof modal === "string"
+        ? document.getElementById(modal)
+        : modal;
+
+    if (!node) return;
+
+    node.classList.add("hidden");
+
+    if (state.activeModal === node.id) {
+      state.activeModal = null;
+    }
+
+    if (
+      !document.querySelector(
+        ".modal-shell:not(.hidden)"
+      )
+    ) {
+      document.body.classList.remove("modal-open");
+    }
+  }
+
+  function closeAllModals() {
+    document
+      .querySelectorAll(".modal-shell")
+      .forEach((node) => node.classList.add("hidden"));
+
+    state.activeModal = null;
+    document.body.classList.remove("modal-open");
+  }
+
+  function bindModals() {
+    document.addEventListener("click", (event) => {
+      const closeButton = event.target.closest(
+        "[data-close-modal]"
+      );
+
+      if (closeButton) {
+        closeModal(
+          closeButton.getAttribute("data-close-modal")
+        );
+        return;
+      }
+
+      const commandClose = event.target.closest(
+        "[data-close-command]"
+      );
+
+      if (commandClose) {
+        closeModal("commandCenter");
+        return;
+      }
+
+      const searchClose = event.target.closest(
+        "[data-close-chat-search]"
+      );
+
+      if (searchClose) {
+        closeModal("chatSearchPanel");
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        if (state.recording) {
+          stopVoiceInput();
+        } else {
+          closeAllModals();
+        }
+      }
+    });
+  }
+
+  /* =========================================================
+     API
+     ========================================================= */
+
+  async function apiRequest(
+    url,
+    options = {},
+    timeoutMs = CONFIG.timeout
+  ) {
+    const controller =
+      options.signal
+        ? null
+        : new AbortController();
+
+    const signal = options.signal || controller.signal;
+
+    const timer = window.setTimeout(() => {
+      controller?.abort();
+    }, timeoutMs);
+
+    const headers = new Headers(
+      options.headers || {}
+    );
+
+    headers.set("Accept", "application/json, text/plain, */*");
+    headers.set("X-TurkAI-Version", CONFIG.version);
+    headers.set(
+      "X-TurkAI-Request-ID",
+      generateId("req")
+    );
+
+    let body = options.body;
+
+    if (
+      body &&
+      typeof body === "object" &&
+      !(body instanceof FormData) &&
+      !(body instanceof Blob) &&
+      !(body instanceof URLSearchParams)
+    ) {
+      body = JSON.stringify(body);
+      headers.set(
+        "Content-Type",
+        "application/json; charset=UTF-8"
+      );
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: options.method || "GET",
+        headers,
+        body,
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "follow",
+        signal
+      });
+
+      const contentType =
+        response.headers.get("content-type") || "";
+
+      let data;
+
+      if (contentType.includes("application/json")) {
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
+      } else {
+        try {
+          data = await response.text();
+        } catch {
+          data = "";
+        }
+      }
+
+      if (!response.ok) {
+        const message =
+          typeof data === "object" && data
+            ? data.error ||
+              data.message ||
+              data.details ||
+              `HTTP ${response.status}`
+            : safeText(data) ||
+              `HTTP ${response.status}`;
+
+        const error = new Error(message);
+        error.status = response.status;
+        error.data = data;
+        throw error;
+      }
+
+      return data;
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+
+  async function safeRequest(
+    url,
+    options = {},
+    fallback = null
+  ) {
+    try {
+      return await apiRequest(url, options);
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        throw error;
+      }
+
+      return fallback;
+    }
+  }
+
+  function extractAnswer(payload) {
+    if (payload === null || payload === undefined) {
+      return "";
+    }
+
+    if (typeof payload === "string") {
+      return payload.trim();
+    }
+
+    const directKeys = [
+      "answer",
+      "response",
+      "message",
+      "text",
+      "content",
+      "reply"
+    ];
+
+    for (const key of directKeys) {
+      if (
+        typeof payload?.[key] === "string" &&
+        payload[key].trim()
+      ) {
+        return payload[key].trim();
+      }
+    }
+
+    const nestedKeys = [
+      payload?.data,
+      payload?.result,
+      payload?.output,
+      payload?.response?.data,
+      payload?.result?.data
+    ];
+
+    for (const item of nestedKeys) {
+      const found = extractAnswer(item);
+      if (found) return found;
+    }
+
+    if (Array.isArray(payload?.choices)) {
+      for (const choice of payload.choices) {
+        const found =
+          choice?.message?.content ||
+          choice?.text;
+
+        if (
+          typeof found === "string" &&
+          found.trim()
+        ) {
+          return found.trim();
+        }
+      }
+    }
+
+    return "";
+  }
+
+  function extractConversationId(payload) {
+    return (
+      payload?.conversationId ||
+      payload?.conversation_id ||
+      payload?.chatId ||
+      payload?.chat_id ||
+      payload?.data?.conversationId ||
+      payload?.result?.conversationId ||
+      null
+    );
+  }
+
+  function isLocalFailureAnswer(answer) {
+    const text = safeText(answer)
+      .toLocaleLowerCase("tr-TR")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!text) return true;
+
+    const patterns = [
+      "bu soruyu yerel motorla doğrudan cevaplayamadım",
+      "daha kapsamlı bir yanıt için uygun ai sağlayıcısı",
+      "uygun ai sağlayıcısı veya araştırma motoru kullanılabilir",
+      "yerel motorla doğrudan cevaplayamadım"
+    ];
+
+    return patterns.some((pattern) =>
+      text.includes(pattern)
+    );
+  }
+
+  /* =========================================================
+     MARKDOWN / RICH TEXT
+     ========================================================= */
+
+  function renderRichText(value) {
+    let source = safeText(value).replace(/\u0000/g, "").trim();
+
+    if (!source) return "";
+
+    /*
+      Önce code blocklarını ayırıyoruz.
+      Böylece kod içerisindeki SVG/HTML silinmez.
+    */
+    const codeBlocks = [];
+
+    source = source.replace(
+      /```([\w#+.\-]*)[ \t]*\n?([\s\S]*?)```/g,
+      (_, language = "", code = "") => {
+        const index = codeBlocks.length;
+
+        codeBlocks.push({
+          language:
+            language.trim() || "code",
+          code: safeText(code)
+            .replace(/\r\n/g, "\n")
+            .trim()
+        });
+
+        return `___TURKAI_CODE_BLOCK_${index}___`;
+      }
+    );
+
+    /*
+      Code dışındaki bozuk svg yazılarını temizle.
+    */
+    source = source.replace(
+      /<svg\b[^>]*>[\s\S]*?<\/svg>/gi,
+      ""
+    );
+
+    source = source.replace(
+      /<\/?svg\b[^>]*>/gi,
+      ""
+    );
+
+    source = source
+      .replace(/\bsvgsvg\b/gi, "")
+      .replace(/(^|\s)svg(?=\s|$)/gi, "$1");
+
+    source = source.replace(
+      /<script\b[^>]*>[\s\S]*?<\/script>/gi,
+      ""
+    );
+
+    source = source.replace(
+      /<style\b[^>]*>[\s\S]*?<\/style>/gi,
+      ""
+    );
+
+    let html = escapeHTML(source);
+
+    html = html.replace(
+      /\*\*(.+?)\*\*/g,
+      "<strong>$1</strong>"
+    );
+
+    html = html.replace(
+      /__([^_]+?)__/g,
+      "<strong>$1</strong>"
+    );
+
+    html = html.replace(
+      /`([^`\n]+)`/g,
+      "<code>$1</code>"
+    );
+
+    html = html.replace(
+      /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+    );
+
+    html = html.replace(
+      /^### (.+)$/gm,
+      "<h4>$1</h4>"
+    );
+
+    html = html.replace(
+      /^## (.+)$/gm,
+      "<h3>$1</h3>"
+    );
+
+    html = html.replace(
+      /^# (.+)$/gm,
+      "<h2>$1</h2>"
+    );
+
+    html = html.replace(
+      /^\s*[-*] (.+)$/gm,
+      "<div class=\"rich-list-item\">• $1</div>"
+    );
+
+    html = html.replace(
+      /^\s*(\d+)\. (.+)$/gm,
+      "<div class=\"rich-list-item\">$1. $2</div>"
+    );
+
+    html = html.replace(/\n/g, "<br>");
+
+    codeBlocks.forEach((block, index) => {
+      const safeCode = escapeHTML(block.code);
+      const encodedCode = encodeURIComponent(
+        block.code
+      );
+
+      const blockHTML = `
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="code-language">
+              ${escapeHTML(block.language)}
+            </span>
+
+            <button
+              type="button"
+              class="code-copy-button"
+              data-code="${encodedCode}"
+              title="Kodu kopyala"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <use href="#i-copy"></use>
+              </svg>
+              <span>Kopyala</span>
+            </button>
+          </div>
+
+          <pre><code>${safeCode}</code></pre>
+        </div>
+      `;
+
+      html = html.replace(
+        `___TURKAI_CODE_BLOCK_${index}___`,
+        blockHTML
+      );
+    });
+
+    return html.trim();
+  }
+
+  /* =========================================================
+     CHAT RENDER
+     ========================================================= */
+
+  function renderMessages() {
+    if (!el.messages) return;
+
+    el.messages.innerHTML = "";
+
+    state.messages.forEach((message) => {
+      el.messages.appendChild(
+        renderMessage(message)
+      );
+    });
+
+    bindMessageActions();
+    scrollMessagesToBottom(false);
+
+    const hasMessages =
+      state.messages.length > 0;
+
+    el.welcomeState?.classList.toggle(
+      "hidden",
+      hasMessages
+    );
+  }
+
+  function renderMessage(message) {
+    const row = document.createElement("div");
+
+    row.className =
+      `message-row message-${message.role || "assistant"}`;
+
+    row.dataset.messageId =
+      message.id || generateId("msg");
+
+    const isUser = message.role === "user";
+
+    const avatarIcon = isUser
+      ? "i-user"
+      : "i-logo";
+
+    const bubble = renderRichText(
+      message.content || ""
+    );
+
+    row.innerHTML = `
+      <div class="message-avatar">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <use href="#${avatarIcon}"></use>
+        </svg>
+      </div>
+
+      <div class="message-main">
+        <div class="message-meta">
+          <strong>
+            ${isUser ? "Sen" : "TürkAI"}
+          </strong>
+          <span>
+            ${formatTime(
+              message.createdAt || new Date()
+            )}
+          </span>
+        </div>
+
+        <div class="message-content">
+          <div class="message-bubble">
+            ${bubble}
+          </div>
+
+          <div class="message-actions">
+            ${
+              isUser
+                ? ""
+                : `
+                  <button
+                    type="button"
+                    class="message-action"
+                    data-action="speak"
+                    title="Sesli oku"
+                  >
+                    <svg viewBox="0 0 24 24">
+                      <use href="#i-volume"></use>
+                    </svg>
+                  </button>
+                `
+            }
+
+            <button
+              type="button"
+              class="message-action"
+              data-action="copy"
+              title="Kopyala"
+            >
+              <svg viewBox="0 0 24 24">
+                <use href="#i-copy"></use>
+              </svg>
+            </button>
+
+            ${
+              !isUser
+                ? `
+                  <button
+                    type="button"
+                    class="message-action"
+                    data-action="save-memory"
+                    title="Hafızaya kaydet"
+                  >
+                    <svg viewBox="0 0 24 24">
+                      <use href="#i-memory"></use>
+                    </svg>
+                  </button>
+                `
+                : ""
+            }
+          </div>
+        </div>
+      </div>
+    `;
+
+    return row;
+  }
+
+  function appendMessage(role, content, extra = {}) {
+    const item = {
+      id: generateId("msg"),
+      role,
+      content: safeText(content),
+      createdAt: new Date().toISOString(),
+      ...extra
+    };
+
+    state.messages.push(item);
+    return item;
+  }
+
+  function scrollMessagesToBottom(smooth = true) {
+    if (!el.messages) return;
+
+    requestAnimationFrame(() => {
+      el.messages.scrollTo({
+        top: el.messages.scrollHeight,
+        behavior: smooth ? "smooth" : "auto"
+      });
+    });
+  }
+
+  function bindMessageActions() {
+    document
+      .querySelectorAll(".message-action")
+      .forEach((button) => {
+        button.onclick = async () => {
+          const row =
+            button.closest(".message-row");
+
+          const id =
+            row?.dataset.messageId;
+
+          const message =
+            state.messages.find(
+              (item) => item.id === id
+            );
+
+          if (!message) return;
+
+          const action =
+            button.dataset.action;
+
+          if (action === "copy") {
+            await copyText(message.content);
+            toast(
+              "Mesaj panoya kopyalandı.",
+              "success"
+            );
+          }
+
+          if (action === "speak") {
+            speakText(message.content);
+          }
+
+          if (action === "save-memory") {
+            await saveMemory(
+              message.content,
+              "chat"
+            );
+          }
+        };
+      });
+
+    document
+      .querySelectorAll(".code-copy-button")
+      .forEach((button) => {
+        button.onclick = async () => {
+          const raw =
+            button.dataset.code || "";
+
+          let value = raw;
+
+          try {
+            value = decodeURIComponent(raw);
+          } catch {}
+
+          await copyText(value);
+
+          const old =
+            button.innerHTML;
+
+          button.innerHTML = `
+            <svg viewBox="0 0 24 24">
+              <use href="#i-check"></use>
+            </svg>
+            <span>Kopyalandı</span>
+          `;
+
+          window.setTimeout(() => {
+            button.innerHTML = old;
+          }, 1200);
+        };
+      });
+  }
+
+  async function copyText(value) {
+    const textValue = safeText(value);
+
+    try {
+      await navigator.clipboard.writeText(textValue);
+      return true;
+    } catch {
+      const textarea =
+        document.createElement("textarea");
+
+      textarea.value = textValue;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+
+      document.body.appendChild(textarea);
+      textarea.select();
+
+      try {
+        document.execCommand("copy");
+      } catch {}
+
+      textarea.remove();
+
+      return true;
+    }
+  }
+
+  /* =========================================================
+     INPUT / DRAFT
+     ========================================================= */
+
+  function autoResizeInput() {
+    if (!el.messageInput) return;
+
+    el.messageInput.style.height = "auto";
+
+    const maxHeight = 220;
+
+    el.messageInput.style.height =
+      `${Math.min(
+        el.messageInput.scrollHeight,
+        maxHeight
+      )}px`;
+  }
+
+  function saveDraft() {
+    if (!state.settings.draftSave) return;
+    if (!el.messageInput) return;
+
+    const value =
+      el.messageInput.value || "";
+
+    storageSet(
+      CONFIG.storage.draft,
+      value
+    );
+  }
+
+  function loadDraft() {
+    if (!el.messageInput) return;
+
+    const value = storageGet(
+      CONFIG.storage.draft,
+      ""
+    );
+
+    if (
+      typeof value === "string" &&
+      value
+    ) {
+      el.messageInput.value = value;
+      autoResizeInput();
+    }
+  }
+
+  function clearDraft() {
+    storageRemove(
+      CONFIG.storage.draft
+    );
+  }
+
+  /* =========================================================
      SETTINGS
-     ======================================================= */
+     ========================================================= */
 
   function loadSettings() {
-
     const saved =
       storageGet(
         CONFIG.storage.settings,
@@ -537,1814 +1254,623 @@
       );
 
     state.settings = {
-
-      ...state.settings,
-
-      ...(saved &&
-      typeof saved === "object"
-        ? saved
-        : {})
-
+      ...CONFIG.defaults.settings,
+      ...(saved || {})
     };
 
+    state.selectedModel =
+      storageGet(
+        CONFIG.storage.model,
+        CONFIG.defaults.model
+      );
+
+    if (el.modelSelect) {
+      el.modelSelect.value =
+        state.selectedModel;
+    }
+
+    syncSettingsUI();
+  }
+
+  function syncSettingsUI() {
     if (el.enterSendToggle) {
       el.enterSendToggle.checked =
-        state.settings.enterSend !== false;
+        !!state.settings.enterToSend;
     }
 
     if (el.draftSaveToggle) {
       el.draftSaveToggle.checked =
-        state.settings.draftSave !== false;
+        !!state.settings.draftSave;
     }
 
     if (el.autoSpeakToggle) {
       el.autoSpeakToggle.checked =
-        state.settings.autoSpeak === true;
+        !!state.settings.autoSpeak;
     }
 
     if (el.freshInfoToggle) {
       el.freshInfoToggle.checked =
-        state.settings.freshInfo !== false;
+        !!state.settings.freshInfo;
     }
-
   }
 
-
   function saveSettings() {
+    state.settings = {
+      enterToSend:
+        !!el.enterSendToggle?.checked,
+
+      draftSave:
+        !!el.draftSaveToggle?.checked,
+
+      autoSpeak:
+        !!el.autoSpeakToggle?.checked,
+
+      freshInfo:
+        !!el.freshInfoToggle?.checked
+    };
 
     storageSet(
       CONFIG.storage.settings,
       state.settings
     );
 
+    toast(
+      "Ayarlar kaydedildi.",
+      "success"
+    );
   }
 
-
-  function bindSettings() {
-
-    if (el.enterSendToggle) {
-
-      el.enterSendToggle.addEventListener(
-        "change",
-        () => {
-
-          state.settings.enterSend =
-            el.enterSendToggle.checked;
-
-          saveSettings();
-
-        }
-      );
-
-    }
-
-
-    if (el.draftSaveToggle) {
-
-      el.draftSaveToggle.addEventListener(
-        "change",
-        () => {
-
-          state.settings.draftSave =
-            el.draftSaveToggle.checked;
-
-          saveSettings();
-
-        }
-      );
-
-    }
-
-
-    if (el.autoSpeakToggle) {
-
-      el.autoSpeakToggle.addEventListener(
-        "change",
-        () => {
-
-          state.settings.autoSpeak =
-            el.autoSpeakToggle.checked;
-
-          saveSettings();
-
-        }
-      );
-
-    }
-
-
-    if (el.freshInfoToggle) {
-
-      el.freshInfoToggle.addEventListener(
-        "change",
-        () => {
-
-          state.settings.freshInfo =
-            el.freshInfoToggle.checked;
-
-          saveSettings();
-
-        }
-      );
-
-    }
-
-
-    if (el.saveSettingsButton) {
-
-      el.saveSettingsButton.addEventListener(
-        "click",
-        () => {
-
-          state.settings.enterSend =
-            el.enterSendToggle?.checked !== false;
-
-          state.settings.draftSave =
-            el.draftSaveToggle?.checked !== false;
-
-          state.settings.autoSpeak =
-            el.autoSpeakToggle?.checked === true;
-
-          state.settings.freshInfo =
-            el.freshInfoToggle?.checked !== false;
-
-          saveSettings();
-
-          closeModal(
-            "settingsModal"
-          );
-
-          toast(
-            "Ayarlar kaydedildi",
-            "Tercihler başarıyla güncellendi.",
-            "success"
-          );
-
-        }
-      );
-
-    }
-
-
-    if (el.resetSettingsButton) {
-
-      el.resetSettingsButton.addEventListener(
-        "click",
-        () => {
-
-          state.settings = {
-            enterSend: true,
-            draftSave: true,
-            autoSpeak: false,
-            freshInfo: true
-          };
-
-          loadSettings();
-          saveSettings();
-
-          toast(
-            "Ayarlar sıfırlandı",
-            "Varsayılan ayarlar geri getirildi.",
-            "success"
-          );
-
-        }
-      );
-
-    }
-
-  }
-
-
-  /* =======================================================
-     TOAST
-     ======================================================= */
-
-  function toast(
-    title,
-    message = "",
-    type = "info"
-  ) {
-
-    if (!el.toastStack) {
-      return;
-    }
-
-    const item =
-      document.createElement("div");
-
-    item.className =
-      `toast ${type}`;
-
-    const iconMap = {
-
-      success: "i-check",
-      error: "i-alert",
-      warning: "i-alert",
-      info: "i-info"
-
+  function resetSettings() {
+    state.settings = {
+      ...CONFIG.defaults.settings
     };
 
-    const icon =
-      iconMap[type] ||
-      iconMap.info;
+    syncSettingsUI();
 
-    item.innerHTML = `
-
-      <div class="toast-icon">
-        <svg aria-hidden="true">
-          <use href="#${icon}"></use>
-        </svg>
-      </div>
-
-      <div class="toast-copy">
-
-        <strong>
-          ${escapeHTML(title)}
-        </strong>
-
-        ${
-          message
-            ? `<span>${escapeHTML(message)}</span>`
-            : ""
-        }
-
-      </div>
-
-      <button
-        class="toast-close"
-        type="button"
-        aria-label="Bildirimi kapat"
-      >
-        <svg aria-hidden="true">
-          <use href="#i-close"></use>
-        </svg>
-      </button>
-
-    `;
-
-    const close =
-      item.querySelector(
-        ".toast-close"
-      );
-
-    if (close) {
-
-      close.addEventListener(
-        "click",
-        () => {
-          item.remove();
-        }
-      );
-
-    }
-
-    el.toastStack.appendChild(item);
-
-    setTimeout(
-      () => {
-        if (item.isConnected) {
-          item.remove();
-        }
-      },
-      5000
+    storageSet(
+      CONFIG.storage.settings,
+      state.settings
     );
 
+    toast(
+      "Ayarlar varsayılana döndürüldü.",
+      "success"
+    );
   }
 
-
-  /* =======================================================
-     MODALS
-     ======================================================= */
-
-  function openModal(id) {
-
-    const modal =
-      document.getElementById(id);
-
-    if (!modal) {
-      return false;
-    }
-
-    qsa(".modal-shell").forEach(
-      item => {
-        if (
-          item.id !== id &&
-          !item.classList.contains("hidden")
-        ) {
-          item.classList.add("hidden");
-        }
-      }
-    );
-
-    modal.classList.remove("hidden");
-
-    state.activeModal = id;
-
-    document.body.classList.add(
-      "modal-open"
-    );
-
-    return true;
-
-  }
-
-
-  function closeModal(id) {
-
-    const modal =
-      document.getElementById(id);
-
-    if (!modal) {
-      return;
-    }
-
-    modal.classList.add("hidden");
-
-    if (state.activeModal === id) {
-      state.activeModal = null;
-    }
-
-    if (
-      !qsa(".modal-shell").some(
-        item =>
-          !item.classList.contains("hidden")
-      )
-    ) {
-
-      document.body.classList.remove(
-        "modal-open"
-      );
-
-    }
-
-  }
-
-
-  function closeAllModals() {
-
-    qsa(".modal-shell").forEach(
-      modal => {
-        modal.classList.add("hidden");
-      }
-    );
-
-    state.activeModal = null;
-
-    document.body.classList.remove(
-      "modal-open"
-    );
-
-  }
-
-
-  function bindModalSystem() {
-
-    qsa("[data-close-modal]")
-      .forEach(button => {
-
-        button.addEventListener(
-          "click",
-          event => {
-
-            event.preventDefault();
-
-            const modal =
-              button.closest(
-                ".modal-shell"
-              );
-
-            if (modal) {
-              closeModal(modal.id);
-            }
-
-          }
-        );
-
-      });
-
-
-    qsa("[data-close-command]")
-      .forEach(button => {
-
-        button.addEventListener(
-          "click",
-          () => {
-            closeModal(
-              "commandCenter"
-            );
-          }
-        );
-
-      });
-
-
-    qsa("[data-close-chat-search]")
-      .forEach(button => {
-
-        button.addEventListener(
-          "click",
-          () => {
-            closeModal(
-              "chatSearchPanel"
-            );
-          }
-        );
-
-      });
-
-
-    document.addEventListener(
-      "keydown",
-      event => {
-
-        if (
-          event.key === "Escape"
-        ) {
-
-          if (state.activeModal) {
-            closeModal(
-              state.activeModal
-            );
-          } else {
-            closeAllPanels();
-          }
-
-        }
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     PANEL SYSTEM
-     ======================================================= */
+  /* =========================================================
+     SIDEBAR / PANELLER
+     ========================================================= */
 
   const panelMap = {
-
-    chat: null,
-
-    research: "researchPanel",
-
-    weather: "weatherPanel",
-
-    memory: "memoryPanel",
-
-    files: "fileCenterPanel",
-
-    media: "mediaPanel",
-
-    plans: "plansPanel",
-
-    notifications: "notificationPanel",
-
-    system: "systemPanel"
-
+    chat: el.chatView,
+    research: el.researchPanel,
+    weather: el.weatherPanel,
+    memory: el.memoryPanel,
+    files: el.fileCenterPanel,
+    media: el.mediaPanel,
+    plans: el.plansPanel,
+    notifications: el.notificationPanel,
+    system: el.systemPanel
   };
-
-
-  const panelTitles = {
-
-    chat: "Sohbet",
-
-    research: "Araştırma",
-
-    weather: "Hava durumu",
-
-    memory: "Hafıza",
-
-    files: "Dosyalar",
-
-    media: "Medya",
-
-    plans: "Paketler",
-
-    notifications: "Bildirimler",
-
-    system: "Sistem"
-
-  };
-
-
-  function openPanel(name) {
-
-    if (
-      !Object.prototype.hasOwnProperty.call(
-        panelMap,
-        name
-      )
-    ) {
-      return;
-    }
-
-    if (name === "chat") {
-
-      closeAllPanels();
-
-      state.activePanel = "chat";
-
-      updateNavigation();
-
-      if (el.workspaceTitle) {
-        el.workspaceTitle.textContent =
-          panelTitles.chat;
-      }
-
-      return;
-
-    }
-
-    const panelId =
-      panelMap[name];
-
-    if (!panelId) {
-      return;
-    }
-
-    qsa(".panel-view").forEach(
-      panel => {
-        panel.classList.remove(
-          "active"
-        );
-      }
-    );
-
-    const panel =
-      document.getElementById(panelId);
-
-    if (!panel) {
-      return;
-    }
-
-    panel.classList.add("active");
-
-    if (el.workspacePanel) {
-
-      el.workspacePanel.classList.add(
-        "open"
-      );
-
-      el.workspacePanel.setAttribute(
-        "aria-hidden",
-        "false"
-      );
-
-    }
-
-    state.panelOpen = true;
-    state.activePanel = name;
-
-    if (el.workspaceTitle) {
-      el.workspaceTitle.textContent =
-        panelTitles[name] || name;
-    }
-
-    updateNavigation();
-
-    if (name === "research") {
-      loadResearchPanel();
-    }
-
-    if (name === "weather") {
-      focusInput(el.weatherInput);
-    }
-
-    if (name === "memory") {
-      loadMemoryOverview();
-    }
-
-    if (name === "files") {
-      loadFiles();
-    }
-
-    if (name === "plans") {
-      loadPlans();
-    }
-
-    if (name === "notifications") {
-      loadNotifications();
-    }
-
-    if (name === "system") {
-      loadSystemStatus();
-    }
-
-  }
-
 
   function closeAllPanels() {
+    Object.values(panelMap).forEach(
+      (panel) =>
+        panel?.classList.remove("active")
+    );
 
-    if (el.workspacePanel) {
-
-      el.workspacePanel.classList.remove(
-        "open"
-      );
-
-      el.workspacePanel.setAttribute(
-        "aria-hidden",
-        "true"
-      );
-
+    if (el.chatView) {
+      el.chatView.classList.remove("hidden");
     }
 
-    qsa(".panel-view").forEach(
-      panel => {
-        panel.classList.remove(
-          "active"
-        );
+    state.activePanel = "chat";
+    updateNavigation("chat");
+  }
+
+  async function openPanel(panelName) {
+    const name =
+      panelMap[panelName]
+        ? panelName
+        : "chat";
+
+    Object.entries(panelMap).forEach(
+      ([key, panel]) => {
+        if (!panel) return;
+
+        if (key === name) {
+          panel.classList.add("active");
+          panel.classList.remove("hidden");
+        } else {
+          panel.classList.remove("active");
+          if (key !== "chat") {
+            panel.classList.add("hidden");
+          }
+        }
       }
     );
 
-    state.panelOpen = false;
-    state.activePanel = "chat";
+    if (
+      name === "chat" &&
+      el.chatView
+    ) {
+      el.chatView.classList.remove("hidden");
+    } else if (el.chatView) {
+      el.chatView.classList.add("hidden");
+    }
+
+    state.activePanel = name;
+
+    updateNavigation(name);
+
+    switch (name) {
+      case "research":
+        await loadResearchPanel();
+        break;
+
+      case "weather":
+        break;
+
+      case "memory":
+        await loadMemoryOverview();
+        break;
+
+      case "files":
+        await loadFiles();
+        break;
+
+      case "plans":
+        await loadPlans();
+        break;
+
+      case "notifications":
+        await loadNotifications();
+        break;
+
+      case "system":
+        await loadSystemStatus();
+        break;
+    }
+
+    closeMobileSidebar();
+  }
+
+  function updateNavigation(active) {
+    document
+      .querySelectorAll(
+        "[data-panel], [data-mobile-panel]"
+      )
+      .forEach((button) => {
+        const name =
+          button.dataset.panel ||
+          button.dataset.mobilePanel;
+
+        button.classList.toggle(
+          "active",
+          name === active
+        );
+      });
+
+    const titleMap = {
+      chat: "Yeni sohbet",
+      research: "Araştırma",
+      weather: "Hava durumu",
+      memory: "Hafıza",
+      files: "Dosyalar",
+      media: "Medya",
+      plans: "Planlar",
+      notifications: "Bildirimler",
+      system: "Sistem"
+    };
 
     if (el.workspaceTitle) {
       el.workspaceTitle.textContent =
-        "Sohbet";
+        titleMap[active] || "TürkAI";
     }
-
-    updateNavigation();
-
   }
-
-
-  function updateNavigation() {
-
-    qsa(
-      ".nav-item[data-panel]"
-    ).forEach(button => {
-
-      button.classList.toggle(
-        "active",
-        button.dataset.panel ===
-          state.activePanel
-      );
-
-    });
-
-
-    qsa(
-      ".mobile-nav-item[data-mobile-panel]"
-    ).forEach(button => {
-
-      button.classList.toggle(
-        "active",
-        button.dataset.mobilePanel ===
-          state.activePanel
-      );
-
-    });
-
-  }
-
-
-  function bindNavigation() {
-
-    qsa(
-      ".nav-item[data-panel]"
-    ).forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const name =
-            button.dataset.panel;
-
-          openPanel(name);
-
-          if (
-            window.innerWidth <= 800
-          ) {
-            closeSidebar();
-          }
-
-        }
-      );
-
-    });
-
-
-    qsa(
-      ".mobile-nav-item[data-mobile-panel]"
-    ).forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          openPanel(
-            button.dataset.mobilePanel
-          );
-
-        }
-      );
-
-    });
-
-
-    qsa(
-      "[data-close-panel]"
-    ).forEach(button => {
-
-      button.addEventListener(
-        "click",
-        closeAllPanels
-      );
-
-    });
-
-  }
-
-
-  /* =======================================================
-     SIDEBAR
-     ======================================================= */
 
   function openSidebar() {
-
-    if (!el.sidebar) {
-      return;
-    }
-
-    el.sidebar.classList.remove(
-      "mobile-closed"
-    );
-
-    el.appShell?.classList.remove(
-      "sidebar-collapsed"
-    );
+    if (!el.sidebar) return;
 
     state.sidebarOpen = true;
 
+    el.sidebar.classList.add("open");
+    document.body.classList.add(
+      "sidebar-open"
+    );
   }
 
-
-  function closeSidebar() {
-
-    if (!el.sidebar) {
-      return;
-    }
-
-    if (
-      window.innerWidth <= 800
-    ) {
-
-      el.sidebar.classList.add(
-        "mobile-closed"
-      );
-
-    } else {
-
-      el.appShell?.classList.add(
-        "sidebar-collapsed"
-      );
-
-    }
+  function closeMobileSidebar() {
+    if (!el.sidebar) return;
 
     state.sidebarOpen = false;
 
+    el.sidebar.classList.remove("open");
+    document.body.classList.remove(
+      "sidebar-open"
+    );
   }
 
-
   function toggleSidebar() {
-
     if (state.sidebarOpen) {
-      closeSidebar();
+      closeMobileSidebar();
     } else {
       openSidebar();
     }
-
   }
 
+  /* =========================================================
+     COMMANDS
+     ========================================================= */
 
-  function bindSidebar() {
-
-    if (el.sidebarToggle) {
-
-      el.sidebarToggle.addEventListener(
-        "click",
-        toggleSidebar
-      );
-
+  state.commandItems = [
+    {
+      id: "new-chat",
+      title: "Yeni sohbet",
+      description: "Temiz bir sohbet başlat",
+      icon: "i-plus",
+      action: () => createNewChat()
+    },
+    {
+      id: "research",
+      title: "Araştırmayı aç",
+      description: "Web araştırma panelini aç",
+      icon: "i-search",
+      action: () => openPanel("research")
+    },
+    {
+      id: "weather",
+      title: "Hava durumunu aç",
+      description: "Hava durumunu kontrol et",
+      icon: "i-cloud",
+      action: () => openPanel("weather")
+    },
+    {
+      id: "memory",
+      title: "Hafızayı aç",
+      description: "TürkAI hafıza alanına git",
+      icon: "i-memory",
+      action: () => openPanel("memory")
+    },
+    {
+      id: "files",
+      title: "Dosyaları aç",
+      description: "Dosya merkezini aç",
+      icon: "i-folder",
+      action: () => openPanel("files")
+    },
+    {
+      id: "media",
+      title: "Medya",
+      description: "Görsel ve video araçları",
+      icon: "i-image",
+      action: () => openPanel("media")
+    },
+    {
+      id: "plans",
+      title: "Planlar",
+      description: "TürkAI planlarını görüntüle",
+      icon: "i-crown",
+      action: () => openPanel("plans")
+    },
+    {
+      id: "notifications",
+      title: "Bildirimler",
+      description: "Bildirim panelini aç",
+      icon: "i-bell",
+      action: () => openPanel("notifications")
+    },
+    {
+      id: "system",
+      title: "Sistem",
+      description: "Sunucu durumunu göster",
+      icon: "i-command",
+      action: () => openPanel("system")
+    },
+    {
+      id: "settings",
+      title: "Ayarlar",
+      description: "TürkAI ayarlarını aç",
+      icon: "i-settings",
+      action: () => openModal("settingsModal")
+    },
+    {
+      id: "account",
+      title: "Hesap",
+      description: "Hesap bilgilerini aç",
+      icon: "i-user",
+      action: () => openModal("accountModal")
     }
-
-
-    if (el.mobileSidebarClose) {
-
-      el.mobileSidebarClose.addEventListener(
-        "click",
-        closeSidebar
-      );
-
-    }
-
-  }
-
-
-  /* =======================================================
-     INPUT
-     ======================================================= */
-
-  function autoResizeInput() {
-
-    if (!el.messageInput) {
-      return;
-    }
-
-    el.messageInput.style.height =
-      "auto";
-
-    const maxHeight = 190;
-
-    el.messageInput.style.height =
-      clamp(
-        el.messageInput.scrollHeight,
-        50,
-        maxHeight
-      ) + "px";
-
-  }
-
-
-  function focusInput(input) {
-
-    if (!input) {
-      return;
-    }
-
-    setTimeout(
-      () => {
-        try {
-          input.focus();
-        } catch {}
-      },
-      80
-    );
-
-  }
-
-
-  /* =======================================================
-     DRAFT
-     ======================================================= */
-
-  function saveDraft() {
-
-    if (!state.settings.draftSave) {
-      return;
-    }
-
-    if (!el.messageInput) {
-      return;
-    }
-
-    storageSet(
-      CONFIG.storage.draft,
-      el.messageInput.value
-    );
-
-  }
-
-
-  function loadDraft() {
-
-    if (!el.messageInput) {
-      return;
-    }
-
-    if (!state.settings.draftSave) {
-      return;
-    }
-
-    const draft =
-      storageGet(
-        CONFIG.storage.draft,
-        ""
-      );
-
-    if (
-      typeof draft === "string" &&
-      draft.length
-    ) {
-
-      el.messageInput.value =
-        draft;
-
-      autoResizeInput();
-
-    }
-
-  }
-
-
-  /* =======================================================
-     API REQUEST
-     ======================================================= */
-
-  async function apiRequest(
-    url,
-    options = {}
-  ) {
-
-    const controller =
-      new AbortController();
-
-    const timeout =
-      setTimeout(
-        () => controller.abort(),
-        options.timeout ||
-          CONFIG.request.timeout
-      );
-
-
-    const headers = {
-
-      Accept:
-        "application/json, text/plain, */*",
-
-      "X-TurkAI-Version":
-        CONFIG.version,
-
-      "X-TurkAI-Request-ID":
-        generateId("req"),
-
-      ...(options.headers || {})
-
-    };
-
-
-    let body =
-      options.body;
-
-
-    if (
-      body !== undefined &&
-      body !== null &&
-      !(body instanceof FormData) &&
-      !(body instanceof Blob) &&
-      !(body instanceof URLSearchParams)
-    ) {
-
-      if (
-        typeof body !== "string"
-      ) {
-
-        body =
-          JSON.stringify(body);
-
-      }
-
-
-      if (
-        !headers["Content-Type"]
-      ) {
-
-        headers["Content-Type"] =
-          "application/json; charset=UTF-8";
-
-      }
-
-    }
-
-
-    let response;
-
-
-    try {
-
-      response =
-        await fetch(
-          url,
-          {
-
-            method:
-              options.method ||
-              "GET",
-
-            headers,
-
-            body,
-
-            credentials:
-              "same-origin",
-
-            cache:
-              "no-store",
-
-            redirect:
-              "follow",
-
-            signal:
-              options.signal ||
-              controller.signal
-
-          }
-        );
-
-    } catch (error) {
-
-      if (
-        error?.name ===
-        "AbortError"
-      ) {
-
-        throw new Error(
-          "İstek zaman aşımına uğradı veya durduruldu."
-        );
-
-      }
-
-      throw new Error(
-        "TürkAI sunucusuna bağlanılamadı."
-      );
-
-    } finally {
-
-      clearTimeout(timeout);
-
-    }
-
-
-    const contentType =
-      response.headers.get(
-        "content-type"
-      ) || "";
-
-
-    let data = null;
-
-
-    try {
-
-      if (
-        contentType.includes(
-          "application/json"
-        )
-      ) {
-
-        data =
-          await response.json();
-
-      } else {
-
-        const raw =
-          await response.text();
-
-        try {
-
-          data =
-            JSON.parse(raw);
-
-        } catch {
-
-          data =
-            raw;
-
-        }
-
-      }
-
-    } catch {
-
-      data = null;
-
-    }
-
-
-    if (!response.ok) {
-
-      let message =
-        `İstek başarısız (${response.status})`;
-
-
-      if (
-        data &&
-        typeof data === "object"
-      ) {
-
-        message =
-          data.message ||
-          data.error ||
-          data.details ||
-          message;
-
-      } else if (
-        typeof data === "string" &&
-        data.trim()
-      ) {
-
-        message =
-          data.trim();
-
-      }
-
-
-      const error =
-        new Error(message);
-
-      error.status =
-        response.status;
-
-      error.data =
-        data;
-
-      throw error;
-
-    }
-
-
-    return data;
-
-  }
-
-
-  /* =======================================================
-     CHAT RESPONSE PARSER
-     ======================================================= */
-
-  function extractAnswer(data) {
-
-    if (!data) {
-      return "";
-    }
-
-    if (
-      typeof data === "string"
-    ) {
-      return data;
-    }
-
-    return String(
-      data.answer ??
-      data.response ??
-      data.message ??
-      data.text ??
-      data.content ??
-      data.data?.answer ??
-      data.data?.response ??
-      data.data?.message ??
-      data.data?.text ??
-      data.result?.answer ??
-      data.result?.response ??
-      data.result?.message ??
-      ""
-    );
-
-  }
-
-
-  /* =======================================================
-     MARKDOWN-LITE
-     ======================================================= */
-
-  function renderRichText(value) {
-
-    let source =
-      escapeHTML(value);
-
-    const codeBlocks = [];
-
-    source =
-      source.replace(
-        /```([\w-]+)?\n?([\s\S]*?)```/g,
-        (_, language, code) => {
-
-          const token =
-            `___TURKAI_CODE_${codeBlocks.length}___`;
-
-          codeBlocks.push({
-            language:
-              language || "code",
-
-            code
-          });
-
-          return token;
-
+  ];
+
+  function renderCommands(query = "") {
+    if (!el.commandList) return;
+
+    const normalized =
+      safeText(query)
+        .toLocaleLowerCase("tr-TR")
+        .trim();
+
+    const filtered =
+      state.commandItems.filter(
+        (item) => {
+          const text = (
+            item.title +
+            " " +
+            item.description
+          ).toLocaleLowerCase("tr-TR");
+
+          return !normalized ||
+            text.includes(normalized);
         }
       );
 
+    el.commandList.innerHTML = "";
 
-    source =
-      source.replace(
-        /\*\*(.+?)\*\*/g,
-        "<strong>$1</strong>"
-      );
+    filtered.forEach((item, index) => {
+      const button =
+        document.createElement("button");
 
+      button.type = "button";
+      button.className =
+        `command-item ${
+          index === state.commandIndex
+            ? "active"
+            : ""
+        }`;
 
-    source =
-      source.replace(
-        /`([^`]+)`/g,
-        "<code class=\"inline-code\">$1</code>"
-      );
+      button.dataset.commandId =
+        item.id;
 
-
-    source =
-      source.replace(
-        /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
-      );
-
-
-    source =
-      source.replace(
-        /\n/g,
-        "<br>"
-      );
-
-
-    codeBlocks.forEach(
-      (block, index) => {
-
-        const token =
-          `___TURKAI_CODE_${index}___`;
-
-        const html = `
-
-          <div class="code-block">
-
-            <div class="code-header">
-
-              <span>
-                ${escapeHTML(block.language)}
-              </span>
-
-              <button
-                class="code-copy"
-                type="button"
-                data-code-copy
-                data-code="${encodeURIComponent(block.code)}"
-              >
-                <svg aria-hidden="true">
-                  <use href="#i-copy"></use>
-                </svg>
-                Kopyala
-              </button>
-
-            </div>
-
-            <pre><code>${block.code}</code></pre>
-
-          </div>
-
-        `;
-
-        source =
-          source.replace(
-            token,
-            html
-          );
-
-      }
-    );
-
-
-    return source;
-
-  }
-
-
-  /* =======================================================
-     MESSAGE RENDER
-     ======================================================= */
-
-  function renderMessages() {
-
-    if (!el.messages) {
-      return;
-    }
-
-
-    if (
-      !state.messages.length
-    ) {
-
-      el.messages.innerHTML =
-        "";
-
-      el.welcomeState?.classList.remove(
-        "hidden"
-      );
-
-      return;
-
-    }
-
-
-    el.welcomeState?.classList.add(
-      "hidden"
-    );
-
-
-    el.messages.innerHTML =
-      state.messages
-        .map(
-          renderMessage
-        )
-        .join("");
-
-
-    bindMessageActions();
-
-    scrollMessagesToBottom();
-
-  }
-
-
-  function renderMessage(message) {
-
-    const role =
-      message.role === "user"
-        ? "user"
-        : "assistant";
-
-
-    const avatar =
-      role === "user"
-        ? "i-user"
-        : "i-logo";
-
-
-    const name =
-      role === "user"
-        ? "Sen"
-        : "TürkAI";
-
-
-    const content =
-      renderRichText(
-        message.content ??
-        message.text ??
-        ""
-      );
-
-
-    return `
-
-      <article
-        class="message-row ${role}"
-        data-message-id="${escapeHTML(
-          message.id || generateId("msg")
-        )}"
-      >
-
-        <div class="message-avatar">
-
-          <svg aria-hidden="true">
-            <use href="#${avatar}"></use>
+      button.innerHTML = `
+        <div class="command-item-icon">
+          <svg viewBox="0 0 24 24">
+            <use href="#${item.icon}"></use>
           </svg>
-
         </div>
 
-
-        <div class="message-content">
-
-          <div class="message-bubble">
-            ${content}
-          </div>
-
-
-          <div class="message-meta">
-
-            <span>
-              ${name}
-            </span>
-
-            <span>·</span>
-
-            <span>
-              ${escapeHTML(
-                message.time ||
-                formatTime(
-                  message.createdAt
-                    ? new Date(message.createdAt)
-                    : new Date()
-                )
-              )}
-            </span>
-
-          </div>
-
-
-          ${
-            role === "assistant"
-              ? `
-                <div class="message-actions">
-
-                  <button
-                    class="message-action"
-                    type="button"
-                    data-action="copy"
-                    title="Kopyala"
-                  >
-                    <svg aria-hidden="true">
-                      <use href="#i-copy"></use>
-                    </svg>
-                  </button>
-
-                  <button
-                    class="message-action"
-                    type="button"
-                    data-action="speak"
-                    title="Seslendir"
-                  >
-                    <svg aria-hidden="true">
-                      <use href="#i-volume"></use>
-                    </svg>
-                  </button>
-
-                </div>
-              `
-              : ""
-          }
-
+        <div class="command-item-content">
+          <strong>
+            ${escapeHTML(item.title)}
+          </strong>
+          <span>
+            ${escapeHTML(item.description)}
+          </span>
         </div>
 
-      </article>
-
-    `;
-
-  }
-
-
-  function bindMessageActions() {
-
-    qsa(
-      "[data-code-copy]"
-    ).forEach(button => {
-
-      button.addEventListener(
-        "click",
-        async () => {
-
-          let code = "";
-
-          try {
-
-            code =
-              decodeURIComponent(
-                button.dataset.code || ""
-              );
-
-          } catch {
-
-            code =
-              button.dataset.code || "";
-
-          }
-
-
-          try {
-
-            await navigator.clipboard.writeText(
-              code
-            );
-
-            toast(
-              "Kod kopyalandı",
-              "",
-              "success"
-            );
-
-          } catch {
-
-            toast(
-              "Kopyalanamadı",
-              "Tarayıcı panoya erişime izin vermedi.",
-              "error"
-            );
-
-          }
-
-        }
-      );
-
-    });
-
-
-    qsa(
-      ".message-action[data-action]"
-    ).forEach(button => {
-
-      button.addEventListener(
-        "click",
-        async () => {
-
-          const row =
-            button.closest(
-              ".message-row"
-            );
-
-          if (!row) {
-            return;
-          }
-
-          const id =
-            row.dataset.messageId;
-
-          const message =
-            state.messages.find(
-              item =>
-                item.id === id
-            );
-
-          if (!message) {
-            return;
-          }
-
-          const action =
-            button.dataset.action;
-
-
-          if (action === "copy") {
-
-            try {
-
-              await navigator.clipboard.writeText(
-                text(message.content)
-              );
-
-              toast(
-                "Mesaj kopyalandı",
-                "",
-                "success"
-              );
-
-            } catch {
-
-              toast(
-                "Kopyalanamadı",
-                "Panoya erişilemedi.",
-                "error"
-              );
-
-            }
-
-          }
-
-
-          if (action === "speak") {
-
-            speakText(
-              text(message.content)
-            );
-
-          }
-
-        }
-      );
-
-    });
-
-  }
-
-
-  function appendMessage(message) {
-
-    state.messages.push({
-
-      id:
-        message.id ||
-        generateId("msg"),
-
-      role:
-        message.role === "user"
-          ? "user"
-          : "assistant",
-
-      content:
-        text(
-          message.content ??
-          message.text ??
-          ""
-        ),
-
-      createdAt:
-        message.createdAt ||
-        new Date().toISOString(),
-
-      time:
-        message.time ||
-        formatTime()
-
-    });
-
-
-    if (
-      state.messages.length >
-      CONFIG.chat.maxMessages
-    ) {
-
-      state.messages =
-        state.messages.slice(
-          -CONFIG.chat.maxMessages
-        );
-
-    }
-
-
-    renderMessages();
-
-  }
-
-
-  function scrollMessagesToBottom() {
-
-    if (!el.messages) {
-      return;
-    }
-
-    requestAnimationFrame(
-      () => {
-
-        el.messages.scrollTop =
-          el.messages.scrollHeight;
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     SEND MESSAGE
-     ======================================================= */
-
-  async function sendMessage() {
-
-    if (state.sending) {
-      return;
-    }
-
-
-    if (!el.messageInput) {
-      return;
-    }
-
-
-    const originalText =
-      el.messageInput.value;
-
-
-    const message =
-      originalText.trim();
-
-
-    if (!message) {
-
-      focusInput(
-        el.messageInput
-      );
-
-      return;
-
-    }
-
-
-    if (
-      message.length >
-      CONFIG.chat.maxInputLength
-    ) {
-
-      toast(
-        "Mesaj çok uzun",
-        `En fazla ${CONFIG.chat.maxInputLength.toLocaleString("tr-TR")} karakter kullanabilirsin.`,
-        "warning"
-      );
-
-      return;
-
-    }
-
-
-    /* -----------------------------------------------
-       SLASH KOMUTU
-       ----------------------------------------------- */
-
-    const slashHandled =
-      await handleSlashCommand(
-        message
-      );
-
-    if (slashHandled) {
-
-      el.messageInput.value = "";
-
-      autoResizeInput();
-
-      saveDraft();
-
-      return;
-
-    }
-
-
-    /* -----------------------------------------------
-       STATE
-       ----------------------------------------------- */
-
-    state.sending = true;
-    state.loading = true;
-
-
-    if (el.sendButton) {
-
-      el.sendButton.disabled =
-        true;
-
-      el.sendButton.innerHTML = `
-
-        <svg aria-hidden="true">
-          <use href="#i-stop"></use>
+        <svg
+          class="command-item-arrow"
+          viewBox="0 0 24 24"
+        >
+          <use href="#i-chevron-right"></use>
         </svg>
-
       `;
 
+      button.onclick = () => {
+        closeModal("commandCenter");
+        item.action();
+      };
+
+      el.commandList.appendChild(button);
+    });
+
+    state.commandIndex = clamp(
+      state.commandIndex,
+      0,
+      Math.max(filtered.length - 1, 0)
+    );
+  }
+
+  function openCommandCenter() {
+    openModal("commandCenter");
+
+    state.commandIndex = 0;
+
+    if (el.commandInput) {
+      el.commandInput.value = "";
     }
 
+    renderCommands();
 
-    el.stopButton?.classList.remove(
-      "hidden"
+    window.setTimeout(() => {
+      el.commandInput?.focus();
+    }, 50);
+  }
+
+  /* =========================================================
+     NEW CHAT
+     ========================================================= */
+
+  function createNewChat() {
+    state.conversationId = null;
+    state.messages = [];
+    state.attachments = [];
+
+    renderMessages();
+    renderAttachments();
+
+    clearDraft();
+
+    if (el.messageInput) {
+      el.messageInput.value = "";
+      autoResizeInput();
+      el.messageInput.focus();
+    }
+
+    openPanel("chat");
+
+    toast(
+      "Yeni sohbet hazır.",
+      "success"
     );
+  }
 
+  /* =========================================================
+     SLASH COMMAND
+     ========================================================= */
 
+  async function handleSlashCommand(message) {
+    const textValue =
+      safeText(message).trim();
+
+    if (!textValue.startsWith("/")) {
+      return false;
+    }
+
+    const parts =
+      textValue.split(/\s+/);
+
+    const command =
+      parts[0]
+        .toLocaleLowerCase("tr-TR");
+
+    const argument =
+      parts.slice(1).join(" ");
+
+    switch (command) {
+      case "/yeni":
+      case "/new":
+        createNewChat();
+        return true;
+
+      case "/araştır":
+      case "/arastir":
+      case "/research":
+        openPanel("research");
+
+        if (
+          argument &&
+          el.researchInput
+        ) {
+          el.researchInput.value =
+            argument;
+        }
+
+        return true;
+
+      case "/hava":
+      case "/weather":
+        openPanel("weather");
+
+        if (
+          argument &&
+          el.weatherInput
+        ) {
+          el.weatherInput.value =
+            argument;
+        }
+
+        return true;
+
+      case "/hafıza":
+      case "/hafiza":
+      case "/memory":
+        openPanel("memory");
+
+        if (
+          argument &&
+          el.memoryInput
+        ) {
+          el.memoryInput.value =
+            argument;
+        }
+
+        return true;
+
+      case "/dosya":
+      case "/files":
+        openPanel("files");
+        return true;
+
+      case "/ayar":
+      case "/ayarlar":
+      case "/settings":
+        openModal("settingsModal");
+        return true;
+
+      case "/hesap":
+      case "/account":
+        openModal("accountModal");
+        return true;
+
+      case "/sistem":
+      case "/system":
+        openPanel("system");
+        return true;
+
+      case "/yardım":
+      case "/yardim":
+      case "/help":
+        openModal("commandHelpModal");
+        return true;
+
+      case "/temizle":
+      case "/clear":
+        state.messages = [];
+        renderMessages();
+        return true;
+
+      default:
+        return false;
+    }
+  }
+
+  /* =========================================================
+     CHAT REQUEST
+     ========================================================= */
+
+  function setSendingUI(isSending) {
+    if (el.sendButton) {
+      el.sendButton.disabled = isSending;
+
+      el.sendButton.innerHTML = isSending
+        ? `
+          <svg viewBox="0 0 24 24">
+            <use href="#i-stop"></use>
+          </svg>
+        `
+        : `
+          <svg viewBox="0 0 24 24">
+            <use href="#i-send"></use>
+          </svg>
+        `;
+    }
+
+    if (el.stopButton) {
+      el.stopButton.classList.toggle(
+        "hidden",
+        !isSending
+      );
+    }
+  }
+
+  function showTyping() {
     el.typingIndicator?.classList.remove(
       "hidden"
     );
+  }
 
-
-    el.welcomeState?.classList.add(
+  function hideTyping() {
+    el.typingIndicator?.classList.add(
       "hidden"
     );
+  }
 
-
-    const userMessage = {
-
-      id:
-        generateId("user"),
-
-      role:
-        "user",
-
-      content:
-        message,
-
-      createdAt:
-        new Date().toISOString(),
-
-      time:
-        formatTime()
-
-    };
-
-
-    state.messages.push(
-      userMessage
-    );
-
-
-    renderMessages();
-
-
-    /* -----------------------------------------------
-       İSTEK HAZIRLA
-       ----------------------------------------------- */
-
-    const contextMessages =
+  function buildChatPayload(message) {
+    const recent =
       state.messages
-        .slice(
-          -CONFIG.chat.maxContextMessages
-        )
-        .map(
-          item => ({
+        .slice(-14)
+        .map((item) => ({
+          role: item.role,
+          content: item.content
+        }));
 
-            role:
-              item.role,
-
-            content:
-              text(
-                item.content
-              )
-
-          })
-        );
-
-
-    const payload = {
-
+    return {
       message,
+      text: message,
 
-      text:
-        message,
-
-      model:
-        state.selectedModel,
-
-      mode:
-        state.selectedModel,
+      model: state.selectedModel,
+      mode: "chat",
 
       conversationId:
         state.conversationId,
@@ -2352,1158 +1878,517 @@
       conversation_id:
         state.conversationId,
 
-      messages:
-        contextMessages,
+      messages: recent,
 
       attachments:
         state.attachments.map(
-          item => ({
-            id:
-              item.id,
-            name:
-              item.name,
-            url:
-              item.url
+          (item) => ({
+            id: item.id,
+            name: item.name,
+            type: item.type,
+            size: item.size,
+            url: item.url || null
           })
         ),
 
       options: {
-
         freshInfo:
-          state.settings.freshInfo,
+          !!state.settings.freshInfo,
 
-        autoMode:
-          state.selectedModel ===
-          "auto"
+        autoResearch:
+          !!state.settings.freshInfo,
 
+        memory: true
       }
-
     };
+  }
 
+  async function requestChat(message) {
+    const payload =
+      buildChatPayload(message);
+
+    let result = null;
 
     try {
-
-      let result;
-
-
-      /* -------------------------------------------
-         ÖNCE SMART CHAT
-         ------------------------------------------- */
-
-      try {
-
-        result =
-          await apiRequest(
-            CONFIG.api.smartChat,
-            {
-              method:
-                "POST",
-
-              body:
-                payload,
-
-              signal:
-                state.abortController
-                  ?.signal
-
-            }
-          );
-
-      } catch (smartError) {
-
-        console.warn(
-          "[TürkAI] /api/chat/smart başarısız:",
-          smartError
-        );
-
-
-        /* -----------------------------------------
-           NORMAL CHAT FALLBACK
-           ----------------------------------------- */
-
-        if (
-          smartError?.status === 404 ||
-          smartError?.status === 405
-        ) {
-
-          result =
-            await apiRequest(
-              CONFIG.api.chat,
-              {
-
-                method:
-                  "POST",
-
-                body:
-                  payload,
-
-                signal:
-                  state.abortController
-                    ?.signal
-
-              }
-            );
-
-          } else {
-
-            throw smartError;
-
-          }
-
+      result = await apiRequest(
+        CONFIG.endpoints.chatSmart,
+        {
+          method: "POST",
+          body: payload,
+          signal:
+            state.abortController?.signal
         }
-
-
-      /* -------------------------------------------
-         CEVAP
-         ------------------------------------------- */
-
-      const answer =
-        extractAnswer(
-          result
-        );
-
-
-      if (!answer) {
-
-        throw new Error(
-          "Sunucu boş TürkAI cevabı döndürdü."
-        );
-
-      }
-
-
-      const assistantMessage = {
-
-        id:
-          generateId("assistant"),
-
-        role:
-          "assistant",
-
-        content:
-          answer,
-
-        createdAt:
-          new Date().toISOString(),
-
-        time:
-          formatTime(),
-
-        model:
-          result?.model ||
-          result?.provider ||
-          "TürkAI"
-
-      };
-
-
-      state.messages.push(
-        assistantMessage
       );
 
-
+      return result;
+    } catch (error) {
       if (
-        result?.conversationId
+        error?.name === "AbortError"
       ) {
-
-        state.conversationId =
-          result.conversationId;
-
+        throw error;
       }
 
+      if (
+        error?.status !== 404 &&
+        error?.status !== 405
+      ) {
+        /*
+          Smart endpoint mevcut ama hata verdi.
+          Normal chat'i yine deneyelim.
+        */
+      }
+    }
+
+    result = await apiRequest(
+      CONFIG.endpoints.chat,
+      {
+        method: "POST",
+        body: payload,
+        signal:
+          state.abortController?.signal
+      }
+    );
+
+    return result;
+  }
+
+  async function researchThenChat(
+    originalQuestion,
+    firstAnswer
+  ) {
+    if (!state.settings.freshInfo) {
+      return firstAnswer;
+    }
+
+    if (
+      !isLocalFailureAnswer(firstAnswer)
+    ) {
+      return firstAnswer;
+    }
+
+    let researchData;
+
+    try {
+      researchData = await apiRequest(
+        CONFIG.endpoints.research,
+        {
+          method: "POST",
+          body: {
+            query: originalQuestion,
+            question: originalQuestion,
+            mode: "answer",
+            language: "tr"
+          },
+          signal:
+            state.abortController?.signal
+        }
+      );
+    } catch {
+      return firstAnswer;
+    }
+
+    const researchText =
+      extractResearchText(researchData);
+
+    if (!researchText) {
+      return firstAnswer;
+    }
+
+    const enrichedMessage = `
+Aşağıdaki araştırma verisini kullanarak
+kullanıcı sorusuna Türkçe ve doğrudan cevap ver.
+
+Kullanıcı sorusu:
+${originalQuestion}
+
+Araştırma verisi:
+${researchText}
+
+Kurallar:
+- Araştırma verisini temel al.
+- Bilgi uydurma.
+- Gereksiz şekilde "araştırma yapıldı" deme.
+- Kullanıcının sorusuna doğrudan cevap ver.
+`;
+
+    const result =
+      await apiRequest(
+        CONFIG.endpoints.chat,
+        {
+          method: "POST",
+          body: buildChatPayload(
+            enrichedMessage
+          ),
+          signal:
+            state.abortController?.signal
+        }
+      );
+
+    const finalAnswer =
+      extractAnswer(result);
+
+    return finalAnswer || firstAnswer;
+  }
+
+  async function sendMessage() {
+    if (state.sending) return;
+    if (!el.messageInput) return;
+
+    const message =
+      el.messageInput.value.trim();
+
+    if (!message) return;
+
+    const slashHandled =
+      await handleSlashCommand(message);
+
+    if (slashHandled) {
+      el.messageInput.value = "";
+      autoResizeInput();
+      clearDraft();
+      return;
+    }
+
+    state.sending = true;
+    state.loading = true;
+
+    state.abortController =
+      new AbortController();
+
+    const originalText = message;
+
+    setSendingUI(true);
+    showTyping();
+
+    el.welcomeState?.classList.add(
+      "hidden"
+    );
+
+    appendMessage(
+      "user",
+      originalText
+    );
+
+    renderMessages();
+
+    try {
+      const result =
+        await requestChat(
+          originalText
+        );
+
+      let answer =
+        extractAnswer(result);
+
+      answer =
+        await researchThenChat(
+          originalText,
+          answer
+        );
 
       if (
-        result?.conversation_id
+        !answer ||
+        isLocalFailureAnswer(answer)
       ) {
-
-        state.conversationId =
-          result.conversation_id;
-
+        throw new Error(
+          "TürkAI bu soruya şu anda kullanılabilir bir yanıt üretemedi."
+        );
       }
 
+      const conversationId =
+        extractConversationId(result);
+
+      if (conversationId) {
+        state.conversationId =
+          conversationId;
+      }
+
+      appendMessage(
+        "assistant",
+        answer,
+        {
+          model:
+            result?.model ||
+            result?.data?.model ||
+            state.selectedModel
+        }
+      );
 
       renderMessages();
 
-
-      /* -------------------------------------------
-         KRİTİK:
-         SADECE BAŞARILI CEVAPTAN SONRA TEMİZLE
-         ------------------------------------------- */
-
-      el.messageInput.value =
-        "";
-
+      /*
+        Mesaj ancak başarıyla geldikten sonra temizlenir.
+        Böylece hata olduğunda kullanıcı yazdığını kaybetmez.
+      */
+      el.messageInput.value = "";
       autoResizeInput();
+      clearDraft();
 
-      storageDelete(
-        CONFIG.storage.draft
-      );
+      updateComposerInfo();
 
-
-      updateUsageInfo(
-        result
-      );
-
+      saveCurrentChat();
 
       if (
         state.settings.autoSpeak
       ) {
+        speakText(answer);
+      }
+    } catch (error) {
+      if (
+        error?.name === "AbortError"
+      ) {
+        /*
+          Kullanıcı durdurduysa yazıyı geri
+          komut kutusuna al.
+        */
+        el.messageInput.value =
+          originalText;
 
-        speakText(
-          answer
+        autoResizeInput();
+        saveDraft();
+
+        toast(
+          "Yanıt oluşturma durduruldu.",
+          "warning"
         );
 
+        return;
       }
-
-
-    } catch (error) {
-
-      console.error(
-        "[TürkAI] MESAJ GÖNDERME HATASI:",
-        error
-      );
-
-
-      /* -------------------------------------------
-         HATA OLURSA INPUT KORUNUR
-         ------------------------------------------- */
 
       el.messageInput.value =
         originalText;
 
       autoResizeInput();
-
       saveDraft();
 
-
       toast(
-        "Mesaj gönderilemedi",
         error?.message ||
-          "Sunucudan beklenmeyen bir hata geldi.",
-        "error"
+          "Mesaj gönderilemedi.",
+        "error",
+        5000
       );
 
-
+      console.error(
+        "[TürkAI] Chat error:",
+        error
+      );
     } finally {
-
       state.sending = false;
       state.loading = false;
 
+      hideTyping();
+      setSendingUI(false);
 
-      el.typingIndicator?.classList.add(
-        "hidden"
-      );
+      state.abortController = null;
 
+      updateComposerInfo();
 
-      el.stopButton?.classList.add(
-        "hidden"
-      );
-
-
-      if (el.sendButton) {
-
-        el.sendButton.disabled =
-          false;
-
-        el.sendButton.innerHTML = `
-
-          <svg aria-hidden="true">
-            <use href="#i-send"></use>
-          </svg>
-
-        `;
-
+      if (
+        document.visibilityState ===
+        "visible"
+      ) {
+        el.messageInput?.focus();
       }
-
-
-      state.abortController =
-        null;
-
-
-      focusInput(
-        el.messageInput
-      );
-
     }
-
   }
 
-
-  /* =======================================================
-     STOP
-     ======================================================= */
-
   function stopGeneration() {
-
     if (
       state.abortController
     ) {
-
       try {
         state.abortController.abort();
       } catch {}
-
     }
-
-    state.abortController =
-      null;
 
     state.sending = false;
     state.loading = false;
 
-
-    el.typingIndicator?.classList.add(
-      "hidden"
-    );
-
-    el.stopButton?.classList.add(
-      "hidden"
-    );
-
-
-    if (el.sendButton) {
-
-      el.sendButton.disabled =
-        false;
-
-      el.sendButton.innerHTML = `
-
-        <svg aria-hidden="true">
-          <use href="#i-send"></use>
-        </svg>
-
-      `;
-
-    }
-
+    hideTyping();
+    setSendingUI(false);
 
     toast(
-      "Yanıt durduruldu",
-      "",
+      "Yanıt üretimi durduruldu.",
       "warning"
     );
-
   }
 
+  function updateComposerInfo() {
+    if (!el.composerTokenInfo) return;
 
-  /* =======================================================
-     USAGE INFO
-     ======================================================= */
-
-  function updateUsageInfo(data) {
-
-    if (!el.composerTokenInfo) {
-      return;
-    }
-
-
-    const usage =
-      data?.usage ??
-      data?.data?.usage ??
-      null;
-
-
-    if (!usage) {
-
-      el.composerTokenInfo.textContent =
-        "Hazır";
-
-      return;
-
-    }
-
-
-    if (
-      typeof usage === "object"
-    ) {
-
-      const used =
-        usage.used ??
-        usage.messages ??
-        null;
-
-      const limit =
-        usage.limit ??
-        null;
-
-
-      if (
-        used !== null &&
-        limit !== null
-      ) {
-
-        el.composerTokenInfo.textContent =
-          `${used} / ${limit}`;
-
-        return;
-
-      }
-
-    }
-
+    const chars =
+      el.messageInput?.value.length || 0;
 
     el.composerTokenInfo.textContent =
-      "Hazır";
-
+      `${chars.toLocaleString("tr-TR")} karakter`;
   }
 
+  /* =========================================================
+     SES
+     ========================================================= */
 
-  /* =======================================================
-     SEND EVENTS
-     ======================================================= */
-
-  function bindChat() {
-
-    if (!el.sendButton) {
-      console.error(
-        "[TürkAI] sendButton bulunamadı."
-      );
-    }
-
-
-    if (!el.messageInput) {
-      console.error(
-        "[TürkAI] messageInput bulunamadı."
-      );
-    }
-
-
-    /* ---------------------------------------------
-       GÖNDER BUTTON
-       --------------------------------------------- */
+  function speakText(textValue) {
+    const textToSpeak =
+      safeText(textValue).trim();
 
     if (
-      el.sendButton &&
-      el.sendButton.dataset.bound !== "1"
-    ) {
-
-      el.sendButton.dataset.bound =
-        "1";
-
-
-      el.sendButton.addEventListener(
-        "click",
-        event => {
-
-          event.preventDefault();
-          event.stopPropagation();
-
-          if (state.sending) {
-
-            stopGeneration();
-
-            return;
-
-          }
-
-          state.abortController =
-            new AbortController();
-
-          sendMessage();
-
-        }
-      );
-
-    }
-
-
-    /* ---------------------------------------------
-       STOP BUTTON
-       --------------------------------------------- */
-
-    if (el.stopButton) {
-
-      el.stopButton.addEventListener(
-        "click",
-        event => {
-
-          event.preventDefault();
-
-          stopGeneration();
-
-        }
-      );
-
-    }
-
-
-    /* ---------------------------------------------
-       ENTER
-       --------------------------------------------- */
-
-    if (
-      el.messageInput &&
-      el.messageInput.dataset.bound !== "1"
-    ) {
-
-      el.messageInput.dataset.bound =
-        "1";
-
-
-      el.messageInput.addEventListener(
-        "keydown",
-        event => {
-
-          if (
-            event.key !== "Enter"
-          ) {
-            return;
-          }
-
-
-          if (
-            event.shiftKey
-          ) {
-            return;
-          }
-
-
-          if (
-            !state.settings.enterSend
-          ) {
-            return;
-          }
-
-
-          event.preventDefault();
-          event.stopPropagation();
-
-
-          if (state.sending) {
-            return;
-          }
-
-
-          state.abortController =
-            new AbortController();
-
-
-          sendMessage();
-
-        }
-      );
-
-
-      el.messageInput.addEventListener(
-        "input",
-        () => {
-
-          autoResizeInput();
-          saveDraft();
-
-        }
-      );
-
-    }
-
-
-    /* ---------------------------------------------
-       QUICK CARDS
-       --------------------------------------------- */
-
-    qsa(
-      ".quick-card[data-prompt]"
-    ).forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const prompt =
-            button.dataset.prompt ||
-            "";
-
-          if (!prompt) {
-            return;
-          }
-
-          el.messageInput.value =
-            prompt;
-
-          autoResizeInput();
-
-          focusInput(
-            el.messageInput
-          );
-
-        }
-      );
-
-    });
-
-
-    /* ---------------------------------------------
-       NEW CHAT
-       --------------------------------------------- */
-
-    if (el.newChatButton) {
-
-      el.newChatButton.addEventListener(
-        "click",
-        createNewChat
-      );
-
-    }
-
-  }
-
-
-  /* =======================================================
-     NEW CHAT
-     ======================================================= */
-
-  function createNewChat() {
-
-    state.messages = [];
-
-    state.attachments = [];
-
-    state.conversationId =
-      null;
-
-    storageDelete(
-      CONFIG.storage.draft
-    );
-
-
-    if (el.messageInput) {
-
-      el.messageInput.value =
-        "";
-
-      autoResizeInput();
-
-    }
-
-
-    closeAllPanels();
-
-    renderMessages();
-
-    focusInput(
-      el.messageInput
-    );
-
-
-    toast(
-      "Yeni sohbet hazır",
-      "Temiz bir çalışma alanı açıldı.",
-      "success"
-    );
-
-  }
-
-
-  /* =======================================================
-     SLASH COMMANDS
-     ======================================================= */
-
-  async function handleSlashCommand(
-    value
-  ) {
-
-    const input =
-      value.trim();
-
-
-    if (
-      !input.startsWith("/")
-    ) {
-
-      return false;
-
-    }
-
-
-    const parts =
-      input
-        .slice(1)
-        .trim()
-        .split(/\s+/);
-
-
-    const command =
-      (
-        parts.shift() ||
-        ""
-      ).toLowerCase();
-
-
-    const argument =
-      parts.join(" ").trim();
-
-
-    switch (command) {
-
-      case "new":
-
-        createNewChat();
-
-        return true;
-
-
-      case "research":
-
-        openPanel(
-          "research"
-        );
-
-        if (
-          argument &&
-          el.researchInput
-        ) {
-
-          el.researchInput.value =
-            argument;
-
-          runResearch(
-            argument
-          );
-
-        }
-
-        return true;
-
-
-      case "weather":
-
-        openPanel(
-          "weather"
-        );
-
-        if (
-          argument &&
-          el.weatherInput
-        ) {
-
-          el.weatherInput.value =
-            argument;
-
-          runWeather(
-            argument
-          );
-
-        }
-
-        return true;
-
-
-      case "memory":
-
-        openPanel(
-          "memory"
-        );
-
-        if (
-          argument &&
-          el.memoryInput
-        ) {
-
-          el.memoryInput.value =
-            argument;
-
-          searchMemory(
-            argument
-          );
-
-        }
-
-        return true;
-
-
-      case "files":
-
-        openPanel(
-          "files"
-        );
-
-        return true;
-
-
-      case "image":
-
-        openModal(
-          "imageCreateModal"
-        );
-
-        if (
-          argument &&
-          el.imagePromptInput
-        ) {
-
-          el.imagePromptInput.value =
-            argument;
-
-        }
-
-        focusInput(
-          el.imagePromptInput
-        );
-
-        return true;
-
-
-      case "video":
-
-        openModal(
-          "videoModal"
-        );
-
-        if (
-          argument &&
-          el.videoPromptInput
-        ) {
-
-          el.videoPromptInput.value =
-            argument;
-
-        }
-
-        focusInput(
-          el.videoPromptInput
-        );
-
-        return true;
-
-
-      case "plans":
-
-        openPanel(
-          "plans"
-        );
-
-        return true;
-
-
-      case "settings":
-
-        openModal(
-          "settingsModal"
-        );
-
-        return true;
-
-
-      case "system":
-
-        openPanel(
-          "system"
-        );
-
-        return true;
-
-
-      case "help":
-
-        openModal(
-          "commandHelpModal"
-        );
-
-        return true;
-
-
-      default:
-
-        return false;
-
-    }
-
-  }
-
-
-  /* =======================================================
-     SPEECH SYNTHESIS
-     ======================================================= */
-
-  function speakText(value) {
-
-    const content =
-      text(value).trim();
-
-
-    if (!content) {
-      return;
-    }
-
-
-    if (
+      !textToSpeak ||
       !("speechSynthesis" in window)
     ) {
-
       toast(
-        "Ses desteklenmiyor",
-        "Tarayıcın seslendirmeyi desteklemiyor.",
+        "Bu cihazda sesli okuma desteklenmiyor.",
         "warning"
       );
-
       return;
-
     }
 
-
     try {
-
       window.speechSynthesis.cancel();
-
 
       const utterance =
         new SpeechSynthesisUtterance(
-          content
+          textToSpeak
         );
 
+      utterance.lang = "tr-TR";
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
 
-      utterance.lang =
-        "tr-TR";
+      utterance.onstart = () => {
+        state.speaking = true;
+      };
 
-      utterance.rate =
-        0.94;
+      utterance.onend = () => {
+        state.speaking = false;
+      };
 
-      utterance.pitch =
-        1;
+      utterance.onerror = () => {
+        state.speaking = false;
+      };
 
-      utterance.volume =
-        1;
-
-
-      utterance.onstart =
-        () => {
-
-          state.speaking =
-            true;
-
-        };
-
-
-      utterance.onend =
-        () => {
-
-          state.speaking =
-            false;
-
-        };
-
-
-      utterance.onerror =
-        () => {
-
-          state.speaking =
-            false;
-
-        };
-
+      state.synthUtterance =
+        utterance;
 
       window.speechSynthesis.speak(
         utterance
       );
-
     } catch (error) {
-
       console.error(
-        "[TürkAI] TTS hatası:",
+        "[TürkAI] TTS error:",
         error
       );
-
     }
-
   }
 
+  function stopSpeaking() {
+    if (
+      "speechSynthesis" in window
+    ) {
+      window.speechSynthesis.cancel();
+    }
 
-  /* =======================================================
-     VOICE INPUT
-     ======================================================= */
+    state.speaking = false;
+  }
 
   function initSpeechRecognition() {
-
     const Recognition =
       window.SpeechRecognition ||
       window.webkitSpeechRecognition;
 
-
     if (!Recognition) {
-
-      console.warn(
-        "[TürkAI] SpeechRecognition desteklenmiyor."
-      );
-
       return null;
-
     }
-
 
     const recognition =
       new Recognition();
 
+    recognition.lang = "tr-TR";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
 
-    recognition.lang =
-      "tr-TR";
+    recognition.onstart = () => {
+      state.recording = true;
 
-    recognition.continuous =
-      false;
-
-    recognition.interimResults =
-      false;
-
-    recognition.maxAlternatives =
-      1;
-
-
-    recognition.onstart =
-      () => {
-
-        state.recording =
-          true;
-
-        el.voiceButton?.classList.add(
-          "recording"
-        );
-
-        showVoiceStatus(
-          "Dinliyorum",
-          "Konuşmaya başlayabilirsin."
-        );
-
-      };
-
-
-    recognition.onresult =
-      event => {
-
-        const result =
-          event.results?.[0]?.[0];
-
-        const transcript =
-          result?.transcript ||
-          "";
-
-
-        if (
-          el.messageInput &&
-          transcript
-        ) {
-
-          el.messageInput.value =
-            transcript;
-
-          autoResizeInput();
-
-          focusInput(
-            el.messageInput
-          );
-
-        }
-
-      };
-
-
-    recognition.onerror =
-      event => {
-
-        console.warn(
-          "[TürkAI] Ses tanıma:",
-          event.error
-        );
-
-        toast(
-          "Ses tanıma hatası",
-          event.error || "Bilinmeyen ses hatası.",
-          "error"
-        );
-
-      };
-
-
-    recognition.onend =
-      () => {
-
-        state.recording =
-          false;
-
-        el.voiceButton?.classList.remove(
-          "recording"
-        );
-
-        hideVoiceStatus();
-
-      };
-
-
-    return recognition;
-
-  }
-
-
-  function toggleVoiceInput() {
-
-    if (
-      state.recording
-    ) {
-
-      try {
-        state.recognition?.stop();
-      } catch {}
-
-      return;
-
-    }
-
-
-    if (
-      !state.recognition
-    ) {
-
-      state.recognition =
-        initSpeechRecognition();
-
-    }
-
-
-    if (
-      !state.recognition
-    ) {
-
-      toast(
-        "Sesli giriş kullanılamıyor",
-        "Bu tarayıcı Speech Recognition desteklemiyor.",
-        "warning"
+      el.voiceButton?.classList.add(
+        "active"
       );
 
-      return;
+      showVoiceStatus(
+        "Dinliyorum",
+        "Konuşabilirsiniz..."
+      );
+    };
 
-    }
+    recognition.onresult = (event) => {
+      let transcript = "";
 
-
-    try {
-
-      if (
-        "speechSynthesis" in window
+      for (
+        let i = event.resultIndex;
+        i < event.results.length;
+        i++
       ) {
-
-        window.speechSynthesis.cancel();
-
+        transcript +=
+          event.results[i][0].transcript;
       }
 
-      state.recognition.start();
+      transcript =
+        transcript.trim();
 
-    } catch (error) {
+      if (transcript && el.messageInput) {
+        el.messageInput.value =
+          transcript;
 
-      console.error(
-        "[TürkAI] Mikrofon başlatılamadı:",
-        error
+        autoResizeInput();
+        updateComposerInfo();
+      }
+    };
+
+    recognition.onerror = (event) => {
+      state.recording = false;
+
+      el.voiceButton?.classList.remove(
+        "active"
       );
 
-    }
+      hideVoiceStatus();
 
+      if (
+        event?.error ===
+          "not-allowed"
+      ) {
+        toast(
+          "Mikrofon izni verilmedi.",
+          "error"
+        );
+      } else if (
+        event?.error !== "aborted"
+      ) {
+        toast(
+          "Ses algılama başarısız oldu.",
+          "error"
+        );
+      }
+    };
+
+    recognition.onend = () => {
+      state.recording = false;
+
+      el.voiceButton?.classList.remove(
+        "active"
+      );
+
+      hideVoiceStatus();
+    };
+
+    return recognition;
   }
-
 
   function showVoiceStatus(
     title,
     message
   ) {
-
-    if (!el.voiceStatus) {
-      return;
-    }
+    if (!el.voiceStatus) return;
 
     el.voiceStatus.classList.remove(
       "hidden"
@@ -3518,3556 +2403,2421 @@
       el.voiceStatusText.textContent =
         message;
     }
-
   }
 
-
   function hideVoiceStatus() {
-
     el.voiceStatus?.classList.add(
       "hidden"
     );
-
   }
 
-
-  /* =======================================================
-     BOOTSTRAP PART 1
-     ======================================================= */
-
-  function bootstrapPart1() {
-
-    cacheDOM();
-
-    loadSettings();
-
-    bindModalSystem();
-
-    bindNavigation();
-
-    bindSidebar();
-
-    bindSettings();
-
-    bindChat();
-
-
-    if (el.voiceButton) {
-
-      el.voiceButton.addEventListener(
-        "click",
-        toggleVoiceInput
-      );
-
+  function startVoiceInput() {
+    if (!state.recognition) {
+      state.recognition =
+        initSpeechRecognition();
     }
 
-
-    if (el.voiceCancelButton) {
-
-      el.voiceCancelButton.addEventListener(
-        "click",
-        () => {
-
-          try {
-            state.recognition?.stop();
-          } catch {}
-
-          hideVoiceStatus();
-
-        }
-      );
-
-    }
-
-
-    if (el.topSettingsButton) {
-
-      el.topSettingsButton.addEventListener(
-        "click",
-        () => {
-          openModal(
-            "settingsModal"
-          );
-        }
-      );
-
-    }
-
-
-    if (el.settingsButton) {
-
-      el.settingsButton.addEventListener(
-        "click",
-        () => {
-          openModal(
-            "settingsModal"
-          );
-        }
-      );
-
-    }
-
-
-    if (el.mobileSettingsButton) {
-
-      el.mobileSettingsButton.addEventListener(
-        "click",
-        () => {
-
-          openModal(
-            "settingsModal"
-          );
-
-        }
-      );
-
-    }
-
-
-    if (el.accountButton) {
-
-      el.accountButton.addEventListener(
-        "click",
-        () => {
-
-          openModal(
-            "accountModal"
-          );
-
-          loadAccount();
-
-        }
-      );
-
-    }
-
-
-    if (el.topAccountButton) {
-
-      el.topAccountButton.addEventListener(
-        "click",
-        () => {
-
-          openModal(
-            "accountModal"
-          );
-
-          loadAccount();
-
-        }
-      );
-
-    }
-
-
-    if (el.searchButton) {
-
-      el.searchButton.addEventListener(
-        "click",
-        () => {
-
-          openModal(
-            "chatSearchPanel"
-          );
-
-          focusInput(
-            el.chatSearchInput
-          );
-
-        }
-      );
-
-    }
-
-
-    if (el.notificationButton) {
-
-      el.notificationButton.addEventListener(
-        "click",
-        () => {
-
-          openPanel(
-            "notifications"
-          );
-
-        }
-      );
-
-    }
-
-
-    if (el.researchToolButton) {
-
-      el.researchToolButton.addEventListener(
-        "click",
-        () => {
-
-          openPanel(
-            "research"
-          );
-
-        }
-      );
-
-    }
-
-
-    if (el.weatherToolButton) {
-
-      el.weatherToolButton.addEventListener(
-        "click",
-        () => {
-
-          openPanel(
-            "weather"
-          );
-
-        }
-      );
-
-    }
-
-
-    if (el.memoryToolButton) {
-
-      el.memoryToolButton.addEventListener(
-        "click",
-        () => {
-
-          openPanel(
-            "memory"
-          );
-
-        }
-      );
-
-    }
-
-
-    if (el.imageToolButton) {
-
-      el.imageToolButton.addEventListener(
-        "click",
-        () => {
-
-          openModal(
-            "imageCreateModal"
-          );
-
-          focusInput(
-            el.imagePromptInput
-          );
-
-        }
-      );
-
-    }
-
-
-    if (el.videoToolButton) {
-
-      el.videoToolButton.addEventListener(
-        "click",
-        () => {
-
-          openModal(
-            "videoModal"
-          );
-
-          focusInput(
-            el.videoPromptInput
-          );
-
-        }
-      );
-
-    }
-
-
-    updateNavigation();
-
-    loadDraft();
-
-    autoResizeInput();
-
-    renderMessages();
-
-
-    state.initialized =
-      true;
-
-
-    console.log(
-      "%cTürkAI Frontend 40.0 PART 1 hazır",
-      "font-weight:800"
-    );
-
-  }
-
-
-  /* =======================================================
-     PART 1 GLOBAL EXPORT
-     ======================================================= */
-
-  window.TURKAI = {
-
-    version:
-      CONFIG.version,
-
-    state,
-
-    config:
-      CONFIG,
-
-    sendMessage,
-
-    stopGeneration,
-
-    createNewChat,
-
-    openPanel,
-
-    closeAllPanels,
-
-    openModal,
-
-    closeModal,
-
-    closeAllModals,
-
-    speakText,
-
-    toast,
-
-    apiRequest
-
-  };
-
-
-  /* =======================================================
-     START
-     ======================================================= */
-
-  if (
-    document.readyState ===
-    "loading"
-  ) {
-
-    document.addEventListener(
-      "DOMContentLoaded",
-      bootstrapPart1,
-      {
-        once: true
-      }
-    );
-
-  } else {
-
-    bootstrapPart1();
-
-  }
-
-})();
-/* =========================================================
-   TÜRKAI 40.0
-   PREMIUM FRONTEND ENGINE
-   PART 2 / 2
-   ========================================================= */
-
-(() => {
-
-  "use strict";
-
-
-  /* =======================================================
-     CORE
-     ======================================================= */
-
-  const CORE =
-    window.TURKAI || {};
-
-  const state =
-    CORE.state || {};
-
-  const CONFIG =
-    CORE.config || {};
-
-
-  const apiRequest =
-    CORE.apiRequest;
-
-  const openPanel =
-    CORE.openPanel;
-
-  const closeAllPanels =
-    CORE.closeAllPanels;
-
-  const openModal =
-    CORE.openModal;
-
-  const closeModal =
-    CORE.closeModal;
-
-  const toast =
-    CORE.toast;
-
-  const sendMessage =
-    CORE.sendMessage;
-
-  const createNewChat =
-    CORE.createNewChat;
-
-
-  /* =======================================================
-     DOM
-     ======================================================= */
-
-  const $ = id =>
-    document.getElementById(id);
-
-
-  const qsa = selector =>
-    [...document.querySelectorAll(selector)];
-
-
-  /* =======================================================
-     ELEMENTS
-     ======================================================= */
-
-  const el = {
-
-    /* Research */
-    researchInput:
-      $("researchInput"),
-
-    researchRunButton:
-      $("researchRunButton"),
-
-    researchClearButton:
-      $("researchClearButton"),
-
-    researchStatus:
-      $("researchStatus"),
-
-    researchResults:
-      $("researchResults"),
-
-
-    /* Weather */
-    weatherInput:
-      $("weatherInput"),
-
-    weatherRunButton:
-      $("weatherRunButton"),
-
-    weatherResults:
-      $("weatherResults"),
-
-
-    /* Memory */
-    memoryInput:
-      $("memoryInput"),
-
-    memorySearchButton:
-      $("memorySearchButton"),
-
-    memorySaveCurrentButton:
-      $("memorySaveCurrentButton"),
-
-    memoryOverviewButton:
-      $("memoryOverviewButton"),
-
-    memoryStats:
-      $("memoryStats"),
-
-    memoryResults:
-      $("memoryResults"),
-
-
-    /* Files */
-    attachmentButton:
-      $("attachmentButton"),
-
-    fileSelectButton:
-      $("fileSelectButton"),
-
-    refreshFilesButton:
-      $("refreshFilesButton"),
-
-    globalFilePicker:
-      $("globalFilePicker"),
-
-    fileDropZone:
-      $("fileDropZone"),
-
-    fileList:
-      $("fileList"),
-
-    fileCount:
-      $("fileCount"),
-
-    attachmentPreview:
-      $("attachmentPreview"),
-
-
-    /* Media */
-    openImageModalButton:
-      $("openImageModalButton"),
-
-    openVideoModalButton:
-      $("openVideoModalButton"),
-
-    imagePromptInput:
-      $("imagePromptInput"),
-
-    imageSizeSelect:
-      $("imageSizeSelect"),
-
-    imageQualitySelect:
-      $("imageQualitySelect"),
-
-    generateImageButton:
-      $("generateImageButton"),
-
-    imageResult:
-      $("imageResult"),
-
-
-    videoPromptInput:
-      $("videoPromptInput"),
-
-    videoDurationSelect:
-      $("videoDurationSelect"),
-
-    generateVideoButton:
-      $("generateVideoButton"),
-
-    videoResult:
-      $("videoResult"),
-
-
-    /* Plans */
-    plansList:
-      $("plansList"),
-
-
-    /* Notifications */
-    notificationList:
-      $("notificationList"),
-
-    notificationSummary:
-      $("notificationSummary"),
-
-    markNotificationsReadButton:
-      $("markNotificationsReadButton"),
-
-    notificationBadge:
-      $("notificationBadge"),
-
-    sidebarNotificationBadge:
-      $("sidebarNotificationBadge"),
-
-
-    /* System */
-    systemStats:
-      $("systemStats"),
-
-    systemOverallStatus:
-      $("systemOverallStatus"),
-
-    refreshSystemButton:
-      $("refreshSystemButton"),
-
-    systemDetailContent:
-      $("systemDetailContent"),
-
-
-    /* Account */
-    accountButton:
-      $("accountButton"),
-
-    topAccountButton:
-      $("topAccountButton"),
-
-    accountName:
-      $("accountName"),
-
-    accountPlan:
-      $("accountPlan"),
-
-    accountStatusDot:
-      $("accountStatusDot"),
-
-    accountModalName:
-      $("accountModalName"),
-
-    accountModalEmail:
-      $("accountModalEmail"),
-
-    accountModalVerified:
-      $("accountModalVerified"),
-
-    accountModalPlan:
-      $("accountModalPlan"),
-
-    accountModalUsage:
-      $("accountModalUsage"),
-
-    accountModalStatus:
-      $("accountModalStatus"),
-
-    loginButton:
-      $("loginButton"),
-
-    logoutButton:
-      $("logoutButton"),
-
-    accountPlansButton:
-      $("accountPlansButton"),
-
-
-    /* Auth */
-    authForm:
-      $("authForm"),
-
-    authIdentifier:
-      $("authIdentifier"),
-
-    authPassword:
-      $("authPassword"),
-
-    authMessage:
-      $("authMessage"),
-
-    guestLoginButton:
-      $("guestLoginButton"),
-
-
-    /* Commands */
-    commandCenter:
-      $("commandCenter"),
-
-    commandInput:
-      $("commandInput"),
-
-    commandList:
-      $("commandList"),
-
-
-    /* Search */
-    chatSearchPanel:
-      $("chatSearchPanel"),
-
-    chatSearchInput:
-      $("chatSearchInput"),
-
-    chatSearchResults:
-      $("chatSearchResults"),
-
-
-    /* Settings */
-    settingsButton:
-      $("settingsButton"),
-
-    topSettingsButton:
-      $("topSettingsButton"),
-
-    mobileSettingsButton:
-      $("mobileSettingsButton"),
-
-
-    /* System */
-    systemButton:
-      $("systemButton"),
-
-    systemNavButton:
-      $("systemNavButton")
-
-
-  };
-
-
-  /* =======================================================
-     GENERIC HELPERS
-     ======================================================= */
-
-  function escapeHTML(value) {
-
-    return String(
-      value ??
-      ""
-    )
-      .replaceAll(
-        "&",
-        "&amp;"
-      )
-      .replaceAll(
-        "<",
-        "&lt;"
-      )
-      .replaceAll(
-        ">",
-        "&gt;"
-      )
-      .replaceAll(
-        '"',
-        "&quot;"
-      )
-      .replaceAll(
-        "'",
-        "&#039;"
-      );
-
-  }
-
-
-  function formatBytes(bytes) {
-
-    const size =
-      Number(bytes) || 0;
-
-    if (size < 1024) {
-      return `${size} B`;
-    }
-
-    if (size < 1024 * 1024) {
-      return `${(
-        size / 1024
-      ).toFixed(1)} KB`;
-    }
-
-    if (size < 1024 * 1024 * 1024) {
-      return `${(
-        size /
-        (1024 * 1024)
-      ).toFixed(1)} MB`;
-    }
-
-    return `${(
-      size /
-      (1024 * 1024 * 1024)
-    ).toFixed(2)} GB`;
-
-  }
-
-
-  function setButtonLoading(
-    button,
-    loading,
-    textValue
-  ) {
-
-    if (!button) {
-      return;
-    }
-
-    if (loading) {
-
-      button.dataset.originalText =
-        button.textContent;
-
-      button.disabled = true;
-
-      if (textValue) {
-        button.textContent =
-          textValue;
-      }
-
-    } else {
-
-      button.disabled =
-        false;
-
-      if (
-        button.dataset.originalText
-      ) {
-
-        button.textContent =
-          button.dataset.originalText;
-
-      }
-
-    }
-
-  }
-
-
-  function setHTML(
-    target,
-    html
-  ) {
-
-    if (!target) {
-      return;
-    }
-
-    target.innerHTML =
-      html;
-
-  }
-
-
-  /* =======================================================
-     RESEARCH
-     ======================================================= */
-
-  async function runResearch(
-    query
-  ) {
-
-    const value =
-      String(
-        query ??
-        el.researchInput?.value ??
-        ""
-      ).trim();
-
-
-    if (!value) {
-
-      toast?.(
-        "Araştırma konusu gerekli",
-        "Araştırmak istediğin konuyu yaz.",
+    if (!state.recognition) {
+      toast(
+        "Tarayıcınız sesli giriş özelliğini desteklemiyor.",
         "warning"
       );
-
       return;
-
     }
-
-
-    if (
-      state.researching
-    ) {
-
-      return;
-
-    }
-
-
-    state.researching =
-      true;
-
-
-    setButtonLoading(
-      el.researchRunButton,
-      true,
-      "Aranıyor..."
-    );
-
-
-    if (el.researchStatus) {
-
-      el.researchStatus.textContent =
-        "Web araştırması çalışıyor";
-
-    }
-
-
-    setHTML(
-      el.researchResults,
-      `
-
-        <div class="empty-state compact">
-
-          <div class="loading-spinner"></div>
-
-          <h3>
-            Araştırılıyor
-          </h3>
-
-          <p>
-            Güncel web kaynakları kontrol ediliyor.
-          </p>
-
-        </div>
-
-      `
-    );
-
 
     try {
-
-      const result =
-        await apiRequest(
-          "/api/research",
-          {
-
-            method:
-              "POST",
-
-            body: {
-              query:
-                value,
-
-              question:
-                value,
-
-              text:
-                value
-
-            }
-
-          }
-        );
-
-
-      renderResearch(
-        result
-      );
-
-
-      if (el.researchStatus) {
-
-        el.researchStatus.textContent =
-          "Araştırma tamamlandı";
-
-      }
-
-
-    } catch (error) {
-
-      console.error(
-        "[TürkAI] Araştırma:",
-        error
-      );
-
-
-      setHTML(
-        el.researchResults,
-        `
-
-          <div class="empty-state compact">
-
-            <div class="empty-state-icon">
-
-              <svg aria-hidden="true">
-                <use href="#i-alert"></use>
-              </svg>
-
-            </div>
-
-            <h3>
-              Araştırma başarısız
-            </h3>
-
-            <p>
-              ${escapeHTML(
-                error?.message ||
-                "Web araştırması çalıştırılamadı."
-              )}
-            </p>
-
-          </div>
-
-        `
-      );
-
-
-      if (el.researchStatus) {
-
-        el.researchStatus.textContent =
-          "Hata";
-
-      }
-
-
-      toast?.(
-        "Araştırma başarısız",
-        error?.message ||
-          "Sunucudan cevap alınamadı.",
-        "error"
-      );
-
-
-    } finally {
-
-      state.researching =
-        false;
-
-      setButtonLoading(
-        el.researchRunButton,
-        false
-      );
-
+      state.recognition.start();
+    } catch {
+      stopVoiceInput();
     }
-
   }
 
+  function stopVoiceInput() {
+    try {
+      state.recognition?.stop();
+    } catch {}
 
-  function renderResearch(
-    data
-  ) {
+    state.recording = false;
+    el.voiceButton?.classList.remove(
+      "active"
+    );
 
-    const root =
-      el.researchResults;
+    hideVoiceStatus();
+  }
 
-
-    if (!root) {
-      return;
-    }
-
-
-    let items = [];
-
-
-    if (
-      Array.isArray(data)
-    ) {
-
-      items =
-        data;
-
+  function toggleVoiceInput() {
+    if (state.recording) {
+      stopVoiceInput();
     } else {
+      startVoiceInput();
+    }
+  }
 
-      items =
-        data?.results ||
-        data?.sources ||
-        data?.items ||
-        data?.data?.results ||
-        data?.data?.sources ||
-        [];
+  /* =========================================================
+     ARAŞTIRMA
+     ========================================================= */
 
+  function extractResearchText(data) {
+    if (!data) return "";
+
+    if (typeof data === "string") {
+      return data.trim();
     }
 
+    const parts = [];
 
-    const summary =
-      data?.summary ||
-      data?.answer ||
-      data?.response ||
-      data?.data?.summary ||
-      "";
+    const answer =
+      extractAnswer(data);
 
-
-    if (
-      !items.length &&
-      !summary
-    ) {
-
-      setHTML(
-        root,
-        `
-
-          <div class="empty-state compact">
-
-            <div class="empty-state-icon">
-              <svg aria-hidden="true">
-                <use href="#i-info"></use>
-              </svg>
-            </div>
-
-            <h3>
-              Sonuç bulunamadı
-            </h3>
-
-            <p>
-              Bu sorgu için kaynak döndürülmedi.
-            </p>
-
-          </div>
-
-        `
-      );
-
-      return;
-
+    if (answer) {
+      parts.push(answer);
     }
 
+    const candidates = [
+      data.summary,
+      data.description,
+      data.text,
+      data.content,
+      data.result?.summary,
+      data.data?.summary
+    ];
 
-    let html =
-      "";
+    candidates.forEach((item) => {
+      if (
+        typeof item === "string" &&
+        item.trim() &&
+        !parts.includes(item.trim())
+      ) {
+        parts.push(item.trim());
+      }
+    });
 
+    const sources =
+      data.sources ||
+      data.results ||
+      data.data?.sources ||
+      data.data?.results;
 
-    if (summary) {
-
-      html += `
-
-        <article class="result-card">
-
-          <div class="result-card-title">
-
-            <strong>
-              TürkAI özeti
-            </strong>
-
-          </div>
-
-          <p>
-            ${escapeHTML(summary)}
-          </p>
-
-        </article>
-
-      `;
-
-    }
-
-
-    items
-      .slice(0, 20)
-      .forEach(
-        item => {
-
+    if (Array.isArray(sources)) {
+      sources
+        .slice(0, 8)
+        .forEach((item) => {
           const title =
             item?.title ||
             item?.name ||
-            item?.heading ||
-            "Kaynak";
+            "";
 
-
-          const description =
+          const snippet =
             item?.snippet ||
             item?.description ||
             item?.summary ||
-            item?.content ||
             "";
-
 
           const url =
             item?.url ||
             item?.link ||
-            item?.href ||
             "";
 
+          const line = [
+            title,
+            snippet,
+            url
+          ]
+            .filter(Boolean)
+            .join(" — ");
 
-          html += `
+          if (line) parts.push(line);
+        });
+    }
 
+    return parts.join("\n\n").trim();
+  }
+
+  async function runResearch() {
+    const query =
+      el.researchInput?.value.trim();
+
+    if (!query) {
+      toast(
+        "Araştırmak için bir konu yaz.",
+        "warning"
+      );
+      return;
+    }
+
+    if (el.researchRunButton) {
+      el.researchRunButton.disabled = true;
+    }
+
+    if (el.researchStatus) {
+      el.researchStatus.textContent =
+        "Araştırılıyor...";
+    }
+
+    showLoading(
+      "Araştırma yapılıyor",
+      query
+    );
+
+    try {
+      const data =
+        await apiRequest(
+          CONFIG.endpoints.research,
+          {
+            method: "POST",
+            body: {
+              query,
+              question: query,
+              language: "tr",
+              mode: "research"
+            }
+          }
+        );
+
+      state.researchResults = data;
+
+      renderResearch(data);
+
+      if (el.researchStatus) {
+        el.researchStatus.textContent =
+          "Araştırma tamamlandı.";
+      }
+    } catch (error) {
+      if (el.researchStatus) {
+        el.researchStatus.textContent =
+          "Araştırma başarısız.";
+      }
+
+      renderResearchError(error);
+
+      toast(
+        error?.message ||
+          "Araştırma yapılamadı.",
+        "error"
+      );
+    } finally {
+      hideLoading();
+
+      if (el.researchRunButton) {
+        el.researchRunButton.disabled = false;
+      }
+    }
+  }
+
+  function renderResearch(data) {
+    if (!el.researchResults) return;
+
+    const answer =
+      extractAnswer(data);
+
+    const sources =
+      data?.sources ||
+      data?.results ||
+      data?.data?.sources ||
+      data?.data?.results ||
+      [];
+
+    let html = "";
+
+    if (answer) {
+      html += `
+        <div class="result-card">
+          <div class="result-card-title">
+            Sonuç
+          </div>
+          <div class="result-card-text">
+            ${renderRichText(answer)}
+          </div>
+        </div>
+      `;
+    }
+
+    if (
+      Array.isArray(sources) &&
+      sources.length
+    ) {
+      html += `
+        <div class="result-list">
+          ${sources
+            .slice(0, 20)
+            .map((item) => {
+              const title =
+                item?.title ||
+                item?.name ||
+                "Kaynak";
+
+              const desc =
+                item?.snippet ||
+                item?.description ||
+                item?.summary ||
+                "";
+
+              const url =
+                item?.url ||
+                item?.link ||
+                "";
+
+              return `
+                <article class="result-card">
+                  <div class="result-card-title">
+                    ${escapeHTML(title)}
+                  </div>
+
+                  ${
+                    desc
+                      ? `
+                        <div class="result-card-text">
+                          ${escapeHTML(desc)}
+                        </div>
+                      `
+                      : ""
+                  }
+
+                  ${
+                    url
+                      ? `
+                        <a
+                          href="${escapeHTML(url)}"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="result-link"
+                        >
+                          Kaynağı aç
+                        </a>
+                      `
+                      : ""
+                  }
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
+      `;
+    }
+
+    if (!html) {
+      html = `
+        <div class="empty-state">
+          Araştırma sonucu bulunamadı.
+        </div>
+      `;
+    }
+
+    el.researchResults.innerHTML = html;
+  }
+
+  function renderResearchError(error) {
+    if (!el.researchResults) return;
+
+    el.researchResults.innerHTML = `
+      <div class="empty-state">
+        <strong>Araştırma başarısız.</strong>
+        <div>
+          ${escapeHTML(
+            error?.message ||
+              "Bilinmeyen hata."
+          )}
+        </div>
+      </div>
+    `;
+  }
+
+  async function loadResearchPanel() {
+    if (el.researchStatus) {
+      el.researchStatus.textContent =
+        "Hazır.";
+    }
+  }
+
+  /* =========================================================
+     WEATHER
+     ========================================================= */
+
+  async function runWeather() {
+    const location =
+      el.weatherInput?.value.trim();
+
+    if (!location) {
+      toast(
+        "Şehir yaz.",
+        "warning"
+      );
+      return;
+    }
+
+    if (el.weatherRunButton) {
+      el.weatherRunButton.disabled = true;
+    }
+
+    showLoading(
+      "Hava durumu",
+      location
+    );
+
+    try {
+      const data =
+        await apiRequest(
+          CONFIG.endpoints.weather,
+          {
+            method: "POST",
+            body: {
+              city: location,
+              location,
+              query: location,
+              language: "tr"
+            }
+          }
+        );
+
+      state.weatherData = data;
+      renderWeather(data);
+    } catch (error) {
+      renderWeatherError(error);
+
+      toast(
+        error?.message ||
+          "Hava durumu alınamadı.",
+        "error"
+      );
+    } finally {
+      hideLoading();
+
+      if (el.weatherRunButton) {
+        el.weatherRunButton.disabled =
+          false;
+      }
+    }
+  }
+
+  function renderWeather(data) {
+    if (!el.weatherResults) return;
+
+    const current =
+      data?.current ||
+      data?.data?.current ||
+      data?.result?.current ||
+      data;
+
+    const location =
+      data?.location?.name ||
+      data?.city ||
+      current?.city ||
+      el.weatherInput?.value ||
+      "Konum";
+
+    const temperature =
+      current?.temperature ??
+      current?.temp ??
+      data?.temperature ??
+      data?.temp ??
+      "--";
+
+    const condition =
+      current?.condition ||
+      current?.description ||
+      data?.condition ||
+      "Bilgi yok";
+
+    const humidity =
+      current?.humidity ??
+      data?.humidity ??
+      "--";
+
+    const wind =
+      current?.wind ??
+      current?.windSpeed ??
+      data?.wind ??
+      "--";
+
+    el.weatherResults.innerHTML = `
+      <div class="weather-card result-card">
+        <div class="result-card-title">
+          ${escapeHTML(location)}
+        </div>
+
+        <div class="weather-main-value">
+          ${escapeHTML(temperature)}°
+        </div>
+
+        <div class="result-card-text">
+          ${escapeHTML(condition)}
+        </div>
+
+        <div class="weather-details">
+          <div>
+            <span>Nem</span>
+            <strong>
+              ${escapeHTML(humidity)}%
+            </strong>
+          </div>
+
+          <div>
+            <span>Rüzgar</span>
+            <strong>
+              ${escapeHTML(wind)}
+            </strong>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderWeatherError(error) {
+    if (!el.weatherResults) return;
+
+    el.weatherResults.innerHTML = `
+      <div class="empty-state">
+        Hava durumu alınamadı.
+        <div>
+          ${escapeHTML(
+            error?.message || ""
+          )}
+        </div>
+      </div>
+    `;
+  }
+
+  /* =========================================================
+     HAFIZA
+     ========================================================= */
+
+  async function searchMemory() {
+    const query =
+      el.memoryInput?.value.trim();
+
+    if (!query) {
+      await loadMemoryOverview();
+      return;
+    }
+
+    if (el.memorySearchButton) {
+      el.memorySearchButton.disabled =
+        true;
+    }
+
+    showLoading(
+      "Hafıza aranıyor",
+      query
+    );
+
+    try {
+      const data =
+        await apiRequest(
+          CONFIG.endpoints.memorySearch,
+          {
+            method: "POST",
+            body: {
+              query,
+              q: query,
+              text: query
+            }
+          }
+        );
+
+      state.memoryResults =
+        Array.isArray(data)
+          ? data
+          : data?.results ||
+            data?.data ||
+            data?.items ||
+            [];
+
+      renderMemoryResults(
+        state.memoryResults
+      );
+    } catch (error) {
+      toast(
+        error?.message ||
+          "Hafıza aranamadı.",
+        "error"
+      );
+    } finally {
+      hideLoading();
+
+      if (el.memorySearchButton) {
+        el.memorySearchButton.disabled =
+          false;
+      }
+    }
+  }
+
+  async function loadMemoryOverview() {
+    if (!el.memoryStats) return;
+
+    const data =
+      await safeRequest(
+        CONFIG.endpoints.memorySearch,
+        {
+          method: "POST",
+          body: {
+            query: "*",
+            q: "*",
+            overview: true
+          }
+        },
+        null
+      );
+
+    if (!data) {
+      el.memoryStats.innerHTML = `
+        <div class="empty-state">
+          Hafıza özeti alınamadı.
+        </div>
+      `;
+
+      return;
+    }
+
+    const list =
+      Array.isArray(data)
+        ? data
+        : data?.results ||
+          data?.data ||
+          data?.items ||
+          [];
+
+    state.memoryResults = list;
+
+    const count =
+      data?.count ??
+      data?.total ??
+      data?.stats?.count ??
+      list.length;
+
+    el.memoryStats.innerHTML = `
+      <div class="memory-stat-card">
+        <span>Toplam kayıt</span>
+        <strong>
+          ${escapeHTML(count)}
+        </strong>
+      </div>
+    `;
+
+    renderMemoryResults(list);
+  }
+
+  function renderMemoryResults(list) {
+    if (!el.memoryResults) return;
+
+    if (
+      !Array.isArray(list) ||
+      !list.length
+    ) {
+      el.memoryResults.innerHTML = `
+        <div class="empty-state">
+          Hafızada sonuç bulunamadı.
+        </div>
+      `;
+      return;
+    }
+
+    el.memoryResults.innerHTML =
+      list
+        .slice(0, 50)
+        .map((item) => {
+          const title =
+            item?.title ||
+            item?.question ||
+            item?.key ||
+            "Hafıza kaydı";
+
+          const content =
+            item?.answer ||
+            item?.content ||
+            item?.value ||
+            item?.text ||
+            "";
+
+          const category =
+            item?.category ||
+            item?.type ||
+            "memory";
+
+          return `
             <article class="result-card">
-
               <div class="result-card-title">
-
-                <strong>
-                  ${escapeHTML(title)}
-                </strong>
-
+                ${escapeHTML(title)}
               </div>
 
-              ${
-                description
-                  ? `
-                    <p>
-                      ${escapeHTML(description)}
-                    </p>
-                  `
-                  : ""
-              }
+              <div class="result-card-text">
+                ${renderRichText(content)}
+              </div>
+
+              <div class="result-card-meta">
+                ${escapeHTML(category)}
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+  }
+
+  async function saveMemory(
+    content,
+    type = "chat"
+  ) {
+    const value =
+      safeText(content).trim();
+
+    if (!value) return false;
+
+    try {
+      await apiRequest(
+        CONFIG.endpoints.memorySave,
+        {
+          method: "POST",
+          body: {
+            content: value,
+            text: value,
+            answer: value,
+            type
+          }
+        }
+      );
+
+      toast(
+        "Hafızaya kaydedildi.",
+        "success"
+      );
+
+      return true;
+    } catch (error) {
+      toast(
+        error?.message ||
+          "Hafızaya kaydedilemedi.",
+        "error"
+      );
+
+      return false;
+    }
+  }
+
+  async function saveCurrentConversationToMemory() {
+    if (!state.messages.length) {
+      toast(
+        "Kaydedilecek sohbet yok.",
+        "warning"
+      );
+      return;
+    }
+
+    const transcript =
+      state.messages
+        .map(
+          (item) =>
+            `${item.role === "user" ? "Kullanıcı" : "TürkAI"}: ${item.content}`
+        )
+        .join("\n\n");
+
+    await saveMemory(
+      transcript,
+      "conversation"
+    );
+  }
+/* =========================================================
+   TÜRKAI FRONTEND 41.0 — PART 2/2
+   Paneller, dosya, hafıza, araştırma, hesap, medya,
+   bildirimler, sistem, admin, kısayollar ve başlangıç
+   ========================================================= */
+
+(() => {
+  "use strict";
+
+  if (window.__TURKAI_APP_PART2__) return;
+  window.__TURKAI_APP_PART2__ = true;
+
+  const T = window.TURKAI;
+
+  if (!T) {
+    console.error(
+      "[TürkAI] PART 1 yüklenmeden PART 2 başlatılamadı."
+    );
+    return;
+  }
+
+  const state = T.state;
+  const config = T.config;
+
+  const $ = (id) => document.getElementById(id);
+
+  const E = {
+    researchInput: $("researchInput"),
+    researchRunButton: $("researchRunButton"),
+    researchClearButton: $("researchClearButton"),
+    researchStatus: $("researchStatus"),
+    researchResults: $("researchResults"),
+
+    weatherInput: $("weatherInput"),
+    weatherRunButton: $("weatherRunButton"),
+    weatherResults: $("weatherResults"),
+
+    memoryInput: $("memoryInput"),
+    memorySearchButton: $("memorySearchButton"),
+    memorySaveCurrentButton: $("memorySaveCurrentButton"),
+    memoryOverviewButton: $("memoryOverviewButton"),
+    memoryStats: $("memoryStats"),
+    memoryResults: $("memoryResults"),
+
+    fileDropZone: $("fileDropZone"),
+    fileSelectButton: $("fileSelectButton"),
+    refreshFilesButton: $("refreshFilesButton"),
+    globalFilePicker: $("globalFilePicker"),
+    fileCount: $("fileCount"),
+    fileList: $("fileList"),
+    attachmentPreview: $("attachmentPreview"),
+
+    mediaPanel: $("mediaPanel"),
+    openImageModalButton: $("openImageModalButton"),
+    openVideoModalButton: $("openVideoModalButton"),
+
+    imageCreateModal: $("imageCreateModal"),
+    imagePromptInput: $("imagePromptInput"),
+    imageSizeSelect: $("imageSizeSelect"),
+    imageQualitySelect: $("imageQualitySelect"),
+    generateImageButton: $("generateImageButton"),
+    imageResult: $("imageResult"),
+
+    videoModal: $("videoModal"),
+    videoPromptInput: $("videoPromptInput"),
+    videoDurationSelect: $("videoDurationSelect"),
+    generateVideoButton: $("generateVideoButton"),
+    videoResult: $("videoResult"),
+
+    plansList: $("plansList"),
+
+    notificationPanel: $("notificationPanel"),
+    notificationList: $("notificationList"),
+    notificationSummary: $("notificationSummary"),
+    notificationBadge: $("notificationBadge"),
+    markNotificationsReadButton: $("markNotificationsReadButton"),
+
+    systemOverallStatus: $("systemOverallStatus"),
+    systemStats: $("systemStats"),
+    refreshSystemButton: $("refreshSystemButton"),
+    systemDetailContent: $("systemDetailContent"),
+
+    accountModal: $("accountModal"),
+    accountModalName: $("accountModalName"),
+    accountModalEmail: $("accountModalEmail"),
+    accountModalVerified: $("accountModalVerified"),
+    accountModalPlan: $("accountModalPlan"),
+    accountModalUsage: $("accountModalUsage"),
+    accountModalStatus: $("accountModalStatus"),
+
+    authModal: $("authModal"),
+    authForm: $("authForm"),
+    authIdentifier: $("authIdentifier"),
+    authPassword: $("authPassword"),
+    authMessage: $("authMessage"),
+    loginButton: $("loginButton"),
+    logoutButton: $("logoutButton"),
+    guestLoginButton: $("guestLoginButton"),
+    accountPlansButton: $("accountPlansButton"),
+
+    accountName: $("accountName"),
+    accountPlan: $("accountPlan"),
+    accountStatusDot: $("accountStatusDot"),
+
+    chatSearchPanel: $("chatSearchPanel"),
+    chatSearchInput: $("chatSearchInput"),
+    chatSearchResults: $("chatSearchResults"),
+
+    commandCenter: $("commandCenter"),
+    commandInput: $("commandInput"),
+    commandList: $("commandList"),
+
+    settingsModal: $("settingsModal"),
+    enterSendToggle: $("enterSendToggle"),
+    draftSaveToggle: $("draftSaveToggle"),
+    autoSpeakToggle: $("autoSpeakToggle"),
+    freshInfoToggle: $("freshInfoToggle"),
+    saveSettingsButton: $("saveSettingsButton"),
+    resetSettingsButton: $("resetSettingsButton"),
+
+    voiceStatus: $("voiceStatus"),
+    voiceStatusTitle: $("voiceStatusTitle"),
+    voiceStatusText: $("voiceStatusText"),
+    voiceCancelButton: $("voiceCancelButton"),
+
+    uploadStatusBar: $("uploadStatusBar"),
+    uploadStatusTitle: $("uploadStatusTitle"),
+    uploadStatusText: $("uploadStatusText"),
+    uploadProgressBar: $("uploadProgressBar"),
+
+    dropOverlay: $("dropOverlay"),
+
+    adminPanel: $("adminPanel"),
+    adminUnlockModal: $("adminUnlockModal"),
+    adminUnlockForm: $("adminUnlockForm"),
+    adminUnlockInput: $("adminUnlockInput"),
+    adminUnlockMessage: $("adminUnlockMessage"),
+    adminSystemButton: $("adminSystemButton"),
+    adminUsersButton: $("adminUsersButton"),
+    adminMemoryButton: $("adminMemoryButton"),
+    adminLogsButton: $("adminLogsButton"),
+    adminOutput: $("adminOutput")
+  };
+
+  /* =========================================================
+     YARDIMCILAR
+     ========================================================= */
+
+  function text(value, fallback = "") {
+    if (value === null || value === undefined) {
+      return fallback;
+    }
+
+    return String(value);
+  }
+
+  function esc(value) {
+    return text(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function bytes(value) {
+    const n = Number(value) || 0;
+
+    if (n < 1024) {
+      return `${n} B`;
+    }
+
+    if (n < 1024 * 1024) {
+      return `${(n / 1024).toFixed(1)} KB`;
+    }
+
+    if (n < 1024 * 1024 * 1024) {
+      return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  }
+
+  function dateText(value) {
+    try {
+      return new Intl.DateTimeFormat("tr-TR", {
+        dateStyle: "medium",
+        timeStyle: "short"
+      }).format(new Date(value));
+    } catch {
+      return text(value);
+    }
+  }
+
+  async function request(url, options = {}, timeout) {
+    return T.apiRequest(
+      url,
+      options,
+      timeout || config.timeout
+    );
+  }
+
+  function safeArray(data, keys = []) {
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    for (const key of keys) {
+      if (Array.isArray(data?.[key])) {
+        return data[key];
+      }
+    }
+
+    return [];
+  }
+
+  function answerFrom(data) {
+    if (!data) return "";
+
+    if (typeof data === "string") {
+      return data.trim();
+    }
+
+    return (
+      data.answer ||
+      data.response ||
+      data.message ||
+      data.text ||
+      data.content ||
+      data.result?.answer ||
+      data.result?.response ||
+      data.result?.text ||
+      data.data?.answer ||
+      data.data?.response ||
+      data.data?.text ||
+      data.data?.content ||
+      ""
+    );
+  }
+
+  function resultUrl(data, type) {
+    if (!data) return "";
+
+    if (type === "image") {
+      return (
+        data.url ||
+        data.imageUrl ||
+        data.image_url ||
+        data.data?.url ||
+        data.data?.imageUrl ||
+        data.result?.url ||
+        ""
+      );
+    }
+
+    return (
+      data.url ||
+      data.videoUrl ||
+      data.video_url ||
+      data.data?.url ||
+      data.data?.videoUrl ||
+      data.result?.url ||
+      ""
+    );
+  }
+
+  function setLoadingButton(button, loading, label) {
+    if (!button) return;
+
+    button.disabled = loading;
+
+    if (loading) {
+      button.dataset.originalText =
+        button.textContent;
+      button.textContent =
+        label || "Bekleyin...";
+    } else if (
+      button.dataset.originalText
+    ) {
+      button.textContent =
+        button.dataset.originalText;
+      delete button.dataset.originalText;
+    }
+  }
+
+  /* =========================================================
+     ARAŞTIRMA
+     ========================================================= */
+
+  async function runResearch() {
+    const query =
+      E.researchInput?.value.trim();
+
+    if (!query) {
+      T.toast(
+        "Araştırmak için bir konu yaz.",
+        "warning"
+      );
+      return;
+    }
+
+    setLoadingButton(
+      E.researchRunButton,
+      true,
+      "Araştırılıyor..."
+    );
+
+    if (E.researchStatus) {
+      E.researchStatus.textContent =
+        "Araştırma motoru çalışıyor...";
+    }
+
+    if (E.researchResults) {
+      E.researchResults.innerHTML = `
+        <div class="empty-state">
+          <strong>Araştırma yapılıyor</strong>
+          <div>
+            ${esc(query)}
+          </div>
+        </div>
+      `;
+    }
+
+    try {
+      const data = await request(
+        config.endpoints.research,
+        {
+          method: "POST",
+          body: {
+            query,
+            question: query,
+            text: query,
+            language: "tr",
+            mode: "research"
+          }
+        }
+      );
+
+      renderResearch(data);
+
+      if (E.researchStatus) {
+        E.researchStatus.textContent =
+          "Araştırma tamamlandı.";
+      }
+
+      T.toast(
+        "Araştırma tamamlandı.",
+        "success"
+      );
+    } catch (error) {
+      if (E.researchStatus) {
+        E.researchStatus.textContent =
+          "Araştırma başarısız.";
+      }
+
+      if (E.researchResults) {
+        E.researchResults.innerHTML = `
+          <div class="empty-state">
+            <strong>Araştırma yapılamadı.</strong>
+            <div>
+              ${esc(
+                error?.message ||
+                "Bilinmeyen hata."
+              )}
+            </div>
+          </div>
+        `;
+      }
+
+      T.toast(
+        error?.message ||
+        "Araştırma yapılamadı.",
+        "error"
+      );
+    } finally {
+      setLoadingButton(
+        E.researchRunButton,
+        false
+      );
+    }
+  }
+
+  function renderResearch(data) {
+    if (!E.researchResults) return;
+
+    const answer =
+      answerFrom(data);
+
+    const sources = safeArray(
+      data,
+      [
+        "sources",
+        "results",
+        "items",
+        "data",
+        "result"
+      ]
+    );
+
+    let output = "";
+
+    if (answer) {
+      output += `
+        <article class="result-card">
+          <div class="result-card-title">
+            Sonuç
+          </div>
+          <div class="result-card-text">
+            ${T.renderRichText(answer)}
+          </div>
+        </article>
+      `;
+    }
+
+    if (sources.length) {
+      output += `
+        <div class="result-list">
+          ${sources
+            .slice(0, 30)
+            .map((source) => {
+              const title =
+                source?.title ||
+                source?.name ||
+                "Kaynak";
+
+              const snippet =
+                source?.snippet ||
+                source?.description ||
+                source?.summary ||
+                source?.content ||
+                "";
+
+              const url =
+                source?.url ||
+                source?.link ||
+                "";
+
+              return `
+                <article class="result-card">
+                  <div class="result-card-title">
+                    ${esc(title)}
+                  </div>
+
+                  ${
+                    snippet
+                      ? `
+                        <div class="result-card-text">
+                          ${esc(snippet)}
+                        </div>
+                      `
+                      : ""
+                  }
+
+                  ${
+                    url
+                      ? `
+                        <a
+                          class="result-link"
+                          href="${esc(url)}"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Kaynağı aç
+                        </a>
+                      `
+                      : ""
+                  }
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
+      `;
+    }
+
+    if (!output) {
+      output = `
+        <div class="empty-state">
+          Araştırma sonucu bulunamadı.
+        </div>
+      `;
+    }
+
+    E.researchResults.innerHTML =
+      output;
+  }
+
+  async function loadResearchPanel() {
+    if (E.researchStatus) {
+      E.researchStatus.textContent =
+        "Hazır.";
+    }
+  }
+
+  /* =========================================================
+     HAVA DURUMU
+     ========================================================= */
+
+  async function runWeather() {
+    const location =
+      E.weatherInput?.value.trim();
+
+    if (!location) {
+      T.toast(
+        "Şehir veya konum yaz.",
+        "warning"
+      );
+      return;
+    }
+
+    setLoadingButton(
+      E.weatherRunButton,
+      true,
+      "Alınıyor..."
+    );
+
+    try {
+      const data = await request(
+        config.endpoints.weather,
+        {
+          method: "POST",
+          body: {
+            city: location,
+            location,
+            query: location,
+            language: "tr"
+          }
+        }
+      );
+
+      state.weatherData = data;
+
+      renderWeather(data);
+    } catch (error) {
+      if (E.weatherResults) {
+        E.weatherResults.innerHTML = `
+          <div class="empty-state">
+            <strong>Hava durumu alınamadı.</strong>
+            <div>
+              ${esc(
+                error?.message || ""
+              )}
+            </div>
+          </div>
+        `;
+      }
+
+      T.toast(
+        error?.message ||
+        "Hava durumu alınamadı.",
+        "error"
+      );
+    } finally {
+      setLoadingButton(
+        E.weatherRunButton,
+        false
+      );
+    }
+  }
+
+  function renderWeather(data) {
+    if (!E.weatherResults) return;
+
+    const current =
+      data?.current ||
+      data?.data?.current ||
+      data?.result?.current ||
+      data;
+
+    const location =
+      data?.location?.name ||
+      data?.location ||
+      data?.city ||
+      current?.city ||
+      E.weatherInput?.value ||
+      "Konum";
+
+    const temperature =
+      current?.temperature ??
+      current?.temp ??
+      data?.temperature ??
+      data?.temp ??
+      "--";
+
+    const feelsLike =
+      current?.feelsLike ??
+      current?.feels_like ??
+      data?.feelsLike ??
+      "--";
+
+    const condition =
+      current?.condition ||
+      current?.description ||
+      data?.condition ||
+      data?.description ||
+      "Bilgi yok";
+
+    const humidity =
+      current?.humidity ??
+      data?.humidity ??
+      "--";
+
+    const wind =
+      current?.windSpeed ??
+      current?.wind ??
+      data?.windSpeed ??
+      data?.wind ??
+      "--";
+
+    E.weatherResults.innerHTML = `
+      <article class="result-card weather-card">
+        <div class="result-card-title">
+          ${esc(location)}
+        </div>
+
+        <div class="weather-main-value">
+          ${esc(temperature)}°
+        </div>
+
+        <div class="result-card-text">
+          ${esc(condition)}
+        </div>
+
+        <div class="weather-details">
+          <div>
+            <span>Hissedilen</span>
+            <strong>
+              ${esc(feelsLike)}°
+            </strong>
+          </div>
+
+          <div>
+            <span>Nem</span>
+            <strong>
+              ${esc(humidity)}%
+            </strong>
+          </div>
+
+          <div>
+            <span>Rüzgar</span>
+            <strong>
+              ${esc(wind)}
+            </strong>
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  /* =========================================================
+     HAFIZA
+     ========================================================= */
+
+  async function searchMemory() {
+    const query =
+      E.memoryInput?.value.trim();
+
+    if (!query) {
+      await loadMemoryOverview();
+      return;
+    }
+
+    setLoadingButton(
+      E.memorySearchButton,
+      true,
+      "Aranıyor..."
+    );
+
+    try {
+      const data = await request(
+        config.endpoints.memorySearch,
+        {
+          method: "POST",
+          body: {
+            query,
+            q: query,
+            text: query
+          }
+        }
+      );
+
+      const list = safeArray(
+        data,
+        [
+          "results",
+          "items",
+          "data",
+          "memories"
+        ]
+      );
+
+      state.memoryResults = list;
+
+      renderMemoryResults(list);
+    } catch (error) {
+      if (E.memoryResults) {
+        E.memoryResults.innerHTML = `
+          <div class="empty-state">
+            ${esc(
+              error?.message ||
+              "Hafıza aranamadı."
+            )}
+          </div>
+        `;
+      }
+
+      T.toast(
+        error?.message ||
+        "Hafıza aranamadı.",
+        "error"
+      );
+    } finally {
+      setLoadingButton(
+        E.memorySearchButton,
+        false
+      );
+    }
+  }
+
+  async function loadMemoryOverview() {
+    try {
+      const data = await request(
+        config.endpoints.memorySearch,
+        {
+          method: "POST",
+          body: {
+            query: "*",
+            q: "*",
+            overview: true
+          }
+        }
+      );
+
+      const list = safeArray(
+        data,
+        [
+          "results",
+          "items",
+          "data",
+          "memories"
+        ]
+      );
+
+      state.memoryResults = list;
+
+      const total =
+        data?.total ??
+        data?.count ??
+        data?.stats?.count ??
+        list.length;
+
+      if (E.memoryStats) {
+        E.memoryStats.innerHTML = `
+          <div class="memory-stat-card">
+            <span>Toplam kayıt</span>
+            <strong>
+              ${esc(total)}
+            </strong>
+          </div>
+        `;
+      }
+
+      renderMemoryResults(list);
+    } catch {
+      if (E.memoryStats) {
+        E.memoryStats.innerHTML = `
+          <div class="empty-state">
+            Hafıza özeti alınamadı.
+          </div>
+        `;
+      }
+    }
+  }
+
+  function renderMemoryResults(list) {
+    if (!E.memoryResults) return;
+
+    if (
+      !Array.isArray(list) ||
+      list.length === 0
+    ) {
+      E.memoryResults.innerHTML = `
+        <div class="empty-state">
+          Hafızada sonuç bulunamadı.
+        </div>
+      `;
+      return;
+    }
+
+    E.memoryResults.innerHTML =
+      list
+        .slice(0, 100)
+        .map((item) => {
+          const title =
+            item?.title ||
+            item?.question ||
+            item?.key ||
+            "Hafıza kaydı";
+
+          const content =
+            item?.answer ||
+            item?.content ||
+            item?.value ||
+            item?.text ||
+            "";
+
+          const category =
+            item?.category ||
+            item?.type ||
+            "memory";
+
+          return `
+            <article class="result-card">
+              <div class="result-card-title">
+                ${esc(title)}
+              </div>
+
+              <div class="result-card-text">
+                ${T.renderRichText(content)}
+              </div>
+
+              <div class="result-card-meta">
+                ${esc(category)}
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+  }
+
+  async function saveMemory(content, type = "chat") {
+    const value =
+      text(content).trim();
+
+    if (!value) {
+      return false;
+    }
+
+    try {
+      await request(
+        config.endpoints.memorySave,
+        {
+          method: "POST",
+          body: {
+            content: value,
+            text: value,
+            answer: value,
+            type
+          }
+        }
+      );
+
+      T.toast(
+        "Hafızaya kaydedildi.",
+        "success"
+      );
+
+      return true;
+    } catch (error) {
+      T.toast(
+        error?.message ||
+        "Hafızaya kaydedilemedi.",
+        "error"
+      );
+
+      return false;
+    }
+  }
+
+  async function saveCurrentConversation() {
+    if (!state.messages.length) {
+      T.toast(
+        "Kaydedilecek sohbet yok.",
+        "warning"
+      );
+      return;
+    }
+
+    const transcript =
+      state.messages
+        .map((message) => {
+          const role =
+            message.role === "user"
+              ? "Kullanıcı"
+              : "TürkAI";
+
+          return `${role}: ${message.content}`;
+        })
+        .join("\n\n");
+
+    await saveMemory(
+      transcript,
+      "conversation"
+    );
+  }
+
+  /* =========================================================
+     DOSYA MERKEZİ
+     ========================================================= */
+
+  function renderAttachments() {
+    if (!E.attachmentPreview) {
+      return;
+    }
+
+    if (!state.attachments.length) {
+      E.attachmentPreview.innerHTML =
+        "";
+      E.attachmentPreview.classList.add(
+        "hidden"
+      );
+      return;
+    }
+
+    E.attachmentPreview.classList.remove(
+      "hidden"
+    );
+
+    E.attachmentPreview.innerHTML =
+      state.attachments
+        .map(
+          (file, index) => `
+            <div class="attachment-chip">
+              <div class="attachment-chip-icon">
+                <svg viewBox="0 0 24 24">
+                  <use href="#i-file"></use>
+                </svg>
+              </div>
+
+              <div class="attachment-chip-info">
+                <strong>
+                  ${esc(file.name)}
+                </strong>
+
+                <span>
+                  ${bytes(file.size)}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                data-remove-file="${index}"
+                title="Kaldır"
+              >
+                <svg viewBox="0 0 24 24">
+                  <use href="#i-close"></use>
+                </svg>
+              </button>
+            </div>
+          `
+        )
+        .join("");
+
+    E.attachmentPreview
+      .querySelectorAll(
+        "[data-remove-file]"
+      )
+      .forEach((button) => {
+        button.addEventListener(
+          "click",
+          () => {
+            const index =
+              Number(
+                button.dataset
+                  .removeFile
+              );
+
+            state.attachments.splice(
+              index,
+              1
+            );
+
+            renderAttachments();
+          }
+        );
+      });
+  }
+
+  function showUploadProgress(
+    title,
+    message,
+    progress
+  ) {
+    const bar = E.uploadStatusBar;
+
+    if (!bar) return;
+
+    bar.classList.remove(
+      "hidden"
+    );
+
+    if (E.uploadStatusTitle) {
+      E.uploadStatusTitle.textContent =
+        title;
+    }
+
+    if (E.uploadStatusText) {
+      E.uploadStatusText.textContent =
+        message;
+    }
+
+    if (E.uploadProgressBar) {
+      E.uploadProgressBar.style.width =
+        `${Math.max(
+          0,
+          Math.min(100, progress)
+        )}%`;
+    }
+  }
+
+  function hideUploadProgress() {
+    E.uploadStatusBar?.classList.add(
+      "hidden"
+    );
+  }
+
+  async function uploadFiles(fileList) {
+    const files =
+      Array.from(fileList || []);
+
+    if (!files.length) return;
+
+    const maxSize =
+      1024 * 1024 * 1024;
+
+    const validFiles = files.filter(
+      (file) =>
+        Number(file.size || 0) <=
+        maxSize
+    );
+
+    if (!validFiles.length) {
+      T.toast(
+        "Seçilen dosyalar uygun değil.",
+        "error"
+      );
+      return;
+    }
+
+    showUploadProgress(
+      "Dosyalar hazırlanıyor",
+      `${validFiles.length} dosya`,
+      10
+    );
+
+    /*
+      Önce local attachment:
+      backend upload başarısız olsa bile
+      kullanıcı seçtiği dosyayı kaybetmez.
+    */
+    const localItems =
+      validFiles.map((file) => ({
+        id:
+          `${Date.now()}_${Math.random()
+            .toString(36)
+            .slice(2, 8)}`,
+
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        file,
+        localOnly: true
+      }));
+
+    state.attachments.push(
+      ...localItems
+    );
+
+    renderAttachments();
+
+    const form =
+      new FormData();
+
+    validFiles.forEach((file) => {
+      form.append(
+        "files",
+        file,
+        file.name
+      );
+    });
+
+    form.append(
+      "count",
+      String(validFiles.length)
+    );
+
+    if (state.conversationId) {
+      form.append(
+        "conversationId",
+        state.conversationId
+      );
+    }
+
+    try {
+      showUploadProgress(
+        "Yükleniyor",
+        "TürkAI sunucusuna aktarılıyor...",
+        35
+      );
+
+      const data =
+        await request(
+          config.endpoints.filesUpload,
+          {
+            method: "POST",
+            body: form
+          }
+        );
+
+      const uploaded =
+        safeArray(
+          data,
+          [
+            "files",
+            "results",
+            "items",
+            "data"
+          ]
+        );
+
+      uploaded.forEach(
+        (serverFile, index) => {
+          const original =
+            localItems[index];
+
+          if (!original) return;
+
+          const target =
+            state.attachments.find(
+              (file) =>
+                file.id ===
+                original.id
+            );
+
+          if (!target) return;
+
+          Object.assign(
+            target,
+            serverFile,
+            {
+              localOnly: false,
+              file: undefined
+            }
+          );
+        }
+      );
+
+      showUploadProgress(
+        "Tamamlandı",
+        "Dosyalar hazır.",
+        100
+      );
+
+      T.toast(
+        `${validFiles.length} dosya eklendi.`,
+        "success"
+      );
+    } catch (error) {
+      /*
+        Upload endpoint yoksa bile local attachment
+        korunuyor. Chat payload dosya bilgisini taşıyor.
+      */
+      showUploadProgress(
+        "Dosyalar eklendi",
+        "Sohbete bağlandı.",
+        100
+      );
+
+      T.toast(
+        "Dosyalar sohbete eklendi.",
+        "warning"
+      );
+
+      console.warn(
+        "[TürkAI] upload warning:",
+        error
+      );
+    }
+
+    window.setTimeout(
+      hideUploadProgress,
+      800
+    );
+
+    if (E.globalFilePicker) {
+      E.globalFilePicker.value =
+        "";
+    }
+  }
+
+  async function loadFiles() {
+    if (!E.fileList) return;
+
+    try {
+      const data =
+        await request(
+          config.endpoints.files
+        );
+
+      state.files = safeArray(
+        data,
+        [
+          "files",
+          "results",
+          "items",
+          "data"
+        ]
+      );
+
+      renderFiles(state.files);
+    } catch {
+      renderFiles([]);
+    }
+  }
+
+  function renderFiles(list) {
+    if (!E.fileList) return;
+
+    const files =
+      Array.isArray(list)
+        ? list
+        : [];
+
+    if (E.fileCount) {
+      E.fileCount.textContent =
+        files.length.toLocaleString(
+          "tr-TR"
+        );
+    }
+
+    if (!files.length) {
+      E.fileList.innerHTML = `
+        <div class="empty-state">
+          Henüz dosya yok.
+        </div>
+      `;
+      return;
+    }
+
+    E.fileList.innerHTML =
+      files
+        .map((file) => {
+          const name =
+            file?.name ||
+            file?.filename ||
+            "Dosya";
+
+          const type =
+            file?.type ||
+            file?.mimeType ||
+            "Dosya";
+
+          const size =
+            file?.size ||
+            file?.bytes ||
+            0;
+
+          const url =
+            file?.url ||
+            file?.downloadUrl ||
+            "";
+
+          return `
+            <article class="file-card">
+              <div class="file-card-icon">
+                <svg viewBox="0 0 24 24">
+                  <use href="#i-file-text"></use>
+                </svg>
+              </div>
+
+              <div class="file-card-main">
+                <strong>
+                  ${esc(name)}
+                </strong>
+
+                <span>
+                  ${esc(type)}
+                  ·
+                  ${bytes(size)}
+                </span>
+              </div>
 
               ${
                 url
                   ? `
                     <a
-                      href="${escapeHTML(url)}"
+                      class="file-card-action"
+                      href="${esc(url)}"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Kaynağı aç
+                      <svg viewBox="0 0 24 24">
+                        <use href="#i-download"></use>
+                      </svg>
                     </a>
                   `
                   : ""
               }
-
             </article>
-
           `;
-
-        }
-      );
-
-
-    root.innerHTML =
-      html;
-
-  }
-
-
-  function loadResearchPanel() {
-
-    if (
-      el.researchInput &&
-      !el.researchInput.value
-    ) {
-
-      el.researchInput.value =
-        "";
-
-    }
-
-  }
-
-
-  if (el.researchRunButton) {
-
-    el.researchRunButton.addEventListener(
-      "click",
-      () => {
-
-        runResearch();
-
-      }
-    );
-
-  }
-
-
-  if (el.researchInput) {
-
-    el.researchInput.addEventListener(
-      "keydown",
-      event => {
-
-        if (
-          event.key === "Enter"
-        ) {
-
-          event.preventDefault();
-
-          runResearch();
-
-        }
-
-      }
-    );
-
-  }
-
-
-  if (el.researchClearButton) {
-
-    el.researchClearButton.addEventListener(
-      "click",
-      () => {
-
-        if (el.researchInput) {
-          el.researchInput.value = "";
-        }
-
-        setHTML(
-          el.researchResults,
-          `
-
-            <div class="empty-state compact">
-
-              <div class="empty-state-icon">
-                <svg aria-hidden="true">
-                  <use href="#i-globe"></use>
-                </svg>
-              </div>
-
-              <h3>
-                Araştırma temizlendi
-              </h3>
-
-              <p>
-                Yeni bir sorguyla başlayabilirsin.
-              </p>
-
-            </div>
-
-          `
-        );
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     WEATHER
-     ======================================================= */
-
-  async function runWeather(
-    city
-  ) {
-
-    const value =
-      String(
-        city ??
-        el.weatherInput?.value ??
-        ""
-      ).trim();
-
-
-    if (!value) {
-
-      toast?.(
-        "Şehir gerekli",
-        "Hava durumu için bir şehir yaz.",
-        "warning"
-      );
-
-      return;
-
-    }
-
-
-    setButtonLoading(
-      el.weatherRunButton,
-      true,
-      "Getiriliyor..."
-    );
-
-
-    setHTML(
-      el.weatherResults,
-      `
-
-        <div class="empty-state compact">
-
-          <div class="loading-spinner"></div>
-
-          <h3>
-            Hava verisi alınıyor
-          </h3>
-
-          <p>
-            ${escapeHTML(value)} için bilgi getiriliyor.
-          </p>
-
-        </div>
-
-      `
-    );
-
-
-    try {
-
-      const result =
-        await apiRequest(
-          "/api/weather",
-          {
-
-            method:
-              "POST",
-
-            body: {
-
-              city:
-                value,
-
-              location:
-                value,
-
-              query:
-                value
-
-            }
-
-          }
-        );
-
-
-      renderWeather(
-        result
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "[TürkAI] Weather:",
-        error
-      );
-
-
-      toast?.(
-        "Hava durumu alınamadı",
-        error?.message ||
-          "Sunucu cevap vermedi.",
-        "error"
-      );
-
-
-      setHTML(
-        el.weatherResults,
-        `
-
-          <div class="empty-state compact">
-
-            <div class="empty-state-icon">
-
-              <svg aria-hidden="true">
-                <use href="#i-alert"></use>
-              </svg>
-
-            </div>
-
-            <h3>
-              Veri alınamadı
-            </h3>
-
-            <p>
-              ${escapeHTML(
-                error?.message ||
-                "Hava durumu servisi kullanılamıyor."
-              )}
-            </p>
-
-          </div>
-
-        `
-      );
-
-
-    } finally {
-
-      setButtonLoading(
-        el.weatherRunButton,
-        false
-      );
-
-    }
-
-  }
-
-
-  function renderWeather(
-    data
-  ) {
-
-    const root =
-      el.weatherResults;
-
-
-    if (!root) {
-      return;
-    }
-
-
-    const weather =
-      data?.weather ||
-      data?.data?.weather ||
-      data?.data ||
-      data;
-
-
-    const city =
-      weather?.city ||
-      weather?.location ||
-      weather?.name ||
-      el.weatherInput?.value ||
-      "Şehir";
-
-
-    const temperature =
-      weather?.temperature ??
-      weather?.temp ??
-      weather?.current?.temperature ??
-      weather?.current?.temp ??
-      "—";
-
-
-    const feels =
-      weather?.feelsLike ??
-      weather?.feels_like ??
-      weather?.current?.feelsLike ??
-      "—";
-
-
-    const condition =
-      weather?.condition ||
-      weather?.description ||
-      weather?.weather ||
-      weather?.current?.condition ||
-      "Bilgi yok";
-
-
-    const humidity =
-      weather?.humidity ??
-      weather?.current?.humidity ??
-      "—";
-
-
-    const wind =
-      weather?.wind ??
-      weather?.windSpeed ??
-      weather?.current?.wind ??
-      "—";
-
-
-    root.innerHTML = `
-
-      <article class="result-card weather-result-card">
-
-        <div class="result-card-title">
-
-          <strong>
-            ${escapeHTML(city)}
-          </strong>
-
-          <span class="panel-status">
-            Güncel
-          </span>
-
-        </div>
-
-        <div class="weather-main">
-
-          <div class="weather-temperature">
-            ${escapeHTML(
-              String(temperature)
-            )}°
-          </div>
-
-          <div class="weather-condition">
-            ${escapeHTML(
-              condition
-            )}
-          </div>
-
-        </div>
-
-        <div class="weather-grid">
-
-          <div class="system-card">
-            <div class="system-label">
-              <strong>
-                Hissedilen
-              </strong>
-            </div>
-
-            <div class="system-value">
-              ${escapeHTML(
-                String(feels)
-              )}°
-            </div>
-          </div>
-
-          <div class="system-card">
-            <div class="system-label">
-              <strong>
-                Nem
-              </strong>
-            </div>
-
-            <div class="system-value">
-              ${escapeHTML(
-                String(humidity)
-              )}%
-            </div>
-          </div>
-
-          <div class="system-card">
-            <div class="system-label">
-              <strong>
-                Rüzgâr
-              </strong>
-            </div>
-
-            <div class="system-value">
-              ${escapeHTML(
-                String(wind)
-              )}
-            </div>
-          </div>
-
-        </div>
-
-      </article>
-
-    `;
-
-  }
-
-
-  if (el.weatherRunButton) {
-
-    el.weatherRunButton.addEventListener(
-      "click",
-      () => runWeather()
-    );
-
-  }
-
-
-  if (el.weatherInput) {
-
-    el.weatherInput.addEventListener(
-      "keydown",
-      event => {
-
-        if (
-          event.key === "Enter"
-        ) {
-
-          event.preventDefault();
-
-          runWeather();
-
-        }
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     MEMORY
-     ======================================================= */
-
-  async function searchMemory(
-    query
-  ) {
-
-    const value =
-      String(
-        query ??
-        el.memoryInput?.value ??
-        ""
-      ).trim();
-
-
-    if (!value) {
-
-      await loadMemoryOverview();
-
-      return;
-
-    }
-
-
-    setButtonLoading(
-      el.memorySearchButton,
-      true,
-      "Aranıyor..."
-    );
-
-
-    try {
-
-      const result =
-        await apiRequest(
-          "/api/memory/search",
-          {
-
-            method:
-              "POST",
-
-            body: {
-
-              query:
-                value,
-
-              text:
-                value,
-
-              userId:
-                state.account?.id ||
-                state.account?.userId ||
-                "guest"
-
-            }
-
-          }
-        );
-
-
-      renderMemoryResults(
-        result
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "[TürkAI] Memory:",
-        error
-      );
-
-
-      toast?.(
-        "Hafıza aranamadı",
-        error?.message ||
-          "Hafıza servisi cevap vermedi.",
-        "error"
-      );
-
-
-    } finally {
-
-      setButtonLoading(
-        el.memorySearchButton,
-        false
-      );
-
-    }
-
-  }
-
-
-  async function loadMemoryOverview() {
-
-    try {
-
-      const result =
-        await apiRequest(
-          "/api/memory/search",
-          {
-
-            method:
-              "POST",
-
-            body: {
-
-              query:
-                "*",
-
-              text:
-                "*"
-
-            }
-
-          }
-        );
-
-
-      renderMemoryResults(
-        result
-      );
-
-
-    } catch {
-
-      if (el.memoryResults) {
-
-        el.memoryResults.innerHTML =
-          `
-
-            <div class="empty-state">
-
-              <div class="empty-state-icon">
-
-                <svg aria-hidden="true">
-                  <use href="#i-brain"></use>
-                </svg>
-
-              </div>
-
-              <h3>
-                Hafıza hazır
-              </h3>
-
-              <p>
-                Bir kelime veya soru yazarak hafızada arama yapabilirsin.
-              </p>
-
-            </div>
-
-          `;
-
-      }
-
-    }
-
-  }
-
-
-  function renderMemoryResults(
-    data
-  ) {
-
-    const root =
-      el.memoryResults;
-
-
-    if (!root) {
-      return;
-    }
-
-
-    const items =
-      Array.isArray(data)
-        ? data
-        : (
-            data?.results ||
-            data?.items ||
-            data?.records ||
-            data?.data?.results ||
-            data?.data?.items ||
-            []
-          );
-
-
-    const stats =
-      data?.stats ||
-      data?.data?.stats ||
-      null;
-
-
-    if (
-      stats &&
-      el.memoryStats
-    ) {
-
-      el.memoryStats.innerHTML = `
-
-        <div class="memory-stat">
-
-          <span>
-            Kayıt
-          </span>
-
-          <strong>
-            ${escapeHTML(
-              String(
-                stats.total ??
-                stats.count ??
-                items.length
-              )
-            )}
-          </strong>
-
-        </div>
-
-        <div class="memory-stat">
-
-          <span>
-            Aktif
-          </span>
-
-          <strong>
-            ${escapeHTML(
-              String(
-                stats.active ??
-                items.length
-              )
-            )}
-          </strong>
-
-        </div>
-
-        <div class="memory-stat">
-
-          <span>
-            Sonuç
-          </span>
-
-          <strong>
-            ${items.length}
-          </strong>
-
-        </div>
-
-      `;
-
-    }
-
-
-    if (!items.length) {
-
-      root.innerHTML =
-        `
-
-          <div class="empty-state compact">
-
-            <div class="empty-state-icon">
-
-              <svg aria-hidden="true">
-                <use href="#i-brain"></use>
-              </svg>
-
-            </div>
-
-            <h3>
-              Kayıt bulunamadı
-            </h3>
-
-            <p>
-              Aradığın bilgi hafızada bulunmuyor.
-            </p>
-
-          </div>
-
-        `;
-
-      return;
-
-    }
-
-
-    root.innerHTML =
-      items
-        .slice(0, 50)
-        .map(
-          item => {
-
-            const answer =
-              item?.answer ||
-              item?.content ||
-              item?.text ||
-              item?.value ||
-              "";
-
-
-            const category =
-              item?.category ||
-              item?.type ||
-              "Genel";
-
-
-            const score =
-              item?.score ??
-              item?.similarity ??
-              "";
-
-
-            return `
-
-              <article class="result-card">
-
-                <div class="result-card-title">
-
-                  <strong>
-                    ${escapeHTML(
-                      String(category)
-                    )}
-                  </strong>
-
-                  ${
-                    score !== ""
-                      ? `
-                        <span class="panel-status">
-                          ${escapeHTML(
-                            String(
-                              Number(score)
-                                .toFixed(2)
-                            )
-                          )}
-                        </span>
-                      `
-                      : ""
-                  }
-
-                </div>
-
-                <p>
-                  ${escapeHTML(
-                    String(answer)
-                  )}
-                </p>
-
-              </article>
-
-            `;
-
-          }
-        )
+        })
         .join("");
-
   }
 
+  function setupDrop() {
+    const zone =
+      E.fileDropZone;
 
-  if (el.memorySearchButton) {
+    if (!zone) return;
 
-    el.memorySearchButton.addEventListener(
-      "click",
-      () =>
-        searchMemory()
-    );
-
-  }
-
-
-  if (el.memoryInput) {
-
-    el.memoryInput.addEventListener(
-      "keydown",
-      event => {
-
-        if (
-          event.key === "Enter"
-        ) {
-
-          event.preventDefault();
-
-          searchMemory();
-
-        }
-
-      }
-    );
-
-  }
-
-
-  if (el.memoryOverviewButton) {
-
-    el.memoryOverviewButton.addEventListener(
-      "click",
-      loadMemoryOverview
-    );
-
-  }
-
-
-  if (el.memorySaveCurrentButton) {
-
-    el.memorySaveCurrentButton.addEventListener(
-      "click",
-      async () => {
-
-        if (
-          !state.messages?.length
-        ) {
-
-          toast?.(
-            "Kaydedilecek konuşma yok",
-            "Önce bir konuşma başlat.",
-            "warning"
-          );
-
-          return;
-
-        }
-
-
-        const lastPair =
-          state.messages
-            .slice(-6)
-            .map(
-              item =>
-                `${item.role}: ${item.content}`
-            )
-            .join("\n");
-
-
-        try {
-
-          await apiRequest(
-            "/api/memory/save",
-            {
-
-              method:
-                "POST",
-
-              body: {
-
-                content:
-                  lastPair,
-
-                answer:
-                  lastPair,
-
-                category:
-                  "conversation",
-
-                userId:
-                  state.account?.id ||
-                  state.account?.userId ||
-                  "guest"
-
-              }
-
-            }
-          );
-
-
-          toast?.(
-            "Hafızaya kaydedildi",
-            "Mevcut konuşma hafızaya gönderildi.",
-            "success"
-          );
-
-
-          await loadMemoryOverview();
-
-        } catch (error) {
-
-          toast?.(
-            "Hafızaya kaydedilemedi",
-            error?.message ||
-              "Sunucu kayıt yapamadı.",
-            "error"
-          );
-
-        }
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     FILES
-     ======================================================= */
-
-  function openFilePicker() {
-
-    if (
-      el.globalFilePicker
-    ) {
-
-      el.globalFilePicker.value =
-        "";
-
-      el.globalFilePicker.click();
-
-    }
-
-  }
-
-
-  async function uploadFiles(
-    files
-  ) {
-
-    const list =
-      [...(files || [])];
-
-    if (!list.length) {
-      return;
-    }
-
-
-    if (!el.fileList) {
-      return;
-    }
-
-
-    const total =
-      list.length;
-
-
-    setUploadStatus(
-      true,
-      "Dosya yükleniyor",
-      `0 / ${total}`,
-      0
-    );
-
-
-    let completed = 0;
-
-
-    for (
-      const file of list
-    ) {
-
-      try {
-
-        const form =
-          new FormData();
-
-
-        form.append(
-          "file",
-          file
-        );
-
-
-        form.append(
-          "filename",
-          file.name
-        );
-
-
-        form.append(
-          "name",
-          file.name
-        );
-
-
-        const result =
-          await apiRequest(
-            "/api/files/upload",
-            {
-
-              method:
-                "POST",
-
-              body:
-                form
-
-            }
-          );
-
-
-        state.files.push({
-
-          id:
-            result?.id ||
-            result?.file?.id ||
-            `local_${Date.now()}_${Math.random()}`,
-
-          name:
-            result?.name ||
-            result?.file?.name ||
-            file.name,
-
-          size:
-            result?.size ||
-            result?.file?.size ||
-            file.size,
-
-          type:
-            result?.type ||
-            result?.file?.type ||
-            file.type,
-
-          url:
-            result?.url ||
-            result?.file?.url ||
-            ""
-
-        });
-
-
-      } catch (error) {
-
-        console.error(
-          "[TürkAI] Upload:",
-          error
-        );
-
-
-        toast?.(
-          "Dosya yüklenemedi",
-          `${file.name}: ${error?.message || "Hata"}`,
-          "error"
-        );
-
-      }
-
-
-      completed++;
-
-      setUploadStatus(
-        true,
-        "Dosya yükleniyor",
-        `${completed} / ${total}`,
-        Math.round(
-          completed /
-          total *
-          100
-        )
-      );
-
-    }
-
-
-    setTimeout(
-      () =>
-        setUploadStatus(
-          false
-        ),
-      400
-    );
-
-
-    renderFiles();
-
-    renderAttachments();
-
-  }
-
-
-  function renderAttachments() {
-
-    if (
-      !el.attachmentPreview
-    ) {
-      return;
-    }
-
-
-    if (
-      !state.attachments?.length
-    ) {
-
-      el.attachmentPreview.classList.add(
-        "hidden"
-      );
-
-      el.attachmentPreview.innerHTML =
-        "";
-
-      return;
-
-    }
-
-
-    el.attachmentPreview.classList.remove(
-      "hidden"
-    );
-
-
-    el.attachmentPreview.innerHTML =
-      state.attachments
-        .map(
-          (file, index) => `
-
-            <div class="attachment-chip">
-
-              <svg aria-hidden="true">
-                <use href="#i-file"></use>
-              </svg>
-
-              <span class="attachment-chip-name">
-                ${escapeHTML(
-                  file.name
-                )}
-              </span>
-
-              <button
-                type="button"
-                class="file-card-remove"
-                data-remove-attachment="${index}"
-                aria-label="Dosya ekini kaldır"
-              >
-                <svg aria-hidden="true">
-                  <use href="#i-close"></use>
-                </svg>
-              </button>
-
-            </div>
-
-          `
-        )
-        .join("");
-
-
-    qsa(
-      "[data-remove-attachment]"
-    ).forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const index =
-            Number(
-              button.dataset.removeAttachment
-            );
-
-          state.attachments.splice(
-            index,
-            1
-          );
-
-          renderAttachments();
-
-        }
-      );
-
-    });
-
-  }
-
-
-  function renderFiles() {
-
-    if (!el.fileList) {
-      return;
-    }
-
-
-    if (
-      !state.files?.length
-    ) {
-
-      el.fileList.innerHTML =
-        `
-
-          <div class="empty-state compact">
-
-            <div class="empty-state-icon">
-
-              <svg aria-hidden="true">
-                <use href="#i-folder"></use>
-              </svg>
-
-            </div>
-
-            <h3>
-              Henüz dosya yok
-            </h3>
-
-            <p>
-              Bir dosya yüklediğinde burada görünecek.
-            </p>
-
-          </div>
-
-        `;
-
-      if (el.fileCount) {
-        el.fileCount.textContent =
-          "0 dosya";
-      }
-
-      return;
-
-    }
-
-
-    if (el.fileCount) {
-
-      el.fileCount.textContent =
-        `${state.files.length} dosya`;
-
-    }
-
-
-    el.fileList.innerHTML =
-      state.files
-        .map(
-          (file, index) => `
-
-            <article class="file-card">
-
-              <div class="file-card-icon">
-
-                <svg aria-hidden="true">
-                  <use href="#i-file"></use>
-                </svg>
-
-              </div>
-
-              <div class="file-card-info">
-
-                <strong>
-                  ${escapeHTML(
-                    file.name
-                  )}
-                </strong>
-
-                <small>
-                  ${formatBytes(
-                    file.size
-                  )}
-
-                  ${
-                    file.type
-                      ? ` · ${escapeHTML(file.type)}`
-                      : ""
-                  }
-                </small>
-
-              </div>
-
-              <button
-                type="button"
-                class="file-card-remove"
-                data-remove-file="${index}"
-                aria-label="Dosyayı kaldır"
-              >
-                <svg aria-hidden="true">
-                  <use href="#i-trash"></use>
-                </svg>
-              </button>
-
-            </article>
-
-          `
-        )
-        .join("");
-
-
-    qsa(
-      "[data-remove-file]"
-    ).forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const index =
-            Number(
-              button.dataset.removeFile
-            );
-
-          state.files.splice(
-            index,
-            1
-          );
-
-          renderFiles();
-
-        }
-      );
-
-    });
-
-  }
-
-
-  async function loadFiles() {
-
-    try {
-
-      const result =
-        await apiRequest(
-          "/api/files",
-          {
-            method:
-              "GET"
-          }
-        );
-
-
-      const items =
-        Array.isArray(result)
-          ? result
-          : (
-              result?.files ||
-              result?.items ||
-              result?.data?.files ||
-              []
-            );
-
-
-      state.files =
-        items.map(
-          file => ({
-
-            id:
-              file.id ||
-              file._id ||
-              "",
-
-            name:
-              file.name ||
-              file.filename ||
-              "Dosya",
-
-            size:
-              file.size ||
-              0,
-
-            type:
-              file.type ||
-              file.mimeType ||
-              "",
-
-            url:
-              file.url ||
-              ""
-
-          })
-        );
-
-
-      renderFiles();
-
-
-    } catch (error) {
-
-      console.warn(
-        "[TürkAI] Dosya listesi alınamadı:",
-        error
-      );
-
-      renderFiles();
-
-    }
-
-  }
-
-
-  function setUploadStatus(
-    visible,
-    title = "Dosya yükleniyor",
-    message = "",
-    progress = 0
-  ) {
-
-    const status =
-      $("uploadStatusBar");
-
-    const titleNode =
-      $("uploadStatusTitle");
-
-    const textNode =
-      $("uploadStatusText");
-
-    const progressNode =
-      $("uploadProgressBar");
-
-
-    if (!status) {
-      return;
-    }
-
-
-    if (!visible) {
-
-      status.classList.add(
-        "hidden"
-      );
-
-      return;
-
-    }
-
-
-    status.classList.remove(
-      "hidden"
-    );
-
-
-    if (titleNode) {
-      titleNode.textContent =
-        title;
-    }
-
-
-    if (textNode) {
-      textNode.textContent =
-        message;
-    }
-
-
-    if (progressNode) {
-
-      progressNode.style.width =
-        `${Math.max(
-          0,
-          Math.min(
-            100,
-            Number(progress) || 0
-          )
-        )}%`;
-
-    }
-
-  }
-
-
-  if (el.attachmentButton) {
-
-    el.attachmentButton.addEventListener(
-      "click",
-      openFilePicker
-    );
-
-  }
-
-
-  if (el.fileSelectButton) {
-
-    el.fileSelectButton.addEventListener(
-      "click",
-      openFilePicker
-    );
-
-  }
-
-
-  if (el.globalFilePicker) {
-
-    el.globalFilePicker.addEventListener(
-      "change",
-      event => {
-
-        uploadFiles(
-          event.target.files
-        );
-
-      }
-    );
-
-  }
-
-
-  if (el.refreshFilesButton) {
-
-    el.refreshFilesButton.addEventListener(
-      "click",
-      loadFiles
-    );
-
-  }
-
-
-  /* =======================================================
-     DRAG & DROP
-     ======================================================= */
-
-  let dragDepth = 0;
-
-
-  function setupDragDrop() {
-
-    const dropZone =
-      el.fileDropZone;
-
-
-    if (!dropZone) {
-      return;
-    }
-
-
-    document.addEventListener(
+    zone.addEventListener(
       "dragenter",
-      event => {
+      (event) => {
+        event.preventDefault();
 
-        if (
-          !event.dataTransfer?.types?.includes(
-            "Files"
-          )
-        ) {
-
-          return;
-
-        }
-
-        dragDepth++;
-
-        $("dropOverlay")
-          ?.classList
-          .remove("hidden");
-
+        E.dropOverlay?.classList.remove(
+          "hidden"
+        );
       }
     );
 
-
-    document.addEventListener(
-      "dragleave",
-      () => {
-
-        dragDepth--;
-
-        if (
-          dragDepth <= 0
-        ) {
-
-          dragDepth = 0;
-
-          $("dropOverlay")
-            ?.classList
-            .add("hidden");
-
-        }
-
-      }
-    );
-
-
-    document.addEventListener(
+    zone.addEventListener(
       "dragover",
-      event => {
+      (event) => {
+        event.preventDefault();
+      }
+    );
+
+    zone.addEventListener(
+      "dragleave",
+      (event) => {
+        event.preventDefault();
 
         if (
-          event.dataTransfer?.types?.includes(
-            "Files"
+          !zone.contains(
+            event.relatedTarget
           )
         ) {
-
-          event.preventDefault();
-
-        }
-
-      }
-    );
-
-
-    document.addEventListener(
-      "drop",
-      event => {
-
-        if (
-          event.dataTransfer?.files?.length
-        ) {
-
-          event.preventDefault();
-
-          dragDepth = 0;
-
-          $("dropOverlay")
-            ?.classList
-            .add("hidden");
-
-
-          uploadFiles(
-            event.dataTransfer.files
+          E.dropOverlay?.classList.add(
+            "hidden"
           );
-
         }
-
       }
     );
 
-
-    [
-      "dragenter",
-      "dragover"
-    ].forEach(
-      name => {
-
-        dropZone.addEventListener(
-          name,
-          event => {
-
-            event.preventDefault();
-
-            dropZone.classList.add(
-              "dragover"
-            );
-
-          }
-        );
-
-      }
-    );
-
-
-    [
-      "dragleave",
-      "drop"
-    ].forEach(
-      name => {
-
-        dropZone.addEventListener(
-          name,
-          event => {
-
-            event.preventDefault();
-
-            dropZone.classList.remove(
-              "dragover"
-            );
-
-          }
-        );
-
-      }
-    );
-
-
-    dropZone.addEventListener(
+    zone.addEventListener(
       "drop",
-      event => {
+      (event) => {
+        event.preventDefault();
+
+        E.dropOverlay?.classList.add(
+          "hidden"
+        );
 
         uploadFiles(
           event.dataTransfer?.files
         );
-
       }
     );
-
   }
 
+  /* =========================================================
+     MEDYA
+     ========================================================= */
 
-  /* =======================================================
-     MEDIA
-     ======================================================= */
-
-  if (
-    el.openImageModalButton
-  ) {
-
-    el.openImageModalButton.addEventListener(
-      "click",
-      () => {
-
-        openModal?.(
-          "imageCreateModal"
-        );
-
-      }
+  function openImageModal() {
+    T.openModal(
+      "imageCreateModal"
     );
-
   }
 
-
-  if (
-    el.openVideoModalButton
-  ) {
-
-    el.openVideoModalButton.addEventListener(
-      "click",
-      () => {
-
-        openModal?.(
-          "videoModal"
-        );
-
-      }
+  function openVideoModal() {
+    T.openModal(
+      "videoModal"
     );
-
   }
-
-
-  if (
-    $("imageToolButton")
-  ) {
-
-    $("imageToolButton")
-      .addEventListener(
-        "click",
-        () => {
-
-          openModal?.(
-            "imageCreateModal"
-          );
-
-        }
-      );
-
-  }
-
-
-  if (
-    $("videoToolButton")
-  ) {
-
-    $("videoToolButton")
-      .addEventListener(
-        "click",
-        () => {
-
-          openModal?.(
-            "videoModal"
-          );
-
-        }
-      );
-
-  }
-
 
   async function generateImage() {
-
     const prompt =
-      String(
-        el.imagePromptInput?.value ||
-        ""
-      ).trim();
-
+      E.imagePromptInput?.value.trim();
 
     if (!prompt) {
-
-      toast?.(
-        "Prompt gerekli",
-        "Görselin nasıl olacağını yaz.",
+      T.toast(
+        "Görsel açıklaması yaz.",
         "warning"
       );
-
-      el.imagePromptInput?.focus();
-
       return;
-
     }
 
-
-    setButtonLoading(
-      el.generateImageButton,
+    setLoadingButton(
+      E.generateImageButton,
       true,
-      "Üretiliyor..."
+      "Oluşturuluyor..."
     );
 
-
-    setHTML(
-      el.imageResult,
-      `
-
-        <div class="empty-state compact">
-
-          <div class="loading-spinner"></div>
-
-          <h3>
-            Görsel hazırlanıyor
-          </h3>
-
-          <p>
-            Üretim servisine istek gönderiliyor.
-          </p>
-
+    if (E.imageResult) {
+      E.imageResult.innerHTML = `
+        <div class="empty-state">
+          Görsel hazırlanıyor...
         </div>
-
-      `
-    );
-
+      `;
+    }
 
     try {
-
-      const result =
-        await apiRequest(
-          "/api/media/image",
+      const data =
+        await request(
+          config.endpoints.mediaImage,
           {
-
-            method:
-              "POST",
-
+            method: "POST",
             body: {
-
               prompt,
-
               size:
-                el.imageSizeSelect?.value ||
+                E.imageSizeSelect?.value ||
                 "1024x1024",
-
               quality:
-                el.imageQualitySelect?.value ||
+                E.imageQualitySelect?.value ||
                 "standard"
-
             }
-
-          }
+          },
+          90000
         );
 
+      const url =
+        resultUrl(
+          data,
+          "image"
+        );
 
-      renderImageResult(
-        result
+      if (!url) {
+        throw new Error(
+          "Sunucu görsel sonucu döndürmedi."
+        );
+      }
+
+      if (E.imageResult) {
+        E.imageResult.innerHTML = `
+          <div class="generated-media-card">
+            <img
+              src="${esc(url)}"
+              alt="TürkAI görsel sonucu"
+              loading="lazy"
+            />
+
+            <div class="generated-media-actions">
+              <a
+                href="${esc(url)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="secondary-button"
+              >
+                <svg viewBox="0 0 24 24">
+                  <use href="#i-download"></use>
+                </svg>
+                Görseli aç
+              </a>
+            </div>
+          </div>
+        `;
+      }
+
+      T.toast(
+        "Görsel hazır.",
+        "success"
       );
-
-
     } catch (error) {
+      if (E.imageResult) {
+        E.imageResult.innerHTML = `
+          <div class="empty-state">
+            <strong>Görsel oluşturulamadı.</strong>
+            <div>
+              ${esc(
+                error?.message || ""
+              )}
+            </div>
+          </div>
+        `;
+      }
 
-      console.error(
-        "[TürkAI] Image:",
-        error
-      );
-
-
-      toast?.(
-        "Görsel üretilemedi",
+      T.toast(
         error?.message ||
-          "Medya servisi cevap vermedi.",
+        "Görsel oluşturulamadı.",
         "error"
       );
-
-
-      setHTML(
-        el.imageResult,
-        `
-
-          <div class="empty-state compact">
-
-            <div class="empty-state-icon">
-
-              <svg aria-hidden="true">
-                <use href="#i-alert"></use>
-              </svg>
-
-            </div>
-
-            <h3>
-              Üretim başarısız
-            </h3>
-
-            <p>
-              ${escapeHTML(
-                error?.message ||
-                "Görsel oluşturulamadı."
-              )}
-            </p>
-
-          </div>
-
-        `
-      );
-
-
     } finally {
-
-      setButtonLoading(
-        el.generateImageButton,
+      setLoadingButton(
+        E.generateImageButton,
         false
       );
-
     }
-
   }
-
-
-  function renderImageResult(
-    data
-  ) {
-
-    const url =
-      data?.url ||
-      data?.imageUrl ||
-      data?.image_url ||
-      data?.data?.url ||
-      data?.data?.imageUrl ||
-      "";
-
-
-    const revisedPrompt =
-      data?.revisedPrompt ||
-      data?.prompt ||
-      "";
-
-
-    if (!url) {
-
-      setHTML(
-        el.imageResult,
-        `
-
-          <div class="result-card">
-
-            <strong>
-              Üretim tamamlandı
-            </strong>
-
-            ${
-              revisedPrompt
-                ? `
-                  <p>
-                    ${escapeHTML(revisedPrompt)}
-                  </p>
-                `
-                : ""
-            }
-
-          </div>
-
-        `
-      );
-
-      return;
-
-    }
-
-
-    el.imageResult.innerHTML = `
-
-      <div class="result-card">
-
-        <div class="result-card-title">
-
-          <strong>
-            Görsel hazır
-          </strong>
-
-        </div>
-
-        <img
-          src="${escapeHTML(url)}"
-          alt="TürkAI tarafından oluşturulan görsel"
-          loading="lazy"
-        >
-
-        <a
-          href="${escapeHTML(url)}"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Görseli aç
-        </a>
-
-      </div>
-
-    `;
-
-  }
-
-
-  if (
-    el.generateImageButton
-  ) {
-
-    el.generateImageButton.addEventListener(
-      "click",
-      generateImage
-    );
-
-  }
-
 
   async function generateVideo() {
-
     const prompt =
-      String(
-        el.videoPromptInput?.value ||
-        ""
-      ).trim();
-
+      E.videoPromptInput?.value.trim();
 
     if (!prompt) {
-
-      toast?.(
-        "Prompt gerekli",
-        "Videoda görmek istediğin sahneyi yaz.",
+      T.toast(
+        "Video açıklaması yaz.",
         "warning"
       );
-
-      el.videoPromptInput?.focus();
-
       return;
-
     }
 
-
-    setButtonLoading(
-      el.generateVideoButton,
+    setLoadingButton(
+      E.generateVideoButton,
       true,
       "Hazırlanıyor..."
     );
 
-
-    setHTML(
-      el.videoResult,
-      `
-
-        <div class="empty-state compact">
-
-          <div class="loading-spinner"></div>
-
-          <h3>
-            Video hazırlanıyor
-          </h3>
-
-          <p>
-            Video üretim servisine istek gönderiliyor.
-          </p>
-
+    if (E.videoResult) {
+      E.videoResult.innerHTML = `
+        <div class="empty-state">
+          Video hazırlanıyor...
         </div>
-
-      `
-    );
-
+      `;
+    }
 
     try {
-
-      const result =
-        await apiRequest(
-          "/api/media/video",
+      const data =
+        await request(
+          config.endpoints.mediaVideo,
           {
-
-            method:
-              "POST",
-
+            method: "POST",
             body: {
-
               prompt,
-
               duration:
-                Number(
-                  el.videoDurationSelect?.value ||
-                  5
-                )
-
+                E.videoDurationSelect?.value ||
+                "5"
             }
-
-          }
+          },
+          120000
         );
 
+      const url =
+        resultUrl(
+          data,
+          "video"
+        );
 
-      renderVideoResult(
-        result
+      if (!url) {
+        throw new Error(
+          "Sunucu video sonucu döndürmedi."
+        );
+      }
+
+      if (E.videoResult) {
+        E.videoResult.innerHTML = `
+          <div class="generated-media-card">
+            <video
+              src="${esc(url)}"
+              controls
+              playsinline
+              preload="metadata"
+            ></video>
+
+            <div class="generated-media-actions">
+              <a
+                href="${esc(url)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="secondary-button"
+              >
+                <svg viewBox="0 0 24 24">
+                  <use href="#i-download"></use>
+                </svg>
+                Videoyu aç
+              </a>
+            </div>
+          </div>
+        `;
+      }
+
+      T.toast(
+        "Video hazır.",
+        "success"
       );
-
-
     } catch (error) {
+      if (E.videoResult) {
+        E.videoResult.innerHTML = `
+          <div class="empty-state">
+            <strong>Video oluşturulamadı.</strong>
+            <div>
+              ${esc(
+                error?.message || ""
+              )}
+            </div>
+          </div>
+        `;
+      }
 
-      console.error(
-        "[TürkAI] Video:",
-        error
-      );
-
-
-      toast?.(
-        "Video üretilemedi",
+      T.toast(
         error?.message ||
-          "Video servisi cevap vermedi.",
+        "Video oluşturulamadı.",
         "error"
       );
-
-
-      setHTML(
-        el.videoResult,
-        `
-
-          <div class="empty-state compact">
-
-            <div class="empty-state-icon">
-
-              <svg aria-hidden="true">
-                <use href="#i-alert"></use>
-              </svg>
-
-            </div>
-
-            <h3>
-              Üretim başarısız
-            </h3>
-
-            <p>
-              ${escapeHTML(
-                error?.message ||
-                "Video oluşturulamadı."
-              )}
-            </p>
-
-          </div>
-
-        `
-      );
-
-
     } finally {
-
-      setButtonLoading(
-        el.generateVideoButton,
+      setLoadingButton(
+        E.generateVideoButton,
         false
       );
-
     }
-
   }
 
-
-  function renderVideoResult(
-    data
-  ) {
-
-    const url =
-      data?.url ||
-      data?.videoUrl ||
-      data?.video_url ||
-      data?.data?.url ||
-      data?.data?.videoUrl ||
-      "";
-
-
-    if (!url) {
-
-      setHTML(
-        el.videoResult,
-        `
-
-          <div class="result-card">
-
-            <strong>
-              Video üretim isteği alındı
-            </strong>
-
-            <p>
-              Sunucu henüz bir video URL'si döndürmedi.
-            </p>
-
-          </div>
-
-        `
-      );
-
-      return;
-
-    }
-
-
-    el.videoResult.innerHTML = `
-
-      <div class="result-card">
-
-        <div class="result-card-title">
-
-          <strong>
-            Video hazır
-          </strong>
-
-        </div>
-
-        <video
-          controls
-          playsinline
-          preload="metadata"
-        >
-          <source src="${escapeHTML(url)}">
-        </video>
-
-        <a
-          href="${escapeHTML(url)}"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Videoyu aç
-        </a>
-
-      </div>
-
-    `;
-
-  }
-
-
-  if (
-    el.generateVideoButton
-  ) {
-
-    el.generateVideoButton.addEventListener(
-      "click",
-      generateVideo
-    );
-
-  }
-
-
-  /* =======================================================
-     PLANS
-     ======================================================= */
+  /* =========================================================
+     PLANLAR
+     ========================================================= */
 
   const DEFAULT_PLANS = [
-
     {
-      id:
-        "free",
-
-      name:
-        "Free",
-
-      price:
-        "0 TL",
-
+      id: "free",
+      name: "Free",
+      price: 0,
       description:
-        "Temel TürkAI deneyimi.",
-
+        "TürkAI'nin temel özellikleri.",
       features: [
-        "50 mesaj",
         "Temel sohbet",
-        "Temel hafıza",
-        "Web araştırması"
+        "Hafıza",
+        "Araştırma araçları"
       ]
-
     },
 
-
     {
-      id:
-        "pro",
-
-      name:
-        "Pro",
-
-      price:
-        "250 TL",
-
+      id: "pro",
+      name: "Pro",
+      price: 250,
+      featured: true,
       description:
         "Daha yüksek kullanım ve gelişmiş özellikler.",
-
-      featured:
-        true,
-
-      tag:
-        "POPÜLER",
-
       features: [
-        "250 mesaj",
-        "Gelişmiş AI",
-        "Gelişmiş hafıza",
-        "Görsel üretimi",
-        "Öncelikli kullanım"
+        "Daha yüksek kullanım",
+        "Gelişmiş modeller",
+        "Görsel üretim"
       ]
-
     },
 
-
     {
-      id:
-        "plus",
-
-      name:
-        "Plus",
-
-      price:
-        "500 TL",
-
+      id: "plus",
+      name: "Plus",
+      price: 500,
       description:
-        "Daha yüksek limitler ve medya özellikleri.",
-
+        "Üretim ve medya araçları için genişletilmiş plan.",
       features: [
-        "500 mesaj",
-        "Gelişmiş AI",
-        "Daha yüksek hafıza",
-        "Görsel üretimi",
+        "Daha yüksek limit",
+        "Görsel üretim",
         "Video üretimi"
       ]
-
     },
 
-
     {
-      id:
-        "ultra",
-
-      name:
-        "Ultra",
-
-      price:
-        "1000 TL",
-
+      id: "ultra",
+      name: "Ultra",
+      price: 1000,
+      soon: true,
       description:
-        "Yakında daha geniş kullanım ve üst düzey özellikler.",
-
-      tag:
-        "YAKINDA",
-
+        "TürkAI'nin en kapsamlı paketi.",
       features: [
-        "1000 mesaj",
-        "Üst düzey kullanım",
-        "Gelişmiş medya",
-        "Genişletilmiş limitler",
-        "Ultra özellikleri"
-      ],
-
-      disabled:
-        true
-
+        "Ultra kullanım",
+        "Genişletilmiş modeller",
+        "Gelişmiş medya"
+      ]
     }
-
   ];
 
-
   async function loadPlans() {
+    let plans = [];
 
     try {
-
-      const result =
-        await apiRequest(
-          "/api/plans",
-          {
-            method:
-              "GET"
-          }
+      const data =
+        await request(
+          config.endpoints.plans
         );
 
-
-      const plans =
-        Array.isArray(result)
-          ? result
-          : (
-              result?.plans ||
-              result?.data?.plans ||
-              []
-            );
-
-
-      state.plans =
-        plans.length
-          ? plans
-          : DEFAULT_PLANS;
-
-
+      plans = safeArray(
+        data,
+        [
+          "plans",
+          "items",
+          "data"
+        ]
+      );
     } catch {
-
-      state.plans =
-        DEFAULT_PLANS;
-
+      plans = [];
     }
 
+    state.plans =
+      plans.length
+        ? plans
+        : DEFAULT_PLANS;
 
-    renderPlans();
-
+    renderPlans(
+      state.plans
+    );
   }
 
+  function renderPlans(plans) {
+    if (!E.plansList) return;
 
-  function renderPlans() {
+    E.plansList.innerHTML =
+      plans
+        .map((plan) => {
+          const price =
+            Number(plan.price) || 0;
 
-    if (!el.plansList) {
-      return;
-    }
-
-
-    el.plansList.innerHTML =
-      state.plans
-        .map(
-          plan => `
-
+          return `
             <article
               class="plan-card ${
                 plan.featured
@@ -7075,2769 +4825,1755 @@
                   : ""
               }"
             >
+              <div class="plan-card-header">
+                <div>
+                  <div class="plan-card-name">
+                    ${esc(
+                      plan.name ||
+                      plan.id
+                    )}
+                  </div>
 
-              ${
-                plan.tag
-                  ? `
-                    <span class="plan-tag">
-                      ${escapeHTML(
-                        plan.tag
-                      )}
-                    </span>
-                  `
-                  : ""
-              }
-
-              <div class="plan-name">
-                ${escapeHTML(
-                  plan.name
-                )}
-              </div>
-
-              <div class="plan-price">
-
-                ${escapeHTML(
-                  String(
-                    plan.price ??
-                    "—"
-                  )
-                )}
+                  <div class="plan-card-price">
+                    ${price.toLocaleString(
+                      "tr-TR"
+                    )} TL${
+                      price
+                        ? "/ay"
+                        : ""
+                    }
+                  </div>
+                </div>
 
                 ${
-                  plan.price &&
-                  !String(
-                    plan.price
-                  ).includes("TL")
-                    ? `<small>/ ay</small>`
+                  plan.soon
+                    ? `
+                      <span class="plan-badge">
+                        Yakında
+                      </span>
+                    `
+                    : plan.featured
+                    ? `
+                      <span class="plan-badge">
+                        Öne çıkan
+                      </span>
+                    `
                     : ""
                 }
-
               </div>
 
-              <p class="plan-description">
-                ${escapeHTML(
+              <div class="plan-card-description">
+                ${esc(
                   plan.description ||
                   ""
                 )}
-              </p>
+              </div>
 
-              <div class="plan-features">
-
+              <div class="plan-card-features">
                 ${
                   (
                     plan.features ||
                     []
                   )
                     .map(
-                      feature => `
-
-                        <div class="plan-feature">
-
-                          <svg aria-hidden="true">
+                      (feature) => `
+                        <div>
+                          <svg viewBox="0 0 24 24">
                             <use href="#i-check"></use>
                           </svg>
 
                           <span>
-                            ${escapeHTML(
+                            ${esc(
                               feature
                             )}
                           </span>
-
                         </div>
-
                       `
                     )
                     .join("")
                 }
-
               </div>
 
               <button
                 type="button"
-                class="${
-                  plan.featured
-                    ? "primary-button"
-                    : "secondary-button"
-                }"
-                data-select-plan="${
-                  escapeHTML(
-                    plan.id ||
-                    plan.name
-                  )
-                }"
+                class="primary-button plan-action-button"
+                data-plan-id="${esc(
+                  plan.id
+                )}"
                 ${
-                  plan.disabled
+                  plan.soon
                     ? "disabled"
                     : ""
                 }
               >
                 ${
-                  plan.disabled
+                  plan.soon
                     ? "Yakında"
-                    : (
-                        plan.id === "free"
-                          ? "Mevcut"
-                          : "Paketi seç"
-                      )
+                    : plan.id ===
+                      "free"
+                    ? "Aktif"
+                    : "İncele"
                 }
               </button>
-
             </article>
-
-          `
-        )
+          `;
+        })
         .join("");
 
+    E.plansList
+      .querySelectorAll(
+        ".plan-action-button"
+      )
+      .forEach((button) => {
+        button.onclick = () => {
+          const id =
+            button.dataset.planId;
 
-    qsa(
-      "[data-select-plan]"
-    ).forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const plan =
-            button.dataset.selectPlan;
-
-          if (!plan) {
+          if (id === "free") {
+            T.toast(
+              "Free plan aktif.",
+              "info"
+            );
             return;
           }
 
-
-          toast?.(
-            "Paket seçildi",
-            `${plan} paketi için ödeme akışı sunucu yapılandırmasına bağlıdır.`,
+          T.toast(
+            `${id} planı seçildi.`,
             "info"
           );
-
-        }
-      );
-
-    });
-
+        };
+      });
   }
 
-
-  /* =======================================================
-     NOTIFICATIONS
-     ======================================================= */
+  /* =========================================================
+     BİLDİRİMLER
+     ========================================================= */
 
   async function loadNotifications() {
-
     try {
-
-      const result =
-        await apiRequest(
-          "/api/notifications",
-          {
-            method:
-              "GET"
-          }
+      const data =
+        await request(
+          config.endpoints.notifications
         );
 
-
-      const items =
-        Array.isArray(result)
-          ? result
-          : (
-              result?.notifications ||
-              result?.items ||
-              result?.data ||
-              []
-            );
-
-
       state.notifications =
-        items;
-
-
+        safeArray(
+          data,
+          [
+            "notifications",
+            "items",
+            "results",
+            "data"
+          ]
+        );
     } catch {
-
-      state.notifications =
-        [];
-
+      state.notifications = [];
     }
 
+    state.notificationUnread =
+      state.notifications.filter(
+        (item) =>
+          !item?.read &&
+          !item?.isRead
+      ).length;
+
+    renderNotifications();
+  }
+
+  function renderNotifications() {
+    if (!E.notificationList) {
+      updateNotificationBadge();
+      return;
+    }
+
+    if (!state.notifications.length) {
+      E.notificationList.innerHTML = `
+        <div class="empty-state">
+          Yeni bildirim yok.
+        </div>
+      `;
+
+      if (E.notificationSummary) {
+        E.notificationSummary.textContent =
+          "0 okunmamış";
+      }
+
+      updateNotificationBadge();
+      return;
+    }
+
+    E.notificationList.innerHTML =
+      state.notifications
+        .slice(0, 50)
+        .map((item) => {
+          const title =
+            item?.title ||
+            "Bildirim";
+
+          const message =
+            item?.message ||
+            item?.text ||
+            "";
+
+          const created =
+            item?.createdAt ||
+            item?.created_at ||
+            item?.date ||
+            new Date();
+
+          const unread =
+            !item?.read &&
+            !item?.isRead;
+
+          return `
+            <article
+              class="notification-card ${
+                unread ? "unread" : ""
+              }"
+            >
+              <div class="notification-card-icon">
+                <svg viewBox="0 0 24 24">
+                  <use href="#i-bell"></use>
+                </svg>
+              </div>
+
+              <div class="notification-card-main">
+                <strong>
+                  ${esc(title)}
+                </strong>
+
+                <span>
+                  ${esc(message)}
+                </span>
+
+                <small>
+                  ${esc(
+                    dateText(
+                      created
+                    )
+                  )}
+                </small>
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+
+    if (E.notificationSummary) {
+      E.notificationSummary.textContent =
+        `${state.notificationUnread} okunmamış`;
+    }
+
+    updateNotificationBadge();
+  }
+
+  function updateNotificationBadge() {
+    const count =
+      Number(
+        state.notificationUnread
+      ) || 0;
+
+    if (E.notificationBadge) {
+      E.notificationBadge.textContent =
+        count > 99
+          ? "99+"
+          : String(count);
+
+      E.notificationBadge.classList.toggle(
+        "hidden",
+        count === 0
+      );
+    }
+  }
+
+  async function markNotificationsRead() {
+    state.notifications =
+      state.notifications.map(
+        (notification) => ({
+          ...notification,
+          read: true,
+          isRead: true
+        })
+      );
+
+    state.notificationUnread =
+      0;
 
     renderNotifications();
 
-  }
-
-
-  function renderNotifications() {
-
-    const items =
-      state.notifications ||
-      [];
-
-
-    const unread =
-      items.filter(
-        item =>
-          item?.read === false ||
-          item?.unread === true
-      ).length;
-
-
-    if (el.notificationBadge) {
-
-      el.notificationBadge.textContent =
-        String(unread);
-
-      el.notificationBadge.classList.toggle(
-        "hidden",
-        unread === 0
-      );
-
-    }
-
-
-    if (
-      el.sidebarNotificationBadge
-    ) {
-
-      el.sidebarNotificationBadge.textContent =
-        String(unread);
-
-      el.sidebarNotificationBadge.classList.toggle(
-        "hidden",
-        unread === 0
-      );
-
-    }
-
-
-    if (el.notificationSummary) {
-
-      el.notificationSummary.textContent =
-        items.length
-          ? `${items.length} bildirim`
-          : "Yeni bildirim yok";
-
-    }
-
-
-    if (!el.notificationList) {
-      return;
-    }
-
-
-    if (!items.length) {
-
-      el.notificationList.innerHTML =
-        `
-
-          <div class="empty-state compact">
-
-            <div class="empty-state-icon">
-
-              <svg aria-hidden="true">
-                <use href="#i-bell"></use>
-              </svg>
-
-            </div>
-
-            <h3>
-              Bildirim yok
-            </h3>
-
-            <p>
-              Yeni bildirimler burada görünecek.
-            </p>
-
-          </div>
-
-        `;
-
-      return;
-
-    }
-
-
-    el.notificationList.innerHTML =
-      items
-        .slice(0, 50)
-        .map(
-          item => `
-
-            <article
-              class="notification-card ${
-                (
-                  item?.read === false ||
-                  item?.unread === true
-                )
-                  ? "unread"
-                  : ""
-              }"
-            >
-
-              <strong>
-                ${escapeHTML(
-                  item?.title ||
-                  item?.name ||
-                  "TürkAI bildirimi"
-                )}
-              </strong>
-
-              <p>
-                ${escapeHTML(
-                  item?.message ||
-                  item?.body ||
-                  item?.text ||
-                  ""
-                )}
-              </p>
-
-              <small>
-                ${escapeHTML(
-                  item?.createdAt ||
-                  item?.created_at ||
-                  ""
-                )}
-              </small>
-
-            </article>
-
-          `
-        )
-        .join("");
-
-  }
-
-
-  if (
-    el.markNotificationsReadButton
-  ) {
-
-    el.markNotificationsReadButton.addEventListener(
-      "click",
-      () => {
-
-        state.notifications =
-          state.notifications.map(
-            item => ({
-              ...item,
-              read:
-                true,
-              unread:
-                false
-            })
-          );
-
-        renderNotifications();
-
-        toast?.(
-          "Bildirimler okundu",
-          "",
-          "success"
-        );
-
-      }
+    T.toast(
+      "Bildirimler okundu.",
+      "success"
     );
 
+    /*
+      Backend'in farklı endpoint isimlerine
+      sahip olabilmesi nedeniyle UI burada kesin
+      olarak güncelleniyor.
+    */
+    try {
+      await request(
+        "/api/notifications/read",
+        {
+          method: "POST",
+          body: {}
+        }
+      );
+    } catch {}
   }
 
-
-  /* =======================================================
-     SYSTEM STATUS
-     ======================================================= */
+  /* =========================================================
+     SİSTEM
+     ========================================================= */
 
   async function loadSystemStatus() {
-
-    if (el.systemOverallStatus) {
-
-      el.systemOverallStatus.textContent =
-        "Kontrol ediliyor";
-
-    }
-
-
     try {
-
-      const result =
-        await apiRequest(
-          "/api/system/status",
-          {
-            method:
-              "GET"
-          }
+      const data =
+        await request(
+          config.endpoints.systemStatus
         );
 
+      state.system = data;
 
-      state.system =
-        result;
-
-
-      renderSystem(
-        result
-      );
-
-
+      renderSystem(data);
     } catch (error) {
-
-      console.error(
-        "[TürkAI] System:",
-        error
-      );
-
-
-      renderSystemError(
-        error
-      );
-
+      renderSystemError(error);
     }
-
   }
 
-
-  function renderSystem(
-    data
-  ) {
-
-    const server =
-      data?.server ||
-      data?.data?.server ||
-      {};
-
-
-    const modules =
-      data?.modules ||
-      data?.integration ||
-      data?.data?.modules ||
-      {};
-
+  function renderSystem(data) {
+    if (!E.systemStats) return;
 
     const status =
-      data?.status ||
-      data?.integration?.degraded === false
-        ? "ready"
-        : (
-            data?.status ||
-            "unknown"
-          );
-
-
-    if (el.systemOverallStatus) {
-
-      el.systemOverallStatus.textContent =
-        String(
-          status
-        ).toUpperCase();
-
-    }
-
-
-    if (!el.systemStats) {
-      return;
-    }
-
-
-    const rows = [
-
-      [
-        "Durum",
-        data?.status ||
-          "unknown"
-      ],
-
-      [
-        "Sunucu",
-        server?.name ||
-          data?.server?.name ||
-          "TürkAI"
-      ],
-
-      [
-        "Sürüm",
-        server?.version ||
-          data?.version ||
-          "40.0.0"
-      ],
-
-      [
-        "Host",
-        server?.host ||
-          "0.0.0.0"
-      ],
-
-      [
-        "Port",
-        server?.port ||
-          "3000"
-      ],
-
-      [
-        "Entegrasyon",
-        data?.integration?.degraded === false
-          ? "Aktif"
-          : "Kontrol gerekli"
-      ],
-
-      [
-        "Modüller",
-        typeof modules === "object"
-          ? Object.keys(
-              modules
-            ).length
-          : "—"
-      ],
-
-      [
-        "Tarayıcı",
-        navigator.userAgent
-      ]
-
-    ];
-
-
-    el.systemStats.innerHTML =
-      rows
-        .map(
-          ([label, value]) => `
-
-            <div class="system-card">
-
-              <div class="system-label">
-
-                <strong>
-                  ${escapeHTML(
-                    label
-                  )}
-                </strong>
-
-              </div>
-
-              <div class="system-value">
-
-                ${escapeHTML(
-                  String(value)
-                )}
-
-              </div>
-
-            </div>
-
-          `
-        )
-        .join("");
-
-  }
-
-
-  function renderSystemError(
-    error
-  ) {
-
-    if (el.systemOverallStatus) {
-
-      el.systemOverallStatus.textContent =
-        "BAĞLANTI HATASI";
-
-    }
-
-
-    if (el.systemStats) {
-
-      el.systemStats.innerHTML =
-        `
-
-          <div class="empty-state compact">
-
-            <div class="empty-state-icon">
-
-              <svg aria-hidden="true">
-                <use href="#i-alert"></use>
-              </svg>
-
-            </div>
-
-            <h3>
-              Sistem bilgisi alınamadı
-            </h3>
-
-            <p>
-              ${escapeHTML(
-                error?.message ||
-                "Sunucuya erişilemedi."
-              )}
-            </p>
-
-          </div>
-
-        `;
-
-    }
-
-  }
-
-
-  if (
-    el.refreshSystemButton
-  ) {
-
-    el.refreshSystemButton.addEventListener(
-      "click",
-      loadSystemStatus
-    );
-
-  }
-
-
-  /* =======================================================
-     ACCOUNT
-     ======================================================= */
-
-  async function loadAccount() {
-
-    try {
-
-      let result;
-
-
-      try {
-
-        result =
-          await apiRequest(
-            "/api/account",
-            {
-              method:
-                "GET"
-            }
-          );
-
-      } catch {
-
-        result =
-          await apiRequest(
-            "/api/auth/me",
-            {
-              method:
-                "GET"
-            }
-          );
-
-      }
-
-
-      state.account =
-        result?.user ||
-        result?.account ||
-        result?.data?.user ||
-        result?.data?.account ||
-        result;
-
-
-      renderAccount();
-
-
-    } catch {
-
-      state.account =
-        null;
-
-      renderAccount();
-
-    }
-
-  }
-
-
-  function renderAccount() {
-
-    const account =
-      state.account;
-
-
-    if (!account) {
-
-      setText(
-        el.accountName,
-        "Misafir"
-      );
-
-      setText(
-        el.accountPlan,
-        "Free"
-      );
-
-      setText(
-        el.accountModalName,
-        "Misafir"
-      );
-
-      setText(
-        el.accountModalEmail,
-        "Oturum açık değil"
-      );
-
-      setText(
-        el.accountModalPlan,
-        "Free"
-      );
-
-      setText(
-        el.accountModalStatus,
-        "Misafir"
-      );
-
-      el.accountModalVerified?.classList.add(
-        "hidden"
-      );
-
-      return;
-
-    }
-
-
-    const name =
-      account.name ||
-      account.displayName ||
-      account.username ||
-      account.email ||
-      "Kullanıcı";
-
-
-    const email =
-      account.email ||
-      "Hesap";
-
-
-    const plan =
-      account.plan ||
-      account.planName ||
-      account.subscription?.plan ||
-      "Free";
-
-
-    const usage =
-      account.usage?.used ??
-      account.usage ??
-      account.messagesUsed ??
-      "—";
-
-
-    setText(
-      el.accountName,
-      name
-    );
-
-    setText(
-      el.accountPlan,
-      plan
-    );
-
-    setText(
-      el.accountModalName,
-      name
-    );
-
-    setText(
-      el.accountModalEmail,
-      email
-    );
-
-    setText(
-      el.accountModalPlan,
-      plan
-    );
-
-    setText(
-      el.accountModalUsage,
-      String(usage)
-    );
-
-    setText(
-      el.accountModalStatus,
-      "Aktif"
-    );
-
-
-    if (
-      account.verified ||
-      account.emailVerified
-    ) {
-
-      el.accountModalVerified?.classList.remove(
-        "hidden"
-      );
-
-    } else {
-
-      el.accountModalVerified?.classList.add(
-        "hidden"
-      );
-
-    }
-
-  }
-
-
-  function setText(
-    node,
-    value
-  ) {
-
-    if (node) {
-
-      node.textContent =
-        String(
-          value ??
-          ""
-        );
-
-    }
-
-  }
-
-
-  if (el.loginButton) {
-
-    el.loginButton.addEventListener(
-      "click",
-      () => {
-
-        closeModal?.(
-          "accountModal"
-        );
-
-        openModal?.(
-          "authModal"
-        );
-
-      }
-    );
-
-  }
-
-
-  if (el.logoutButton) {
-
-    el.logoutButton.addEventListener(
-      "click",
-      async () => {
-
-        try {
-
-          await apiRequest(
-            "/api/auth/logout",
-            {
-              method:
-                "POST"
-            }
-          );
-
-        } catch {}
-
-        state.account =
-          null;
-
-        renderAccount();
-
-        closeModal?.(
-          "accountModal"
-        );
-
-        toast?.(
-          "Çıkış yapıldı",
-          "",
-          "success"
-        );
-
-      }
-    );
-
-  }
-
-
-  if (el.accountPlansButton) {
-
-    el.accountPlansButton.addEventListener(
-      "click",
-      () => {
-
-        closeModal?.(
-          "accountModal"
-        );
-
-        openPanel?.(
-          "plans"
-        );
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     AUTH
-     ======================================================= */
-
-  async function login() {
-
-    const identifier =
-      String(
-        el.authIdentifier?.value ||
-        ""
-      ).trim();
-
-
-    const password =
-      String(
-        el.authPassword?.value ||
-        ""
-      );
-
-
-    if (
-      !identifier ||
-      !password
-    ) {
-
-      setText(
-        el.authMessage,
-        "E-posta/kullanıcı adı ve şifre gerekli."
-      );
-
-      el.authMessage?.classList.add(
-        "error"
-      );
-
-      return;
-
-    }
-
-
-    const submit =
-      el.authForm?.querySelector(
-        'button[type="submit"]'
-      );
-
-
-    setButtonLoading(
-      submit,
-      true,
-      "Giriş yapılıyor..."
-    );
-
-
-    try {
-
-      const result =
-        await apiRequest(
-          "/api/auth/login",
-          {
-
-            method:
-              "POST",
-
-            body: {
-
-              identifier,
-
-              username:
-                identifier,
-
-              email:
-                identifier,
-
-              password
-
-            }
-
-          }
-        );
-
-
-      state.account =
-        result?.user ||
-        result?.account ||
-        result?.data?.user ||
-        result;
-
-
-      renderAccount();
-
-
-      el.authPassword.value =
-        "";
-
-
-      el.authMessage?.classList.remove(
-        "error"
-      );
-
-      setText(
-        el.authMessage,
-        "Giriş başarılı."
-      );
-
-
-      closeModal?.(
-        "authModal"
-      );
-
-
-      toast?.(
-        "Hoş geldin",
-        state.account?.name ||
-          state.account?.displayName ||
-          "Hesabına giriş yapıldı.",
-        "success"
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "[TürkAI] Login:",
-        error
-      );
-
-
-      el.authMessage?.classList.add(
-        "error"
-      );
-
-      setText(
-        el.authMessage,
-        error?.message ||
-          "Giriş yapılamadı."
-      );
-
-
-      toast?.(
-        "Giriş başarısız",
-        error?.message ||
-          "Kimlik bilgileri doğrulanamadı.",
-        "error"
-      );
-
-
-    } finally {
-
-      setButtonLoading(
-        submit,
+      data?.status ??
+      (
+        data?.integration?.degraded ===
         false
+          ? "ready"
+          : "unknown"
       );
 
-    }
-
-  }
-
-
-  if (el.authForm) {
-
-    el.authForm.addEventListener(
-      "submit",
-      event => {
-
-        event.preventDefault();
-
-        login();
-
-      }
-    );
-
-  }
-
-
-  if (el.guestLoginButton) {
-
-    el.guestLoginButton.addEventListener(
-      "click",
-      () => {
-
-        state.account = {
-
-          id:
-            "guest",
-
-          name:
-            "Misafir",
-
-          plan:
-            "Free",
-
-          guest:
-            true
-
-        };
-
-
-        renderAccount();
-
-
-        closeModal?.(
-          "authModal"
-        );
-
-
-        toast?.(
-          "Misafir modu aktif",
-          "Hesap oluşturmadan devam edebilirsin.",
-          "success"
-        );
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     CHAT SEARCH
-     ======================================================= */
-
-  function searchChat(
-    query
-  ) {
-
-    const value =
-      String(
-        query ??
-        el.chatSearchInput?.value ??
-        ""
-      ).trim().toLocaleLowerCase(
-        "tr-TR"
-      );
-
-
-    if (
-      !el.chatSearchResults
-    ) {
-      return;
-    }
-
-
-    if (!value) {
-
-      el.chatSearchResults.innerHTML =
-        `
-
-          <div class="empty-state compact">
-
-            <div class="empty-state-icon">
-
-              <svg aria-hidden="true">
-                <use href="#i-search"></use>
-              </svg>
-
-            </div>
-
-            <h3>
-              Aramaya hazır
-            </h3>
-
-            <p>
-              Mesajlarında aramak için bir kelime yaz.
-            </p>
-
-          </div>
-
-        `;
-
-      return;
-
-    }
-
-
-    const matches =
-      (state.messages || [])
-        .filter(
-          message =>
-            String(
-              message.content ||
-              ""
-            )
-              .toLocaleLowerCase(
-                "tr-TR"
-              )
-              .includes(value)
-        );
-
-
-    if (!matches.length) {
-
-      el.chatSearchResults.innerHTML =
-        `
-
-          <div class="empty-state compact">
-
-            <div class="empty-state-icon">
-
-              <svg aria-hidden="true">
-                <use href="#i-search"></use>
-              </svg>
-
-            </div>
-
-            <h3>
-              Sonuç yok
-            </h3>
-
-            <p>
-              Bu ifade mevcut konuşmada bulunamadı.
-            </p>
-
-          </div>
-
-        `;
-
-      return;
-
-    }
-
-
-    el.chatSearchResults.innerHTML =
-      matches
-        .map(
-          message => `
-
-            <button
-              type="button"
-              class="search-result-item"
-            >
-
-              <span class="search-result-role">
-                ${escapeHTML(
-                  message.role === "user"
-                    ? "Sen"
-                    : "TürkAI"
-                )}
-              </span>
-
-              <div class="search-result-text">
-                ${escapeHTML(
-                  message.content
-                )}
-              </div>
-
-            </button>
-
-          `
-        )
-        .join("");
-
-  }
-
-
-  if (el.chatSearchInput) {
-
-    el.chatSearchInput.addEventListener(
-      "input",
-      () =>
-        searchChat()
-    );
-
-  }
-
-
-  /* =======================================================
-     COMMAND CENTER
-     ======================================================= */
-
-  const commands = [
-
-    {
-      id:
-        "new",
-
-      title:
-        "Yeni sohbet",
-
-      keywords:
-        "yeni sohbet new temiz"
-
-    },
-
-    {
-      id:
-        "research",
-
-      title:
-        "Web araştırması",
-
-      keywords:
-        "araştır web internet araştırma"
-
-    },
-
-    {
-      id:
-        "weather",
-
-      title:
-        "Hava durumu",
-
-      keywords:
-        "hava hava durumu şehir"
-
-    },
-
-    {
-      id:
-        "memory",
-
-      title:
-        "Hafıza",
-
-      keywords:
-        "hafıza memory kayıt"
-
-    },
-
-    {
-      id:
-        "files",
-
-      title:
-        "Dosyalar",
-
-      keywords:
-        "dosya file upload yükle"
-
-    },
-
-    {
-      id:
-        "image",
-
-      title:
-        "Görsel üret",
-
-      keywords:
-        "görsel resim image üret"
-
-    },
-
-    {
-      id:
-        "video",
-
-      title:
-        "Video üret",
-
-      keywords:
-        "video üret"
-
-    },
-
-    {
-      id:
-        "plans",
-
-      title:
-        "Paketler",
-
-      keywords:
-        "paket plan pro plus ultra"
-
-    },
-
-    {
-      id:
-        "notifications",
-
-      title:
-        "Bildirimler",
-
-      keywords:
-        "bildirim notification"
-
-    },
-
-    {
-      id:
-        "system",
-
-      title:
-        "Sistem durumu",
-
-      keywords:
-        "sistem system sunucu"
-
-    },
-
-    {
-      id:
-        "settings",
-
-      title:
-        "Ayarlar",
-
-      keywords:
-        "ayar settings tercih"
-
-    },
-
-    {
-      id:
-        "account",
-
-      title:
-        "Hesap",
-
-      keywords:
-        "hesap account kullanıcı"
-
-    }
-
-  ];
-
-
-  function runCommand(
-    id
-  ) {
-
-    switch (id) {
-
-      case "new":
-
-        createNewChat?.();
-
-        closeModal?.(
-          "commandCenter"
-        );
-
-        break;
-
-
-      case "research":
-
-        closeModal?.(
-          "commandCenter"
-        );
-
-        openPanel?.(
-          "research"
-        );
-
-        break;
-
-
-      case "weather":
-
-        closeModal?.(
-          "commandCenter"
-        );
-
-        openPanel?.(
-          "weather"
-        );
-
-        break;
-
-
-      case "memory":
-
-        closeModal?.(
-          "commandCenter"
-        );
-
-        openPanel?.(
-          "memory"
-        );
-
-        break;
-
-
-      case "files":
-
-        closeModal?.(
-          "commandCenter"
-        );
-
-        openPanel?.(
-          "files"
-        );
-
-        break;
-
-
-      case "image":
-
-        closeModal?.(
-          "commandCenter"
-        );
-
-        openModal?.(
-          "imageCreateModal"
-        );
-
-        break;
-
-
-      case "video":
-
-        closeModal?.(
-          "commandCenter"
-        );
-
-        openModal?.(
-          "videoModal"
-        );
-
-        break;
-
-
-      case "plans":
-
-        closeModal?.(
-          "commandCenter"
-        );
-
-        openPanel?.(
-          "plans"
-        );
-
-        break;
-
-
-      case "notifications":
-
-        closeModal?.(
-          "commandCenter"
-        );
-
-        openPanel?.(
-          "notifications"
-        );
-
-        break;
-
-
-      case "system":
-
-        closeModal?.(
-          "commandCenter"
-        );
-
-        openPanel?.(
-          "system"
-        );
-
-        break;
-
-
-      case "settings":
-
-        closeModal?.(
-          "commandCenter"
-        );
-
-        openModal?.(
-          "settingsModal"
-        );
-
-        break;
-
-
-      case "account":
-
-        closeModal?.(
-          "commandCenter"
-        );
-
-        openModal?.(
-          "accountModal"
-        );
-
-        loadAccount();
-
-        break;
-
-    }
-
-  }
-
-
-  function renderCommandList(
-    query = ""
-  ) {
-
-    if (!el.commandList) {
-      return;
-    }
-
-
-    const value =
-      String(
-        query
-      )
-        .trim()
+    const normalized =
+      text(status)
         .toLocaleLowerCase(
           "tr-TR"
         );
 
+    const ready =
+      normalized === "ready" ||
+      normalized === "ok" ||
+      normalized === "healthy";
 
-    const filtered =
-      commands.filter(
-        command => {
+    if (E.systemOverallStatus) {
+      E.systemOverallStatus.textContent =
+        ready
+          ? "Hazır"
+          : text(
+              status,
+              "Bilinmiyor"
+            );
+    }
 
-          if (!value) {
-            return true;
-          }
+    const server =
+      data?.server ||
+      {};
 
-          return (
-            command.title
-              .toLocaleLowerCase(
-                "tr-TR"
-              )
-              .includes(value) ||
-            command.keywords
-              .includes(value)
-          );
+    const modules =
+      data?.modules ||
+      {};
 
-        }
+    const moduleRows =
+      Object.entries(
+        modules
       );
 
+    E.systemStats.innerHTML = `
+      <div class="system-card">
+        <div class="system-card-title">
+          Sunucu
+        </div>
 
-    el.commandList.innerHTML =
-      filtered
+        <div class="system-card-row">
+          <span>Durum</span>
+          <strong>
+            ${esc(status)}
+          </strong>
+        </div>
+
+        <div class="system-card-row">
+          <span>Ad</span>
+          <strong>
+            ${esc(
+              server.name ||
+              "TürkAI Master Server"
+            )}
+          </strong>
+        </div>
+
+        <div class="system-card-row">
+          <span>Sürüm</span>
+          <strong>
+            ${esc(
+              server.version ||
+              data?.version ||
+              "unknown"
+            )}
+          </strong>
+        </div>
+
+        <div class="system-card-row">
+          <span>Port</span>
+          <strong>
+            ${esc(
+              server.port ||
+              "3000"
+            )}
+          </strong>
+        </div>
+      </div>
+
+      <div class="system-card">
+        <div class="system-card-title">
+          Modüller
+        </div>
+
+        ${
+          moduleRows.length
+            ? moduleRows
+                .map(
+                  ([name, value]) => `
+                    <div class="system-card-row">
+                      <span>
+                        ${esc(name)}
+                      </span>
+
+                      <strong>
+                        ${
+                          value?.available ===
+                            false
+                            ? "Pasif"
+                            : "Aktif"
+                        }
+                      </strong>
+                    </div>
+                  `
+                )
+                .join("")
+            : `
+              <div class="empty-state">
+                Modül bilgisi bulunamadı.
+              </div>
+            `
+        }
+      </div>
+    `;
+
+    if (E.systemOverallStatus) {
+      E.systemOverallStatus.classList.toggle(
+        "status-error",
+        !ready
+      );
+    }
+  }
+
+  function renderSystemError(error) {
+    if (E.systemOverallStatus) {
+      E.systemOverallStatus.textContent =
+        "Ulaşılamıyor";
+    }
+
+    if (E.systemStats) {
+      E.systemStats.innerHTML = `
+        <div class="empty-state">
+          <strong>Sistem bilgisi alınamadı.</strong>
+          <div>
+            ${esc(
+              error?.message || ""
+            )}
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  /* =========================================================
+     HESAP
+     ========================================================= */
+
+  function normalizeAccount(data) {
+    const raw =
+      data?.account ||
+      data?.user ||
+      data?.data ||
+      data ||
+      {};
+
+    return {
+      id:
+        raw.id ||
+        raw.userId ||
+        null,
+
+      name:
+        raw.name ||
+        raw.displayName ||
+        raw.username ||
+        "Misafir",
+
+      email:
+        raw.email ||
+        "",
+
+      verified:
+        !!(
+          raw.verified ||
+          raw.emailVerified
+        ),
+
+      plan:
+        raw.plan ||
+        raw.planName ||
+        "Free",
+
+      usage:
+        raw.usage ??
+        raw.used ??
+        raw.monthlyUsage ??
+        0,
+
+      limit:
+        raw.limit ??
+        raw.maxUsage ??
+        raw.monthlyLimit ??
+        50,
+
+      status:
+        raw.status ||
+        "active"
+    };
+  }
+
+  async function loadAccount() {
+    try {
+      const data =
+        await request(
+          config.endpoints.authMe
+        );
+
+      state.account =
+        normalizeAccount(data);
+    } catch {
+      const guest =
+        localStorage.getItem(
+          "turkai_guest_v41"
+        );
+
+      if (guest) {
+        try {
+          state.account =
+            normalizeAccount(
+              JSON.parse(guest)
+            );
+        } catch {
+          state.account =
+            normalizeAccount({
+              name: "Misafir",
+              plan: "Free",
+              status: "guest"
+            });
+        }
+      } else {
+        state.account =
+          normalizeAccount({
+            name: "Misafir",
+            plan: "Free",
+            status: "guest"
+          });
+      }
+    }
+
+    renderAccount();
+  }
+
+  function renderAccount() {
+    const account =
+      state.account ||
+      normalizeAccount({
+        name: "Misafir",
+        plan: "Free",
+        status: "guest"
+      });
+
+    if (E.accountName) {
+      E.accountName.textContent =
+        account.name;
+    }
+
+    if (E.accountPlan) {
+      E.accountPlan.textContent =
+        account.plan;
+    }
+
+    if (E.accountStatusDot) {
+      E.accountStatusDot.classList.toggle(
+        "online",
+        account.status === "active" ||
+        account.status === "guest"
+      );
+    }
+
+    if (E.accountModalName) {
+      E.accountModalName.textContent =
+        account.name;
+    }
+
+    if (E.accountModalEmail) {
+      E.accountModalEmail.textContent =
+        account.email ||
+        "Misafir oturumu";
+    }
+
+    if (E.accountModalVerified) {
+      E.accountModalVerified.textContent =
+        account.verified
+          ? "Doğrulanmış"
+          : "Doğrulanmamış";
+    }
+
+    if (E.accountModalPlan) {
+      E.accountModalPlan.textContent =
+        account.plan;
+    }
+
+    if (E.accountModalUsage) {
+      E.accountModalUsage.textContent =
+        `${account.usage || 0} / ${
+          account.limit ?? "∞"
+        }`;
+    }
+
+    if (E.accountModalStatus) {
+      E.accountModalStatus.textContent =
+        account.status;
+    }
+  }
+
+  async function loginUser() {
+    const identifier =
+      E.authIdentifier?.value.trim();
+
+    const password =
+      E.authPassword?.value ||
+      "";
+
+    if (!identifier || !password) {
+      if (E.authMessage) {
+        E.authMessage.textContent =
+          "Giriş bilgilerini doldur.";
+      }
+
+      return;
+    }
+
+    if (E.authMessage) {
+      E.authMessage.textContent =
+        "Giriş yapılıyor...";
+    }
+
+    try {
+      const data =
+        await request(
+          config.endpoints.authLogin,
+          {
+            method: "POST",
+            body: {
+              identifier,
+              email: identifier,
+              username: identifier,
+              password
+            }
+          }
+        );
+
+      state.account =
+        normalizeAccount(data);
+
+      localStorage.setItem(
+        "turkai_guest_v41",
+        JSON.stringify(
+          state.account
+        )
+      );
+
+      renderAccount();
+
+      T.closeModal(
+        "authModal"
+      );
+
+      T.openModal(
+        "accountModal"
+      );
+
+      T.toast(
+        "Giriş başarılı.",
+        "success"
+      );
+    } catch (error) {
+      if (E.authMessage) {
+        E.authMessage.textContent =
+          error?.message ||
+          "Giriş başarısız.";
+      }
+
+      T.toast(
+        error?.message ||
+        "Giriş yapılamadı.",
+        "error"
+      );
+    }
+  }
+
+  async function logoutUser() {
+    try {
+      await request(
+        config.endpoints.authLogout,
+        {
+          method: "POST",
+          body: {}
+        }
+      );
+    } catch {}
+
+    localStorage.removeItem(
+      "turkai_guest_v41"
+    );
+
+    state.account =
+      normalizeAccount({
+        name: "Misafir",
+        plan: "Free",
+        status: "guest",
+        usage: 0,
+        limit: 50
+      });
+
+    renderAccount();
+
+    T.closeModal(
+      "accountModal"
+    );
+
+    T.toast(
+      "Oturum kapatıldı.",
+      "success"
+    );
+  }
+
+  function guestLogin() {
+    state.account =
+      normalizeAccount({
+        name: "Misafir",
+        plan: "Free",
+        status: "guest",
+        usage: 0,
+        limit: 50
+      });
+
+    localStorage.setItem(
+      "turkai_guest_v41",
+      JSON.stringify(
+        state.account
+      )
+    );
+
+    renderAccount();
+
+    T.closeModal(
+      "authModal"
+    );
+
+    T.toast(
+      "Misafir olarak devam ediliyor.",
+      "success"
+    );
+  }
+
+  /* =========================================================
+     SOHBET ARAMA
+     ========================================================= */
+
+  function searchChat(query) {
+    if (!E.chatSearchResults) {
+      return;
+    }
+
+    const q =
+      text(query)
+        .toLocaleLowerCase(
+          "tr-TR"
+        )
+        .trim();
+
+    if (!q) {
+      E.chatSearchResults.innerHTML = `
+        <div class="empty-state">
+          Sohbet içinde aramak için yaz.
+        </div>
+      `;
+
+      return;
+    }
+
+    const matches =
+      state.messages.filter(
+        (message) =>
+          text(message.content)
+            .toLocaleLowerCase(
+              "tr-TR"
+            )
+            .includes(q)
+      );
+
+    if (!matches.length) {
+      E.chatSearchResults.innerHTML = `
+        <div class="empty-state">
+          Sonuç bulunamadı.
+        </div>
+      `;
+
+      return;
+    }
+
+    E.chatSearchResults.innerHTML =
+      matches
         .map(
-          command => `
-
+          (message) => `
             <button
-              class="command-item"
               type="button"
-              data-command="${escapeHTML(
-                command.id
+              class="result-card chat-search-result"
+              data-chat-message="${esc(
+                message.id
               )}"
             >
+              <div class="result-card-title">
+                ${
+                  message.role ===
+                  "user"
+                    ? "Sen"
+                    : "TürkAI"
+                }
+              </div>
 
-              <span class="command-item-icon">
-
-                <svg aria-hidden="true">
-                  <use href="#i-command"></use>
-                </svg>
-
-              </span>
-
-              <span class="command-item-copy">
-
-                <strong>
-                  ${escapeHTML(
-                    command.title
-                  )}
-                </strong>
-
-                <small>
-                  TürkAI aracını aç
-                </small>
-
-              </span>
-
+              <div class="result-card-text">
+                ${esc(
+                  text(
+                    message.content
+                  ).slice(
+                    0,
+                    400
+                  )
+                )}
+              </div>
             </button>
-
           `
         )
         .join("");
 
+    E.chatSearchResults
+      .querySelectorAll(
+        "[data-chat-message]"
+      )
+      .forEach((node) => {
+        node.onclick = () => {
+          const id =
+            node.dataset
+              .chatMessage;
 
-    qsa(
-      "#commandList [data-command]"
-    ).forEach(
-      button => {
+          T.closeModal(
+            "chatSearchPanel"
+          );
 
-        button.addEventListener(
-          "click",
-          () => {
-
-            runCommand(
-              button.dataset.command
+          const target =
+            document.querySelector(
+              `[data-message-id="${CSS.escape(
+                id
+              )}"]`
             );
 
-          }
-        );
-
-      }
-    );
-
+          target?.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+          });
+        };
+      });
   }
 
+  /* =========================================================
+     COMMAND CENTER
+     ========================================================= */
 
-  if (el.commandInput) {
+  const commands = [
+    {
+      title: "Yeni sohbet",
+      description:
+        "Yeni bir konuşma başlat",
+      icon: "i-plus",
+      run: () =>
+        T.createNewChat()
+    },
 
-    el.commandInput.addEventListener(
-      "input",
-      () => {
-
-        renderCommandList(
-          el.commandInput.value
-        );
-
-      }
-    );
-
-
-    el.commandInput.addEventListener(
-      "keydown",
-      event => {
-
-        if (
-          event.key !== "Enter"
-        ) {
-
-          return;
-
-        }
-
-
-        const first =
-          el.commandList?.querySelector(
-            "[data-command]"
-          );
-
-
-        if (first) {
-
-          event.preventDefault();
-
-          runCommand(
-            first.dataset.command
-          );
-
-        }
-
-      }
-    );
-
-  }
-
-
-  renderCommandList();
-
-
-  /* =======================================================
-     TOOL BUTTONS
-     ======================================================= */
-
-  const quickResearch =
-    $("quickResearchButton");
-
-  if (quickResearch) {
-
-    quickResearch.addEventListener(
-      "click",
-      () =>
-        openPanel?.(
+    {
+      title: "Araştırma",
+      description:
+        "Web araştırma paneli",
+      icon: "i-search",
+      run: () =>
+        T.openPanel(
           "research"
         )
-    );
-
-  }
-
-
-  const quickMemory =
-    $("quickMemoryButton");
-
-  if (quickMemory) {
-
-    quickMemory.addEventListener(
-      "click",
-      () =>
-        openPanel?.(
-          "memory"
-        )
-    );
-
-  }
-
-
-  const quickFiles =
-    $("quickFilesButton");
-
-  if (quickFiles) {
-
-    quickFiles.addEventListener(
-      "click",
-      () =>
-        openPanel?.(
-          "files"
-        )
-    );
-
-  }
-
-
-  const plansNav =
-    $("plansNavButton");
-
-  if (plansNav) {
-
-    plansNav.addEventListener(
-      "click",
-      () =>
-        openPanel?.(
-          "plans"
-        )
-    );
-
-  }
-
-
-  const notificationNav =
-    $("notificationNavButton");
-
-  if (notificationNav) {
-
-    notificationNav.addEventListener(
-      "click",
-      () =>
-        openPanel?.(
-          "notifications"
-        )
-    );
-
-  }
-
-
-  if (el.systemButton) {
-
-    el.systemButton.addEventListener(
-      "click",
-      () =>
-        openPanel?.(
-          "system"
-        )
-    );
-
-  }
-
-
-  if (el.systemNavButton) {
-
-    el.systemNavButton.addEventListener(
-      "click",
-      () =>
-        openPanel?.(
-          "system"
-        )
-    );
-
-  }
-
-
-  /* =======================================================
-     TOP LEVEL QUICK TOOL BUTTONS
-     ======================================================= */
-
-  if (
-    $("researchToolButton")
-  ) {
-
-    $("researchToolButton")
-      .addEventListener(
-        "click",
-        () =>
-          openPanel?.(
-            "research"
-          )
-      );
-
-  }
-
-
-  if (
-    $("weatherToolButton")
-  ) {
-
-    $("weatherToolButton")
-      .addEventListener(
-        "click",
-        () =>
-          openPanel?.(
-            "weather"
-          )
-      );
-
-  }
-
-
-  if (
-    $("memoryToolButton")
-  ) {
-
-    $("memoryToolButton")
-      .addEventListener(
-        "click",
-        () =>
-          openPanel?.(
-            "memory"
-          )
-      );
-
-  }
-
-
-  /* =======================================================
-     OPEN PANELS ON INITIAL LOAD
-     ======================================================= */
-
-  setupDragDrop();
-
-  loadAccount();
-
-  loadFiles();
-
-  loadPlans();
-
-  loadNotifications();
-
-  loadSystemStatus();
-
-
-  /* =======================================================
-     KEYBOARD SHORTCUTS
-     ======================================================= */
-
-  document.addEventListener(
-    "keydown",
-    event => {
-
-      const modifier =
-        event.ctrlKey ||
-        event.metaKey;
-
-
-      /* COMMAND CENTER */
-
-      if (
-        modifier &&
-        event.key.toLowerCase() === "k"
-      ) {
-
-        event.preventDefault();
-
-        openModal?.(
-          "commandCenter"
-        );
-
-        if (el.commandInput) {
-
-          setTimeout(
-            () => {
-
-              el.commandInput.focus();
-
-              renderCommandList();
-
-            },
-            60
-          );
-
-        }
-
-        return;
-
-      }
-
-
-      /* SEARCH */
-
-      if (
-        modifier &&
-        event.key.toLowerCase() === "f"
-      ) {
-
-        event.preventDefault();
-
-        openModal?.(
-          "chatSearchPanel"
-        );
-
-        el.chatSearchInput?.focus();
-
-        return;
-
-      }
-
-
-      /* NEW CHAT */
-
-      if (
-        modifier &&
-        event.key.toLowerCase() === "n"
-      ) {
-
-        event.preventDefault();
-
-        createNewChat?.();
-
-        return;
-
-      }
-
-
-      /* SIDEBAR */
-
-      if (
-        modifier &&
-        event.key.toLowerCase() === "b"
-      ) {
-
-        event.preventDefault();
-
-        $("sidebarToggle")
-          ?.click();
-
-        return;
-
-      }
-
-
-      /* COMMAND HELP */
-
-      if (
-        event.key === "/" &&
-        document.activeElement ===
-          $("messageInput")
-      ) {
-
-        return;
-
-      }
-
-    }
-  );
-
-
-  /* =======================================================
-     SLASH COMMAND BRIDGE
-     ======================================================= */
-
-  /*
-   * Part 1 sendMessage zaten handleSlashCommand
-   * arıyor. Burada fonksiyonu global olarak tanımlıyoruz.
-   */
-
-  window.handleSlashCommand =
-    async function (
-      value
-    ) {
-
-      const input =
-        String(
-          value ||
-          ""
-        ).trim();
-
-
-      if (
-        !input.startsWith("/")
-      ) {
-
-        return false;
-
-      }
-
-
-      const raw =
-        input
-          .slice(1)
-          .trim();
-
-
-      if (!raw) {
-
-        openModal?.(
-          "commandHelpModal"
-        );
-
-        return true;
-
-      }
-
-
-      const pieces =
-        raw.split(/\s+/);
-
-
-      const command =
-        (
-          pieces.shift() ||
-          ""
-        ).toLocaleLowerCase(
-          "tr-TR"
-        );
-
-
-      const argument =
-        pieces.join(" ").trim();
-
-
-      if (
-        command === "new"
-      ) {
-
-        createNewChat?.();
-
-        return true;
-
-      }
-
-
-      if (
-        command === "research"
-      ) {
-
-        openPanel?.(
-          "research"
-        );
-
-        if (
-          argument &&
-          el.researchInput
-        ) {
-
-          el.researchInput.value =
-            argument;
-
-          await runResearch(
-            argument
-          );
-
-        }
-
-        return true;
-
-      }
-
-
-      if (
-        command === "weather"
-      ) {
-
-        openPanel?.(
+    },
+
+    {
+      title: "Hava durumu",
+      description:
+        "Hava durumu aracını aç",
+      icon: "i-cloud",
+      run: () =>
+        T.openPanel(
           "weather"
-        );
+        )
+    },
 
-        if (
-          argument &&
-          el.weatherInput
-        ) {
-
-          el.weatherInput.value =
-            argument;
-
-          await runWeather(
-            argument
-          );
-
-        }
-
-        return true;
-
-      }
-
-
-      if (
-        command === "memory"
-      ) {
-
-        openPanel?.(
+    {
+      title: "Hafıza",
+      description:
+        "TürkAI hafızasını aç",
+      icon: "i-memory",
+      run: () =>
+        T.openPanel(
           "memory"
-        );
+        )
+    },
 
-        if (
-          argument
-        ) {
+    {
+      title: "Dosyalar",
+      description:
+        "Dosya merkezini aç",
+      icon: "i-folder",
+      run: () =>
+        T.openPanel(
+          "files"
+        )
+    },
 
-          if (el.memoryInput) {
+    {
+      title: "Medya",
+      description:
+        "Görsel ve video araçları",
+      icon: "i-image",
+      run: () =>
+        T.openPanel(
+          "media"
+        )
+    },
 
-            el.memoryInput.value =
-              argument;
+    {
+      title: "Planlar",
+      description:
+        "TürkAI planlarını aç",
+      icon: "i-crown",
+      run: () =>
+        T.openPanel(
+          "plans"
+        )
+    },
 
-          }
+    {
+      title: "Bildirimler",
+      description:
+        "Bildirim panelini aç",
+      icon: "i-bell",
+      run: () =>
+        T.openPanel(
+          "notifications"
+        )
+    },
 
-          await searchMemory(
-            argument
+    {
+      title: "Sistem",
+      description:
+        "Sunucu durumunu görüntüle",
+      icon: "i-command",
+      run: () =>
+        T.openPanel(
+          "system"
+        )
+    },
+
+    {
+      title: "Ayarlar",
+      description:
+        "TürkAI ayarlarını yönet",
+      icon: "i-settings",
+      run: () =>
+        T.openModal(
+          "settingsModal"
+        )
+    },
+
+    {
+      title: "Hesap",
+      description:
+        "Hesap bilgilerini aç",
+      icon: "i-user",
+      run: () =>
+        T.openModal(
+          "accountModal"
+        )
+    }
+  ];
+
+  function renderCommands(query = "") {
+    if (!E.commandList) {
+      return;
+    }
+
+    const q =
+      text(query)
+        .toLocaleLowerCase(
+          "tr-TR"
+        )
+        .trim();
+
+    const filtered =
+      commands.filter(
+        (command) =>
+          !q ||
+          `${command.title} ${command.description}`
+            .toLocaleLowerCase(
+              "tr-TR"
+            )
+            .includes(q)
+      );
+
+    E.commandList.innerHTML =
+      filtered
+        .map(
+          (command, index) => `
+            <button
+              type="button"
+              class="command-item ${
+                index ===
+                state.commandIndex
+                  ? "active"
+                  : ""
+              }"
+              data-command-index="${index}"
+            >
+              <div class="command-item-icon">
+                <svg viewBox="0 0 24 24">
+                  <use href="#${command.icon}"></use>
+                </svg>
+              </div>
+
+              <div class="command-item-content">
+                <strong>
+                  ${esc(
+                    command.title
+                  )}
+                </strong>
+
+                <span>
+                  ${esc(
+                    command.description
+                  )}
+                </span>
+              </div>
+
+              <svg
+                class="command-item-arrow"
+                viewBox="0 0 24 24"
+              >
+                <use href="#i-chevron-right"></use>
+              </svg>
+            </button>
+          `
+        )
+        .join("");
+
+    E.commandList
+      .querySelectorAll(
+        "[data-command-index]"
+      )
+      .forEach((node) => {
+        node.onclick = () => {
+          const index =
+            Number(
+              node.dataset
+                .commandIndex
+            );
+
+          const command =
+            filtered[index];
+
+          if (!command) return;
+
+          T.closeModal(
+            "commandCenter"
           );
 
+          command.run();
+        };
+      });
+  }
+
+  /* =========================================================
+     AYARLAR
+     ========================================================= */
+
+  function syncSettings() {
+    if (E.enterSendToggle) {
+      E.enterSendToggle.checked =
+        !!state.settings.enterToSend;
+    }
+
+    if (E.draftSaveToggle) {
+      E.draftSaveToggle.checked =
+        !!state.settings.draftSave;
+    }
+
+    if (E.autoSpeakToggle) {
+      E.autoSpeakToggle.checked =
+        !!state.settings.autoSpeak;
+    }
+
+    if (E.freshInfoToggle) {
+      E.freshInfoToggle.checked =
+        !!state.settings.freshInfo;
+    }
+  }
+
+  function saveSettings() {
+    state.settings = {
+      enterToSend:
+        !!E.enterSendToggle?.checked,
+
+      draftSave:
+        !!E.draftSaveToggle?.checked,
+
+      autoSpeak:
+        !!E.autoSpeakToggle?.checked,
+
+      freshInfo:
+        !!E.freshInfoToggle?.checked
+    };
+
+    localStorage.setItem(
+      config.storage.settings,
+      JSON.stringify(
+        state.settings
+      )
+    );
+
+    syncSettings();
+
+    T.closeModal(
+      "settingsModal"
+    );
+
+    T.toast(
+      "Ayarlar kaydedildi.",
+      "success"
+    );
+  }
+
+  function resetSettings() {
+    state.settings = {
+      ...config.defaults.settings
+    };
+
+    syncSettings();
+
+    localStorage.setItem(
+      config.storage.settings,
+      JSON.stringify(
+        state.settings
+      )
+    );
+
+    T.toast(
+      "Ayarlar sıfırlandı.",
+      "success"
+    );
+  }
+
+  /* =========================================================
+     ADMIN
+     ========================================================= */
+
+  async function unlockAdmin() {
+    const code =
+      E.adminUnlockInput?.value.trim();
+
+    if (!code) {
+      if (E.adminUnlockMessage) {
+        E.adminUnlockMessage.textContent =
+          "Kod gerekli.";
+      }
+
+      return;
+    }
+
+    try {
+      const data =
+        await request(
+          config.endpoints.adminUnlock,
+          {
+            method: "POST",
+            body: { code }
+          }
+        );
+
+      if (
+        !(
+          data?.ok ||
+          data?.success ||
+          data?.unlocked
+        )
+      ) {
+        throw new Error(
+          data?.message ||
+          "Yetki alınamadı."
+        );
+      }
+
+      state.adminUnlocked =
+        true;
+
+      T.closeModal(
+        "adminUnlockModal"
+      );
+
+      E.adminPanel?.classList.remove(
+        "hidden"
+      );
+
+      T.toast(
+        "Admin modu aktif.",
+        "success"
+      );
+    } catch (error) {
+      if (E.adminUnlockMessage) {
+        E.adminUnlockMessage.textContent =
+          error?.message ||
+          "Doğrulama başarısız.";
+      }
+
+      T.toast(
+        "Admin doğrulaması başarısız.",
+        "error"
+      );
+    }
+  }
+
+  async function adminRequest(
+    url,
+    options = {}
+  ) {
+    if (!state.adminUnlocked) {
+      T.toast(
+        "Önce admin doğrulaması gerekli.",
+        "warning"
+      );
+      return;
+    }
+
+    try {
+      const data =
+        await request(
+          url,
+          options
+        );
+
+      if (E.adminOutput) {
+        E.adminOutput.textContent =
+          JSON.stringify(
+            data,
+            null,
+            2
+          );
+      }
+
+      return data;
+    } catch (error) {
+      if (E.adminOutput) {
+        E.adminOutput.textContent =
+          error?.message ||
+          "İşlem başarısız.";
+      }
+    }
+  }
+
+  /* =========================================================
+     EVENTLER
+     ========================================================= */
+
+  function bindPart2Events() {
+    E.researchRunButton?.addEventListener(
+      "click",
+      runResearch
+    );
+
+    E.researchClearButton?.addEventListener(
+      "click",
+      () => {
+        if (E.researchInput) {
+          E.researchInput.value =
+            "";
         }
 
-        return true;
+        if (E.researchStatus) {
+          E.researchStatus.textContent =
+            "Hazır.";
+        }
 
+        if (E.researchResults) {
+          E.researchResults.innerHTML = `
+            <div class="empty-state">
+              Araştırma sonucu burada görünecek.
+            </div>
+          `;
+        }
       }
+    );
 
-
-      if (
-        command === "files"
-      ) {
-
-        openPanel?.(
-          "files"
-        );
-
-        return true;
-
-      }
-
-
-      if (
-        command === "image"
-      ) {
-
-        openModal?.(
-          "imageCreateModal"
-        );
-
-
+    E.researchInput?.addEventListener(
+      "keydown",
+      (event) => {
         if (
-          argument &&
-          el.imagePromptInput
+          event.key === "Enter" &&
+          !event.shiftKey
         ) {
-
-          el.imagePromptInput.value =
-            argument;
-
+          event.preventDefault();
+          runResearch();
         }
-
-        return true;
-
       }
+    );
 
+    E.weatherRunButton?.addEventListener(
+      "click",
+      runWeather
+    );
 
-      if (
-        command === "video"
-      ) {
-
-        openModal?.(
-          "videoModal"
-        );
-
-
+    E.weatherInput?.addEventListener(
+      "keydown",
+      (event) => {
         if (
-          argument &&
-          el.videoPromptInput
+          event.key === "Enter"
         ) {
-
-          el.videoPromptInput.value =
-            argument;
-
+          event.preventDefault();
+          runWeather();
         }
-
-        return true;
-
       }
+    );
 
+    E.memorySearchButton?.addEventListener(
+      "click",
+      searchMemory
+    );
 
-      if (
-        command === "plans"
-      ) {
+    E.memoryOverviewButton?.addEventListener(
+      "click",
+      loadMemoryOverview
+    );
 
-        openPanel?.(
-          "plans"
-        );
+    E.memorySaveCurrentButton?.addEventListener(
+      "click",
+      saveCurrentConversation
+    );
 
-        return true;
-
+    E.memoryInput?.addEventListener(
+      "keydown",
+      (event) => {
+        if (
+          event.key === "Enter"
+        ) {
+          event.preventDefault();
+          searchMemory();
+        }
       }
+    );
 
+    E.fileSelectButton?.addEventListener(
+      "click",
+      () =>
+        E.globalFilePicker?.click()
+    );
 
-      if (
-        command === "notifications"
-      ) {
+    E.globalFilePicker?.addEventListener(
+      "change",
+      (event) =>
+        uploadFiles(
+          event.target.files
+        )
+    );
 
-        openPanel?.(
-          "notifications"
-        );
+    E.refreshFilesButton?.addEventListener(
+      "click",
+      loadFiles
+    );
 
-        return true;
+    E.openImageModalButton?.addEventListener(
+      "click",
+      openImageModal
+    );
 
+    E.openVideoModalButton?.addEventListener(
+      "click",
+      openVideoModal
+    );
+
+    E.generateImageButton?.addEventListener(
+      "click",
+      generateImage
+    );
+
+    E.generateVideoButton?.addEventListener(
+      "click",
+      generateVideo
+    );
+
+    E.markNotificationsReadButton?.addEventListener(
+      "click",
+      markNotificationsRead
+    );
+
+    E.refreshSystemButton?.addEventListener(
+      "click",
+      loadSystemStatus
+    );
+
+    E.authForm?.addEventListener(
+      "submit",
+      (event) => {
+        event.preventDefault();
+        loginUser();
       }
+    );
 
-
-      if (
-        command === "system"
-      ) {
-
-        openPanel?.(
-          "system"
-        );
-
-        return true;
-
-      }
-
-
-      if (
-        command === "settings"
-      ) {
-
-        openModal?.(
-          "settingsModal"
-        );
-
-        return true;
-
-      }
-
-
-      if (
-        command === "account"
-      ) {
-
-        openModal?.(
+    E.loginButton?.addEventListener(
+      "click",
+      () => {
+        T.closeModal(
           "accountModal"
         );
 
-        await loadAccount();
-
-        return true;
-
+        T.openModal(
+          "authModal"
+        );
       }
+    );
 
+    E.logoutButton?.addEventListener(
+      "click",
+      logoutUser
+    );
 
-      if (
-        command === "help"
-      ) {
+    E.guestLoginButton?.addEventListener(
+      "click",
+      guestLogin
+    );
 
-        openModal?.(
-          "commandHelpModal"
+    E.accountPlansButton?.addEventListener(
+      "click",
+      () => {
+        T.closeModal(
+          "accountModal"
         );
 
-        return true;
-
+        T.openPanel(
+          "plans"
+        );
       }
+    );
 
+    E.chatSearchInput?.addEventListener(
+      "input",
+      () =>
+        searchChat(
+          E.chatSearchInput.value
+        )
+    );
 
-      return false;
+    E.commandInput?.addEventListener(
+      "input",
+      () => {
+        state.commandIndex =
+          0;
 
-    };
+        renderCommands(
+          E.commandInput.value
+        );
+      }
+    );
 
+    E.commandInput?.addEventListener(
+      "keydown",
+      (event) => {
+        const items =
+          E.commandList?.querySelectorAll(
+            ".command-item"
+          ) || [];
 
-  /* =======================================================
-     COMMAND HELP BUTTONS
-     ======================================================= */
+        if (!items.length) return;
 
-  qsa(
-    "[data-command-prompt]"
-  ).forEach(
-    button => {
+        if (
+          event.key ===
+          "ArrowDown"
+        ) {
+          event.preventDefault();
 
-      button.addEventListener(
-        "click",
-        () => {
-
-          const prompt =
-            button.dataset.commandPrompt ||
-            "";
-
-
-          const input =
-            $("messageInput");
-
-
-          closeModal?.(
-            "commandHelpModal"
-          );
-
-
-          if (
-            input &&
-            prompt
-          ) {
-
-            input.value =
-              prompt;
-
-            input.focus();
-
-            input.dispatchEvent(
-              new Event(
-                "input",
-                {
-                  bubbles:
-                    true
-                }
-              )
+          state.commandIndex =
+            Math.min(
+              state.commandIndex +
+                1,
+              items.length - 1
             );
 
-          }
-
+          renderCommands(
+            E.commandInput.value
+          );
         }
-      );
 
-    }
-  );
+        if (
+          event.key ===
+          "ArrowUp"
+        ) {
+          event.preventDefault();
 
+          state.commandIndex =
+            Math.max(
+              state.commandIndex -
+                1,
+              0
+            );
 
-  /* =======================================================
-     ACCOUNT AUTO REFRESH
-     ======================================================= */
+          renderCommands(
+            E.commandInput.value
+          );
+        }
 
-  setInterval(
-    () => {
+        if (
+          event.key ===
+          "Enter"
+        ) {
+          event.preventDefault();
 
-      if (
-        document.visibilityState ===
-        "visible"
-      ) {
-
-        loadAccount();
-
+          items[
+            state.commandIndex
+          ]?.click();
+        }
       }
+    );
 
-    },
-    120000
-  );
+    E.saveSettingsButton?.addEventListener(
+      "click",
+      saveSettings
+    );
 
+    E.resetSettingsButton?.addEventListener(
+      "click",
+      resetSettings
+    );
 
-  /* =======================================================
-     NOTIFICATION REFRESH
-     ======================================================= */
-
-  setInterval(
-    () => {
-
-      if (
-        document.visibilityState ===
-        "visible"
-      ) {
-
-        loadNotifications();
-
+    E.adminUnlockForm?.addEventListener(
+      "submit",
+      (event) => {
+        event.preventDefault();
+        unlockAdmin();
       }
+    );
 
-    },
-    90000
-  );
+    E.adminSystemButton?.addEventListener(
+      "click",
+      () =>
+        adminRequest(
+          config.endpoints.systemStatus
+        )
+    );
 
+    E.adminUsersButton?.addEventListener(
+      "click",
+      () =>
+        adminRequest(
+          "/api/admin/users"
+        )
+    );
 
-  /* =======================================================
-     SYSTEM REFRESH
-     ======================================================= */
+    E.adminMemoryButton?.addEventListener(
+      "click",
+      () =>
+        adminRequest(
+          config.endpoints.memorySearch,
+          {
+            method: "POST",
+            body: {
+              query: "*",
+              overview: true
+            }
+          }
+        )
+    );
 
-  setInterval(
-    () => {
+    E.adminLogsButton?.addEventListener(
+      "click",
+      () =>
+        adminRequest(
+          "/api/admin/logs"
+        )
+    );
 
-      if (
-        document.visibilityState ===
-        "visible"
-      ) {
-
-        loadSystemStatus();
-
+    window.addEventListener(
+      "online",
+      () => {
+        state.connected = true;
       }
+    );
 
-    },
-    60000
-  );
+    window.addEventListener(
+      "offline",
+      () => {
+        state.connected = false;
 
-
-  /* =======================================================
-     ONLINE / OFFLINE
-     ======================================================= */
-
-  function updateConnectionUI() {
-
-    const dot =
-      $("connectionDot");
-
-    const textNode =
-      $("connectionText");
-
-    const accountDot =
-      $("accountStatusDot");
-
-
-    if (
-      navigator.onLine
-    ) {
-
-      dot?.classList.remove(
-        "offline"
-      );
-
-      dot?.classList.add(
-        "online"
-      );
-
-      textNode &&
-        (
-          textNode.textContent =
-            "Bağlı"
+        T.toast(
+          "İnternet bağlantısı kesildi.",
+          "warning"
         );
-
-
-      accountDot?.classList.remove(
-        "offline"
-      );
-
-      accountDot?.classList.add(
-        "online"
-      );
-
-    } else {
-
-      dot?.classList.remove(
-        "online"
-      );
-
-      dot?.classList.add(
-        "offline"
-      );
-
-      textNode &&
-        (
-          textNode.textContent =
-            "Çevrimdışı"
-        );
-
-
-      accountDot?.classList.remove(
-        "online"
-      );
-
-      accountDot?.classList.add(
-        "offline"
-      );
-
-    }
-
+      }
+    );
   }
 
-
-  window.addEventListener(
-    "online",
-    () => {
-
-      updateConnectionUI();
-
-      toast?.(
-        "Bağlantı yeniden kuruldu",
-        "TürkAI tekrar çevrimiçi.",
-        "success"
-      );
-
-    }
-  );
-
-
-  window.addEventListener(
-    "offline",
-    () => {
-
-      updateConnectionUI();
-
-      toast?.(
-        "Bağlantı kesildi",
-        "İnternet bağlantını kontrol et.",
-        "warning"
-      );
-
-    }
-  );
-
-
-  updateConnectionUI();
-
-
-  /* =======================================================
-     MOBILE SIDEBAR
-     ======================================================= */
-
-  window.addEventListener(
-    "resize",
-    () => {
-
-      if (
-        window.innerWidth > 800
-      ) {
-
-        $("sidebar")
-          ?.classList
-          .remove(
-            "mobile-closed"
-          );
-
-      }
-
-    }
-  );
-
-
-  /* =======================================================
-     BEFORE UNLOAD
-     ======================================================= */
-
-  window.addEventListener(
-    "beforeunload",
-    () => {
-
-      const input =
-        $("messageInput");
-
-
-      const draft =
-        input?.value ||
-        "";
-
-
-      if (
-        draft &&
-        state.settings?.draftSave !== false
-      ) {
-
-        try {
-
-          localStorage.setItem(
-            "turkai40_draft",
-            JSON.stringify(
-              draft
-            )
-          );
-
-        } catch {}
-
-      }
-
-    }
-  );
-
-
-  /* =======================================================
-     PUBLIC BRIDGE
-     ======================================================= */
-
-  window.TURKAI = {
-
-    ...window.TURKAI,
-
-    runResearch,
-
-    runWeather,
-
-    searchMemory,
-
-    loadMemoryOverview,
-
-    loadFiles,
-
-    uploadFiles,
-
-    loadPlans,
-
-    loadNotifications,
-
-    loadSystemStatus,
-
-    loadAccount,
-
-    login,
-
-    generateImage,
-
-    generateVideo,
-
-    searchChat,
-
-    runCommand,
-
-    renderPlans,
-
-    renderFiles,
-
-    renderNotifications,
-
-    renderSystem,
-
-    version:
-      CONFIG.version ||
-      "40.0.0",
-
-    frontend:
-      "PART_2_ACTIVE"
-
-  };
-
-
-  /* =======================================================
-     FINAL
-     ======================================================= */
-
-  console.log(
-    "%cTürkAI Frontend 40.0 — PART 2/2 AKTİF",
-    "font-weight:800"
-  );
-
-  console.log(
-    "Chat:",
-    typeof sendMessage ===
-      "function"
-      ? "ACTIVE"
-      : "MISSING"
-  );
-
-  console.log(
-    "API:",
-    typeof apiRequest ===
-      "function"
-      ? "ACTIVE"
-      : "MISSING"
-  );
-
-  console.log(
-    "Research:",
-    typeof runResearch ===
-      "function"
-      ? "ACTIVE"
-      : "MISSING"
-  );
-
-  console.log(
-    "Weather:",
-    typeof runWeather ===
-      "function"
-      ? "ACTIVE"
-      : "MISSING"
-  );
-
-  console.log(
-    "Memory:",
-    typeof searchMemory ===
-      "function"
-      ? "ACTIVE"
-      : "MISSING"
-  );
-
-  console.log(
-    "Files:",
-    typeof uploadFiles ===
-      "function"
-      ? "ACTIVE"
-      : "MISSING"
-  );
-
-  console.log(
-    "Media:",
-    typeof generateImage ===
-      "function"
-      ? "ACTIVE"
-      : "MISSING"
-  );
-
-  console.log(
-    "Plans:",
-    typeof loadPlans ===
-      "function"
-      ? "ACTIVE"
-      : "MISSING"
-  );
-
-  console.log(
-    "System:",
-    typeof loadSystemStatus ===
-      "function"
-      ? "ACTIVE"
-      : "MISSING"
-  );
-
-  console.log(
-    "======================================"
-  );
-
+  /* =========================================================
+     PERİYODİK DURUM
+     ========================================================= */
+
+  function startRefresh() {
+    window.setInterval(
+      async () => {
+        if (
+          document.hidden ||
+          !navigator.onLine
+        ) {
+          return;
+        }
+
+        await Promise.allSettled([
+          loadAccount(),
+          loadNotifications(),
+          loadSystemStatus()
+        ]);
+      },
+      60000
+    );
+  }
+
+  /* =========================================================
+     BAŞLAT
+     ========================================================= */
+
+  async function start() {
+    bindPart2Events();
+    setupDrop();
+
+    syncSettings();
+
+    /*
+      İlk veriler yükleniyor.
+      Bir endpoint hata verse bile diğerleri çalışmaya devam eder.
+    */
+    await Promise.allSettled([
+      loadAccount(),
+      loadPlans(),
+      loadFiles(),
+      loadNotifications(),
+      loadSystemStatus(),
+      loadMemoryOverview(),
+      loadResearchPanel()
+    ]);
+
+    T.renderMessages();
+
+    renderAttachments();
+
+    startRefresh();
+
+    /*
+      Part 1'in açık panel sistemi için bütün
+      fonksiyonları burada global bridge olarak
+      sunuyoruz.
+    */
+    window.TURKAI = {
+      ...window.TURKAI,
+
+      loadResearchPanel,
+      runResearch,
+
+      runWeather,
+
+      searchMemory,
+      loadMemoryOverview,
+      saveMemory,
+      saveCurrentConversation,
+
+      loadFiles,
+      renderFiles,
+      uploadFiles,
+
+      loadPlans,
+      renderPlans,
+
+      loadNotifications,
+      markNotificationsRead,
+
+      loadSystemStatus,
+      renderSystem,
+
+      loadAccount,
+      renderAccount,
+
+      openImageModal,
+      openVideoModal,
+      generateImage,
+      generateVideo,
+
+      searchChat,
+      renderCommands,
+
+      loginUser,
+      logoutUser,
+      guestLogin,
+
+      startVoiceInput: T.startVoiceInput,
+      stopVoiceInput: T.stopVoiceInput
+    };
+
+    console.log(
+      "%cTürkAI Frontend 41.0 PART 2 hazır.",
+      "font-weight:700"
+    );
+  }
+
+  if (
+    document.readyState ===
+    "loading"
+  ) {
+    document.addEventListener(
+      "DOMContentLoaded",
+      start,
+      { once: true }
+    );
+  } else {
+    start();
+  }
 })();
