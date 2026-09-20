@@ -1204,7 +1204,7 @@ app.use(
         );
 
         res.setHeader(
-            "X-TürkAI-Version",
+            "X-TurkAI-Version",
             SERVER_VERSION
         );
 
@@ -1232,7 +1232,7 @@ app.use(
             requestId;
 
         res.setHeader(
-            "X-TürkAI-Request-ID",
+            "X-TurkAI-Request-ID",
             requestId
         );
 
@@ -1258,7 +1258,7 @@ app.use(
 
         res.setHeader(
             "Access-Control-Allow-Headers",
-            "Content-Type, Authorization, X-API-Key, X-TürkAI-Admin-Key, X-User-ID"
+            "Content-Type, Authorization, X-API-Key, X-TurkAI-Admin-Key, X-User-ID"
         );
 
         res.setHeader(
