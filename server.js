@@ -102074,6 +102074,16 @@ process.on(
     );
   }
 );
+// ==========================================================
+// FINAL FRONTEND STATIC SERVING
+// ==========================================================
+
+app.use(
+  express.static(ROOT_DIR, {
+    index: "index.html",
+    extensions: ["html"]
+  })
+);
 turkai20StartServer();
 
 
