@@ -1,3230 +1,3074 @@
-/* =========================================================
-   TÜRKAI — APP.JS
-   Ultra Chat Engine
-   Tek dosya / mevcut index.html ile uyumlu
-   ========================================================= */
-
 (() => {
-    "use strict";
+  "use strict";
 
-    /* =====================================================
-       GLOBAL ENGINE
-       ===================================================== */
+  if (window.__TURKAI_40_APP__) return;
+  window.__TURKAI_40_APP__ = true;
 
-    if (window.__TURKAI_APP_INITIALIZED__) {
-        console.warn("TürkAI app.js zaten başlatılmış.");
-        return;
+  const CONFIG = {
+    version: "40.0",
+    appName: "TürkAI",
+    apiBase: "",
+    timeout: 90000,
+    storageKey: "turkai_master_40",
+    userKey: "turkai_user_40",
+    sessionKey: "turkai_session_40"
+  };
+
+  const state = {
+    userId: "guest",
+    user: null,
+    account: null,
+
+    sessionId: null,
+    conversationId: null,
+
+    conversations: [],
+    messages: [],
+    attachments: [],
+
+    models: [],
+    plans: [],
+
+    selectedModel: "auto",
+
+    research: false,
+    memory: true,
+    weather: false,
+
+    sending: false,
+    listening: false,
+    online: navigator.onLine,
+
+    mediaJob: null
+  };
+
+  const $ = (id) =>
+    document.getElementById(id);
+
+  const $$ = (selector, root = document) =>
+    [...root.querySelectorAll(selector)];
+
+  /* ============================================================
+     CORE HELPERS
+     ============================================================ */
+
+  function uid(prefix = "id") {
+    try {
+      if (
+        window.crypto &&
+        typeof crypto.randomUUID === "function"
+      ) {
+        return `${prefix}_${crypto.randomUUID()}`;
+      }
+    } catch {}
+
+    return `${prefix}_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2, 10)}`;
+  }
+
+  function escapeHTML(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function safeURL(value) {
+    try {
+      const url = new URL(
+        String(value),
+        location.origin
+      );
+
+      if (
+        url.protocol !== "http:" &&
+        url.protocol !== "https:"
+      ) {
+        return "#";
+      }
+
+      return url.href;
+    } catch {
+      return "#";
+    }
+  }
+
+  function normalizeUserId(value) {
+    return (
+      String(value || "guest")
+        .trim()
+        .replace(
+          /[^a-zA-Z0-9._-]/g,
+          "_"
+        )
+        .slice(0, 90) ||
+      "guest"
+    );
+  }
+
+  function now() {
+    return new Date().toISOString();
+  }
+
+  function formatTime(value) {
+    try {
+      return new Intl.DateTimeFormat(
+        "tr-TR",
+        {
+          hour: "2-digit",
+          minute: "2-digit"
+        }
+      ).format(new Date(value));
+    } catch {
+      return "";
+    }
+  }
+
+  function formatDate(value) {
+    try {
+      return new Intl.DateTimeFormat(
+        "tr-TR",
+        {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric"
+        }
+      ).format(new Date(value));
+    } catch {
+      return "";
+    }
+  }
+
+  function formatBytes(value) {
+    const bytes =
+      Number(value || 0);
+
+    if (bytes <= 0) {
+      return "0 B";
     }
 
-    window.__TURKAI_APP_INITIALIZED__ = true;
+    const units = [
+      "B",
+      "KB",
+      "MB",
+      "GB"
+    ];
 
-    const TURKAI = {
-        version: "10.0",
-        appName: "TürkAI",
+    let index = 0;
+    let size = bytes;
 
-        state: {
-            currentChatId: null,
-            chats: [],
-            messages: [],
-            attachments: [],
-            isSending: false,
-            isResearching: false,
-            currentModel: "auto",
-            currentPlan: "free",
-            memoryEnabled: true,
-            researchEnabled: false,
-            weatherEnabled: false,
-            darkMode: true,
-            socket: null,
-            user: null
-        },
+    while (
+      size >= 1024 &&
+      index < units.length - 1
+    ) {
+      size /= 1024;
+      index++;
+    }
 
-        config: {
-            storageKey: "turkai_state_v10",
-            chatsKey: "turkai_chats_v10",
+    return `${size.toFixed(
+      size >= 10 || index === 0
+        ? 0
+        : 1
+    )} ${units[index]}`;
+  }
 
-            chatEndpoints: [
-                "/api/chat",
-                "/api/message",
-                "/api/ask"
-            ],
+  /* ============================================================
+     LOCAL STORAGE
+     ============================================================ */
 
-            researchEndpoint: "/api/research",
-            weatherEndpoint: "/api/weather",
-            uploadEndpoint: "/api/upload",
+  function saveLocal() {
+    try {
+      localStorage.setItem(
+        CONFIG.storageKey,
+        JSON.stringify({
+          conversationId:
+            state.conversationId,
 
-            timeout: 90000,
+          selectedModel:
+            state.selectedModel,
 
-            plans: {
-                free: {
-                    name: "Free",
-                    dailyLimit: 50
-                },
-                pro: {
-                    name: "Pro",
-                    dailyLimit: 100
-                },
-                plus: {
-                    name: "Plus",
-                    dailyLimit: 200
-                },
-                ultra: {
-                    name: "Ultra",
-                    dailyLimit: 1000
-                },
-                developer: {
-                    name: "Developer",
-                    dailyLimit: 400
-                }
-            }
-        }
-    };
+          research:
+            state.research,
 
-    /* =====================================================
-       SHORTCUTS
-       ===================================================== */
+          memory:
+            state.memory,
 
-    const $ = (id) => document.getElementById(id);
+          weather:
+            state.weather,
 
-    const qs = (selector, parent = document) =>
-        parent.querySelector(selector);
+          messages:
+            state.messages.slice(-100),
 
-    const qsa = (selector, parent = document) =>
-        [...parent.querySelectorAll(selector)];
-
-    /* =====================================================
-       DOM
-       ===================================================== */
-
-    let DOM = {};
-
-    function cacheDOM() {
-        DOM = {
-            body: document.body,
-
-            messageScrollArea: $("messageScrollArea"),
-            messageList: $("messageList"),
-            dynamicMessages: $("dynamicMessages"),
-            emptyChatState: $("emptyChatState"),
-            typingIndicator: $("typingIndicator"),
-
-            messageInput: $("messageInput"),
-            sendMessageButton: $("sendMessageButton"),
-            composer: $("composer"),
-
-            newChatButton: $("newChatButton"),
-            clearChatButton: $("clearChatButton"),
-            deleteChatButton: $("deleteChatButton"),
-
-            fileInput: $("fileInput"),
-            uploadButton: $("uploadButton"),
-            attachmentList: $("attachmentList"),
-
-            voiceButton: $("voiceButton"),
-            researchButton: $("researchButton"),
-            weatherButton: $("weatherButton"),
-            memoryButton: $("memoryButton"),
-
-            modelSelect: $("modelSelect"),
-            modelSelector: $("modelSelector"),
-
-            chatList: $("chatList"),
-            conversationsList: $("conversationsList"),
-
-            userName: $("userName"),
-            userAvatar: $("userAvatar"),
-            profileButton: $("profileButton"),
-
-            settingsButton: $("settingsButton"),
-            planButton: $("planButton"),
-            purchaseButton: $("purchaseButton"),
-
-            imageButton: $("imageButton"),
-            videoButton: $("videoButton"),
-
-            imageCreateModal: $("imageCreateModal"),
-            generateImageButton: $("generateImageButton"),
-
-            closeModalButtons: qsa(
-                "[data-close-modal], .close-modal, .modal-close"
+          conversations:
+            state.conversations.slice(
+              -100
             )
-        };
-    }
-
-    /* =====================================================
-       MESSAGE CONTAINER
-       ===================================================== */
-
-    function ensureMessageContainer() {
-        let host = DOM.dynamicMessages;
-        const list = DOM.messageList;
-
-        if (!host && list) {
-            host = document.createElement("div");
-            host.id = "dynamicMessages";
-            host.className = "dynamic-messages";
-
-            list.appendChild(host);
-
-            DOM.dynamicMessages = host;
-        }
-
-        if (host && list && !list.contains(host)) {
-            list.appendChild(host);
-        }
-
-        if (!host && list) {
-            host = list;
-        }
-
-        return host;
-    }
-
-    /* =====================================================
-       STORAGE
-       ===================================================== */
-
-    function safeJSONParse(value, fallback = null) {
-        try {
-            return JSON.parse(value);
-        } catch {
-            return fallback;
-        }
-    }
-
-    function saveState() {
-        try {
-            const data = {
-                currentChatId: TURKAI.state.currentChatId,
-                chats: TURKAI.state.chats,
-                currentModel: TURKAI.state.currentModel,
-                currentPlan: TURKAI.state.currentPlan,
-                memoryEnabled: TURKAI.state.memoryEnabled,
-                researchEnabled: TURKAI.state.researchEnabled,
-                weatherEnabled: TURKAI.state.weatherEnabled
-            };
-
-            localStorage.setItem(
-                TURKAI.config.storageKey,
-                JSON.stringify(data)
-            );
-        } catch (error) {
-            console.warn("TürkAI state kaydedilemedi:", error);
-        }
-    }
-
-    function loadState() {
-        try {
-            const saved = safeJSONParse(
-                localStorage.getItem(TURKAI.config.storageKey)
-            );
-
-            if (!saved) return;
-
-            if (Array.isArray(saved.chats)) {
-                TURKAI.state.chats = saved.chats;
-            }
-
-            TURKAI.state.currentChatId =
-                saved.currentChatId || null;
-
-            TURKAI.state.currentModel =
-                saved.currentModel || "auto";
-
-            TURKAI.state.currentPlan =
-                saved.currentPlan || "free";
-
-            TURKAI.state.memoryEnabled =
-                saved.memoryEnabled !== false;
-
-            TURKAI.state.researchEnabled =
-                saved.researchEnabled === true;
-
-            TURKAI.state.weatherEnabled =
-                saved.weatherEnabled === true;
-        } catch (error) {
-            console.warn("TürkAI state okunamadı:", error);
-        }
-    }
-
-    function saveChats() {
-        try {
-            localStorage.setItem(
-                TURKAI.config.chatsKey,
-                JSON.stringify(TURKAI.state.chats)
-            );
-        } catch (error) {
-            console.warn("Sohbetler kaydedilemedi:", error);
-        }
-    }
-
-    function loadChats() {
-        try {
-            const saved = safeJSONParse(
-                localStorage.getItem(TURKAI.config.chatsKey)
-            );
-
-            if (Array.isArray(saved)) {
-                TURKAI.state.chats = saved;
-            }
-        } catch (error) {
-            console.warn(error);
-        }
-    }
-
-    /* =====================================================
-       ID / DATE
-       ===================================================== */
-
-    function createId(prefix = "id") {
-        return (
-            prefix +
-            "_" +
-            Date.now().toString(36) +
-            "_" +
-            Math.random().toString(36).slice(2, 9)
-        );
-    }
-
-    function now() {
-        return new Date().toISOString();
-    }
-
-    function formatTime(date) {
-        try {
-            return new Intl.DateTimeFormat("tr-TR", {
-                hour: "2-digit",
-                minute: "2-digit"
-            }).format(new Date(date));
-        } catch {
-            return "";
-        }
-    }
-
-    function formatDate(date) {
-        try {
-            return new Intl.DateTimeFormat("tr-TR", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric"
-            }).format(new Date(date));
-        } catch {
-            return "";
-        }
-    }
-
-    /* =====================================================
-       HTML SECURITY
-       ===================================================== */
-
-    function escapeHTML(value) {
-        return String(value ?? "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    function safeURL(url) {
-        try {
-            const parsed = new URL(url, window.location.origin);
-
-            if (
-                parsed.protocol === "http:" ||
-                parsed.protocol === "https:"
-            ) {
-                return parsed.href;
-            }
-
-            return "#";
-        } catch {
-            return "#";
-        }
-    }
-
-    /* =====================================================
-       MARKDOWN-LIKE MESSAGE RENDER
-       ===================================================== */
-
-    function renderText(text) {
-        if (!text) return "";
-
-        let source = String(text);
-
-        const codeBlocks = [];
-
-        source = source.replace(
-            /```([a-zA-Z0-9_+-]*)\n?([\s\S]*?)```/g,
-            (_, language, code) => {
-                const index = codeBlocks.length;
-
-                codeBlocks.push({
-                    language: language || "code",
-                    code: code.replace(/\n$/, "")
-                });
-
-                return `___TURKAI_CODE_${index}___`;
-            }
-        );
-
-        source = escapeHTML(source);
-
-        source = source.replace(
-            /`([^`]+)`/g,
-            "<code>$1</code>"
-        );
-
-        source = source.replace(
-            /\*\*(.*?)\*\*/g,
-            "<strong>$1</strong>"
-        );
-
-        source = source.replace(
-            /\*(.*?)\*/g,
-            "<em>$1</em>"
-        );
-
-        source = source.replace(
-            /^### (.*)$/gm,
-            "<h4>$1</h4>"
-        );
-
-        source = source.replace(
-            /^## (.*)$/gm,
-            "<h3>$1</h3>"
-        );
-
-        source = source.replace(
-            /^# (.*)$/gm,
-            "<h2>$1</h2>"
-        );
-
-        source = source.replace(
-            /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
-            (_, title, url) => {
-                const clean = safeURL(url);
-
-                return `
-                    <a
-                        href="${escapeHTML(clean)}"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        ${title}
-                    </a>
-                `;
-            }
-        );
-
-        source = source.replace(
-            /\n/g,
-            "<br>"
-        );
-
-        codeBlocks.forEach((block, index) => {
-            const codeHTML = escapeHTML(block.code);
-
-            const html = `
-                <div class="turkai-code-block">
-                    <div class="turkai-code-header">
-                        <span>${escapeHTML(block.language)}</span>
-                        <button
-                            type="button"
-                            class="turkai-copy-code"
-                            data-code-index="${index}"
-                        >
-                            Kopyala
-                        </button>
-                    </div>
-                    <pre><code>${codeHTML}</code></pre>
-                </div>
-            `;
-
-            source = source.replace(
-                `___TURKAI_CODE_${index}___`,
-                html
-            );
-        });
-
-        return source;
-    }
-
-    /* =====================================================
-       TOAST
-       ===================================================== */
-
-    function toast(message, type = "info") {
-        let container = $("turkaiToastContainer");
-
-        if (!container) {
-            container = document.createElement("div");
-            container.id = "turkaiToastContainer";
-
-            container.style.position = "fixed";
-            container.style.right = "20px";
-            container.style.bottom = "20px";
-            container.style.zIndex = "999999";
-            container.style.display = "flex";
-            container.style.flexDirection = "column";
-            container.style.gap = "10px";
-
-            document.body.appendChild(container);
-        }
-
-        const item = document.createElement("div");
-
-        item.className = `turkai-toast turkai-toast-${type}`;
-
-        item.textContent = message;
-
-        item.style.padding = "12px 16px";
-        item.style.borderRadius = "14px";
-        item.style.background = "rgba(20,22,30,.94)";
-        item.style.color = "#fff";
-        item.style.border = "1px solid rgba(255,255,255,.12)";
-        item.style.boxShadow = "0 15px 40px rgba(0,0,0,.35)";
-        item.style.backdropFilter = "blur(16px)";
-        item.style.fontSize = "14px";
-        item.style.maxWidth = "340px";
-
-        container.appendChild(item);
-
-        setTimeout(() => {
-            item.style.opacity = "0";
-            item.style.transform = "translateY(8px)";
-            item.style.transition = ".25s";
-
-            setTimeout(() => item.remove(), 300);
-        }, 3000);
-    }
-
-    /* =====================================================
-       EMPTY STATE
-       ===================================================== */
-
-    function updateEmptyState() {
-        const host = ensureMessageContainer();
-
-        const hasMessages =
-            TURKAI.state.messages.length > 0;
-
-        if (DOM.emptyChatState) {
-            DOM.emptyChatState.style.display =
-                hasMessages ? "none" : "";
-        }
-
-        if (host) {
-            host.style.display =
-                hasMessages ? "" : "none";
-        }
-    }
-
-    /* =====================================================
-       MESSAGE MODEL
-       ===================================================== */
-
-    function createMessage(role, content, extra = {}) {
-        return {
-            id: createId("msg"),
-            role,
-            content: String(content ?? ""),
-            createdAt: now(),
-
-            ...extra
-        };
-    }
-
-    /* =====================================================
-       RENDER MESSAGE
-       ===================================================== */
-
-    function renderMessage(message) {
-        const host = ensureMessageContainer();
-
-        if (!host) return;
-
-        const wrapper = document.createElement("div");
-
-        wrapper.className =
-            `turkai-message turkai-message-${message.role}`;
-
-        wrapper.dataset.messageId = message.id;
-
-        const isUser =
-            message.role === "user";
-
-        const isAssistant =
-            message.role === "assistant";
-
-        const isSystem =
-            message.role === "system";
-
-        wrapper.innerHTML = `
-            <div class="turkai-message-inner">
-
-                <div class="turkai-message-avatar">
-                    ${
-                        isUser
-                            ? `
-                                <div class="turkai-user-avatar">
-                                    ${escapeHTML(
-                                        getUserInitial()
-                                    )}
-                                </div>
-                            `
-                            : isSystem
-                                ? `
-                                    <div class="turkai-system-avatar">
-                                        !
-                                    </div>
-                                `
-                                : `
-                                    <div class="turkai-ai-avatar">
-                                        <span>AI</span>
-                                    </div>
-                                `
-                    }
-                </div>
-
-                <div class="turkai-message-content">
-
-                    <div class="turkai-message-top">
-                        <strong>
-                            ${
-                                isUser
-                                    ? getUserDisplayName()
-                                    : isAssistant
-                                        ? "TürkAI"
-                                        : "Sistem"
-                            }
-                        </strong>
-
-                        <span class="turkai-message-time">
-                            ${formatTime(message.createdAt)}
-                        </span>
-                    </div>
-
-                    <div class="turkai-message-text">
-                        ${renderText(message.content)}
-                    </div>
-
-                    ${
-                        message.sources?.length
-                            ? renderSources(
-                                message.sources
-                            )
-                            : ""
-                    }
-
-                    ${
-                        message.attachments?.length
-                            ? renderMessageAttachments(
-                                message.attachments
-                            )
-                            : ""
-                    }
-
-                    ${
-                        isAssistant
-                            ? `
-                                <div class="turkai-message-actions">
-
-                                    <button
-                                        type="button"
-                                        class="turkai-msg-action"
-                                        data-action="copy-message"
-                                        data-message-id="${message.id}"
-                                    >
-                                        Kopyala
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        class="turkai-msg-action"
-                                        data-action="regenerate"
-                                        data-message-id="${message.id}"
-                                    >
-                                        Yeniden üret
-                                    </button>
-
-                                </div>
-                            `
-                            : ""
-                    }
-
-                </div>
-            </div>
-        `;
-
-        host.appendChild(wrapper);
-
-        return wrapper;
-    }
-
-    function renderSources(sources) {
-        if (!Array.isArray(sources)) return "";
-
-        const valid = sources.filter(
-            source =>
-                source &&
-                (source.url || source.link)
-        );
-
-        if (!valid.length) return "";
-
-        return `
-            <div class="turkai-sources">
-                <div class="turkai-sources-title">
-                    Kaynaklar
-                </div>
-
-                <div class="turkai-source-list">
-                    ${valid
-                        .slice(0, 10)
-                        .map(source => {
-                            const url = safeURL(
-                                source.url || source.link
-                            );
-
-                            return `
-                                <a
-                                    href="${escapeHTML(url)}"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="turkai-source"
-                                >
-                                    <span>
-                                        ${escapeHTML(
-                                            source.title ||
-                                            source.name ||
-                                            url
-                                        )}
-                                    </span>
-                                </a>
-                            `;
-                        })
-                        .join("")}
-                </div>
-            </div>
-        `;
-    }
-
-    function renderMessageAttachments(attachments) {
-        return `
-            <div class="turkai-message-attachments">
-                ${attachments
-                    .map(
-                        file => `
-                            <div class="turkai-file-chip">
-                                <span>
-                                    ${escapeHTML(
-                                        file.name ||
-                                        "Dosya"
-                                    )}
-                                </span>
-                            </div>
-                        `
-                    )
-                    .join("")}
-            </div>
-        `;
-    }
-
-    function renderAllMessages() {
-        const host = ensureMessageContainer();
-
-        if (!host) return;
-
-        host.innerHTML = "";
-
-        for (const message of TURKAI.state.messages) {
-            renderMessage(message);
-        }
-
-        updateEmptyState();
-
-        scrollToBottom(false);
-    }
-
-    /* =====================================================
-       SCROLL
-       ===================================================== */
-
-    function scrollToBottom(smooth = true) {
-        const area =
-            DOM.messageScrollArea ||
-            DOM.messageList;
-
-        if (!area) return;
-
-        requestAnimationFrame(() => {
-            area.scrollTo({
-                top: area.scrollHeight,
-                behavior: smooth
-                    ? "smooth"
-                    : "auto"
-            });
-        });
-    }
-
-    /* =====================================================
-       CHAT MANAGEMENT
-       ===================================================== */
-
-    function createChat(title = "Yeni sohbet") {
-        const chat = {
-            id: createId("chat"),
-            title,
-            createdAt: now(),
-            updatedAt: now(),
-            messages: []
-        };
-
-        TURKAI.state.chats.unshift(chat);
-
-        TURKAI.state.currentChatId = chat.id;
-        TURKAI.state.messages = [];
-
-        saveChats();
-        saveState();
-
-        renderChatList();
-        renderAllMessages();
-
-        return chat;
-    }
-
-    function getCurrentChat() {
-        return TURKAI.state.chats.find(
-            chat =>
-                chat.id ===
-                TURKAI.state.currentChatId
-        );
-    }
-
-    function ensureCurrentChat() {
-        let chat = getCurrentChat();
-
-        if (!chat) {
-            chat = createChat("Yeni sohbet");
-        }
-
-        return chat;
-    }
-
-    function updateCurrentChat() {
-        const chat = getCurrentChat();
-
-        if (!chat) return;
-
-        chat.messages =
-            TURKAI.state.messages.map(
-                message => ({ ...message })
-            );
-
-        chat.updatedAt = now();
-
-        const firstUserMessage =
-            TURKAI.state.messages.find(
-                message =>
-                    message.role === "user"
-            );
-
-        if (
-            firstUserMessage &&
-            (!chat.title ||
-                chat.title === "Yeni sohbet")
-        ) {
-            chat.title =
-                firstUserMessage.content
-                    .trim()
-                    .slice(0, 45) ||
-                "Yeni sohbet";
-        }
-
-        saveChats();
-        saveState();
-
-        renderChatList();
-    }
-
-    function restoreCurrentChat() {
-        const chat = getCurrentChat();
-
-        if (!chat) {
-            if (TURKAI.state.chats.length) {
-                TURKAI.state.currentChatId =
-                    TURKAI.state.chats[0].id;
-
-                return restoreCurrentChat();
-            }
-
-            createChat("Yeni sohbet");
-            return;
-        }
-
-        TURKAI.state.messages =
-            Array.isArray(chat.messages)
-                ? chat.messages.map(
-                    message => ({ ...message })
-                )
-                : [];
-
-        renderAllMessages();
-    }
-
-    function selectChat(chatId) {
-        const chat =
-            TURKAI.state.chats.find(
-                item => item.id === chatId
-            );
-
-        if (!chat) return;
-
-        TURKAI.state.currentChatId = chat.id;
-
-        TURKAI.state.messages =
-            Array.isArray(chat.messages)
-                ? chat.messages.map(
-                    message => ({ ...message })
-                )
-                : [];
-
-        saveState();
-
-        renderAllMessages();
-        renderChatList();
-    }
-
-    function deleteCurrentChat() {
-        const chat = getCurrentChat();
-
-        if (!chat) return;
-
-        const confirmed =
-            window.confirm(
-                `"${chat.title}" sohbeti silinsin mi?`
-            );
-
-        if (!confirmed) return;
-
-        TURKAI.state.chats =
-            TURKAI.state.chats.filter(
-                item => item.id !== chat.id
-            );
-
-        if (TURKAI.state.chats.length) {
-            TURKAI.state.currentChatId =
-                TURKAI.state.chats[0].id;
-
-            TURKAI.state.messages =
-                TURKAI.state.chats[0].messages || [];
-        } else {
-            createChat("Yeni sohbet");
-            return;
-        }
-
-        saveChats();
-        saveState();
-
-        renderChatList();
-        renderAllMessages();
-
-        toast("Sohbet silindi.", "success");
-    }
-
-    function clearCurrentChat() {
-        if (!TURKAI.state.messages.length) {
-            toast("Sohbet zaten boş.");
-            return;
-        }
-
-        const confirmed =
-            window.confirm(
-                "Bu sohbet temizlensin mi?"
-            );
-
-        if (!confirmed) return;
-
-        TURKAI.state.messages = [];
-
-        updateCurrentChat();
-        renderAllMessages();
-
-        toast("Sohbet temizlendi.", "success");
-    }
-
-    /* =====================================================
-       CHAT LIST
-       ===================================================== */
-
-    function renderChatList() {
-        const container =
-            DOM.chatList ||
-            DOM.conversationsList;
-
-        if (!container) return;
-
-        container.innerHTML = "";
-
-        const chats =
-            [...TURKAI.state.chats]
-                .sort(
-                    (a, b) =>
-                        new Date(b.updatedAt) -
-                        new Date(a.updatedAt)
-                );
-
-        for (const chat of chats) {
-            const button =
-                document.createElement("button");
-
-            button.type = "button";
-
-            button.className =
-                "turkai-chat-item";
-
-            if (
-                chat.id ===
-                TURKAI.state.currentChatId
-            ) {
-                button.classList.add("active");
-            }
-
-            button.dataset.chatId = chat.id;
-
-            button.innerHTML = `
-                <span class="turkai-chat-item-icon">
-                    Chat
-                </span>
-
-                <span class="turkai-chat-item-text">
-                    ${escapeHTML(
-                        chat.title ||
-                        "Yeni sohbet"
-                    )}
-                </span>
-            `;
-
-            container.appendChild(button);
-        }
-    }
-
-    /* =====================================================
-       TYPING
-       ===================================================== */
-
-    function setTyping(visible) {
-        if (DOM.typingIndicator) {
-            DOM.typingIndicator.style.display =
-                visible ? "" : "none";
-        }
-    }
-
-    function addTypingFallback() {
-        const host = ensureMessageContainer();
-
-        if (!host) return null;
-
-        const element =
-            document.createElement("div");
-
-        element.className =
-            "turkai-typing-fallback";
-
-        element.innerHTML = `
-            <div class="turkai-message-inner">
-                <div class="turkai-ai-avatar">
-                    <span>AI</span>
-                </div>
-
-                <div class="turkai-typing-dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
-            </div>
-        `;
-
-        host.appendChild(element);
-
-        scrollToBottom();
-
-        return element;
-    }
-
-    /* =====================================================
-       USER
-       ===================================================== */
-
-    function getUserDisplayName() {
-        const candidates = [
-            TURKAI.state.user?.name,
-            localStorage.getItem("turkai_user_name"),
-            localStorage.getItem("userName"),
-            DOM.userName?.textContent
-        ];
-
-        for (const name of candidates) {
-            if (
-                name &&
-                name.trim() &&
-                name.trim() !== "Kullanıcı"
-            ) {
-                return name.trim();
-            }
-        }
-
-        return "Sen";
-    }
-
-    function getUserInitial() {
-        return (
-            getUserDisplayName()
-                .trim()
-                .charAt(0)
-                .toUpperCase() || "S"
-        );
-    }
-
-    function detectStoredUser() {
-        const userKeys = [
-            "turkai_user",
-            "user",
-            "googleUser",
-            "turkaiUser"
-        ];
-
-        for (const key of userKeys) {
-            const value =
-                localStorage.getItem(key);
-
-            if (!value) continue;
-
-            const parsed =
-                safeJSONParse(value);
-
-            if (
-                parsed &&
-                typeof parsed === "object"
-            ) {
-                TURKAI.state.user = {
-                    ...parsed
-                };
-
-                return;
-            }
-        }
-
-        const name =
-            localStorage.getItem(
-                "turkai_user_name"
-            );
-
-        if (name) {
-            TURKAI.state.user = {
-                name
-            };
-        }
-    }
-
-    function updateUserUI() {
-        if (DOM.userName) {
-            DOM.userName.textContent =
-                getUserDisplayName();
-        }
-
-        if (DOM.userAvatar) {
-            DOM.userAvatar.textContent =
-                getUserInitial();
-        }
-    }
-
-    /* =====================================================
-       MODEL
-       ===================================================== */
-
-    function getSelectedModel() {
-        if (
-            DOM.modelSelect &&
-            DOM.modelSelect.value
-        ) {
-            return DOM.modelSelect.value;
-        }
-
-        if (
-            DOM.modelSelector &&
-            DOM.modelSelector.value
-        ) {
-            return DOM.modelSelector.value;
-        }
-
-        return TURKAI.state.currentModel;
-    }
-
-    function setModel(model) {
-        TURKAI.state.currentModel =
-            model || "auto";
-
-        if (DOM.modelSelect) {
-            DOM.modelSelect.value =
-                TURKAI.state.currentModel;
-        }
-
-        if (DOM.modelSelector) {
-            DOM.modelSelector.value =
-                TURKAI.state.currentModel;
-        }
-
-        saveState();
-    }
-
-    /* =====================================================
-       ATTACHMENTS
-       ===================================================== */
-
-    function addAttachments(files) {
-        if (!files?.length) return;
-
-        for (const file of files) {
-            if (
-                TURKAI.state.attachments.some(
-                    item =>
-                        item.name === file.name &&
-                        item.size === file.size
-                )
-            ) {
-                continue;
-            }
-
-            if (file.size > 10 * 1024 * 1024) {
-                toast(
-                    `${file.name}: maksimum 10 MB.`,
-                    "error"
-                );
-                continue;
-            }
-
-            TURKAI.state.attachments.push({
-                id: createId("file"),
-                name: file.name,
-                size: file.size,
-                type: file.type || "application/octet-stream",
-                file
-            });
-        }
-
-        renderAttachments();
-    }
-
-    function removeAttachment(id) {
-        TURKAI.state.attachments =
-            TURKAI.state.attachments.filter(
-                file => file.id !== id
-            );
-
-        renderAttachments();
-    }
-
-    function clearAttachments() {
-        TURKAI.state.attachments = [];
-
-        if (DOM.fileInput) {
-            DOM.fileInput.value = "";
-        }
-
-        renderAttachments();
-    }
-
-    function renderAttachments() {
-        const container =
-            DOM.attachmentList;
-
-        if (!container) return;
-
-        container.innerHTML = "";
-
-        for (
-            const attachment
-            of TURKAI.state.attachments
-        ) {
-            const item =
-                document.createElement("div");
-
-            item.className =
-                "turkai-attachment";
-
-            item.innerHTML = `
-                <span class="turkai-attachment-name">
-                    ${escapeHTML(
-                        attachment.name
-                    )}
-                </span>
-
-                <button
-                    type="button"
-                    data-remove-attachment="${attachment.id}"
-                >
-                    ×
-                </button>
-            `;
-
-            container.appendChild(item);
-        }
-    }
-
-    /* =====================================================
-       FILE UPLOAD
-       ===================================================== */
-
-    async function uploadAttachment(
-        attachment
-    ) {
-        if (!attachment?.file) {
-            return attachment;
-        }
-
-        const formData =
-            new FormData();
-
-        formData.append(
-            "file",
-            attachment.file,
-            attachment.name
-        );
-
-        try {
-            const response =
-                await fetch(
-                    TURKAI.config.uploadEndpoint,
-                    {
-                        method: "POST",
-                        body: formData
-                    }
-                );
-
-            if (!response.ok) {
-                return attachment;
-            }
-
-            const data =
-                await response.json();
-
-            return {
-                ...attachment,
-                upload: data
-            };
-        } catch {
-            return attachment;
-        }
-    }
-
-    async function uploadAttachments() {
-        if (
-            !TURKAI.state.attachments.length
-        ) {
-            return [];
-        }
-
-        const results = [];
-
-        for (
-            const attachment
-            of TURKAI.state.attachments
-        ) {
-            results.push(
-                await uploadAttachment(
-                    attachment
-                )
-            );
-        }
-
-        return results;
-    }
-
-    /* =====================================================
-       API REQUEST
-       ===================================================== */
-
-    async function fetchWithTimeout(
-        url,
-        options = {},
-        timeout = TURKAI.config.timeout
-    ) {
-        const controller =
-            new AbortController();
-
-        const timer =
-            setTimeout(
-                () => controller.abort(),
-                timeout
-            );
-
-        try {
-            return await fetch(
-                url,
-                {
-                    ...options,
-                    signal:
-                        controller.signal
-                }
-            );
-        } finally {
-            clearTimeout(timer);
-        }
-    }
-
-    async function parseResponse(response) {
-        const contentType =
-            response.headers.get(
-                "content-type"
-            ) || "";
-
-        const raw =
-            await response.text();
-
-        if (!raw) {
-            return {};
-        }
-
-        if (
-            contentType.includes(
-                "application/json"
-            )
-        ) {
-            const json =
-                safeJSONParse(raw);
-
-            return json ?? {
-                text: raw
-            };
-        }
-
-        if (
-            raw.trim().startsWith("{") ||
-            raw.trim().startsWith("[")
-        ) {
-            const json =
-                safeJSONParse(raw);
-
-            if (json) return json;
-        }
-
-        return {
-            text: raw
-        };
-    }
-
-    function extractAnswer(data) {
-        if (!data) return "";
-
-        if (typeof data === "string") {
-            return data.trim();
-        }
-
-        const candidates = [
-            data.answer,
-            data.response,
-            data.message,
-            data.content,
-            data.text,
-
-            data.data?.answer,
-            data.data?.response,
-            data.data?.message,
-            data.data?.content,
-            data.data?.text,
-
-            data.result?.answer,
-            data.result?.response,
-            data.result?.message,
-            data.result?.content,
-            data.result?.text
-        ];
-
-        for (const candidate of candidates) {
-            if (
-                typeof candidate === "string" &&
-                candidate.trim()
-            ) {
-                return candidate.trim();
-            }
-        }
-
-        return "";
-    }
-
-    function extractSources(data) {
-        if (!data) return [];
-
-        const candidates = [
-            data.sources,
-            data.data?.sources,
-            data.result?.sources,
-            data.references,
-            data.data?.references
-        ];
-
-        for (const candidate of candidates) {
-            if (Array.isArray(candidate)) {
-                return candidate;
-            }
-        }
-
-        return [];
-    }
-
-    /* =====================================================
-       CHAT PAYLOAD
-       ===================================================== */
-
-    function buildChatPayload(
-        message,
-        uploadedAttachments
-    ) {
-        const messages =
-            TURKAI.state.messages
-                .slice(-30)
-                .map(item => ({
-                    role: item.role,
-                    content: item.content
-                }));
-
-        return {
-            message,
-
-            prompt: message,
-
-            input: message,
-
-            messages,
-
-            model:
-                getSelectedModel(),
-
-            plan:
-                TURKAI.state.currentPlan,
-
-            memory:
-                TURKAI.state.memoryEnabled,
-
-            research:
-                TURKAI.state.researchEnabled,
-
-            weather:
-                TURKAI.state.weatherEnabled,
-
-            chatId:
-                TURKAI.state.currentChatId,
-
-            conversationId:
-                TURKAI.state.currentChatId,
-
-            attachments:
-                uploadedAttachments.map(
-                    attachment => ({
-                        id: attachment.id,
-                        name: attachment.name,
-                        size: attachment.size,
-                        type: attachment.type,
-                        upload: attachment.upload || null
-                    })
-                )
-        };
-    }
-
-    /* =====================================================
-       CHAT API
-       ===================================================== */
-
-    async function sendToChatAPI(
-        message,
-        uploadedAttachments
-    ) {
-        const payload =
-            buildChatPayload(
-                message,
-                uploadedAttachments
-            );
-
-        let lastError = null;
-
-        for (
-            const endpoint
-            of TURKAI.config.chatEndpoints
-        ) {
-            try {
-                const response =
-                    await fetchWithTimeout(
-                        endpoint,
-                        {
-                            method: "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json",
-
-                                Accept:
-                                    "application/json, text/plain, */*"
-                            },
-
-                            body:
-                                JSON.stringify(
-                                    payload
-                                )
-                        }
-                    );
-
-                const data =
-                    await parseResponse(
-                        response
-                    );
-
-                if (!response.ok) {
-                    const error =
-                        new Error(
-                            `HTTP ${response.status}`
-                        );
-
-                    error.status =
-                        response.status;
-
-                    error.data = data;
-
-                    throw error;
-                }
-
-                const answer =
-                    extractAnswer(data);
-
-                if (answer) {
-                    return {
-                        answer,
-                        sources:
-                            extractSources(data),
-                        raw: data,
-                        endpoint
-                    };
-                }
-
-                if (
-                    data.success === false
-                ) {
-                    throw new Error(
-                        data.error ||
-                        data.message ||
-                        "Sunucu hata döndürdü."
-                    );
-                }
-
-                if (
-                    data.text &&
-                    data.text.trim()
-                ) {
-                    return {
-                        answer:
-                            data.text.trim(),
-                        sources:
-                            extractSources(data),
-                        raw: data,
-                        endpoint
-                    };
-                }
-
-            } catch (error) {
-                lastError = error;
-
-                console.warn(
-                    `TürkAI endpoint başarısız: ${endpoint}`,
-                    error
-                );
-            }
-        }
-
-        throw (
-            lastError ||
-            new Error(
-                "TürkAI sunucusuna ulaşılamadı."
-            )
-        );
-    }
-
-    /* =====================================================
-       LOCAL FALLBACK
-       ===================================================== */
-
-    function getLocalAnswer(message) {
-        const text =
-            message
-                .toLocaleLowerCase("tr-TR")
-                .trim();
-
-        if (
-            text === "en hızlı kim" ||
-            text.includes("en hızlı kim")
-        ) {
-            return "TürkAI ⚡🤖";
-        }
-
-        if (
-            text.includes("merhaba") ||
-            text === "selam" ||
-            text.includes("selam türkai")
-        ) {
-            return (
-                `Merhaba ${getUserDisplayName()}! ` +
-                "Ben TürkAI. Nasıl yardımcı olabilirim?"
-            );
-        }
-
-        if (
-            text.includes("sen kimsin") ||
-            text.includes("türkai nedir")
-        ) {
-            return (
-                "Ben TürkAI. Türkçe odaklı, " +
-                "araştırma, kodlama, dosya ve yapay zekâ " +
-                "özellikleri için geliştirilen bir AI asistanıyım."
-            );
-        }
-
-        if (
-            text.includes("saat kaç")
-        ) {
-            return (
-                "Şu an saat " +
-                new Intl.DateTimeFormat(
-                    "tr-TR",
-                    {
-                        hour: "2-digit",
-                        minute: "2-digit"
-                    }
-                ).format(new Date()) +
-                "."
-            );
-        }
-
-        if (
-            text.includes("bugün günlerden ne")
-        ) {
-            return (
-                "Bugün " +
-                new Intl.DateTimeFormat(
-                    "tr-TR",
-                    {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric"
-                    }
-                ).format(new Date()) +
-                "."
-            );
-        }
-
-        return null;
-    }
-
-    /* =====================================================
-       SEND MESSAGE
-       ===================================================== */
-
-    async function sendMessage(
-        forcedMessage = null
-    ) {
-        if (TURKAI.state.isSending) {
-            return;
-        }
-
-        const message =
-            String(
-                forcedMessage ??
-                DOM.messageInput?.value ??
-                ""
-            ).trim();
-
-        if (!message) {
-            return;
-        }
-
-        ensureCurrentChat();
-
-        TURKAI.state.isSending = true;
-
-        if (DOM.sendMessageButton) {
-            DOM.sendMessageButton.disabled =
-                true;
-        }
-
-        /* -----------------------------------------------
-           USER MESSAGE
-           ----------------------------------------------- */
-
-        const userAttachments =
-            TURKAI.state.attachments.map(
-                attachment => ({
-                    name: attachment.name,
-                    size: attachment.size,
-                    type: attachment.type
-                })
-            );
-
-        const userMessage =
-            createMessage(
-                "user",
-                message,
-                {
-                    attachments:
-                        userAttachments
-                }
-            );
-
-        /*
-         * EN ÖNEMLİ KISIM:
-         * Mesaj önce state'e ekleniyor.
-         * API hata verse bile silinmiyor.
-         */
-
-        TURKAI.state.messages.push(
-            userMessage
-        );
-
-        renderMessage(userMessage);
-        updateEmptyState();
-
-        scrollToBottom();
-
-        updateCurrentChat();
-
-        if (DOM.messageInput) {
-            DOM.messageInput.value = "";
-            autoResizeTextarea();
-        }
-
-        const attachments =
-            [...TURKAI.state.attachments];
-
-        setTyping(true);
-
-        const fallbackTyping =
-            addTypingFallback();
-
-        try {
-            let uploadedAttachments = [];
-
-            if (attachments.length) {
-                uploadedAttachments =
-                    await uploadAttachments();
-            }
-
-            const localAnswer =
-                getLocalAnswer(message);
-
-            let result;
-
-            if (localAnswer) {
-                result = {
-                    answer: localAnswer,
-                    sources: []
-                };
-            } else {
-                result =
-                    await sendToChatAPI(
-                        message,
-                        uploadedAttachments
-                    );
-            }
-
-            if (fallbackTyping) {
-                fallbackTyping.remove();
-            }
-
-            const assistantMessage =
-                createMessage(
-                    "assistant",
-                    result.answer,
-                    {
-                        sources:
-                            result.sources || []
-                    }
-                );
-
-            /*
-             * AI mesajı ayrı ekleniyor.
-             * Kullanıcının mesajına dokunulmuyor.
-             */
-
-            TURKAI.state.messages.push(
-                assistantMessage
-            );
-
-            renderMessage(
-                assistantMessage
-            );
-
-            updateCurrentChat();
-
-            scrollToBottom();
-
-            clearAttachments();
-
-        } catch (error) {
-            console.error(
-                "TürkAI mesaj hatası:",
-                error
-            );
-
-            if (fallbackTyping) {
-                fallbackTyping.remove();
-            }
-
-            /*
-             * Kullanıcı mesajı burada SİLİNMİYOR.
-             */
-
-            const errorMessage =
-                createMessage(
-                    "assistant",
-                    "Şu anda TürkAI sunucusuna bağlanamadım. Mesajın kaybolmadı; sohbet içinde kayıtlı. Sunucuyu kontrol edip tekrar deneyebilirsin.",
-                    {
-                        error: true
-                    }
-                );
-
-            TURKAI.state.messages.push(
-                errorMessage
-            );
-
-            renderMessage(
-                errorMessage
-            );
-
-            updateCurrentChat();
-
-            scrollToBottom();
-
-            toast(
-                "Sunucu bağlantısı başarısız.",
-                "error"
-            );
-        } finally {
-            setTyping(false);
-
-            TURKAI.state.isSending =
-                false;
-
-            if (DOM.sendMessageButton) {
-                DOM.sendMessageButton.disabled =
-                    false;
-            }
-
-            if (DOM.messageInput) {
-                DOM.messageInput.focus();
-            }
-        }
-    }
-
-    /* =====================================================
-       REGENERATE
-       ===================================================== */
-
-    async function regenerateMessage(
-        messageId
-    ) {
-        const index =
-            TURKAI.state.messages.findIndex(
-                message =>
-                    message.id === messageId
-            );
-
-        if (index === -1) return;
-
-        const message =
-            TURKAI.state.messages[index];
-
-        if (message.role !== "assistant") {
-            return;
-        }
-
-        let userMessage = null;
-
-        for (
-            let i = index - 1;
-            i >= 0;
-            i--
-        ) {
-            if (
-                TURKAI.state.messages[i]
-                    .role === "user"
-            ) {
-                userMessage =
-                    TURKAI.state.messages[i];
-
-                break;
-            }
-        }
-
-        if (!userMessage) {
-            return;
-        }
-
-        TURKAI.state.messages.splice(
-            index,
-            1
-        );
-
-        renderAllMessages();
-
-        const oldInput =
-            DOM.messageInput?.value;
-
-        if (DOM.messageInput) {
-            DOM.messageInput.value =
-                userMessage.content;
-        }
-
-        await sendMessage(
-            userMessage.content
-        );
-
-        if (
-            DOM.messageInput &&
-            oldInput
-        ) {
-            DOM.messageInput.value =
-                oldInput;
-        }
-    }
-
-    /* =====================================================
-       COPY
-       ===================================================== */
-
-    async function copyText(text) {
-        try {
-            await navigator.clipboard.writeText(
-                text
-            );
-
-            toast(
-                "Panoya kopyalandı.",
-                "success"
-            );
-        } catch {
-            const textarea =
-                document.createElement("textarea");
-
-            textarea.value = text;
-
-            document.body.appendChild(
-                textarea
-            );
-
-            textarea.select();
-
-            document.execCommand(
-                "copy"
-            );
-
-            textarea.remove();
-
-            toast(
-                "Panoya kopyalandı.",
-                "success"
-            );
-        }
-    }
-
-    /* =====================================================
-       RESEARCH
-       ===================================================== */
-
-    async function research(query) {
-        if (!query?.trim()) return null;
-
-        try {
-            const url =
-                `${TURKAI.config.researchEndpoint}?q=` +
-                encodeURIComponent(
-                    query.trim()
-                );
-
-            const response =
-                await fetchWithTimeout(
-                    url,
-                    {
-                        method: "GET",
-                        headers: {
-                            Accept:
-                                "application/json"
-                        }
-                    }
-                );
-
-            const data =
-                await parseResponse(
-                    response
-                );
-
-            if (!response.ok) {
-                throw new Error(
-                    `Research HTTP ${response.status}`
-                );
-            }
-
-            return data;
-        } catch (error) {
-            console.warn(
-                "Research başarısız:",
-                error
-            );
-
-            return null;
-        }
-    }
-
-    /* =====================================================
-       WEATHER
-       ===================================================== */
-
-    async function getWeather(city = "") {
-        try {
-            const query =
-                city ||
-                "Konya";
-
-            const url =
-                `${TURKAI.config.weatherEndpoint}?city=` +
-                encodeURIComponent(
-                    query
-                );
-
-            const response =
-                await fetchWithTimeout(
-                    url,
-                    {
-                        method: "GET",
-                        headers: {
-                            Accept:
-                                "application/json"
-                        }
-                    }
-                );
-
-            const data =
-                await parseResponse(
-                    response
-                );
-
-            if (!response.ok) {
-                throw new Error(
-                    `Weather HTTP ${response.status}`
-                );
-            }
-
-            return data;
-        } catch (error) {
-            console.warn(
-                "Hava durumu alınamadı:",
-                error
-            );
-
-            toast(
-                "Hava durumu alınamadı.",
-                "error"
-            );
-
-            return null;
-        }
-    }
-
-    /* =====================================================
-       VOICE INPUT
-       ===================================================== */
-
-    let recognition = null;
-    let isListening = false;
-
-    function setupVoiceRecognition() {
-        const SpeechRecognition =
-            window.SpeechRecognition ||
-            window.webkitSpeechRecognition;
-
-        if (!SpeechRecognition) {
-            return;
-        }
-
-        recognition =
-            new SpeechRecognition();
-
-        recognition.lang = "tr-TR";
-
-        recognition.continuous = false;
-
-        recognition.interimResults = true;
-
-        recognition.onstart = () => {
-            isListening = true;
-
-            DOM.voiceButton?.classList.add(
-                "active"
-            );
-
-            toast(
-                "Dinliyorum..."
-            );
-        };
-
-        recognition.onresult = event => {
-            let transcript = "";
-
-            for (
-                let i =
-                    event.resultIndex;
-                i < event.results.length;
-                i++
-            ) {
-                transcript +=
-                    event.results[i][0]
-                        .transcript;
-            }
-
-            if (DOM.messageInput) {
-                DOM.messageInput.value =
-                    transcript;
-
-                autoResizeTextarea();
-            }
-        };
-
-        recognition.onerror = () => {
-            toast(
-                "Ses algılanamadı.",
-                "error"
-            );
-        };
-
-        recognition.onend = () => {
-            isListening = false;
-
-            DOM.voiceButton?.classList.remove(
-                "active"
-            );
-        };
-    }
-
-    function toggleVoice() {
-        if (!recognition) {
-            toast(
-                "Tarayıcın sesli yazmayı desteklemiyor.",
-                "error"
-            );
-
-            return;
-        }
-
-        try {
-            if (isListening) {
-                recognition.stop();
-            } else {
-                recognition.start();
-            }
-        } catch {
-            // Tarayıcı zaten çalıştırıyorsa hata vermesini önler.
-        }
-    }
-
-    /* =====================================================
-       TEXTAREA
-       ===================================================== */
-
-    function autoResizeTextarea() {
-        const input =
-            DOM.messageInput;
-
-        if (!input) return;
-
-        input.style.height = "auto";
-
-        const maxHeight = 180;
-
-        input.style.height =
-            Math.min(
-                input.scrollHeight,
-                maxHeight
-            ) + "px";
-    }
-
-    /* =====================================================
-       TOGGLE BUTTONS
-       ===================================================== */
-
-    function updateToggleUI() {
-        if (DOM.researchButton) {
-            DOM.researchButton.classList.toggle(
-                "active",
-                TURKAI.state.researchEnabled
-            );
-        }
-
-        if (DOM.weatherButton) {
-            DOM.weatherButton.classList.toggle(
-                "active",
-                TURKAI.state.weatherEnabled
-            );
-        }
-
-        if (DOM.memoryButton) {
-            DOM.memoryButton.classList.toggle(
-                "active",
-                TURKAI.state.memoryEnabled
-            );
-        }
-    }
-
-    /* =====================================================
-       MODAL
-       ===================================================== */
-
-    function openModal(modal) {
-        if (!modal) return;
-
-        modal.classList.add("active");
-
-        modal.style.display = "";
-    }
-
-    function closeModal(modal) {
-        if (!modal) return;
-
-        modal.classList.remove("active");
-
-        if (
-            !modal.classList.contains(
-                "modal"
-            )
-        ) {
-            modal.style.display = "none";
-        }
-    }
-
-    function closeAllModals() {
-        qsa(
-            ".modal, [role='dialog']"
-        ).forEach(closeModal);
-    }
-
-    /* =====================================================
-       IMAGE GENERATION UI
-       ===================================================== */
-
-    async function generateImage() {
-        const prompt =
-            window.prompt(
-                "Oluşturmak istediğin görseli yaz:"
-            );
-
-        if (!prompt?.trim()) {
-            return;
-        }
-
-        toast(
-            "Görsel isteği hazırlanıyor..."
-        );
-
-        /*
-         * Backend'de /api/image varsa kullan.
-         * Yoksa sohbet API'sine görsel komutu gönder.
-         */
-
-        try {
-            const response =
-                await fetchWithTimeout(
-                    "/api/image",
-                    {
-                        method: "POST",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        body: JSON.stringify({
-                            prompt:
-                                prompt.trim()
-                        })
-                    }
-                );
-
-            const data =
-                await parseResponse(
-                    response
-                );
-
-            if (response.ok) {
-                const imageURL =
-                    data.imageUrl ||
-                    data.url ||
-                    data.data?.url;
-
-                if (imageURL) {
-                    addGeneratedImageMessage(
-                        imageURL,
-                        prompt
-                    );
-
-                    return;
-                }
-            }
-        } catch {
-            // Sohbet fallback
-        }
-
-        if (DOM.messageInput) {
-            DOM.messageInput.value =
-                `Bir görsel oluştur: ${prompt}`;
-
-            autoResizeTextarea();
-
-            await sendMessage();
-        }
-    }
-
-    function addGeneratedImageMessage(
-        url,
-        prompt
-    ) {
-        const message =
-            createMessage(
-                "assistant",
-                `Görsel oluşturuldu: ${prompt}`,
-                {
-                    imageUrl: url
-                }
-            );
-
-        TURKAI.state.messages.push(
-            message
-        );
-
-        const element =
-            renderMessage(message);
-
-        const image =
-            document.createElement("img");
-
-        image.src = url;
-        image.alt = prompt;
-
-        image.style.maxWidth = "100%";
-        image.style.borderRadius = "18px";
-        image.style.marginTop = "12px";
-
-        const text =
-            element?.querySelector(
-                ".turkai-message-text"
-            );
-
-        text?.appendChild(image);
-
-        updateCurrentChat();
-        scrollToBottom();
-    }
-
-    /* =====================================================
-       SOCKET.IO
-       ===================================================== */
-
-    function connectSocket() {
-        if (
-            typeof window.io !==
-            "function"
-        ) {
-            return;
-        }
-
-        try {
-            TURKAI.state.socket =
-                window.io();
-
-            TURKAI.state.socket.on(
-                "connect",
-                () => {
-                    console.log(
-                        "TürkAI Socket.IO bağlantısı aktif."
-                    );
-                }
-            );
-
-            TURKAI.state.socket.on(
-                "connect_error",
-                error => {
-                    console.warn(
-                        "Socket bağlantısı:",
-                        error?.message
-                    );
-                }
-            );
-
-            TURKAI.state.socket.on(
-                "turkai:message",
-                data => {
-                    if (
-                        !data ||
-                        !data.content
-                    ) {
-                        return;
-                    }
-
-                    /*
-                     * Eğer sunucu canlı mesaj gönderirse
-                     * burada gösterilir.
-                     */
-                }
-            );
-        } catch (error) {
-            console.warn(
-                "Socket kurulamadı:",
-                error
-            );
-        }
-    }
-
-    /* =====================================================
-       EVENT DELEGATION
-       ===================================================== */
-
-    function setupDelegatedEvents() {
-        document.addEventListener(
-            "click",
-            async event => {
-                const target =
-                    event.target.closest(
-                        "button, a"
-                    );
-
-                if (!target) return;
-
-                /* Chat selection */
-                const chatId =
-                    target.dataset.chatId;
-
-                if (chatId) {
-                    event.preventDefault();
-
-                    selectChat(chatId);
-
-                    return;
-                }
-
-                /* Remove attachment */
-                const removeId =
-                    target.dataset
-                        .removeAttachment;
-
-                if (removeId) {
-                    event.preventDefault();
-
-                    removeAttachment(
-                        removeId
-                    );
-
-                    return;
-                }
-
-                /* Copy code */
-                const codeIndex =
-                    target.dataset
-                        .codeIndex;
-
-                if (
-                    codeIndex !== undefined
-                ) {
-                    const block =
-                        target.closest(
-                            ".turkai-code-block"
-                        );
-
-                    const code =
-                        block?.querySelector(
-                            "pre code"
-                        )?.textContent;
-
-                    if (code) {
-                        await copyText(code);
-                    }
-
-                    return;
-                }
-
-                /* Message action */
-                const action =
-                    target.dataset.action;
-
-                const messageId =
-                    target.dataset.messageId;
-
-                if (
-                    action ===
-                    "copy-message"
-                ) {
-                    const message =
-                        TURKAI.state.messages.find(
-                            item =>
-                                item.id ===
-                                messageId
-                        );
-
-                    if (message) {
-                        await copyText(
-                            message.content
-                        );
-                    }
-
-                    return;
-                }
-
-                if (
-                    action ===
-                    "regenerate"
-                ) {
-                    await regenerateMessage(
-                        messageId
-                    );
-                }
-            }
-        );
-    }
-
-    /* =====================================================
-       MAIN EVENTS
-       ===================================================== */
-
-    function setupEvents() {
-        /* Send button */
-
-        DOM.sendMessageButton?.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
-                sendMessage();
-            }
-        );
-
-        /* Composer */
-
-        if (
-            DOM.composer &&
-            DOM.composer.tagName ===
-                "FORM"
-        ) {
-            DOM.composer.addEventListener(
-                "submit",
-                event => {
-                    event.preventDefault();
-
-                    sendMessage();
-                }
-            );
-        }
-
-        /* Input */
-
-        DOM.messageInput?.addEventListener(
-            "input",
-            autoResizeTextarea
-        );
-
-        DOM.messageInput?.addEventListener(
-            "keydown",
-            event => {
-                if (
-                    event.key === "Enter" &&
-                    !event.shiftKey
-                ) {
-                    event.preventDefault();
-
-                    sendMessage();
-                }
-            }
-        );
-
-        /* New chat */
-
-        DOM.newChatButton?.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
-
-                createChat(
-                    "Yeni sohbet"
-                );
-
-                DOM.messageInput?.focus();
-            }
-        );
-
-        /* Clear */
-
-        DOM.clearChatButton?.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
-
-                clearCurrentChat();
-            }
-        );
-
-        /* Delete */
-
-        DOM.deleteChatButton?.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
-
-                deleteCurrentChat();
-            }
-        );
-
-        /* File */
-
-        DOM.uploadButton?.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
-
-                DOM.fileInput?.click();
-            }
-        );
-
-        DOM.fileInput?.addEventListener(
-            "change",
-            event => {
-                addAttachments(
-                    event.target.files
-                );
-            }
-        );
-
-        /* Voice */
-
-        DOM.voiceButton?.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
-
-                toggleVoice();
-            }
-        );
-
-        /* Research */
-
-        DOM.researchButton?.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
-
-                TURKAI.state.researchEnabled =
-                    !TURKAI.state
-                        .researchEnabled;
-
-                updateToggleUI();
-                saveState();
-
-                toast(
-                    TURKAI.state
-                        .researchEnabled
-                        ? "Araştırma açıldı."
-                        : "Araştırma kapatıldı."
-                );
-            }
-        );
-
-        /* Weather */
-
-        DOM.weatherButton?.addEventListener(
-            "click",
-            async event => {
-                event.preventDefault();
-
-                TURKAI.state.weatherEnabled =
-                    !TURKAI.state
-                        .weatherEnabled;
-
-                updateToggleUI();
-                saveState();
-
-                if (
-                    TURKAI.state
-                        .weatherEnabled
-                ) {
-                    toast(
-                        "Hava durumu modu açıldı."
-                    );
-                }
-            }
-        );
-
-        /* Memory */
-
-        DOM.memoryButton?.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
-
-                TURKAI.state.memoryEnabled =
-                    !TURKAI.state
-                        .memoryEnabled;
-
-                updateToggleUI();
-                saveState();
-
-                toast(
-                    TURKAI.state
-                        .memoryEnabled
-                        ? "Hafıza açıldı."
-                        : "Hafıza kapatıldı."
-                );
-            }
-        );
-
-        /* Model */
-
-        DOM.modelSelect?.addEventListener(
-            "change",
-            event => {
-                setModel(
-                    event.target.value
-                );
-            }
-        );
-
-        DOM.modelSelector?.addEventListener(
-            "change",
-            event => {
-                setModel(
-                    event.target.value
-                );
-            }
-        );
-
-        /* Purchase */
-
-        DOM.purchaseButton?.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
-
-                openPurchase();
-            }
-        );
-
-        /* Plan */
-
-        DOM.planButton?.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
-
-                openPurchase();
-            }
-        );
-
-        /* Image */
-
-        DOM.imageButton?.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
-
-                if (
-                    DOM.imageCreateModal
-                ) {
-                    openModal(
-                        DOM.imageCreateModal
-                    );
-                } else {
-                    generateImage();
-                }
-            }
-        );
-
-        DOM.generateImageButton?.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
-
-                generateImage();
-            }
-        );
-
-        /* Video */
-
-        DOM.videoButton?.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
-
-                toast(
-                    "Video oluşturma özelliği Plus ve üzeri planlarda kullanılabilir."
-                );
-            }
-        );
-
-        /* Close modals */
-
-        DOM.closeModalButtons.forEach(
-            button => {
-                button.addEventListener(
-                    "click",
-                    event => {
-                        event.preventDefault();
-
-                        closeAllModals();
-                    }
-                );
-            }
-        );
-
-        document.addEventListener(
-            "keydown",
-            event => {
-                if (
-                    event.key === "Escape"
-                ) {
-                    closeAllModals();
-                }
-            }
-        );
-
-        /* Modal background */
-
-        document.addEventListener(
-            "click",
-            event => {
-                const modal =
-                    event.target.closest(
-                        ".modal"
-                    );
-
-                if (
-                    modal &&
-                    event.target === modal
-                ) {
-                    closeModal(modal);
-                }
-            }
-        );
-
-        setupDelegatedEvents();
-    }
-
-    /* =====================================================
-       PURCHASE
-       ===================================================== */
-
-    function openPurchase() {
-        const existing =
-            $("purchaseModal");
-
-        if (existing) {
-            openModal(existing);
-            return;
-        }
-
-        const modal =
-            document.createElement("div");
-
-        modal.id =
-            "purchaseModal";
-
-        modal.className =
-            "modal active";
-
-        modal.innerHTML = `
-            <div class="modal-content turkai-plan-modal">
-
-                <button
-                    type="button"
-                    class="close-modal"
-                    data-close-modal
-                >
-                    ×
-                </button>
-
-                <div class="turkai-plan-title">
-                    TürkAI Planları
-                </div>
-
-                <div class="turkai-plan-grid">
-
-                    <button
-                        type="button"
-                        data-plan="free"
-                        class="turkai-plan-card"
-                    >
-                        <strong>Free</strong>
-                        <span>Ücretsiz</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        data-plan="pro"
-                        class="turkai-plan-card"
-                    >
-                        <strong>Pro</strong>
-                        <span>250 TL / ay</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        data-plan="plus"
-                        class="turkai-plan-card"
-                    >
-                        <strong>Plus</strong>
-                        <span>500 TL / ay</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        data-plan="ultra"
-                        class="turkai-plan-card"
-                    >
-                        <strong>Ultra</strong>
-                        <span>1000 TL / ay</span>
-                    </button>
-
-                </div>
-
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-
-        modal
-            .querySelectorAll("[data-plan]")
-            .forEach(button => {
-                button.addEventListener(
-                    "click",
-                    () => {
-                        const plan =
-                            button.dataset.plan;
-
-                        if (
-                            plan === "free"
-                        ) {
-                            TURKAI.state.currentPlan =
-                                "free";
-
-                            saveState();
-
-                            toast(
-                                "Free plan aktif."
-                            );
-
-                            closeModal(modal);
-
-                            return;
-                        }
-
-                        toast(
-                            `${TURKAI.config.plans[
-                                plan
-                            ]?.name || plan} planı için ödeme sistemi hazırlanıyor.`
-                        );
-                    }
-                );
-            });
-
-        modal
-            .querySelector(
-                "[data-close-modal]"
-            )
-            ?.addEventListener(
-                "click",
-                () => {
-                    closeModal(modal);
-                }
-            );
-    }
-
-    /* =====================================================
-       PAGE VISIBILITY
-       ===================================================== */
-
-    function setupVisibility() {
-        document.addEventListener(
-            "visibilitychange",
-            () => {
-                if (
-                    document.visibilityState ===
-                    "visible"
-                ) {
-                    restoreCurrentChat();
-                    updateUserUI();
-                } else {
-                    updateCurrentChat();
-                }
-            }
-        );
-
-        window.addEventListener(
-            "beforeunload",
-            () => {
-                updateCurrentChat();
-                saveState();
-            }
-        );
-    }
-
-    /* =====================================================
-       ONLINE / OFFLINE
-       ===================================================== */
-
-    function setupConnectionStatus() {
-        window.addEventListener(
-            "online",
-            () => {
-                toast(
-                    "İnternet bağlantısı geri geldi.",
-                    "success"
-                );
-            }
-        );
-
-        window.addEventListener(
-            "offline",
-            () => {
-                toast(
-                    "İnternet bağlantısı kesildi.",
-                    "error"
-                );
-            }
-        );
-    }
-
-    /* =====================================================
-       GLOBAL API
-       ===================================================== */
-
-    window.TURKAI = {
-        state: TURKAI.state,
-
-        sendMessage,
-
-        newChat: () =>
-            createChat("Yeni sohbet"),
-
-        clearChat:
-            clearCurrentChat,
-
-        deleteChat:
-            deleteCurrentChat,
-
-        selectChat,
-
-        research,
-
-        weather:
-            getWeather,
-
-        toast,
-
-        setModel,
-
-        copyText,
-
-        getState: () => ({
-            ...TURKAI.state
         })
-    };
+      );
 
-    /* =====================================================
-       INIT
-       ===================================================== */
+      if (state.user) {
+        localStorage.setItem(
+          CONFIG.userKey,
+          JSON.stringify(state.user)
+        );
+      }
 
-    function init() {
-        console.log(
-            `%cTürkAI ${TURKAI.version} başlatılıyor...`,
-            "font-size:16px;font-weight:bold;"
+      if (state.sessionId) {
+        localStorage.setItem(
+          CONFIG.sessionKey,
+          state.sessionId
+        );
+      }
+    } catch {}
+  }
+
+  function loadLocal() {
+    try {
+      const saved =
+        JSON.parse(
+          localStorage.getItem(
+            CONFIG.storageKey
+          ) || "null"
         );
 
-        cacheDOM();
+      if (saved) {
+        state.conversationId =
+          saved.conversationId ||
+          null;
 
-        loadState();
+        state.selectedModel =
+          saved.selectedModel ||
+          "auto";
 
-        loadChats();
+        state.research =
+          saved.research === true;
 
-        detectStoredUser();
+        state.memory =
+          saved.memory !== false;
 
-        ensureMessageContainer();
+        state.weather =
+          saved.weather === true;
 
-        /*
-         * Hiç sohbet yoksa yeni sohbet oluştur.
-         */
-        if (
-            !TURKAI.state.chats.length
-        ) {
-            createChat(
-                "Yeni sohbet"
-            );
-        } else {
-            restoreCurrentChat();
-        }
+        state.messages =
+          Array.isArray(
+            saved.messages
+          )
+            ? saved.messages
+            : [];
 
-        updateUserUI();
+        state.conversations =
+          Array.isArray(
+            saved.conversations
+          )
+            ? saved.conversations
+            : [];
+      }
 
-        if (
-            DOM.modelSelect ||
-            DOM.modelSelector
-        ) {
-            setModel(
-                TURKAI.state.currentModel
-            );
-        }
-
-        renderChatList();
-
-        renderAttachments();
-
-        updateToggleUI();
-
-        setupEvents();
-
-        setupVoiceRecognition();
-
-        connectSocket();
-
-        setupVisibility();
-
-        setupConnectionStatus();
-
-        autoResizeTextarea();
-
-        console.log(
-            "%cTürkAI hazır.",
-            "font-size:15px;font-weight:bold;"
+      const savedUser =
+        JSON.parse(
+          localStorage.getItem(
+            CONFIG.userKey
+          ) || "null"
         );
+
+      if (savedUser) {
+        state.user = savedUser;
+      }
+
+      state.userId =
+        normalizeUserId(
+          state.user?.id ||
+            state.user?.userId ||
+            state.user?.email ||
+            "guest"
+        );
+
+      state.sessionId =
+        localStorage.getItem(
+          CONFIG.sessionKey
+        ) || null;
+    } catch {}
+  }
+
+  /* ============================================================
+     TOAST / STATUS
+     ============================================================ */
+
+  function toast(
+    text,
+    type = "info"
+  ) {
+    let stack =
+      $("toastStack");
+
+    if (!stack) {
+      stack =
+        document.createElement(
+          "div"
+        );
+
+      stack.id =
+        "toastStack";
+
+      stack.className =
+        "toast-stack";
+
+      document.body.appendChild(
+        stack
+      );
     }
 
-    /* =====================================================
-       START
-       ===================================================== */
+    const item =
+      document.createElement(
+        "div"
+      );
+
+    item.className =
+      `toast ${type}`;
+
+    item.innerHTML = `
+      <span class="toast-indicator"></span>
+      <span>${escapeHTML(
+        text
+      )}</span>
+    `;
+
+    stack.appendChild(item);
+
+    requestAnimationFrame(() => {
+      item.classList.add("show");
+    });
+
+    setTimeout(() => {
+      item.classList.remove(
+        "show"
+      );
+
+      setTimeout(() => {
+        item.remove();
+      }, 220);
+    }, 3200);
+  }
+
+  function setStatus(
+    text,
+    mode = "idle"
+  ) {
+    if ($("statusText")) {
+      $("statusText").textContent =
+        text;
+    }
+
+    if ($("statusDot")) {
+      $("statusDot").dataset.state =
+        mode;
+    }
+  }
+
+  /* ============================================================
+     API ENGINE
+     ============================================================ */
+
+  async function api(
+    path,
+    options = {}
+  ) {
+    const controller =
+      new AbortController();
+
+    const timeout =
+      setTimeout(
+        () => {
+          controller.abort();
+        },
+        options.timeout ||
+          CONFIG.timeout
+      );
+
+    const headers =
+      new Headers(
+        options.headers || {}
+      );
+
+    headers.set(
+      "Accept",
+      "application/json, text/plain, */*"
+    );
+
+    headers.set(
+      "X-User-Id",
+      state.userId ||
+        "guest"
+    );
 
     if (
-        document.readyState ===
-        "loading"
+      state.user?.accessToken
     ) {
-        document.addEventListener(
-            "DOMContentLoaded",
-            init,
-            {
-                once: true
-            }
-        );
-    } else {
-        init();
+      headers.set(
+        "Authorization",
+        `Bearer ${state.user.accessToken}`
+      );
     }
+
+    if (
+      options.body &&
+      !(
+        options.body instanceof
+        FormData
+      ) &&
+      !headers.has(
+        "Content-Type"
+      )
+    ) {
+      headers.set(
+        "Content-Type",
+        "application/json"
+      );
+    }
+
+    try {
+      const response =
+        await fetch(
+          `${CONFIG.apiBase}${path}`,
+          {
+            ...options,
+            headers,
+            credentials:
+              "same-origin",
+            signal:
+              controller.signal
+          }
+        );
+
+      const contentType =
+        response.headers.get(
+          "content-type"
+        ) || "";
+
+      let data;
+
+      if (
+        contentType.includes(
+          "application/json"
+        )
+      ) {
+        data =
+          await response.json();
+      } else {
+        data =
+          await response.text();
+      }
+
+      if (!response.ok) {
+        const error =
+          new Error(
+            typeof data ===
+              "string"
+              ? data
+              : data?.message ||
+                data?.error ||
+                `HTTP ${response.status}`
+          );
+
+        error.status =
+          response.status;
+
+        error.data =
+          data;
+
+        throw error;
+      }
+
+      return data;
+    } finally {
+      clearTimeout(
+        timeout
+      );
+    }
+  }
+
+  async function apiFirst(
+    paths,
+    options = {}
+  ) {
+    let lastError =
+      null;
+
+    for (
+      const path of paths
+    ) {
+      try {
+        return await api(
+          path,
+          options
+        );
+      } catch (error) {
+        lastError =
+          error;
+
+        if (
+          error.status !== 404 &&
+          error.status !== 405
+        ) {
+          throw error;
+        }
+      }
+    }
+
+    throw (
+      lastError ||
+      new Error(
+        "Endpoint bulunamadı."
+      )
+    );
+  }
+
+  /* ============================================================
+     RESPONSE PARSING
+     ============================================================ */
+
+  function extractAnswer(
+    data
+  ) {
+    if (
+      typeof data ===
+      "string"
+    ) {
+      return data.trim();
+    }
+
+    const candidates = [
+      data?.answer,
+      data?.response,
+      data?.message,
+      data?.content,
+      data?.text,
+
+      data?.data?.answer,
+      data?.data?.response,
+      data?.data?.message,
+      data?.data?.content,
+      data?.data?.text,
+
+      data?.result?.answer,
+      data?.result?.response,
+      data?.result?.message,
+      data?.result?.content,
+      data?.result?.text
+    ];
+
+    const found =
+      candidates.find(
+        (value) =>
+          typeof value ===
+            "string" &&
+          value.trim()
+      );
+
+    return (
+      found || ""
+    ).trim();
+  }
+
+  function extractSources(
+    data
+  ) {
+    const candidates = [
+      data?.sources,
+      data?.references,
+      data?.research?.sources,
+      data?.research?.results,
+      data?.data?.sources
+    ];
+
+    return (
+      candidates.find(
+        (value) =>
+          Array.isArray(value)
+      ) || []
+    );
+  }
+
+  /* ============================================================
+     MESSAGE RENDERING
+     ============================================================ */
+
+  function renderContent(
+    text
+  ) {
+    let html =
+      escapeHTML(text);
+
+    const codeBlocks = [];
+
+    html = html.replace(
+      /```([\w#+.-]*)\n?([\s\S]*?)```/g,
+      (_, language, code) => {
+        const index =
+          codeBlocks.length;
+
+        codeBlocks.push({
+          language:
+            language ||
+            "code",
+
+          code:
+            code.replace(
+              /\n$/,
+              ""
+            )
+        });
+
+        return `@@CODE_${index}@@`;
+      }
+    );
+
+    html = html.replace(
+      /`([^`]+)`/g,
+      "<code>$1</code>"
+    );
+
+    html = html.replace(
+      /\*\*(.*?)\*\*/g,
+      "<strong>$1</strong>"
+    );
+
+    html = html.replace(
+      /\*(.*?)\*/g,
+      "<em>$1</em>"
+    );
+
+    html = html.replace(
+      /^### (.*)$/gm,
+      "<h4>$1</h4>"
+    );
+
+    html = html.replace(
+      /^## (.*)$/gm,
+      "<h3>$1</h3>"
+    );
+
+    html = html.replace(
+      /^# (.*)$/gm,
+      "<h2>$1</h2>"
+    );
+
+    html = html.replace(
+      /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+      (_, label, url) => `
+        <a
+          href="${escapeHTML(
+            safeURL(url)
+          )}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          ${label}
+        </a>
+      `
+    );
+
+    html =
+      html.replace(
+        /\n/g,
+        "<br>"
+      );
+
+    codeBlocks.forEach(
+      (block, index) => {
+        html =
+          html.replace(
+            `@@CODE_${index}@@`,
+            `
+            <div class="code-card">
+              <div class="code-card-top">
+                <span>${escapeHTML(
+                  block.language
+                )}</span>
+
+                <button
+                  type="button"
+                  data-copy-code="${index}"
+                >
+                  Kopyala
+                </button>
+              </div>
+
+              <pre><code>${escapeHTML(
+                block.code
+              )}</code></pre>
+            </div>
+          `
+          );
+      }
+    );
+
+    return html;
+  }
+
+  function renderSources(
+    sources
+  ) {
+    const valid =
+      sources
+        .filter(
+          (source) =>
+            source &&
+            (
+              source.url ||
+              source.link ||
+              source.uri
+            )
+        )
+        .slice(0, 8);
+
+    if (!valid.length) {
+      return "";
+    }
+
+    return `
+      <div class="sources-box">
+
+        <div class="sources-title">
+          Kaynaklar
+        </div>
+
+        <div class="sources-list">
+
+          ${valid
+            .map((source) => {
+              const url =
+                source.url ||
+                source.link ||
+                source.uri;
+
+              return `
+                <a
+                  class="source-item"
+                  href="${escapeHTML(
+                    safeURL(url)
+                  )}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span>
+                    ${escapeHTML(
+                      source.title ||
+                      source.name ||
+                      url
+                    )}
+                  </span>
+
+                  <span>↗</span>
+                </a>
+              `;
+            })
+            .join("")}
+
+        </div>
+
+      </div>
+    `;
+  }
+
+  function renderMessages() {
+    const host =
+      $("messageList");
+
+    if (!host) {
+      return;
+    }
+
+    host.innerHTML = "";
+
+    const empty =
+      $("emptyState");
+
+    if (empty) {
+      empty.hidden =
+        state.messages.length >
+        0;
+    }
+
+    for (
+      const message of
+      state.messages
+    ) {
+      const article =
+        document.createElement(
+          "article"
+        );
+
+      article.className =
+        `message-row ${message.role}`;
+
+      article.dataset.id =
+        message.id;
+
+      const name =
+        state.user?.name ||
+        state.user?.displayName ||
+        "Sen";
+
+      const avatar =
+        message.role ===
+        "user"
+          ? name
+              .slice(0, 1)
+              .toUpperCase()
+          : "T";
+
+      article.innerHTML = `
+        <div
+          class="message-avatar ${message.role}"
+        >
+          ${escapeHTML(
+            avatar
+          )}
+        </div>
+
+        <div class="message-main">
+
+          <div class="message-head">
+
+            <strong>
+              ${
+                message.role ===
+                "user"
+                  ? escapeHTML(
+                      name
+                    )
+                  : "TürkAI"
+              }
+            </strong>
+
+            <span>
+              ${formatTime(
+                message.createdAt
+              )}
+            </span>
+
+          </div>
+
+          <div class="message-content">
+            ${renderContent(
+              message.content
+            )}
+          </div>
+
+          ${
+            message.sources?.length
+              ? renderSources(
+                  message.sources
+                )
+              : ""
+          }
+
+          ${
+            message.mediaUrl
+              ? `
+                <div class="generated-media">
+
+                  ${
+                    message.mediaType ===
+                    "video"
+                      ? `
+                        <video
+                          controls
+                          preload="metadata"
+                        >
+                          <source
+                            src="${escapeHTML(
+                              safeURL(
+                                message.mediaUrl
+                              )
+                            )}"
+                          >
+                        </video>
+                      `
+                      : `
+                        <img
+                          src="${escapeHTML(
+                            safeURL(
+                              message.mediaUrl
+                            )
+                          )}"
+                          alt="TürkAI çıktısı"
+                        >
+                      `
+                  }
+
+                </div>
+              `
+              : ""
+          }
+
+          ${
+            message.role ===
+            "assistant"
+              ? `
+                <div class="message-actions">
+
+                  <button
+                    type="button"
+                    data-message-action="copy"
+                  >
+                    Kopyala
+                  </button>
+
+                  <button
+                    type="button"
+                    data-message-action="speak"
+                  >
+                    Seslendir
+                  </button>
+
+                  <button
+                    type="button"
+                    data-message-action="retry"
+                  >
+                    Yeniden üret
+                  </button>
+
+                </div>
+              `
+              : ""
+          }
+
+        </div>
+      `;
+
+      host.appendChild(
+        article
+      );
+    }
+
+    scrollBottom();
+  }
+
+  function scrollBottom() {
+    const area =
+      $("messageScrollArea");
+
+    if (!area) {
+      return;
+    }
+
+    requestAnimationFrame(
+      () => {
+        area.scrollTo({
+          top:
+            area.scrollHeight,
+
+          behavior:
+            "smooth"
+        });
+      }
+    );
+  }
+
+  /* ============================================================
+     CONVERSATIONS
+     ============================================================ */
+
+  async function loadConversations() {
+    try {
+      const data =
+        await api(
+          `/api/conversations?userId=${encodeURIComponent(
+            state.userId
+          )}`
+        );
+
+      const list =
+        data?.conversations ||
+        data?.items ||
+        data?.data ||
+        [];
+
+      if (
+        Array.isArray(list)
+      ) {
+        state.conversations =
+          list
+            .map(
+              (conversation) => ({
+                id:
+                  conversation.id ||
+                  conversation.conversationId,
+
+                title:
+                  conversation.title ||
+                  "Yeni sohbet",
+
+                createdAt:
+                  conversation.createdAt,
+
+                updatedAt:
+                  conversation.updatedAt ||
+                  conversation.createdAt
+              })
+            )
+            .filter(
+              (item) =>
+                item.id
+            );
+      }
+
+      renderConversations();
+    } catch {
+      renderConversations();
+    }
+  }
+
+  function renderConversations() {
+    const host =
+      $("conversationList");
+
+    if (!host) {
+      return;
+    }
+
+    const list =
+      [...state.conversations]
+        .sort(
+          (a, b) =>
+            new Date(
+              b.updatedAt ||
+              b.createdAt ||
+              0
+            ) -
+            new Date(
+              a.updatedAt ||
+              a.createdAt ||
+              0
+            )
+        )
+        .slice(0, 50);
+
+    host.innerHTML =
+      list.length
+        ? list
+            .map(
+              (conversation) => `
+                <button
+                  type="button"
+                  class="conversation-item ${
+                    conversation.id ===
+                    state.conversationId
+                      ? "active"
+                      : ""
+                  }"
+                  data-conversation-id="${escapeHTML(
+                    conversation.id
+                  )}"
+                >
+
+                  <span class="conversation-symbol">
+                    +
+                  </span>
+
+                  <span class="conversation-info">
+
+                    <strong>
+                      ${escapeHTML(
+                        conversation.title
+                      )}
+                    </strong>
+
+                    <small>
+                      ${formatDate(
+                        conversation.updatedAt ||
+                        conversation.createdAt
+                      )}
+                    </small>
+
+                  </span>
+
+                </button>
+              `
+            )
+            .join("")
+        : `
+          <div class="sidebar-empty">
+            Henüz sohbet yok
+          </div>
+        `;
+  }
+
+  async function createSession(
+    title = "Yeni sohbet"
+  ) {
+    try {
+      const data =
+        await apiFirst(
+          [
+            "/api/chat/session/new",
+            "/api/chat/session"
+          ],
+          {
+            method: "POST",
+
+            body:
+              JSON.stringify({
+                userId:
+                  state.userId,
+
+                title
+              })
+          }
+        );
+
+      state.sessionId =
+        data?.session?.id ||
+        data?.id ||
+        data?.sessionId ||
+        null;
+
+      saveLocal();
+
+      return state.sessionId;
+    } catch {
+      return null;
+    }
+  }
+
+  async function createConversation(
+    title = "Yeni sohbet"
+  ) {
+    try {
+      const data =
+        await api(
+          "/api/conversations",
+          {
+            method:
+              "POST",
+
+            body:
+              JSON.stringify({
+                userId:
+                  state.userId,
+
+                title,
+
+                model:
+                  state.selectedModel
+              })
+          }
+        );
+
+      const conversation =
+        data?.conversation ||
+        data?.data ||
+        data;
+
+      if (
+        conversation?.id
+      ) {
+        state.conversationId =
+          conversation.id;
+      }
+    } catch {}
+
+    if (
+      !state.sessionId
+    ) {
+      await createSession(
+        title
+      );
+    }
+
+    if (
+      !state.conversationId
+    ) {
+      state.conversationId =
+        uid(
+          "localchat"
+        );
+    }
+
+    state.conversations =
+      state.conversations.filter(
+        (item) =>
+          item.id !==
+          state.conversationId
+      );
+
+    state.conversations.unshift({
+      id:
+        state.conversationId,
+
+      title,
+
+      createdAt:
+        now(),
+
+      updatedAt:
+        now()
+    });
+
+    state.messages = [];
+
+    saveLocal();
+    renderMessages();
+    renderConversations();
+
+    return state.conversationId;
+  }
+
+  async function openConversation(
+    id
+  ) {
+    const item =
+      state.conversations.find(
+        (conversation) =>
+          conversation.id ===
+          id
+      );
+
+    if (!item) {
+      return;
+    }
+
+    state.conversationId =
+      id;
+
+    try {
+      const data =
+        await api(
+          `/api/conversations/${encodeURIComponent(
+            id
+          )}?userId=${encodeURIComponent(
+            state.userId
+          )}`
+        );
+
+      const conversation =
+        data?.conversation ||
+        data?.data ||
+        data;
+
+      if (
+        Array.isArray(
+          conversation?.messages
+        )
+      ) {
+        state.messages =
+          conversation.messages.map(
+            (message) => ({
+              id:
+                message.id ||
+                uid("msg"),
+
+              role:
+                message.role,
+
+              content:
+                message.content ||
+                "",
+
+              createdAt:
+                message.createdAt ||
+                now(),
+
+              sources:
+                message.metadata
+                  ?.sources ||
+                message.sources ||
+                []
+            })
+          );
+      } else {
+        state.messages = [];
+      }
+    } catch {
+      state.messages = [];
+    }
+
+    await createSession(
+      item.title
+    );
+
+    renderMessages();
+    renderConversations();
+    saveLocal();
+  }
+
+  async function saveConversationMessage(
+    message
+  ) {
+    if (
+      !state.conversationId ||
+      String(
+        state.conversationId
+      ).startsWith(
+        "localchat_"
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await api(
+        `/api/conversations/${encodeURIComponent(
+          state.conversationId
+        )}/messages`,
+        {
+          method:
+            "POST",
+
+          body:
+            JSON.stringify({
+              userId:
+                state.userId,
+
+              role:
+                message.role,
+
+              content:
+                message.content,
+
+              model:
+                state.selectedModel,
+
+              metadata: {
+                sources:
+                  message.sources ||
+                  []
+              }
+            })
+        }
+      );
+    } catch {}
+  }
+
+  /* ============================================================
+     CHAT
+     ============================================================ */
+
+  function addMessage(
+    role,
+    content,
+    extra = {}
+  ) {
+    const message = {
+      id:
+        uid("msg"),
+
+      role,
+
+      content:
+        String(
+          content || ""
+        ),
+
+      createdAt:
+        now(),
+
+      ...extra
+    };
+
+    state.messages.push(
+      message
+    );
+
+    renderMessages();
+    saveLocal();
+
+    return message;
+  }
+
+  async function sendMessage(
+    value
+  ) {
+    const message =
+      String(value || "")
+        .trim();
+
+    if (
+      !message ||
+      state.sending
+    ) {
+      return;
+    }
+
+    if (
+      !navigator.onLine
+    ) {
+      toast(
+        "İnternet bağlantısı yok.",
+        "error"
+      );
+      return;
+    }
+
+    if (
+      !state.conversationId
+    ) {
+      await createConversation(
+        message.slice(
+          0,
+          50
+        ) ||
+          "Yeni sohbet"
+      );
+    }
+
+    if (
+      !state.sessionId
+    ) {
+      await createSession(
+        message.slice(
+          0,
+          50
+        ) ||
+          "Yeni sohbet"
+      );
+    }
+
+    state.sending =
+      true;
+
+    setComposerBusy(
+      true
+    );
+
+    const userMessage =
+      addMessage(
+        "user",
+        message
+      );
+
+    await saveConversationMessage(
+      userMessage
+    );
+
+    setStatus(
+      "TürkAI düşünüyor",
+      "busy"
+    );
+
+    showTyping(
+      true
+    );
+
+    try {
+      const data =
+        await apiFirst(
+          [
+            "/api/chat/smart",
+            "/api/chat",
+            "/api/chat/v2"
+          ],
+          {
+            method:
+              "POST",
+
+            body:
+              JSON.stringify({
+                userId:
+                  state.userId,
+
+                sessionId:
+                  state.sessionId,
+
+                conversationId:
+                  state.conversationId,
+
+                message,
+
+                model:
+                  state.selectedModel,
+
+                language:
+                  "tr-TR",
+
+                memory:
+                  state.memory,
+
+                ignoreMemory:
+                  !state.memory,
+
+                research:
+                  state.research,
+
+                weather:
+                  state.weather
+              })
+          }
+        );
+
+      if (
+        data?.sessionId
+      ) {
+        state.sessionId =
+          data.sessionId;
+      }
+
+      const answer =
+        extractAnswer(
+          data
+        ) ||
+        "Sunucudan boş yanıt geldi.";
+
+      const assistant =
+        addMessage(
+          "assistant",
+          answer,
+          {
+            sources:
+              extractSources(
+                data
+              )
+          }
+        );
+
+      await saveConversationMessage(
+        assistant
+      );
+
+      state.conversations =
+        state.conversations.map(
+          (conversation) =>
+            conversation.id ===
+            state.conversationId
+              ? {
+                  ...conversation,
+                  updatedAt:
+                    now()
+                }
+              : conversation
+        );
+
+      renderConversations();
+
+      saveLocal();
+
+      setStatus(
+        "Çevrimiçi",
+        "online"
+      );
+    } catch (error) {
+      let errorMessage =
+        error?.message ||
+        "Sunucuya bağlanılamadı.";
+
+      if (
+        error?.name ===
+        "AbortError"
+      ) {
+        errorMessage =
+          "İstek zaman aşımına uğradı.";
+      }
+
+      if (
+        error?.status ===
+        429
+      ) {
+        errorMessage =
+          "Kullanım sınırına ulaşıldı.";
+      }
+
+      if (
+        error?.status ===
+        500
+      ) {
+        errorMessage =
+          "Sunucuda işlem sırasında hata oluştu.";
+      }
+
+      addMessage(
+        "assistant",
+        `Yanıt oluşturulamadı.\n\n${errorMessage}`
+      );
+
+      toast(
+        errorMessage,
+        "error"
+      );
+
+      setStatus(
+        "Sunucu hatası",
+        "error"
+      );
+    } finally {
+      showTyping(
+        false
+      );
+
+      state.sending =
+        false;
+
+      setComposerBusy(
+        false
+      );
+    }
+  }
+
+  function showTyping(
+    visible
+  ) {
+    const element =
+      $("typingIndicator");
+
+    if (!element) {
+      return;
+    }
+
+    element.hidden =
+      !visible;
+
+    if (visible) {
+      scrollBottom();
+    }
+  }
+
+  function setComposerBusy(
+    busy
+  ) {
+    const button =
+      $("sendButton");
+
+    if (!button) {
+      return;
+    }
+
+    button.disabled =
+      busy;
+
+    button.classList.toggle(
+      "busy",
+      busy
+    );
+  }
+/* ============================================================
+   TÜRKAI APP.JS 40.0
+   EXTENSION / CONTINUATION
+   ============================================================ */
+
+(() => {
+  "use strict";
+
+  const TURKAI_APP = window.TURKAI;
+
+  if (!TURKAI_APP) {
+    console.warn(
+      "[TürkAI] Ana uygulama bulunamadı."
+    );
+    return;
+  }
+
+  const state =
+    TURKAI_APP.state || {};
+
+  const $ =
+    (id) =>
+      document.getElementById(id);
+
+  const $$ =
+    (selector) =>
+      [...document.querySelectorAll(selector)];
+
+  /* ============================================================
+     EXTRA CONFIG
+     ============================================================ */
+
+  const EXTRA = {
+    healthInterval:
+      30000,
+
+    autosaveInterval:
+      5000,
+
+    maxDraftLength:
+      20000,
+
+    dragActiveClass:
+      "drag-active",
+
+    mobileBreakpoint:
+      760
+  };
+
+  let healthTimer =
+    null;
+
+  let autosaveTimer =
+    null;
+
+  let lastHealth =
+    null;
+
+  let dragCounter =
+    0;
+
+  /* ============================================================
+     SAFE HELPERS
+     ============================================================ */
+
+  function esc(value) {
+    return String(
+      value ?? ""
+    )
+      .replaceAll(
+        "&",
+        "&amp;"
+      )
+      .replaceAll(
+        "<",
+        "&lt;"
+      )
+      .replaceAll(
+        ">",
+        "&gt;"
+      )
+      .replaceAll(
+        '"',
+        "&quot;"
+      )
+      .replaceAll(
+        "'",
+        "&#039;"
+      );
+  }
+
+  function localNow() {
+    return new Date();
+  }
+
+  function formatClock() {
+    return new Intl.DateTimeFormat(
+      "tr-TR",
+      {
+        hour:
+          "2-digit",
+
+        minute:
+          "2-digit"
+      }
+    ).format(
+      localNow()
+    );
+  }
+
+  function extraToast(
+    text,
+    type = "info"
+  ) {
+    let stack =
+      $("toastStack");
+
+    if (!stack) {
+      stack =
+        document.createElement(
+          "div"
+        );
+
+      stack.id =
+        "toastStack";
+
+      stack.className =
+        "toast-stack";
+
+      document.body.appendChild(
+        stack
+      );
+    }
+
+    const toast =
+      document.createElement(
+        "div"
+      );
+
+    toast.className =
+      `toast ${type}`;
+
+    toast.innerHTML = `
+      <span class="toast-indicator"></span>
+      <span>${esc(text)}</span>
+    `;
+
+    stack.appendChild(
+      toast
+    );
+
+    requestAnimationFrame(
+      () => {
+        toast.classList.add(
+          "show"
+        );
+      }
+    );
+
+    setTimeout(
+      () => {
+        toast.classList.remove(
+          "show"
+        );
+
+        setTimeout(
+          () => {
+            toast.remove();
+          },
+          200
+        );
+      },
+      3000
+    );
+  }
+
+  /* ============================================================
+     DRAFT SYSTEM
+     ============================================================ */
+
+  const DRAFT_KEY =
+    "turkai40_message_draft";
+
+  function saveDraft() {
+    const input =
+      $("messageInput");
+
+    if (!input) {
+      return;
+    }
+
+    try {
+      localStorage.setItem(
+        DRAFT_KEY,
+        input.value.slice(
+          0,
+          EXTRA.maxDraftLength
+        )
+      );
+    } catch {}
+  }
+
+  function loadDraft() {
+    const input =
+      $("messageInput");
+
+    if (!input) {
+      return;
+    }
+
+    try {
+      const draft =
+        localStorage.getItem(
+          DRAFT_KEY
+        );
+
+      if (
+        draft &&
+        !input.value
+      ) {
+        input.value =
+          draft;
+
+        resizeExtra();
+      }
+    } catch {}
+  }
+
+  function clearDraft() {
+    try {
+      localStorage.removeItem(
+        DRAFT_KEY
+      );
+    } catch {}
+  }
+
+  function resizeExtra() {
+    const input =
+      $("messageInput");
+
+    if (!input) {
+      return;
+    }
+
+    input.style.height =
+      "auto";
+
+    input.style.height =
+      `${Math.min(
+        180,
+        input.scrollHeight
+      )}px`;
+  }
+
+  /* ============================================================
+     COMMAND SHORTCUTS
+     ============================================================ */
+
+  const COMMANDS = {
+    "/help":
+      "TürkAI komut merkezi açılıyor.",
+
+    "/research":
+      "Araştırma modu açılıyor.",
+
+    "/memory":
+      "Hafıza modu açılıyor.",
+
+    "/weather":
+      "Hava durumu modu açılıyor.",
+
+    "/clear":
+      "Sohbet temizleme komutu.",
+
+    "/new":
+      "Yeni sohbet açılıyor."
+  };
+
+  function handleSlashCommand(
+    text
+  ) {
+    const command =
+      String(text || "")
+        .trim()
+        .split(/\s+/)[0]
+        .toLocaleLowerCase(
+          "tr-TR"
+        );
+
+    if (
+      !COMMANDS[command]
+    ) {
+      return false;
+    }
+
+    switch (command) {
+      case "/help":
+        document
+          .getElementById(
+            "commandButton"
+          )
+          ?.click();
+        break;
+
+      case "/research":
+        $("researchButton")
+          ?.click();
+        extraToast(
+          "Araştırma modu değiştirildi.",
+          "success"
+        );
+        break;
+
+      case "/memory":
+        $("memoryButton")
+          ?.click();
+        extraToast(
+          "Hafıza modu değiştirildi.",
+          "success"
+        );
+        break;
+
+      case "/weather":
+        $("weatherButton")
+          ?.click();
+        extraToast(
+          "Hava modu değiştirildi.",
+          "success"
+        );
+        break;
+
+      case "/clear":
+        clearCurrentChat();
+        break;
+
+      case "/new":
+        awaitSafe(
+          TURKAI_APP.newChat
+        );
+        break;
+    }
+
+    clearDraft();
+
+    return true;
+  }
+
+  async function awaitSafe(
+    fn
+  ) {
+    try {
+      if (
+        typeof fn ===
+        "function"
+      ) {
+        await fn();
+      }
+    } catch {}
+  }
+
+  function clearCurrentChat() {
+    state.messages =
+      [];
+
+    state.conversationId =
+      null;
+
+    state.sessionId =
+      null;
+
+    try {
+      localStorage.removeItem(
+        "turkai40_message_draft"
+      );
+    } catch {}
+
+    try {
+      const list =
+        $("messageList");
+
+      if (list) {
+        list.innerHTML = `
+          <div
+            id="emptyState"
+            class="empty-state"
+          >
+            <div class="empty-box">
+              <div class="empty-logo">
+                TA
+              </div>
+
+              <h1>
+                Yeni sohbet
+              </h1>
+
+              <p>
+                Yeni bir konuşma başlat.
+              </p>
+            </div>
+          </div>
+        `;
+      }
+    } catch {}
+
+    extraToast(
+      "Sohbet temizlendi.",
+      "success"
+    );
+  }
+
+  /* ============================================================
+     ENTER COMMAND INTERCEPT
+     ============================================================ */
+
+  function bindCommandInput() {
+    const input =
+      $("messageInput");
+
+    if (!input) {
+      return;
+    }
+
+    input.addEventListener(
+      "keydown",
+      (event) => {
+        if (
+          event.key !==
+          "Enter"
+        ) {
+          return;
+        }
+
+        if (
+          event.shiftKey
+        ) {
+          return;
+        }
+
+        const text =
+          input.value.trim();
+
+        if (
+          text.startsWith(
+            "/"
+          )
+        ) {
+          if (
+            handleSlashCommand(
+              text
+            )
+          ) {
+            event.preventDefault();
+          }
+        }
+      }
+    );
+  }
+
+  /* ============================================================
+     KEYBOARD NAVIGATION
+     ============================================================ */
+
+  function bindKeyboardNavigation() {
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (
+          event.altKey &&
+          event.key === "ArrowUp"
+        ) {
+          event.preventDefault();
+
+          focusComposer();
+        }
+
+        if (
+          event.ctrlKey &&
+          event.shiftKey &&
+          event.key === "N"
+        ) {
+          event.preventDefault();
+
+          awaitSafe(
+            TURKAI_APP.newChat
+          );
+        }
+      }
+    );
+  }
+
+  function focusComposer() {
+    const input =
+      $("messageInput");
+
+    if (!input) {
+      return;
+    }
+
+    input.focus();
+
+    input.scrollIntoView({
+      behavior:
+        "smooth",
+
+      block:
+        "nearest"
+    });
+  }
+
+  /* ============================================================
+     DRAG & DROP UPLOAD
+     ============================================================ */
+
+  function setupDragAndDrop() {
+    const zone =
+      $("messageScrollArea") ||
+      document.body;
+
+    if (!zone) {
+      return;
+    }
+
+    zone.addEventListener(
+      "dragenter",
+      (event) => {
+        event.preventDefault();
+
+        dragCounter++;
+
+        document.body.classList.add(
+          EXTRA.dragActiveClass
+        );
+
+        showDropOverlay(
+          true
+        );
+      }
+    );
+
+    zone.addEventListener(
+      "dragover",
+      (event) => {
+        event.preventDefault();
+      }
+    );
+
+    zone.addEventListener(
+      "dragleave",
+      (event) => {
+        event.preventDefault();
+
+        dragCounter--;
+
+        if (
+          dragCounter <= 0
+        ) {
+          dragCounter = 0;
+
+          document.body.classList.remove(
+            EXTRA.dragActiveClass
+          );
+
+          showDropOverlay(
+            false
+          );
+        }
+      }
+    );
+
+    zone.addEventListener(
+      "drop",
+      async (event) => {
+        event.preventDefault();
+
+        dragCounter = 0;
+
+        document.body.classList.remove(
+          EXTRA.dragActiveClass
+        );
+
+        showDropOverlay(
+          false
+        );
+
+        const files =
+          [
+            ...(event.dataTransfer
+              ?.files || [])
+          ];
+
+        if (!files.length) {
+          return;
+        }
+
+        extraToast(
+          `${files.length} dosya algılandı.`,
+          "success"
+        );
+
+        for (
+          const file of
+          files
+        ) {
+          await uploadViaOriginal(
+            file
+          );
+        }
+      }
+    );
+  }
+
+  function showDropOverlay(
+    visible
+  ) {
+    let overlay =
+      $("dropOverlay");
+
+    if (
+      visible &&
+      !overlay
+    ) {
+      overlay =
+        document.createElement(
+          "div"
+        );
+
+      overlay.id =
+        "dropOverlay";
+
+      overlay.innerHTML = `
+        <div class="drop-overlay-card">
+          <div class="drop-overlay-icon">
+            ↓
+          </div>
+
+          <strong>
+            Dosyayı bırak
+          </strong>
+
+          <span>
+            TürkAI dosyayı yüklemeye hazırlayacak
+          </span>
+        </div>
+      `;
+
+      Object.assign(
+        overlay.style,
+        {
+          position:
+            "fixed",
+
+          inset:
+            "0",
+
+          zIndex:
+            "250",
+
+          display:
+            "grid",
+
+          placeItems:
+            "center",
+
+          background:
+            "rgba(5,7,11,.75)",
+
+          backdropFilter:
+            "blur(8px)",
+
+          pointerEvents:
+            "none"
+        }
+      );
+
+      document.body.appendChild(
+        overlay
+      );
+    }
+
+    if (overlay) {
+      overlay.hidden =
+        !visible;
+    }
+  }
+
+  async function uploadViaOriginal(
+    file
+  ) {
+    try {
+      /*
+        Ana app.js içindeki upload fonksiyonunu
+        doğrudan public API üzerinden tekrar kuruyoruz.
+      */
+
+      const form =
+        new FormData();
+
+      form.append(
+        "file",
+        file,
+        file.name
+      );
+
+      form.append(
+        "userId",
+        state.userId ||
+          "guest"
+      );
+
+      const accessToken =
+        state.user?.accessToken;
+
+      const headers = {};
+
+      if (
+        accessToken
+      ) {
+        headers.Authorization =
+          `Bearer ${accessToken}`;
+      }
+
+      const response =
+        await fetch(
+          "/api/upload",
+          {
+            method:
+              "POST",
+
+            headers,
+
+            body:
+              form,
+
+            credentials:
+              "same-origin"
+          }
+        );
+
+      const data =
+        await response.json()
+          .catch(
+            () => ({})
+          );
+
+      if (
+        !response.ok
+      ) {
+        throw new Error(
+          data?.message ||
+          data?.error ||
+          `HTTP ${response.status}`
+        );
+      }
+
+      if (
+        Array.isArray(
+          state.attachments
+        )
+      ) {
+        state.attachments.push({
+          id:
+            `drop_${Date.now()}_${Math.random()
+              .toString(36)
+              .slice(2,7)}`,
+
+          name:
+            file.name,
+
+          size:
+            file.size,
+
+          type:
+            file.type,
+
+          server:
+            data
+        });
+      }
+
+      extraToast(
+        `${file.name} yüklendi.`,
+        "success"
+      );
+
+    } catch (error) {
+      extraToast(
+        `${file.name}: ${error.message}`,
+        "error"
+      );
+    }
+  }
+
+  /* ============================================================
+     NETWORK HEALTH
+     ============================================================ */
+
+  async function checkServerHealth() {
+    try {
+      const response =
+        await fetch(
+          "/api/system/ping",
+          {
+            method:
+              "GET",
+
+            cache:
+              "no-store",
+
+            credentials:
+              "same-origin"
+          }
+        );
+
+      const data =
+        await response
+          .json()
+          .catch(
+            () => null
+          );
+
+      lastHealth = {
+        ok:
+          response.ok,
+
+        status:
+          response.status,
+
+        data,
+
+        checkedAt:
+          new Date().toISOString()
+      };
+
+      updateHealthUI(
+        lastHealth
+      );
+
+      return lastHealth;
+    } catch (error) {
+      lastHealth = {
+        ok:
+          false,
+
+        status:
+          0,
+
+        error:
+          error.message,
+
+        checkedAt:
+          new Date().toISOString()
+      };
+
+      updateHealthUI(
+        lastHealth
+      );
+
+      return lastHealth;
+    }
+  }
+
+  function updateHealthUI(
+    health
+  ) {
+    const dot =
+      $("statusDot");
+
+    const text =
+      $("statusText");
+
+    if (!dot || !text) {
+      return;
+    }
+
+    if (
+      health?.ok
+    ) {
+      dot.dataset.state =
+        "online";
+
+      text.textContent =
+        "Çevrimiçi";
+
+      return;
+    }
+
+    if (
+      health?.status ===
+      0
+    ) {
+      dot.dataset.state =
+        "error";
+
+      text.textContent =
+        "Bağlantı yok";
+
+      return;
+    }
+
+    dot.dataset.state =
+      "error";
+
+    text.textContent =
+      "Sunucu hatası";
+  }
+
+  function startHealthMonitor() {
+    checkServerHealth();
+
+    if (
+      healthTimer
+    ) {
+      clearInterval(
+        healthTimer
+      );
+    }
+
+    healthTimer =
+      setInterval(
+        checkServerHealth,
+        EXTRA.healthInterval
+      );
+
+    healthTimer.unref?.();
+  }
+
+  /* ============================================================
+     AUTOSAVE
+     ============================================================ */
+
+  function autosave() {
+    try {
+      const input =
+        $("messageInput");
+
+      if (
+        input &&
+        input.value
+      ) {
+        saveDraft();
+      }
+
+      localStorage.setItem(
+        "turkai40_runtime",
+        JSON.stringify({
+          lastSave:
+            new Date().toISOString(),
+
+          userId:
+            state.userId ||
+            "guest",
+
+          conversationId:
+            state.conversationId,
+
+          sessionId:
+            state.sessionId,
+
+          selectedModel:
+            state.selectedModel,
+
+          research:
+            Boolean(
+              state.research
+            ),
+
+          memory:
+            Boolean(
+              state.memory
+            ),
+
+          weather:
+            Boolean(
+              state.weather
+            )
+        })
+      );
+    } catch {}
+  }
+
+  function startAutosave() {
+    autosave();
+
+    if (
+      autosaveTimer
+    ) {
+      clearInterval(
+        autosaveTimer
+      );
+    }
+
+    autosaveTimer =
+      setInterval(
+        autosave,
+        EXTRA.autosaveInterval
+      );
+
+    autosaveTimer.unref?.();
+  }
+
+  /* ============================================================
+     WINDOW CLOSE PROTECTION
+     ============================================================ */
+
+  function bindUnloadSave() {
+    window.addEventListener(
+      "beforeunload",
+      () => {
+        try {
+          saveDraft();
+          autosave();
+        } catch {}
+      }
+    );
+  }
+
+  /* ============================================================
+     ONLINE / OFFLINE DETAIL
+     ============================================================ */
+
+  function bindConnectionEvents() {
+    window.addEventListener(
+      "online",
+      () => {
+        state.online =
+          true;
+
+        extraToast(
+          "İnternet bağlantısı yeniden geldi.",
+          "success"
+        );
+
+        checkServerHealth();
+      }
+    );
+
+    window.addEventListener(
+      "offline",
+      () => {
+        state.online =
+          false;
+
+        extraToast(
+          "İnternet bağlantısı kesildi.",
+          "error"
+        );
+      }
+    );
+  }
+
+  /* ============================================================
+     MOBILE VIEW HELPER
+     ============================================================ */
+
+  function setupMobileBehavior() {
+    const handleResize =
+      () => {
+        const mobile =
+          window.innerWidth <=
+          EXTRA.mobileBreakpoint;
+
+        document.body.classList.toggle(
+          "is-mobile",
+          mobile
+        );
+
+        if (
+          mobile &&
+          $("messageInput")
+        ) {
+          resizeExtra();
+        }
+      };
+
+    handleResize();
+
+    window.addEventListener(
+      "resize",
+      handleResize
+    );
+  }
+
+  /* ============================================================
+     PERSISTED DRAFT BADGE
+     ============================================================ */
+
+  function createDraftIndicator() {
+    const input =
+      $("messageInput");
+
+    if (!input) {
+      return;
+    }
+
+    let indicator =
+      $("draftIndicator");
+
+    if (!indicator) {
+      indicator =
+        document.createElement(
+          "div"
+        );
+
+      indicator.id =
+        "draftIndicator";
+
+      indicator.textContent =
+        "Taslak kaydediliyor";
+
+      Object.assign(
+        indicator.style,
+        {
+          fontSize:
+            "8px",
+
+          color:
+            "var(--muted-2)",
+
+          marginTop:
+            "4px",
+
+          paddingLeft:
+            "8px",
+
+          opacity:
+            "0",
+
+          transition:
+            "opacity .2s ease"
+        }
+      );
+
+      const parent =
+        input.closest(
+          ".composer"
+        );
+
+      parent?.appendChild(
+        indicator
+      );
+    }
+
+    input.addEventListener(
+      "input",
+      () => {
+        indicator.style.opacity =
+          "1";
+
+        clearTimeout(
+          indicator.__timer
+        );
+
+        indicator.__timer =
+          setTimeout(
+            () => {
+              indicator.style.opacity =
+                "0";
+            },
+            700
+          );
+      }
+    );
+  }
+
+  /* ============================================================
+     MESSAGE SEARCH
+     ============================================================ */
+
+  function localMessageSearch(
+    query
+  ) {
+    const q =
+      String(
+        query || ""
+      )
+        .toLocaleLowerCase(
+          "tr-TR"
+        )
+        .trim();
+
+    if (!q) {
+      return [];
+    }
+
+    return (
+      state.messages || []
+    )
+      .filter(
+        (message) =>
+          String(
+            message.content ||
+              ""
+          )
+            .toLocaleLowerCase(
+              "tr-TR"
+            )
+            .includes(q)
+      )
+      .map(
+        (message) => ({
+          id:
+            message.id,
+
+          role:
+            message.role,
+
+          content:
+            message.content,
+
+          createdAt:
+            message.createdAt
+        })
+      );
+  }
+
+  function showLocalSearch(
+    query
+  ) {
+    const results =
+      localMessageSearch(
+        query
+      );
+
+    if (!results.length) {
+      extraToast(
+        "Bu sohbette eşleşme bulunamadı."
+      );
+
+      return;
+    }
+
+    extraToast(
+      `${results.length} mesaj bulundu.`,
+      "success"
+    );
+
+    const first =
+      results[0];
+
+    const row =
+      document.querySelector(
+        `.message-row[data-id="${CSS.escape(
+          first.id
+        )}"]`
+      );
+
+    row?.scrollIntoView({
+      behavior:
+        "smooth",
+
+      block:
+        "center"
+    });
+  }
+
+  /* ============================================================
+     COPY FULL CONVERSATION
+     ============================================================ */
+
+  async function copyConversation() {
+    const messages =
+      Array.isArray(
+        state.messages
+      )
+        ? state.messages
+        : [];
+
+    if (!messages.length) {
+      extraToast(
+        "Kopyalanacak mesaj yok."
+      );
+
+      return;
+    }
+
+    const text =
+      messages
+        .map(
+          (message) => {
+            const who =
+              message.role ===
+              "user"
+                ? "Sen"
+                : "TürkAI";
+
+            return `${who}:\n${message.content}`;
+          }
+        )
+        .join(
+          "\n\n"
+        );
+
+    try {
+      await navigator.clipboard.writeText(
+        text
+      );
+
+      extraToast(
+        "Sohbet panoya kopyalandı.",
+        "success"
+      );
+    } catch {
+      extraToast(
+        "Sohbet kopyalanamadı.",
+        "error"
+      );
+    }
+  }
+
+  /* ============================================================
+     GLOBAL ACTIONS
+     ============================================================ */
+
+  window.TURKAI_EXTRA = {
+    version:
+      "40.0-extension",
+
+    health:
+      () => lastHealth,
+
+    checkHealth:
+      checkServerHealth,
+
+    saveDraft,
+
+    loadDraft,
+
+    clearDraft,
+
+    clearChat:
+      clearCurrentChat,
+
+    searchMessages:
+      localMessageSearch,
+
+    showSearchResult:
+      showLocalSearch,
+
+    copyConversation,
+
+    focusComposer
+  };
+
+  /* ============================================================
+     EXTRA EVENT SETUP
+     ============================================================ */
+
+  function setup() {
+    loadDraft();
+
+    bindCommandInput();
+
+    bindKeyboardNavigation();
+
+    setupDragAndDrop();
+
+    startHealthMonitor();
+
+    startAutosave();
+
+    bindUnloadSave();
+
+    bindConnectionEvents();
+
+    setupMobileBehavior();
+
+    createDraftIndicator();
+
+    /*
+      Arama kutusu varsa,
+      Enter ile lokal sohbet araması.
+    */
+    const searchInput =
+      $("conversationSearch");
+
+    if (searchInput) {
+      searchInput.addEventListener(
+        "keydown",
+        (event) => {
+          if (
+            event.key ===
+            "Enter"
+          ) {
+            event.preventDefault();
+
+            showLocalSearch(
+              searchInput.value
+            );
+          }
+        }
+      );
+    }
+
+    /*
+      Kullanıcı input yazarken taslak kaydet.
+    */
+    $("messageInput")
+      ?.addEventListener(
+        "input",
+        saveDraft
+      );
+
+    /*
+      İlk açılışta bağlantıyı doğrula.
+    */
+    setTimeout(
+      checkServerHealth,
+      400
+    );
+  }
+
+  if (
+    document.readyState ===
+    "loading"
+  ) {
+    document.addEventListener(
+      "DOMContentLoaded",
+      setup,
+      {
+        once:
+          true
+      }
+    );
+  } else {
+    setup();
+  }
 
 })();
