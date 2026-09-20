@@ -41510,7 +41510,7 @@ global.turkAI.auth.plans =
 // 8.72 — COMPATIBILITY BRIDGES
 // ======================================================================
 
-const getUser =
+const getAuthUser =
     function (
         userId
     ) {
@@ -41528,7 +41528,7 @@ const getUser =
         );
     };
 
-const getUsage =
+const getAuthUsage =
     function (
         userId
     ) {
@@ -41538,7 +41538,7 @@ const getUsage =
         );
     };
 
-const canUseAI =
+const canUseAuthAI =
     function (
         userId
     ) {
@@ -41549,7 +41549,7 @@ const canUseAI =
         );
     };
 
-const incrementUsage =
+const incrementAuthUsage =
     function (
         userId
     ) {
@@ -45361,5 +45361,4 @@ process.on(
 startTurkAIServer10();
 
 console.log(
-    "🔥🔥🔥 TÜRKAI MASTER SERVER 50.0 — 10/10 TAMAMLANDI 🔥🔥🔥"
-);
+    "🔥🔥🔥 TÜRKAI MASTER SERVER 50.0 — 10/10 TAMAM
