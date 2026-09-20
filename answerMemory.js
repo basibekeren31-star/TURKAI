@@ -2,32 +2,27 @@
 
 /*
 ============================================================
- TÜRKAI — ANSWER MEMORY ENGINE
- PART 1 / 5
+TürkAI Answer Memory Engine
+Version: 5.0.0
+Part: 1/5
 ============================================================
 
- Dosya:
- C:\Users\OZCAN\Downloads\TURKAI\src\memory\answerMemory.js
+Amaç:
+- Sorular ve cevapları kalıcı olarak saklamak
+- Kullanıcı bazlı hafıza
+- Benzer soru bulma
+- Tekrar cevapları azaltma
+- Sıklık / kalite / güncellik takibi
+- JSON tabanlı güvenli depolama
+- Arama indeksi
+- İstatistik
+- Export / Import
+- Cache
+- Maintenance
+- TürkAI backend ile kolay entegrasyon
 
- Görevler:
- - Cevapları kalıcı olarak saklamak
- - Soruları normalize etmek
- - Aynı soruyu bulmak
- - Benzer soruları bulmak
- - Kullanıcı bazlı hafıza
- - Cevap kullanım istatistikleri
- - Hafıza puanlama altyapısı
- - JSON veri tabanı
- - Otomatik kayıt
- - Güvenli dosya işlemleri
-
- PART 1:
- - Temel altyapı
- - Storage sistemi
- - Normalizasyon
- - ID sistemi
- - Token sistemi
- - Temel AnswerMemory sınıfı
+Harici paket kullanılmaz.
+Node.js built-in modülleri yeterlidir.
 ============================================================
 */
 
@@ -36,10200 +31,11379 @@ const path = require("path");
 const crypto = require("crypto");
 
 /* =========================================================
-   1. PATH CONFIG
+   1.1 - ROOT CONFIG
 ========================================================= */
 
-const ROOT_DIR = path.resolve(__dirname, "../..");
+const ANSWER_MEMORY_VERSION = "5.0.0";
 
-const DATA_DIR = path.join(
-    ROOT_DIR,
-    "data"
-);
+const ANSWER_MEMORY_ROOT =
+    path.join(
+        __dirname,
+        "data",
+        "answer-memory"
+    );
 
-const MEMORY_DIR = path.join(
-    DATA_DIR,
-    "memory"
-);
+const ANSWER_MEMORY_ANSWERS_DIR =
+    path.join(
+        ANSWER_MEMORY_ROOT,
+        "answers"
+    );
 
-const ANSWER_MEMORY_FILE = path.join(
-    MEMORY_DIR,
-    "answer_memory.json"
-);
+const ANSWER_MEMORY_BACKUP_DIR =
+    path.join(
+        ANSWER_MEMORY_ROOT,
+        "backups"
+    );
 
-const ANSWER_MEMORY_BACKUP_DIR = path.join(
-    MEMORY_DIR,
-    "backups"
-);
+const ANSWER_MEMORY_EXPORT_DIR =
+    path.join(
+        ANSWER_MEMORY_ROOT,
+        "exports"
+    );
 
-const ANSWER_MEMORY_LOG_DIR = path.join(
-    MEMORY_DIR,
-    "logs"
-);
+const ANSWER_MEMORY_TEMP_DIR =
+    path.join(
+        ANSWER_MEMORY_ROOT,
+        "temp"
+    );
 
-/* =========================================================
-   2. DIRECTORY INITIALIZATION
-========================================================= */
+const ANSWER_MEMORY_LOG_DIR =
+    path.join(
+        ANSWER_MEMORY_ROOT,
+        "logs"
+    );
 
-function ensureDirectory(directory) {
-    try {
-        if (!fs.existsSync(directory)) {
-            fs.mkdirSync(directory, {
-                recursive: true
-            });
-        }
+const ANSWER_MEMORY_FILES = {
+    records:
+        path.join(
+            ANSWER_MEMORY_ROOT,
+            "records.json"
+        ),
 
-        return true;
-    } catch (error) {
-        console.error(
-            "[TürkAI Memory] Klasör oluşturulamadı:",
-            directory,
-            error.message
-        );
+    index:
+        path.join(
+            ANSWER_MEMORY_ROOT,
+            "index.json"
+        ),
 
-        return false;
-    }
-}
+    stats:
+        path.join(
+            ANSWER_MEMORY_ROOT,
+            "stats.json"
+        ),
 
-ensureDirectory(DATA_DIR);
-ensureDirectory(MEMORY_DIR);
-ensureDirectory(ANSWER_MEMORY_BACKUP_DIR);
-ensureDirectory(ANSWER_MEMORY_LOG_DIR);
+    history:
+        path.join(
+            ANSWER_MEMORY_ROOT,
+            "history.json"
+        ),
 
-/* =========================================================
-   3. MEMORY CONFIG
-========================================================= */
+    config:
+        path.join(
+            ANSWER_MEMORY_ROOT,
+            "config.json"
+        ),
 
-const MEMORY_CONFIG = {
+    users:
+        path.join(
+            ANSWER_MEMORY_ROOT,
+            "users.json"
+        ),
 
-    appName: "TürkAI",
-
-    version: "1.0.0",
-
-    storage: {
-
-        file: ANSWER_MEMORY_FILE,
-
-        backupDirectory: ANSWER_MEMORY_BACKUP_DIR,
-
-        logDirectory: ANSWER_MEMORY_LOG_DIR,
-
-        encoding: "utf8",
-
-        prettyJSON: true,
-
-        autoSave: true,
-
-        backupBeforeWrite: true,
-
-        maxBackups: 20
-
-    },
-
-    limits: {
-
-        maxEntries: 100000,
-
-        maxQuestionLength: 10000,
-
-        maxAnswerLength: 50000,
-
-        maxTags: 30,
-
-        maxTagLength: 100,
-
-        maxSources: 50,
-
-        maxSourceLength: 2000
-
-    },
-
-    similarity: {
-
-        enabled: true,
-
-        minimumScore: 0.58,
-
-        strongScore: 0.82,
-
-        exactScore: 1,
-
-        maxResults: 10
-
-    },
-
-    ranking: {
-
-        usageWeight: 0.08,
-
-        similarityWeight: 0.55,
-
-        qualityWeight: 0.17,
-
-        freshnessWeight: 0.10,
-
-        successWeight: 0.10
-
-    },
-
-    cleanup: {
-
-        enabled: true,
-
-        minimumAnswerLength: 1,
-
-        removeBrokenEntries: true,
-
-        removeEmptyQuestions: true
-
-    }
-
+    cache:
+        path.join(
+            ANSWER_MEMORY_ROOT,
+            "cache.json"
+        )
 };
 
 /* =========================================================
-   4. DEFAULT DATABASE
+   1.2 - DEFAULT CONFIG
 ========================================================= */
 
-function createDefaultDatabase() {
+const DEFAULT_ANSWER_MEMORY_CONFIG = {
+    version:
+        ANSWER_MEMORY_VERSION,
 
-    return {
+    enabled:
+        true,
 
-        version: MEMORY_CONFIG.version,
+    autoSave:
+        true,
 
-        createdAt: new Date().toISOString(),
+    autoLearn:
+        true,
 
-        updatedAt: new Date().toISOString(),
+    duplicateSimilarity:
+        0.92,
 
-        totalEntries: 0,
+    minimumQuestionLength:
+        4,
 
-        totalLookups: 0,
+    minimumAnswerLength:
+        2,
 
-        totalHits: 0,
+    maximumQuestionLength:
+        10000,
 
-        totalMisses: 0,
+    maximumAnswerLength:
+        30000,
 
-        totalSaves: 0,
+    maximumRecords:
+        100000,
 
-        totalUpdates: 0,
+    maximumHistory:
+        50000,
 
-        totalErrors: 0,
+    maximumSearchResults:
+        20,
 
-        entries: {}
+    defaultTopK:
+        8,
 
-    };
+    cacheEnabled:
+        true,
 
-}
+    cacheTTL:
+        1000 * 60 * 15,
+
+    recencyHalfLife:
+        1000 * 60 * 60 * 24 * 30,
+
+    qualityDefault:
+        0.70,
+
+    frequencyWeight:
+        0.15,
+
+    similarityWeight:
+        0.60,
+
+    recencyWeight:
+        0.15,
+
+    qualityWeight:
+        0.10,
+
+    exactMatchBonus:
+        0.20,
+
+    phraseMatchBonus:
+        0.10,
+
+    userMatchBonus:
+        0.10,
+
+    globalMatchBonus:
+        0.03,
+
+    minimumScoreToReturn:
+        0.35,
+
+    normalizeTurkishChars:
+        true,
+
+    keepOriginalText:
+        true,
+
+    indexEnabled:
+        true,
+
+    autoBackup:
+        true,
+
+    backupEveryWrites:
+        100,
+
+    maxBackupFiles:
+        20,
+
+    historyEnabled:
+        true,
+
+    loggingEnabled:
+        true,
+
+    privacyMode:
+        false,
+
+    defaultUserId:
+        "system",
+
+    defaultUserName:
+        "TürkAI",
+
+    allowAnonymous:
+        true,
+
+    anonymousUserId:
+        "anonymous"
+};
 
 /* =========================================================
-   5. CLONE
+   1.3 - BASIC HELPERS
 ========================================================= */
 
-function clone(value) {
+function answerMemoryNowISO() {
+    return new Date().toISOString();
+}
 
-    try {
+function answerMemoryTimestamp() {
+    return Date.now();
+}
 
-        return JSON.parse(
-            JSON.stringify(value)
-        );
+function answerMemoryCreateId(prefix = "am") {
+    const random =
+        crypto.randomBytes(10).toString("hex");
 
-    } catch (error) {
+    return (
+        prefix +
+        "_" +
+        Date.now().toString(36) +
+        "_" +
+        random
+    );
+}
 
-        return value;
+function answerMemoryHash(value) {
+    return crypto
+        .createHash("sha256")
+        .update(
+            String(
+                value === undefined ||
+                value === null
+                    ? ""
+                    : value
+            ),
+            "utf8"
+        )
+        .digest("hex");
+}
 
+function answerMemorySafeString(
+    value,
+    fallback = ""
+) {
+    if (
+        value === undefined ||
+        value === null
+    ) {
+        return fallback;
     }
 
+    if (
+        typeof value === "string"
+    ) {
+        return value;
+    }
+
+    if (
+        typeof value === "number" ||
+        typeof value === "boolean" ||
+        typeof value === "bigint"
+    ) {
+        return String(value);
+    }
+
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return fallback;
+    }
+}
+
+function answerMemoryClamp(
+    number,
+    min,
+    max
+) {
+    const n =
+        Number(number);
+
+    if (
+        !Number.isFinite(n)
+    ) {
+        return min;
+    }
+
+    return Math.min(
+        max,
+        Math.max(min, n)
+    );
+}
+
+function answerMemoryEnsureArray(
+    value
+) {
+    return Array.isArray(value)
+        ? value
+        : [];
+}
+
+function answerMemoryEnsureObject(
+    value
+) {
+    if (
+        value &&
+        typeof value === "object" &&
+        !Array.isArray(value)
+    ) {
+        return value;
+    }
+
+    return {};
 }
 
 /* =========================================================
-   6. SAFE JSON READ
+   1.4 - DIRECTORY INITIALIZATION
 ========================================================= */
 
-function readJSON(filePath, fallback = null) {
+function answerMemoryEnsureDirectories() {
+    const directories = [
+        ANSWER_MEMORY_ROOT,
+        ANSWER_MEMORY_ANSWERS_DIR,
+        ANSWER_MEMORY_BACKUP_DIR,
+        ANSWER_MEMORY_EXPORT_DIR,
+        ANSWER_MEMORY_TEMP_DIR,
+        ANSWER_MEMORY_LOG_DIR
+    ];
 
+    for (
+        const directory
+        of directories
+    ) {
+        try {
+            fs.mkdirSync(
+                directory,
+                {
+                    recursive: true
+                }
+            );
+        } catch (error) {
+            console.error(
+                "[AnswerMemory] Directory error:",
+                directory,
+                error.message
+            );
+        }
+    }
+}
+
+/* =========================================================
+   1.5 - JSON STORAGE HELPERS
+========================================================= */
+
+function answerMemoryReadJSON(
+    filePath,
+    fallback
+) {
     try {
-
-        if (!fs.existsSync(filePath)) {
-
+        if (
+            !fs.existsSync(filePath)
+        ) {
             return fallback;
-
         }
 
-        const raw = fs.readFileSync(
-            filePath,
-            MEMORY_CONFIG.storage.encoding
-        );
+        const raw =
+            fs.readFileSync(
+                filePath,
+                "utf8"
+            );
 
-        if (!raw.trim()) {
-
+        if (
+            !raw.trim()
+        ) {
             return fallback;
-
         }
 
         return JSON.parse(raw);
-
     } catch (error) {
-
-        console.error(
-            "[TürkAI Memory] JSON okunamadı:",
+        console.warn(
+            "[AnswerMemory] Read failed:",
             filePath,
             error.message
         );
 
         return fallback;
-
     }
-
 }
 
-/* =========================================================
-   7. SAFE JSON WRITE
-========================================================= */
-
-function writeJSON(filePath, data) {
-
+function answerMemoryWriteJSON(
+    filePath,
+    data
+) {
     try {
+        const directory =
+            path.dirname(
+                filePath
+            );
 
-        ensureDirectory(
-            path.dirname(filePath)
-        );
-
-        const tempFile =
-            `${filePath}.tmp`;
-
-        const json = JSON.stringify(
-            data,
-            null,
-            MEMORY_CONFIG.storage.prettyJSON
-                ? 2
-                : 0
-        );
-
-        fs.writeFileSync(
-            tempFile,
-            json,
+        fs.mkdirSync(
+            directory,
             {
-                encoding:
-                    MEMORY_CONFIG.storage.encoding
+                recursive: true
             }
         );
 
+        const temporaryFile =
+            filePath +
+            ".tmp-" +
+            process.pid +
+            "-" +
+            Date.now();
+
+        fs.writeFileSync(
+            temporaryFile,
+            JSON.stringify(
+                data,
+                null,
+                2
+            ),
+            "utf8"
+        );
+
         fs.renameSync(
-            tempFile,
+            temporaryFile,
             filePath
         );
 
         return true;
-
     } catch (error) {
-
         console.error(
-            "[TürkAI Memory] JSON yazılamadı:",
+            "[AnswerMemory] Write failed:",
             filePath,
             error.message
         );
 
         return false;
-
     }
+}
 
+function answerMemoryAppendJSONL(
+    filePath,
+    data
+) {
+    try {
+        fs.mkdirSync(
+            path.dirname(filePath),
+            {
+                recursive: true
+            }
+        );
+
+        fs.appendFileSync(
+            filePath,
+            JSON.stringify(data) +
+                "\n",
+            "utf8"
+        );
+
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 /* =========================================================
-   8. BACKUP
+   1.6 - MAIN CLASS
 ========================================================= */
 
-function createBackup() {
+class AnswerMemory {
+    constructor(
+        options = {}
+    ) {
+        answerMemoryEnsureDirectories();
 
-    try {
-
-        if (
-            !fs.existsSync(
-                ANSWER_MEMORY_FILE
-            )
-        ) {
-
-            return null;
-
-        }
-
-        const timestamp =
-            new Date()
-                .toISOString()
-                .replace(/[:.]/g, "-");
-
-        const backupFile = path.join(
-            ANSWER_MEMORY_BACKUP_DIR,
-            `answer_memory_${timestamp}.json`
-        );
-
-        fs.copyFileSync(
-            ANSWER_MEMORY_FILE,
-            backupFile
-        );
-
-        cleanupBackups();
-
-        return backupFile;
-
-    } catch (error) {
-
-        console.error(
-            "[TürkAI Memory] Backup hatası:",
-            error.message
-        );
-
-        return null;
-
-    }
-
-}
-
-/* =========================================================
-   9. BACKUP CLEANUP
-========================================================= */
-
-function cleanupBackups() {
-
-    try {
-
-        if (
-            !fs.existsSync(
-                ANSWER_MEMORY_BACKUP_DIR
-            )
-        ) {
-
-            return;
-
-        }
-
-        const files =
-            fs.readdirSync(
-                ANSWER_MEMORY_BACKUP_DIR
-            )
-                .filter(
-                    file =>
-                        file.startsWith(
-                            "answer_memory_"
-                        ) &&
-                        file.endsWith(
-                            ".json"
-                        )
+        this.config =
+            Object.assign(
+                {},
+                DEFAULT_ANSWER_MEMORY_CONFIG,
+                answerMemoryEnsureObject(
+                    options.config
                 )
-                .map(file => {
+            );
 
-                    const fullPath =
-                        path.join(
-                            ANSWER_MEMORY_BACKUP_DIR,
-                            file
-                        );
+        this.records = {};
+        this.index = {};
+        this.userIndex = {};
+        this.stats = {};
+        this.history = [];
+        this.cache = {};
+        this.writeCount = 0;
+        this.startedAt =
+            answerMemoryNowISO();
 
-                    const stat =
-                        fs.statSync(
-                            fullPath
-                        );
+        this.loaded =
+            false;
 
-                    return {
+        this.lastLoadError =
+            null;
 
-                        file,
+        this.lastWriteAt =
+            null;
 
-                        fullPath,
+        this.searchCount =
+            0;
 
-                        time:
-                            stat.mtimeMs
+        this.hitCount =
+            0;
 
-                    };
+        this.missCount =
+            0;
 
-                })
-                .sort(
-                    (a, b) =>
-                        b.time - a.time
+        this.initialize();
+    }
+
+    /* =====================================================
+       INITIALIZE
+    ===================================================== */
+
+    initialize() {
+        answerMemoryEnsureDirectories();
+
+        this.loadConfig();
+        this.loadRecords();
+        this.loadIndex();
+        this.loadUsers();
+        this.loadStats();
+        this.loadHistory();
+        this.loadCache();
+
+        this.rebuildIndexesIfNeeded();
+
+        this.loaded = true;
+
+        this.log(
+            "initialized",
+            {
+                version:
+                    ANSWER_MEMORY_VERSION,
+                records:
+                    Object.keys(
+                        this.records
+                    ).length
+            }
+        );
+
+        return this;
+    }
+
+    /* =====================================================
+       CONFIG
+    ===================================================== */
+
+    loadConfig() {
+        const stored =
+            answerMemoryReadJSON(
+                ANSWER_MEMORY_FILES.config,
+                {}
+            );
+
+        this.config =
+            Object.assign(
+                {},
+                DEFAULT_ANSWER_MEMORY_CONFIG,
+                answerMemoryEnsureObject(
+                    stored
+                )
+            );
+
+        return this.config;
+    }
+
+    saveConfig(
+        patch = {}
+    ) {
+        this.config =
+            Object.assign(
+                {},
+                this.config,
+                answerMemoryEnsureObject(
+                    patch
+                )
+            );
+
+        answerMemoryWriteJSON(
+            ANSWER_MEMORY_FILES.config,
+            this.config
+        );
+
+        return this.config;
+    }
+
+    getConfig() {
+        return {
+            ...this.config
+        };
+    }
+
+    /* =====================================================
+       RECORDS
+    ===================================================== */
+
+    loadRecords() {
+        const data =
+            answerMemoryReadJSON(
+                ANSWER_MEMORY_FILES.records,
+                {}
+            );
+
+        this.records =
+            answerMemoryEnsureObject(
+                data
+            );
+
+        return this.records;
+    }
+
+    loadIndex() {
+        const data =
+            answerMemoryReadJSON(
+                ANSWER_MEMORY_FILES.index,
+                {}
+            );
+
+        this.index =
+            answerMemoryEnsureObject(
+                data.index
+            );
+
+        this.userIndex =
+            answerMemoryEnsureObject(
+                data.userIndex
+            );
+
+        return this.index;
+    }
+
+    loadUsers() {
+        const data =
+            answerMemoryReadJSON(
+                ANSWER_MEMORY_FILES.users,
+                {}
+            );
+
+        this.userIndex =
+            answerMemoryEnsureObject(
+                data
+            );
+
+        return this.userIndex;
+    }
+
+    loadStats() {
+        const defaultStats = {
+            totalEntries: 0,
+            totalReads: 0,
+            totalWrites: 0,
+            totalHits: 0,
+            totalMisses: 0,
+            duplicates: 0,
+            updates: 0,
+            deletions: 0,
+            searches: 0,
+            cacheHits: 0,
+            cacheMisses: 0,
+            imports: 0,
+            exports: 0,
+            rebuilds: 0,
+            backups: 0,
+            errors: 0,
+            lastWrite: null,
+            lastRead: null,
+            lastHit: null,
+            lastMiss: null,
+            lastSearch: null,
+            lastMaintenance: null,
+            lastBackup: null
+        };
+
+        const stored =
+            answerMemoryReadJSON(
+                ANSWER_MEMORY_FILES.stats,
+                {}
+            );
+
+        this.stats =
+            Object.assign(
+                {},
+                defaultStats,
+                answerMemoryEnsureObject(
+                    stored
+                )
+            );
+
+        return this.stats;
+    }
+
+    loadHistory() {
+        const stored =
+            answerMemoryReadJSON(
+                ANSWER_MEMORY_FILES.history,
+                []
+            );
+
+        this.history =
+            Array.isArray(stored)
+                ? stored
+                : [];
+
+        if (
+            this.history.length >
+            this.config.maximumHistory
+        ) {
+            this.history =
+                this.history.slice(
+                    -this.config.maximumHistory
                 );
-
-        const max =
-            MEMORY_CONFIG.storage.maxBackups;
-
-        if (files.length <= max) {
-
-            return;
-
         }
 
-        files
-            .slice(max)
-            .forEach(item => {
-
-                try {
-
-                    fs.unlinkSync(
-                        item.fullPath
-                    );
-
-                } catch (_) {}
-
-            });
-
-    } catch (error) {
-
-        console.error(
-            "[TürkAI Memory] Backup temizleme hatası:",
-            error.message
-        );
-
+        return this.history;
     }
 
-}
+    loadCache() {
+        const stored =
+            answerMemoryReadJSON(
+                ANSWER_MEMORY_FILES.cache,
+                {}
+            );
 
-/* =========================================================
-   10. INITIALIZE DATABASE
-========================================================= */
+        this.cache =
+            answerMemoryEnsureObject(
+                stored
+            );
 
-function initializeDatabase() {
-
-    let database =
-        readJSON(
-            ANSWER_MEMORY_FILE,
-            null
-        );
-
-    if (
-        !database ||
-        typeof database !== "object"
-    ) {
-
-        database =
-            createDefaultDatabase();
-
-        writeJSON(
-            ANSWER_MEMORY_FILE,
-            database
-        );
-
+        return this.cache;
     }
 
-    if (
-        !database.entries ||
-        typeof database.entries !== "object"
+    /* =====================================================
+       SAVE CORE STORAGE
+    ===================================================== */
+
+    persist(
+        options = {}
     ) {
+        answerMemoryWriteJSON(
+            ANSWER_MEMORY_FILES.records,
+            this.records
+        );
 
-        database.entries = {};
+        answerMemoryWriteJSON(
+            ANSWER_MEMORY_FILES.index,
+            {
+                index:
+                    this.index,
+                userIndex:
+                    this.userIndex
+            }
+        );
 
+        answerMemoryWriteJSON(
+            ANSWER_MEMORY_FILES.users,
+            this.userIndex
+        );
+
+        answerMemoryWriteJSON(
+            ANSWER_MEMORY_FILES.stats,
+            this.stats
+        );
+
+        if (
+            this.config.historyEnabled
+        ) {
+            answerMemoryWriteJSON(
+                ANSWER_MEMORY_FILES.history,
+                this.history
+            );
+        }
+
+        if (
+            this.config.cacheEnabled
+        ) {
+            answerMemoryWriteJSON(
+                ANSWER_MEMORY_FILES.cache,
+                this.cache
+            );
+        }
+
+        this.lastWriteAt =
+            answerMemoryNowISO();
+
+        this.writeCount++;
+
+        if (
+            options.backup === true
+        ) {
+            this.createBackup();
+        } else if (
+            this.config.autoBackup &&
+            this.writeCount >=
+                this.config.backupEveryWrites
+        ) {
+            this.createBackup();
+            this.writeCount = 0;
+        }
+
+        return true;
     }
 
-    if (
-        typeof database.totalEntries !==
-        "number"
-    ) {
+    /* =====================================================
+       SIMPLE API
+    ===================================================== */
 
-        database.totalEntries =
+    save(
+        question,
+        answer,
+        options = {}
+    ) {
+        return this.saveAnswer(
+            question,
+            answer,
+            options
+        );
+    }
+
+    remember(
+        question,
+        answer,
+        options = {}
+    ) {
+        return this.saveAnswer(
+            question,
+            answer,
+            options
+        );
+    }
+
+    find(
+        question,
+        options = {}
+    ) {
+        return this.search(
+            question,
+            options
+        );
+    }
+
+    getStats() {
+        this.stats.totalEntries =
             Object.keys(
-                database.entries
+                this.records
             ).length;
 
+        return {
+            ...this.stats
+        };
     }
 
-    if (
-        typeof database.totalLookups !==
-        "number"
-    ) {
+    health() {
+        return {
+            ok:
+                this.loaded === true &&
+                this.config.enabled === true,
 
-        database.totalLookups = 0;
+            enabled:
+                this.config.enabled,
 
+            loaded:
+                this.loaded,
+
+            version:
+                ANSWER_MEMORY_VERSION,
+
+            records:
+                Object.keys(
+                    this.records
+                ).length,
+
+            indexedTokens:
+                Object.keys(
+                    this.index
+                ).length,
+
+            uptimeSeconds:
+                Math.max(
+                    0,
+                    (
+                        Date.now() -
+                        new Date(
+                            this.startedAt
+                        ).getTime()
+                    ) /
+                        1000
+                ),
+
+            lastWrite:
+                this.stats.lastWrite,
+
+            lastRead:
+                this.stats.lastRead,
+
+            lastHit:
+                this.stats.lastHit,
+
+            lastMiss:
+                this.stats.lastMiss,
+
+            error:
+                this.lastLoadError
+        };
     }
-
-    if (
-        typeof database.totalHits !==
-        "number"
-    ) {
-
-        database.totalHits = 0;
-
-    }
-
-    if (
-        typeof database.totalMisses !==
-        "number"
-    ) {
-
-        database.totalMisses = 0;
-
-    }
-
-    if (
-        typeof database.totalSaves !==
-        "number"
-    ) {
-
-        database.totalSaves = 0;
-
-    }
-
-    if (
-        typeof database.totalUpdates !==
-        "number"
-    ) {
-
-        database.totalUpdates = 0;
-
-    }
-
-    if (
-        typeof database.totalErrors !==
-        "number"
-    ) {
-
-        database.totalErrors = 0;
-
-    }
-
-    database.updatedAt =
-        new Date().toISOString();
-
-    writeJSON(
-        ANSWER_MEMORY_FILE,
-        database
-    );
-
-    return database;
-
 }
 
-/* =========================================================
-   11. DATABASE INSTANCE
-========================================================= */
+module.exports = {
+    AnswerMemory,
+    ANSWER_MEMORY_VERSION,
+    DEFAULT_ANSWER_MEMORY_CONFIG,
+    ANSWER_MEMORY_ROOT,
+    ANSWER_MEMORY_FILES
+};
+/* ============================================================
+   TÜRKAI ANSWER MEMORY ENGINE 5.0
+   PART 2 / 5
+   NORMALIZATION + TOKENIZATION + SIMILARITY
+   + RECORD ENGINE + DUPLICATE DETECTION
+============================================================ */
 
-let database =
-    initializeDatabase();
+/* ============================================================
+   2.0 - TEXT NORMALIZATION CORE
+============================================================ */
 
-/* =========================================================
-   12. ID GENERATOR
-========================================================= */
-
-function generateId(prefix = "mem") {
-
-    const random =
-        crypto.randomBytes(12)
-            .toString("hex");
-
-    const timestamp =
-        Date.now().toString(36);
-
-    return `${prefix}_${timestamp}_${random}`;
-
-}
-
-/* =========================================================
-   13. HASH GENERATOR
-========================================================= */
-
-function createHash(value) {
-
-    return crypto
-        .createHash("sha256")
-        .update(
-            String(value),
-            "utf8"
-        )
-        .digest("hex");
-
-}
-
-/* =========================================================
-   14. TEXT CLEANER
-========================================================= */
-
-function cleanText(value) {
-
-    if (
-        value === undefined ||
-        value === null
-    ) {
-
-        return "";
-
-    }
-
-    return String(value)
-        .replace(/\u0000/g, "")
-        .replace(/\r\n/g, "\n")
-        .replace(/\r/g, "\n")
-        .replace(/[ \t]+/g, " ")
-        .replace(/\n{4,}/g, "\n\n")
-        .trim();
-
-}
-
-/* =========================================================
-   15. QUESTION NORMALIZER
-========================================================= */
-
-function normalizeQuestion(question) {
-
-    let text =
-        cleanText(question);
-
-    text =
-        text.toLocaleLowerCase(
-            "tr-TR"
+function answerMemoryNormalizeTurkish(
+    text
+) {
+    let value =
+        answerMemorySafeString(
+            text,
+            ""
         );
 
-    text =
-        text
-            .replace(/[“”„"]/g, "")
-            .replace(/[‘’']/g, "")
-            .replace(/[!?.,;:()[\]{}]/g, " ")
-            .replace(/[-_/\\]/g, " ")
-            .replace(/\s+/g, " ")
-            .trim();
+    if (!value) {
+        return "";
+    }
 
-    return text;
+    try {
+        value =
+            value.normalize(
+                "NFKC"
+            );
+    } catch {
+        // Unicode normalize desteklenmezse
+        // orijinal metin kullanılmaya devam eder.
+    }
 
+    value =
+        value.replace(
+            /\u00A0/g,
+            " "
+        );
+
+    value =
+        value.replace(
+            /[\u200B-\u200D\uFEFF]/g,
+            ""
+        );
+
+    /*
+    ------------------------------------------------------------
+    Türkçe karakterleri bozmadan küçük harfe çeviriyoruz.
+    ------------------------------------------------------------
+    */
+
+    try {
+        value =
+            value.toLocaleLowerCase(
+                "tr-TR"
+            );
+    } catch {
+        value =
+            value.toLowerCase();
+    }
+
+    value =
+        value
+            .replace(
+                /“|”|„|‟|«|»/g,
+                '"'
+            )
+            .replace(
+                /‘|’|‚|‛|‹|›/g,
+                "'"
+            );
+
+    value =
+        value.replace(
+            /\r\n/g,
+            "\n"
+        );
+
+    value =
+        value.replace(
+            /\r/g,
+            "\n"
+        );
+
+    value =
+        value.replace(
+            /\t+/g,
+            " "
+        );
+
+    value =
+        value.replace(
+            / +/g,
+            " "
+        );
+
+    value =
+        value
+            .split("\n")
+            .map(
+                line =>
+                    line.trim()
+            )
+            .filter(
+                line =>
+                    line.length > 0
+            )
+            .join("\n");
+
+    return value.trim();
 }
 
-/* =========================================================
-   16. ANSWER NORMALIZER
-========================================================= */
 
-function normalizeAnswer(answer) {
+/* ============================================================
+   2.1 - SEARCH NORMALIZATION
+============================================================ */
 
-    return cleanText(answer);
+function answerMemorySearchNormalize(
+    text
+) {
+    let value =
+        answerMemoryNormalizeTurkish(
+            text
+        );
 
+    if (!value) {
+        return "";
+    }
+
+    /*
+    ------------------------------------------------------------
+    URL'leri arama metninden çıkar.
+    ------------------------------------------------------------
+    */
+
+    value =
+        value.replace(
+            /https?:\/\/[^\s]+/gi,
+            " "
+        );
+
+    value =
+        value.replace(
+            /www\.[^\s]+/gi,
+            " "
+        );
+
+    /*
+    ------------------------------------------------------------
+    Mention / hashtag
+    ------------------------------------------------------------
+    */
+
+    value =
+        value.replace(
+            /[@#][\p{L}\p{N}_-]+/gu,
+            " "
+        );
+
+    /*
+    ------------------------------------------------------------
+    Noktalama işaretlerini temizle.
+    Türkçe harfler korunur.
+    ------------------------------------------------------------
+    */
+
+    value =
+        value.replace(
+            /[^\p{L}\p{N}\s']/gu,
+            " "
+        );
+
+    /*
+    ------------------------------------------------------------
+    Tekrarlayan boşlukları toparla.
+    ------------------------------------------------------------
+    */
+
+    value =
+        value.replace(
+            /\s+/g,
+            " "
+        );
+
+    return value.trim();
 }
 
-/* =========================================================
-   17. TOKENIZER
-========================================================= */
 
-function tokenize(text) {
+/* ============================================================
+   2.2 - TOKENIZATION
+============================================================ */
 
+function answerMemoryTokenize(
+    text
+) {
     const normalized =
-        normalizeQuestion(text);
+        answerMemorySearchNormalize(
+            text
+        );
 
     if (!normalized) {
-
         return [];
-
     }
 
     return normalized
         .split(/\s+/)
-        .filter(Boolean);
-
+        .map(
+            token =>
+                token.trim()
+        )
+        .filter(
+            token =>
+                token.length > 0
+        );
 }
 
-/* =========================================================
-   18. UNIQUE TOKENS
-========================================================= */
 
-function uniqueTokens(tokens) {
+/* ============================================================
+   2.3 - UNIQUE ARRAY
+============================================================ */
+
+function answerMemoryUniqueArray(
+    array
+) {
+    if (
+        !Array.isArray(array)
+    ) {
+        return [];
+    }
 
     return [
         ...new Set(
-            tokens
-                .filter(Boolean)
+            array
+                .map(
+                    value =>
+                        String(
+                            value
+                        )
+                )
+                .filter(
+                    value =>
+                        value.length > 0
+                )
         )
     ];
-
 }
 
-/* =========================================================
-   19. TOKEN SET
-========================================================= */
 
-function tokenSet(text) {
+/* ============================================================
+   2.4 - TOKEN SET
+============================================================ */
+
+function answerMemoryCreateTokenSet(
+    textOrTokens
+) {
+    if (
+        textOrTokens instanceof Set
+    ) {
+        return new Set(
+            textOrTokens
+        );
+    }
+
+    if (
+        Array.isArray(
+            textOrTokens
+        )
+    ) {
+        return new Set(
+            textOrTokens
+        );
+    }
 
     return new Set(
-        uniqueTokens(
-            tokenize(text)
+        answerMemoryTokenize(
+            textOrTokens
         )
     );
-
 }
 
-/* =========================================================
-   20. JACCARD SIMILARITY
-========================================================= */
 
-function jaccardSimilarity(
-    textA,
-    textB
+/* ============================================================
+   2.5 - INTERSECTION COUNT
+============================================================ */
+
+function answerMemoryIntersectionCount(
+    setA,
+    setB
 ) {
+    const a =
+        answerMemoryCreateTokenSet(
+            setA
+        );
 
+    const b =
+        answerMemoryCreateTokenSet(
+            setB
+        );
+
+    if (
+        a.size === 0 ||
+        b.size === 0
+    ) {
+        return 0;
+    }
+
+    let count = 0;
+
+    /*
+    Daha küçük olan kümeden dolaşmak
+    performansı artırır.
+    */
+
+    const smaller =
+        a.size <= b.size
+            ? a
+            : b;
+
+    const larger =
+        a.size <= b.size
+            ? b
+            : a;
+
+    for (
+        const token
+        of smaller
+    ) {
+        if (
+            larger.has(
+                token
+            )
+        ) {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+
+/* ============================================================
+   2.6 - JACCARD SIMILARITY
+============================================================ */
+
+function answerMemoryJaccardSimilarity(
+    a,
+    b
+) {
     const setA =
-        tokenSet(textA);
+        answerMemoryCreateTokenSet(
+            a
+        );
 
     const setB =
-        tokenSet(textB);
+        answerMemoryCreateTokenSet(
+            b
+        );
 
     if (
         setA.size === 0 &&
         setB.size === 0
     ) {
-
         return 1;
-
     }
 
     if (
         setA.size === 0 ||
         setB.size === 0
     ) {
-
         return 0;
-
     }
 
-    let intersection = 0;
-
-    for (const token of setA) {
-
-        if (setB.has(token)) {
-
-            intersection++;
-
-        }
-
-    }
+    const intersection =
+        answerMemoryIntersectionCount(
+            setA,
+            setB
+        );
 
     const union =
-        new Set([
-            ...setA,
-            ...setB
-        ]).size;
-
-    if (!union) {
-
-        return 0;
-
-    }
-
-    return intersection / union;
-
-}
-
-/* =========================================================
-   21. COSINE SIMILARITY
-========================================================= */
-
-function cosineSimilarity(
-    textA,
-    textB
-) {
-
-    const tokensA =
-        tokenize(textA);
-
-    const tokensB =
-        tokenize(textB);
+        setA.size +
+        setB.size -
+        intersection;
 
     if (
-        tokensA.length === 0 ||
-        tokensB.length === 0
+        union <= 0
     ) {
-
         return 0;
-
     }
 
-    const frequencyA = {};
-    const frequencyB = {};
-
-    for (const token of tokensA) {
-
-        frequencyA[token] =
-            (frequencyA[token] || 0) + 1;
-
-    }
-
-    for (const token of tokensB) {
-
-        frequencyB[token] =
-            (frequencyB[token] || 0) + 1;
-
-    }
-
-    const allTokens =
-        new Set([
-            ...Object.keys(frequencyA),
-            ...Object.keys(frequencyB)
-        ]);
-
-    let dot = 0;
-    let magnitudeA = 0;
-    let magnitudeB = 0;
-
-    for (const token of allTokens) {
-
-        const a =
-            frequencyA[token] || 0;
-
-        const b =
-            frequencyB[token] || 0;
-
-        dot += a * b;
-
-        magnitudeA += a * a;
-
-        magnitudeB += b * b;
-
-    }
-
-    if (
-        magnitudeA === 0 ||
-        magnitudeB === 0
-    ) {
-
-        return 0;
-
-    }
-
-    return (
-        dot /
-        (
-            Math.sqrt(magnitudeA) *
-            Math.sqrt(magnitudeB)
-        )
+    return answerMemoryClamp(
+        intersection / union,
+        0,
+        1
     );
-
 }
 
-/* =========================================================
-   22. HYBRID SIMILARITY
-========================================================= */
 
-function calculateSimilarity(
-    questionA,
-    questionB
+/* ============================================================
+   2.7 - DICE SIMILARITY
+============================================================ */
+
+function answerMemoryDiceSimilarity(
+    a,
+    b
 ) {
+    const setA =
+        answerMemoryCreateTokenSet(
+            a
+        );
 
+    const setB =
+        answerMemoryCreateTokenSet(
+            b
+        );
+
+    if (
+        setA.size === 0 &&
+        setB.size === 0
+    ) {
+        return 1;
+    }
+
+    if (
+        setA.size === 0 ||
+        setB.size === 0
+    ) {
+        return 0;
+    }
+
+    const intersection =
+        answerMemoryIntersectionCount(
+            setA,
+            setB
+        );
+
+    return answerMemoryClamp(
+        (
+            2 *
+            intersection
+        ) /
+        (
+            setA.size +
+            setB.size
+        ),
+        0,
+        1
+    );
+}
+
+
+/* ============================================================
+   2.8 - OVERLAP SCORE
+============================================================ */
+
+function answerMemoryTokenOverlap(
+    queryTokens,
+    candidateTokens
+) {
+    const query =
+        answerMemoryCreateTokenSet(
+            queryTokens
+        );
+
+    const candidate =
+        answerMemoryCreateTokenSet(
+            candidateTokens
+        );
+
+    if (
+        query.size === 0 ||
+        candidate.size === 0
+    ) {
+        return 0;
+    }
+
+    const intersection =
+        answerMemoryIntersectionCount(
+            query,
+            candidate
+        );
+
+    return answerMemoryClamp(
+        intersection /
+            Math.max(
+                1,
+                query.size
+            ),
+        0,
+        1
+    );
+}
+
+
+/* ============================================================
+   2.9 - PRECISION SCORE
+============================================================ */
+
+function answerMemoryPrecision(
+    queryTokens,
+    candidateTokens
+) {
+    const query =
+        answerMemoryCreateTokenSet(
+            queryTokens
+        );
+
+    const candidate =
+        answerMemoryCreateTokenSet(
+            candidateTokens
+        );
+
+    if (
+        candidate.size === 0
+    ) {
+        return 0;
+    }
+
+    const intersection =
+        answerMemoryIntersectionCount(
+            query,
+            candidate
+        );
+
+    return answerMemoryClamp(
+        intersection /
+            Math.max(
+                1,
+                candidate.size
+            ),
+        0,
+        1
+    );
+}
+
+
+/* ============================================================
+   2.10 - RECALL SCORE
+============================================================ */
+
+function answerMemoryRecall(
+    queryTokens,
+    candidateTokens
+) {
+    const query =
+        answerMemoryCreateTokenSet(
+            queryTokens
+        );
+
+    const candidate =
+        answerMemoryCreateTokenSet(
+            candidateTokens
+        );
+
+    if (
+        query.size === 0
+    ) {
+        return 0;
+    }
+
+    const intersection =
+        answerMemoryIntersectionCount(
+            query,
+            candidate
+        );
+
+    return answerMemoryClamp(
+        intersection /
+            Math.max(
+                1,
+                query.size
+            ),
+        0,
+        1
+    );
+}
+
+
+/* ============================================================
+   2.11 - F1 SCORE
+============================================================ */
+
+function answerMemoryF1(
+    queryTokens,
+    candidateTokens
+) {
+    const precision =
+        answerMemoryPrecision(
+            queryTokens,
+            candidateTokens
+        );
+
+    const recall =
+        answerMemoryRecall(
+            queryTokens,
+            candidateTokens
+        );
+
+    if (
+        precision === 0 &&
+        recall === 0
+    ) {
+        return 0;
+    }
+
+    return answerMemoryClamp(
+        (
+            2 *
+            precision *
+            recall
+        ) /
+        (
+            precision +
+            recall
+        ),
+        0,
+        1
+    );
+}
+
+
+/* ============================================================
+   2.12 - CHARACTER N-GRAM
+============================================================ */
+
+function answerMemoryCharacterNgrams(
+    text,
+    size = 3
+) {
+    const normalized =
+        answerMemorySearchNormalize(
+            text
+        );
+
+    if (
+        !normalized
+    ) {
+        return [];
+    }
+
+    const compact =
+        normalized.replace(
+            /\s+/g,
+            " "
+        );
+
+    const n =
+        Math.max(
+            1,
+            Number(size) || 3
+        );
+
+    const result = [];
+
+    if (
+        compact.length <= n
+    ) {
+        return [
+            compact
+        ];
+    }
+
+    for (
+        let i = 0;
+        i <=
+            compact.length -
+                n;
+        i++
+    ) {
+        result.push(
+            compact.slice(
+                i,
+                i + n
+            )
+        );
+    }
+
+    return answerMemoryUniqueArray(
+        result
+    );
+}
+
+
+/* ============================================================
+   2.13 - CHARACTER N-GRAM SIMILARITY
+============================================================ */
+
+function answerMemoryNgramSimilarity(
+    a,
+    b,
+    size = 3
+) {
+    const gramsA =
+        answerMemoryCharacterNgrams(
+            a,
+            size
+        );
+
+    const gramsB =
+        answerMemoryCharacterNgrams(
+            b,
+            size
+        );
+
+    return answerMemoryJaccardSimilarity(
+        gramsA,
+        gramsB
+    );
+}
+
+
+/* ============================================================
+   2.14 - EXACT TEXT SCORE
+============================================================ */
+
+function answerMemoryExactScore(
+    a,
+    b
+) {
     const normalizedA =
-        normalizeQuestion(
-            questionA
+        answerMemorySearchNormalize(
+            a
         );
 
     const normalizedB =
-        normalizeQuestion(
-            questionB
+        answerMemorySearchNormalize(
+            b
         );
 
-    if (!normalizedA || !normalizedB) {
-
+    if (
+        !normalizedA ||
+        !normalizedB
+    ) {
         return 0;
-
     }
 
     if (
         normalizedA ===
         normalizedB
     ) {
-
         return 1;
-
     }
+
+    return 0;
+}
+
+
+/* ============================================================
+   2.15 - CONTAINS SCORE
+============================================================ */
+
+function answerMemoryContainsScore(
+    a,
+    b
+) {
+    const normalizedA =
+        answerMemorySearchNormalize(
+            a
+        );
+
+    const normalizedB =
+        answerMemorySearchNormalize(
+            b
+        );
+
+    if (
+        !normalizedA ||
+        !normalizedB
+    ) {
+        return 0;
+    }
+
+    if (
+        normalizedA.includes(
+            normalizedB
+        )
+    ) {
+        return answerMemoryClamp(
+            normalizedB.length /
+                normalizedA.length,
+            0,
+            1
+        );
+    }
+
+    if (
+        normalizedB.includes(
+            normalizedA
+        )
+    ) {
+        return answerMemoryClamp(
+            normalizedA.length /
+                normalizedB.length,
+            0,
+            1
+        );
+    }
+
+    return 0;
+}
+
+
+/* ============================================================
+   2.16 - WORD ORDER SCORE
+============================================================ */
+
+function answerMemoryWordOrderScore(
+    query,
+    candidate
+) {
+    const queryTokens =
+        answerMemoryTokenize(
+            query
+        );
+
+    const candidateTokens =
+        answerMemoryTokenize(
+            candidate
+        );
+
+    if (
+        queryTokens.length ===
+        0 ||
+        candidateTokens.length ===
+        0
+    ) {
+        return 0;
+    }
+
+    let samePosition = 0;
+
+    const max =
+        Math.min(
+            queryTokens.length,
+            candidateTokens.length
+        );
+
+    for (
+        let i = 0;
+        i < max;
+        i++
+    ) {
+        if (
+            queryTokens[i] ===
+            candidateTokens[i]
+        ) {
+            samePosition++;
+        }
+    }
+
+    return answerMemoryClamp(
+        samePosition /
+            Math.max(
+                queryTokens.length,
+                candidateTokens.length
+            ),
+        0,
+        1
+    );
+}
+
+
+/* ============================================================
+   2.17 - PHRASE MATCH SCORE
+============================================================ */
+
+function answerMemoryPhraseMatchScore(
+    query,
+    candidate
+) {
+    const normalizedQuery =
+        answerMemorySearchNormalize(
+            query
+        );
+
+    const normalizedCandidate =
+        answerMemorySearchNormalize(
+            candidate
+        );
+
+    if (
+        !normalizedQuery ||
+        !normalizedCandidate
+    ) {
+        return 0;
+    }
+
+    if (
+        normalizedQuery ===
+        normalizedCandidate
+    ) {
+        return 1;
+    }
+
+    const queryTokens =
+        answerMemoryTokenize(
+            normalizedQuery
+        );
+
+    const candidateTokens =
+        answerMemoryTokenize(
+            normalizedCandidate
+        );
+
+    if (
+        queryTokens.length < 2 ||
+        candidateTokens.length < 2
+    ) {
+        return 0;
+    }
+
+    let best = 0;
+
+    const maxPhraseLength =
+        Math.min(
+            8,
+            queryTokens.length,
+            candidateTokens.length
+        );
+
+    for (
+        let phraseLength = 2;
+        phraseLength <=
+            maxPhraseLength;
+        phraseLength++
+    ) {
+        for (
+            let i = 0;
+            i <=
+                queryTokens.length -
+                    phraseLength;
+            i++
+        ) {
+            const phrase =
+                queryTokens
+                    .slice(
+                        i,
+                        i +
+                            phraseLength
+                    )
+                    .join(" ");
+
+            if (
+                normalizedCandidate.includes(
+                    phrase
+                )
+            ) {
+                const score =
+                    answerMemoryClamp(
+                        phraseLength /
+                            Math.max(
+                                queryTokens.length,
+                                candidateTokens.length
+                            ),
+                        0,
+                        1
+                    );
+
+                if (
+                    score > best
+                ) {
+                    best =
+                        score;
+                }
+            }
+        }
+    }
+
+    return best;
+}
+
+
+/* ============================================================
+   2.18 - COMBINED TEXT SIMILARITY
+============================================================ */
+
+function answerMemoryCombinedSimilarity(
+    query,
+    candidate
+) {
+    const exact =
+        answerMemoryExactScore(
+            query,
+            candidate
+        );
+
+    if (
+        exact >= 1
+    ) {
+        return {
+            score: 1,
+            exact: 1,
+            jaccard: 1,
+            dice: 1,
+            f1: 1,
+            ngram: 1,
+            contains: 1,
+            phrase: 1,
+            wordOrder: 1
+        };
+    }
+
+    const queryTokens =
+        answerMemoryTokenize(
+            query
+        );
+
+    const candidateTokens =
+        answerMemoryTokenize(
+            candidate
+        );
 
     const jaccard =
-        jaccardSimilarity(
-            normalizedA,
-            normalizedB
+        answerMemoryJaccardSimilarity(
+            queryTokens,
+            candidateTokens
         );
 
-    const cosine =
-        cosineSimilarity(
-            normalizedA,
-            normalizedB
+    const dice =
+        answerMemoryDiceSimilarity(
+            queryTokens,
+            candidateTokens
         );
 
-    return (
-        (jaccard * 0.45) +
-        (cosine * 0.55)
+    const f1 =
+        answerMemoryF1(
+            queryTokens,
+            candidateTokens
+        );
+
+    const ngram =
+        answerMemoryNgramSimilarity(
+            query,
+            candidate,
+            3
+        );
+
+    const contains =
+        answerMemoryContainsScore(
+            query,
+            candidate
+        );
+
+    const phrase =
+        answerMemoryPhraseMatchScore(
+            query,
+            candidate
+        );
+
+    const wordOrder =
+        answerMemoryWordOrderScore(
+            query,
+            candidate
+        );
+
+    const score =
+        answerMemoryClamp(
+            (
+                jaccard *
+                0.22
+            ) +
+            (
+                dice *
+                0.20
+            ) +
+            (
+                f1 *
+                0.20
+            ) +
+            (
+                ngram *
+                0.12
+            ) +
+            (
+                contains *
+                0.08
+            ) +
+            (
+                phrase *
+                0.10
+            ) +
+            (
+                wordOrder *
+                0.08
+            ),
+            0,
+            1
+        );
+
+    return {
+        score,
+        exact,
+        jaccard,
+        dice,
+        f1,
+        ngram,
+        contains,
+        phrase,
+        wordOrder
+    };
+}
+
+
+/* ============================================================
+   2.19 - TEXT KEYWORDS
+============================================================ */
+
+function answerMemoryExtractKeywords(
+    text
+) {
+    const tokens =
+        answerMemoryTokenize(
+            text
+        );
+
+    const stopWords =
+        new Set([
+            "ve",
+            "veya",
+            "ile",
+            "için",
+            "bir",
+            "bu",
+            "şu",
+            "o",
+            "da",
+            "de",
+            "mi",
+            "mı",
+            "mu",
+            "mü",
+            "ne",
+            "nasıl",
+            "neden",
+            "niye",
+            "hangi",
+            "kim",
+            "kaç",
+            "çok",
+            "daha",
+            "en",
+            "ben",
+            "sen",
+            "biz",
+            "siz",
+            "onlar",
+            "olan",
+            "olarak",
+            "gibi",
+            "ise",
+            "ama",
+            "fakat",
+            "çünkü",
+            "ya",
+            "yani",
+            "şey",
+            "şeyi",
+            "bana",
+            "sana"
+        ]);
+
+    return answerMemoryUniqueArray(
+        tokens.filter(
+            token =>
+                token.length >=
+                    2 &&
+                !stopWords.has(
+                    token
+                )
+        )
     );
-
 }
 
-/* =========================================================
-   23. SAFE NUMBER
-========================================================= */
 
-function safeNumber(
-    value,
-    fallback = 0
+/* ============================================================
+   2.20 - QUESTION TYPE DETECTION
+============================================================ */
+
+function answerMemoryDetectQuestionType(
+    question
 ) {
-
-    const number =
-        Number(value);
-
-    if (
-        Number.isFinite(number)
-    ) {
-
-        return number;
-
-    }
-
-    return fallback;
-
-}
-
-/* =========================================================
-   24. SAFE INTEGER
-========================================================= */
-
-function safeInteger(
-    value,
-    fallback = 0
-) {
-
-    const number =
-        parseInt(
-            value,
-            10
-        );
-
-    if (
-        Number.isFinite(number)
-    ) {
-
-        return number;
-
-    }
-
-    return fallback;
-
-}
-
-/* =========================================================
-   25. LIMIT STRING
-========================================================= */
-
-function limitString(
-    value,
-    maxLength
-) {
-
     const text =
-        cleanText(value);
-
-    if (
-        text.length <= maxLength
-    ) {
-
-        return text;
-
-    }
-
-    return text.slice(
-        0,
-        maxLength
-    );
-
-}
-
-/* =========================================================
-   26. LIMIT ARRAY
-========================================================= */
-
-function limitArray(
-    value,
-    maxLength
-) {
-
-    if (
-        !Array.isArray(value)
-    ) {
-
-        return [];
-
-    }
-
-    return value
-        .slice(0, maxLength);
-
-}
-
-/* =========================================================
-   27. DATE HELPERS
-========================================================= */
-
-function nowISO() {
-
-    return new Date()
-        .toISOString();
-
-}
-
-function timestamp() {
-
-    return Date.now();
-
-}
-
-/* =========================================================
-   28. ENTRY FACTORY
-========================================================= */
-
-function createEntry(data = {}) {
-
-    const question =
-        limitString(
-            data.question,
-            MEMORY_CONFIG.limits
-                .maxQuestionLength
-        );
-
-    const answer =
-        limitString(
-            data.answer,
-            MEMORY_CONFIG.limits
-                .maxAnswerLength
-        );
-
-    const normalizedQuestion =
-        normalizeQuestion(
+        answerMemoryNormalizeTurkish(
             question
         );
 
-    const entryId =
-        data.id ||
-        generateId("answer");
+    if (!text) {
+        return "unknown";
+    }
 
-    const createdAt =
-        data.createdAt ||
-        nowISO();
+    if (
+        /^(kim|kimdir|kimdi)\b/iu.test(
+            text
+        )
+    ) {
+        return "person";
+    }
 
-    const updatedAt =
-        data.updatedAt ||
-        createdAt;
+    if (
+        /^(nedir|ne demek|ne\b)/iu.test(
+            text
+        ) ||
+        /\bnedir\b/iu.test(
+            text
+        )
+    ) {
+        return "definition";
+    }
 
-    const entry = {
+    if (
+        /^(nasıl|nasıl yapılır|nasıl yapabilirim)\b/iu.test(
+            text
+        ) ||
+        /\bnasıl\b.*\byapılır\b/iu.test(
+            text
+        )
+    ) {
+        return "how_to";
+    }
 
-        id: entryId,
+    if (
+        /^(neden|niye|niçin)\b/iu.test(
+            text
+        )
+    ) {
+        return "why";
+    }
 
-        question,
+    if (
+        /^(ne zaman|hangi gün|hangi tarihte)\b/iu.test(
+            text
+        )
+    ) {
+        return "when";
+    }
+
+    if (
+        /^(nerede|neresi|nereye)\b/iu.test(
+            text
+        )
+    ) {
+        return "where";
+    }
+
+    if (
+        /^(kaç|ne kadar|kaç tane|kaç yaş)\b/iu.test(
+            text
+        )
+    ) {
+        return "quantity";
+    }
+
+    if (
+        /^(doğru mu|yanlış mı|olur mu|mümkün mü|var mı|yok mu)\b/iu.test(
+            text
+        )
+    ) {
+        return "yes_no";
+    }
+
+    if (
+        /\?$/.test(
+            text
+        )
+    ) {
+        return "question";
+    }
+
+    return "statement";
+}
+
+
+/* ============================================================
+   2.21 - CATEGORY DETECTION
+============================================================ */
+
+function answerMemoryDetectCategory(
+    question
+) {
+    const text =
+        answerMemoryNormalizeTurkish(
+            question
+        );
+
+    if (!text) {
+        return "general";
+    }
+
+    if (
+        /(javascript|typescript|python|html|css|kod|programlama|yazılım|node\.?js|react|java|c\+\+|c#|php|sql|terminal|cmd|powershell)/iu.test(
+            text
+        )
+    ) {
+        return "coding";
+    }
+
+    if (
+        /(hava|hava durumu|sıcaklık|yağmur|kar yağışı|meteoroloji|rüzgar)/iu.test(
+            text
+        )
+    ) {
+        return "weather";
+    }
+
+    if (
+        /(dolar|euro|sterlin|altın|gram altın|çeyrek altın|borsa|kur|fiyat|coin|kripto)/iu.test(
+            text
+        )
+    ) {
+        return "market";
+    }
+
+    if (
+        /(haber|son dakika|güncel|bugün|şimdi|son durum|en son|şu anda)/iu.test(
+            text
+        )
+    ) {
+        return "current";
+    }
+
+    if (
+        /(okul|ders|matematik|fen|sosyal|türkçe|ingilizce|ödev|sınav|konu anlatımı)/iu.test(
+            text
+        )
+    ) {
+        return "education";
+    }
+
+    if (
+        /(oyun|minecraft|roblox|fortnite|steam|playstation|xbox)/iu.test(
+            text
+        )
+    ) {
+        return "gaming";
+    }
+
+    if (
+        /(telefon|android|iphone|bilgisayar|pc|laptop|tablet|işletim sistemi)/iu.test(
+            text
+        )
+    ) {
+        return "technology";
+    }
+
+    if (
+        /(güvenlik|siber güvenlik|cyber|firewall|virüs|malware|zararlı yazılım)/iu.test(
+            text
+        )
+    ) {
+        return "security";
+    }
+
+    if (
+        /(tarih|osmanlı|cumhuriyet|atatürk|savaş|medeniyet)/iu.test(
+            text
+        )
+    ) {
+        return "history";
+    }
+
+    if (
+        /(gezegen|uzay|evren|astronomi|fizik|kimya|biyoloji|bilim)/iu.test(
+            text
+        )
+    ) {
+        return "science";
+    }
+
+    return "general";
+}
+
+
+/* ============================================================
+   2.22 - LANGUAGE DETECTION
+============================================================ */
+
+function answerMemoryDetectLanguage(
+    text
+) {
+    const value =
+        answerMemorySafeString(
+            text,
+            ""
+        );
+
+    if (!value) {
+        return "unknown";
+    }
+
+    if (
+        /[çğıöşü]/iu.test(
+            value
+        )
+    ) {
+        return "tr";
+    }
+
+    if (
+        /\b(the|is|are|what|how|why|when|where|can|do|does|you)\b/iu.test(
+            value
+        )
+    ) {
+        return "en";
+    }
+
+    if (
+        /\b(le|la|les|bonjour|comment|pourquoi|avec|dans)\b/iu.test(
+            value
+        )
+    ) {
+        return "fr";
+    }
+
+    if (
+        /\b(der|die|das|ist|und|wie|warum|mit)\b/iu.test(
+            value
+        )
+    ) {
+        return "de";
+    }
+
+    return "tr";
+}
+
+
+/* ============================================================
+   2.23 - RECORD ID
+============================================================ */
+
+function answerMemoryCreateRecordId(
+    prefix = "answer"
+) {
+    return answerMemoryCreateId(
+        prefix
+    );
+}
+
+
+/* ============================================================
+   2.24 - USER ID NORMALIZATION
+============================================================ */
+
+function answerMemoryNormalizeUserId2(
+    value
+) {
+    let userId =
+        answerMemorySafeString(
+            value,
+            "anonymous"
+        ).trim();
+
+    if (!userId) {
+        userId =
+            "anonymous";
+    }
+
+    return userId.slice(
+        0,
+        256
+    );
+}
+
+
+/* ============================================================
+   2.25 - USER NAME NORMALIZATION
+============================================================ */
+
+function answerMemoryNormalizeUserName2(
+    value
+) {
+    let name =
+        answerMemorySafeString(
+            value,
+            "TürkAI"
+        ).trim();
+
+    if (!name) {
+        name =
+            "TürkAI";
+    }
+
+    return name.slice(
+        0,
+        256
+    );
+}
+
+
+/* ============================================================
+   2.26 - TAG NORMALIZATION
+============================================================ */
+
+function answerMemoryNormalizeTags(
+    tags
+) {
+    if (
+        !Array.isArray(
+            tags
+        )
+    ) {
+        return [];
+    }
+
+    return answerMemoryUniqueArray(
+        tags
+            .map(
+                tag =>
+                    answerMemorySearchNormalize(
+                        tag
+                    )
+            )
+            .filter(
+                tag =>
+                    tag.length > 0
+            )
+    ).slice(
+        0,
+        100
+    );
+}
+
+
+/* ============================================================
+   2.27 - RECORD FACTORY
+============================================================ */
+
+function answerMemoryCreateRecord(
+    question,
+    answer,
+    options = {}
+) {
+    const originalQuestion =
+        answerMemorySafeString(
+            question,
+            ""
+        ).trim();
+
+    const originalAnswer =
+        answerMemorySafeString(
+            answer,
+            ""
+        ).trim();
+
+    const normalizedQuestion =
+        answerMemoryNormalizeTurkish(
+            originalQuestion
+        );
+
+    const normalizedAnswer =
+        answerMemoryNormalizeTurkish(
+            originalAnswer
+        );
+
+    const searchQuestion =
+        answerMemorySearchNormalize(
+            originalQuestion
+        );
+
+    const tokens =
+        answerMemoryUniqueArray(
+            answerMemoryTokenize(
+                originalQuestion
+            )
+        );
+
+    const keywords =
+        answerMemoryExtractKeywords(
+            originalQuestion
+        );
+
+    const now =
+        answerMemoryNowISO();
+
+    const userId =
+        answerMemoryNormalizeUserId2(
+            options.userId
+        );
+
+    const record = {
+        id:
+            answerMemoryCreateRecordId(),
+
+        version:
+            1,
+
+        createdAt:
+            now,
+
+        updatedAt:
+            now,
+
+        lastReadAt:
+            null,
+
+        lastWriteAt:
+            now,
+
+        question:
+            originalQuestion,
+
+        answer:
+            originalAnswer,
 
         normalizedQuestion,
 
+        normalizedAnswer,
+
+        searchQuestion,
+
         questionHash:
-            createHash(
+            answerMemoryHash(
                 normalizedQuestion
             ),
 
-        answer,
+        answerHash:
+            answerMemoryHash(
+                normalizedAnswer
+            ),
+
+        userId,
+
+        userName:
+            answerMemoryNormalizeUserName2(
+                options.userName
+            ),
+
+        scope:
+            answerMemorySafeString(
+                options.scope,
+                "user"
+            ),
 
         language:
-            data.language ||
-            "tr",
-
-        userId:
-            data.userId ||
-            null,
-
-        sessionId:
-            data.sessionId ||
-            null,
-
-        conversationId:
-            data.conversationId ||
-            null,
-
-        model:
-            data.model ||
-            "local-memory",
-
-        provider:
-            data.provider ||
-            "memory",
+            answerMemorySafeString(
+                options.language,
+                answerMemoryDetectLanguage(
+                    originalQuestion
+                )
+            ),
 
         category:
-            data.category ||
-            "general",
+            answerMemorySafeString(
+                options.category,
+                answerMemoryDetectCategory(
+                    originalQuestion
+                )
+            ),
+
+        questionType:
+            answerMemoryDetectQuestionType(
+                originalQuestion
+            ),
 
         tags:
-            limitArray(
-                data.tags,
-                MEMORY_CONFIG
-                    .limits
-                    .maxTags
+            answerMemoryNormalizeTags(
+                options.tags
             ),
 
-        sources:
-            limitArray(
-                data.sources,
-                MEMORY_CONFIG
-                    .limits
-                    .maxSources
-            ),
+        tokens,
 
-        createdAt,
+        keywords,
 
-        updatedAt,
+        tokenCount:
+            tokens.length,
 
-        lastUsedAt:
-            data.lastUsedAt ||
-            null,
+        keywordCount:
+            keywords.length,
 
-        usageCount:
-            safeInteger(
-                data.usageCount,
-                0
-            ),
-
-        hitCount:
-            safeInteger(
-                data.hitCount,
-                0
-            ),
-
-        missCount:
-            safeInteger(
-                data.missCount,
-                0
-            ),
-
-        successCount:
-            safeInteger(
-                data.successCount,
-                0
-            ),
-
-        failureCount:
-            safeInteger(
-                data.failureCount,
-                0
-            ),
-
-        qualityScore:
-            safeNumber(
-                data.qualityScore,
-                0.5
+        importance:
+            answerMemoryClamp(
+                options.importance ??
+                    0.50,
+                0,
+                1
             ),
 
         confidence:
-            safeNumber(
-                data.confidence,
-                0.5
+            answerMemoryClamp(
+                options.confidence ??
+                    0.80,
+                0,
+                1
             ),
 
-        enabled:
-            data.enabled !== false,
+        quality:
+            answerMemoryClamp(
+                options.quality ??
+                    0.70,
+                0,
+                1
+            ),
 
-        pinned:
-            data.pinned === true,
+        frequency:
+            Math.max(
+                1,
+                Number(
+                    options.frequency
+                ) || 1
+            ),
+
+        hits:
+            0,
+
+        misses:
+            0,
+
+        saves:
+            1,
+
+        updates:
+            0,
+
+        duplicateCount:
+            0,
+
+        active:
+            true,
 
         archived:
-            data.archived === true,
+            false,
+
+        pinned:
+            Boolean(
+                options.pinned
+            ),
+
+        favorite:
+            Boolean(
+                options.favorite
+            ),
+
+        verified:
+            Boolean(
+                options.verified
+            ),
+
+        trusted:
+            Boolean(
+                options.trusted
+            ),
+
+        source:
+            answerMemorySafeString(
+                options.source,
+                "chat"
+            ),
+
+        model:
+            answerMemorySafeString(
+                options.model,
+                "local"
+            ),
+
+        conversationId:
+            answerMemorySafeString(
+                options.conversationId,
+                ""
+            ),
+
+        sessionId:
+            answerMemorySafeString(
+                options.sessionId,
+                ""
+            ),
+
+        projectId:
+            answerMemorySafeString(
+                options.projectId,
+                ""
+            ),
 
         metadata:
-            data.metadata &&
-            typeof data.metadata ===
-                "object"
-                ? clone(data.metadata)
-                : {}
+            answerMemoryEnsureObject(
+                options.metadata
+            ),
 
+        custom:
+            answerMemoryEnsureObject(
+                options.custom
+            )
     };
 
-    return entry;
-
+    return record;
 }
 
-/* =========================================================
-   29. DATABASE SAVE
-========================================================= */
 
-function saveDatabase(
-    options = {}
+/* ============================================================
+   2.28 - RECORD VALIDATION
+============================================================ */
+
+function answerMemoryValidateRecord(
+    record
 ) {
-
-    try {
-
-        database.updatedAt =
-            nowISO();
-
-        database.totalEntries =
-            Object.keys(
-                database.entries
-            ).length;
-
-        if (
-            MEMORY_CONFIG.storage
-                .backupBeforeWrite &&
-            options.skipBackup !== true
-        ) {
-
-            createBackup();
-
-        }
-
-        const result =
-            writeJSON(
-                ANSWER_MEMORY_FILE,
-                database
-            );
-
-        if (!result) {
-
-            database.totalErrors++;
-
-        }
-
-        return result;
-
-    } catch (error) {
-
-        database.totalErrors++;
-
-        console.error(
-            "[TürkAI Memory] Database save error:",
-            error.message
-        );
-
-        return false;
-
+    if (
+        !record ||
+        typeof record !==
+            "object"
+    ) {
+        return {
+            ok: false,
+            reason:
+                "invalid_record"
+        };
     }
-
-}
-
-/* =========================================================
-   30. DATABASE RELOAD
-========================================================= */
-
-function reloadDatabase() {
-
-    const loaded =
-        readJSON(
-            ANSWER_MEMORY_FILE,
-            null
-        );
 
     if (
-        loaded &&
-        typeof loaded === "object"
+        !record.id
     ) {
-
-        database = loaded;
-
-        if (
-            !database.entries ||
-            typeof database.entries !==
-            "object"
-        ) {
-
-            database.entries = {};
-
-        }
-
-        return true;
-
+        return {
+            ok: false,
+            reason:
+                "missing_id"
+        };
     }
 
-    return false;
+    if (
+        !record.question ||
+        typeof record.question !==
+            "string"
+    ) {
+        return {
+            ok: false,
+            reason:
+                "missing_question"
+        };
+    }
 
+    if (
+        !record.answer ||
+        typeof record.answer !==
+            "string"
+    ) {
+        return {
+            ok: false,
+            reason:
+                "missing_answer"
+        };
+    }
+
+    if (
+        record.question.length >
+        10000
+    ) {
+        return {
+            ok: false,
+            reason:
+                "question_too_long"
+        };
+    }
+
+    if (
+        record.answer.length >
+        30000
+    ) {
+        return {
+            ok: false,
+            reason:
+                "answer_too_long"
+        };
+    }
+
+    return {
+        ok: true
+    };
 }
 
-/* =========================================================
-   31. ANSWER MEMORY CLASS
-========================================================= */
 
-class AnswerMemory {
+/* ============================================================
+   2.29 - PUBLIC RECORD
+============================================================ */
 
-    constructor(options = {}) {
+AnswerMemory.prototype.publicRecord =
+    function (
+        record
+    ) {
+        if (
+            !record
+        ) {
+            return null;
+        }
 
-        this.options = {
-
-            minimumSimilarity:
-                options.minimumSimilarity ??
-                MEMORY_CONFIG.similarity
-                    .minimumScore,
-
-            strongSimilarity:
-                options.strongSimilarity ??
-                MEMORY_CONFIG.similarity
-                    .strongScore,
-
-            maxResults:
-                options.maxResults ??
-                MEMORY_CONFIG.similarity
-                    .maxResults
-
+        const output = {
+            ...record
         };
 
-    }
+        /*
+        Kullanıcıya dönmesi gerekmeyen
+        internal search alanlarını gizle.
+        */
 
-    /* =====================================================
-       ADD
-    ===================================================== */
+        delete output
+            .normalizedQuestion;
 
-    add(data = {}) {
+        delete output
+            .normalizedAnswer;
 
-        const question =
-            cleanText(
-                data.question
-            );
+        delete output
+            .searchQuestion;
 
-        const answer =
-            cleanText(
-                data.answer
-            );
+        delete output
+            .questionHash;
 
-        if (!question) {
+        delete output
+            .answerHash;
 
-            throw new Error(
-                "Memory question boş olamaz."
-            );
+        delete output
+            .tokens;
 
-        }
+        delete output
+            .keywords;
 
-        if (!answer) {
+        return output;
+    };
 
-            throw new Error(
-                "Memory answer boş olamaz."
-            );
 
-        }
+/* ============================================================
+   2.30 - DUPLICATE SEARCH
+============================================================ */
 
-        const normalized =
-            normalizeQuestion(
-                question
-            );
-
-        const hash =
-            createHash(
-                normalized
-            );
-
-        const existing =
-            this.findExact(
-                question
-            );
-
-        if (existing) {
-
-            return this.update(
-                existing.id,
-                {
-                    answer,
-                    ...data
-                }
-            );
-
-        }
-
-        const entry =
-            createEntry({
-                ...data,
-                question,
-                answer
-            });
-
-        database.entries[
-            entry.id
-        ] = entry;
-
-        database.totalSaves++;
-
-        database.totalEntries =
-            Object.keys(
-                database.entries
-            ).length;
-
-        saveDatabase();
-
-        return clone(entry);
-
-    }
-
-    /* =====================================================
-       GET
-    ===================================================== */
-
-    get(id) {
-
-        if (!id) {
-
-            return null;
-
-        }
-
-        const entry =
-            database.entries[id];
-
-        if (!entry) {
-
-            return null;
-
-        }
-
-        return clone(entry);
-
-    }
-
-    /* =====================================================
-       DELETE
-    ===================================================== */
-
-    delete(id) {
-
-        if (!id) {
-
-            return false;
-
-        }
-
-        if (
-            !database.entries[id]
-        ) {
-
-            return false;
-
-        }
-
-        delete database.entries[id];
-
-        database.totalEntries =
-            Object.keys(
-                database.entries
-            ).length;
-
-        saveDatabase();
-
-        return true;
-
-    }
-
-    /* =====================================================
-       UPDATE
-    ===================================================== */
-
-    update(
-        id,
-        changes = {}
-    ) {
-
-        const current =
-            database.entries[id];
-
-        if (!current) {
-
-            return null;
-
-        }
-
-        const next =
-            {
-                ...current
-            };
-
-        if (
-            changes.question !==
-            undefined
-        ) {
-
-            next.question =
-                limitString(
-                    changes.question,
-                    MEMORY_CONFIG
-                        .limits
-                        .maxQuestionLength
-                );
-
-            next.normalizedQuestion =
-                normalizeQuestion(
-                    next.question
-                );
-
-            next.questionHash =
-                createHash(
-                    next.normalizedQuestion
-                );
-
-        }
-
-        if (
-            changes.answer !==
-            undefined
-        ) {
-
-            next.answer =
-                limitString(
-                    changes.answer,
-                    MEMORY_CONFIG
-                        .limits
-                        .maxAnswerLength
-                );
-
-        }
-
-        if (
-            changes.language !==
-            undefined
-        ) {
-
-            next.language =
-                String(
-                    changes.language
-                );
-
-        }
-
-        if (
-            changes.category !==
-            undefined
-        ) {
-
-            next.category =
-                String(
-                    changes.category
-                );
-
-        }
-
-        if (
-            changes.tags !==
-            undefined
-        ) {
-
-            next.tags =
-                limitArray(
-                    changes.tags,
-                    MEMORY_CONFIG
-                        .limits
-                        .maxTags
-                );
-
-        }
-
-        if (
-            changes.sources !==
-            undefined
-        ) {
-
-            next.sources =
-                limitArray(
-                    changes.sources,
-                    MEMORY_CONFIG
-                        .limits
-                        .maxSources
-                );
-
-        }
-
-        if (
-            changes.qualityScore !==
-            undefined
-        ) {
-
-            next.qualityScore =
-                safeNumber(
-                    changes.qualityScore,
-                    next.qualityScore
-                );
-
-        }
-
-        if (
-            changes.confidence !==
-            undefined
-        ) {
-
-            next.confidence =
-                safeNumber(
-                    changes.confidence,
-                    next.confidence
-                );
-
-        }
-
-        if (
-            changes.enabled !==
-            undefined
-        ) {
-
-            next.enabled =
-                Boolean(
-                    changes.enabled
-                );
-
-        }
-
-        if (
-            changes.pinned !==
-            undefined
-        ) {
-
-            next.pinned =
-                Boolean(
-                    changes.pinned
-                );
-
-        }
-
-        if (
-            changes.archived !==
-            undefined
-        ) {
-
-            next.archived =
-                Boolean(
-                    changes.archived
-                );
-
-        }
-
-        if (
-            changes.metadata &&
-            typeof changes.metadata ===
-                "object"
-        ) {
-
-            next.metadata =
-                {
-                    ...next.metadata,
-                    ...clone(
-                        changes.metadata
-                    )
-                };
-
-        }
-
-        next.updatedAt =
-            nowISO();
-
-        database.entries[id] =
-            next;
-
-        database.totalUpdates++;
-
-        saveDatabase();
-
-        return clone(next);
-
-    }
-
-    /* =====================================================
-       FIND EXACT
-    ===================================================== */
-
-    findExact(
-        question
-    ) {
-
-        const normalized =
-            normalizeQuestion(
-                question
-            );
-
-        if (!normalized) {
-
-            return null;
-
-        }
-
-        const hash =
-            createHash(
-                normalized
-            );
-
-        const entries =
-            Object.values(
-                database.entries
-            );
-
-        for (
-            const entry of entries
-        ) {
-
-            if (
-                entry.questionHash ===
-                hash &&
-                entry.enabled !== false &&
-                entry.archived !== true
-            ) {
-
-                return clone(entry);
-
-            }
-
-        }
-
-        return null;
-
-    }
-
-    /* =====================================================
-       LOOKUP
-    ===================================================== */
-
-    lookup(
+AnswerMemory.prototype.findDuplicate =
+    function (
         question,
         options = {}
     ) {
-
         const query =
-            cleanText(
-                question
-            );
-
-        database.totalLookups++;
+            answerMemorySafeString(
+                question,
+                ""
+            ).trim();
 
         if (!query) {
-
-            database.totalMisses++;
-
-            saveDatabase({
-                skipBackup: true
-            });
-
             return null;
-
         }
 
-        const exact =
-            this.findExact(
+        const normalizedQuery =
+            answerMemorySearchNormalize(
                 query
             );
 
-        if (exact) {
-
-            this.markHit(
-                exact.id
+        const userId =
+            answerMemoryNormalizeUserId2(
+                options.userId
             );
 
-            return {
+        const records =
+            Object.values(
+                this.records ||
+                    {}
+            );
 
-                found: true,
+        let best =
+            null;
 
-                type: "exact",
+        for (
+            const record
+            of records
+        ) {
+            if (
+                !record
+            ) {
+                continue;
+            }
 
-                score: 1,
+            if (
+                record.active ===
+                false
+            ) {
+                continue;
+            }
 
-                entry:
-                    this.get(exact.id)
+            if (
+                options.category &&
+                record.category !==
+                    options.category
+            ) {
+                continue;
+            }
 
-            };
+            if (
+                options.language &&
+                record.language !==
+                    options.language
+            ) {
+                continue;
+            }
 
+            const similarity =
+                answerMemoryCombinedSimilarity(
+                    normalizedQuery,
+                    record.searchQuestion ||
+                        record.normalizedQuestion ||
+                        record.question
+                );
+
+            let score =
+                similarity.score;
+
+            if (
+                answerMemoryNormalizeUserId2(
+                    record.userId
+                ) ===
+                userId
+            ) {
+                score += 0.05;
+            }
+
+            if (
+                record.scope ===
+                "global"
+            ) {
+                score += 0.02;
+            }
+
+            if (
+                record.pinned
+            ) {
+                score += 0.02;
+            }
+
+            if (
+                record.favorite
+            ) {
+                score += 0.01;
+            }
+
+            score =
+                answerMemoryClamp(
+                    score,
+                    0,
+                    1
+                );
+
+            if (
+                !best ||
+                score >
+                    best.score
+            ) {
+                best = {
+                    record,
+                    score,
+                    similarity
+                };
+            }
         }
 
-        const similar =
-            this.findSimilar(
+        const threshold =
+            Number(
+                options.threshold ??
+                    this.config
+                        ?.duplicateSimilarity ??
+                    0.92
+            );
+
+        if (
+            !best ||
+            best.score <
+                threshold
+        ) {
+            return null;
+        }
+
+        return best;
+    };
+
+
+/* ============================================================
+   2.31 - RECORD INTERNAL MATCH
+============================================================ */
+
+AnswerMemory.prototype.matchRecord =
+    function (
+        question,
+        record,
+        options = {}
+    ) {
+        if (
+            !record ||
+            record.active ===
+                false
+        ) {
+            return null;
+        }
+
+        const query =
+            answerMemorySafeString(
+                question,
+                ""
+            ).trim();
+
+        if (!query) {
+            return null;
+        }
+
+        const candidate =
+            record.searchQuestion ||
+            record.normalizedQuestion ||
+            record.question ||
+            "";
+
+        const similarity =
+            answerMemoryCombinedSimilarity(
                 query,
+                candidate
+            );
+
+        const queryTokens =
+            answerMemoryTokenize(
+                query
+            );
+
+        const candidateTokens =
+            record.tokens ||
+            answerMemoryTokenize(
+                candidate
+            );
+
+        const overlap =
+            answerMemoryTokenOverlap(
+                queryTokens,
+                candidateTokens
+            );
+
+        const precision =
+            answerMemoryPrecision(
+                queryTokens,
+                candidateTokens
+            );
+
+        const recall =
+            answerMemoryRecall(
+                queryTokens,
+                candidateTokens
+            );
+
+        const now =
+            Date.now();
+
+        const updated =
+            new Date(
+                record.updatedAt ||
+                    record.createdAt ||
+                    now
+            ).getTime();
+
+        const age =
+            Math.max(
+                0,
+                now -
+                    (
+                        Number.isFinite(
+                            updated
+                        )
+                            ? updated
+                            : now
+                    )
+            );
+
+        const halfLife =
+            Number(
+                this.config
+                    ?.recencyHalfLife ||
+                    (
+                        1000 *
+                        60 *
+                        60 *
+                        24 *
+                        30
+                    )
+            );
+
+        const recency =
+            Math.pow(
+                0.5,
+                age /
+                    Math.max(
+                        1,
+                        halfLife
+                    )
+            );
+
+        const frequency =
+            answerMemoryClamp(
+                Math.log1p(
+                    Number(
+                        record.frequency ||
+                            1
+                    )
+                ) /
+                    10,
+                0,
+                1
+            );
+
+        const quality =
+            answerMemoryClamp(
+                Number(
+                    record.quality ??
+                        0.70
+                ),
+                0,
+                1
+            );
+
+        const confidence =
+            answerMemoryClamp(
+                Number(
+                    record.confidence ??
+                        0.80
+                ),
+                0,
+                1
+            );
+
+        const importance =
+            answerMemoryClamp(
+                Number(
+                    record.importance ??
+                        0.50
+                ),
+                0,
+                1
+            );
+
+        const qualityCombined =
+            answerMemoryClamp(
+                (
+                    quality *
+                    0.50
+                ) +
+                (
+                    confidence *
+                    0.30
+                ) +
+                (
+                    importance *
+                    0.20
+                ),
+                0,
+                1
+            );
+
+        const sameUser =
+            answerMemoryNormalizeUserId2(
+                record.userId
+            ) ===
+            answerMemoryNormalizeUserId2(
+                options.userId
+            );
+
+        const sameLanguage =
+            !options.language ||
+            record.language ===
+                options.language;
+
+        const sameCategory =
+            !options.category ||
+            record.category ===
+                options.category;
+
+        let score =
+            (
+                similarity.score *
+                0.52
+            ) +
+            (
+                overlap *
+                0.10
+            ) +
+            (
+                precision *
+                0.04
+            ) +
+            (
+                recall *
+                0.04
+            ) +
+            (
+                recency *
+                0.08
+            ) +
+            (
+                frequency *
+                0.06
+            ) +
+            (
+                qualityCombined *
+                0.16
+            );
+
+        if (
+            similarity.exact >=
+            1
+        ) {
+            score +=
+                0.15;
+        }
+
+        if (
+            sameUser
+        ) {
+            score +=
+                0.06;
+        }
+
+        if (
+            sameLanguage
+        ) {
+            score +=
+                0.02;
+        }
+
+        if (
+            sameCategory
+        ) {
+            score +=
+                0.02;
+        }
+
+        if (
+            record.pinned
+        ) {
+            score +=
+                0.025;
+        }
+
+        if (
+            record.favorite
+        ) {
+            score +=
+                0.015;
+        }
+
+        if (
+            record.verified
+        ) {
+            score +=
+                0.02;
+        }
+
+        if (
+            record.trusted
+        ) {
+            score +=
+                0.02;
+        }
+
+        if (
+            record.archived
+        ) {
+            score -=
+                0.10;
+        }
+
+        if (
+            record.active ===
+            false
+        ) {
+            score = 0;
+        }
+
+        score =
+            answerMemoryClamp(
+                score,
+                0,
+                1
+            );
+
+        return {
+            score,
+
+            similarity:
+                similarity.score,
+
+            exact:
+                similarity.exact,
+
+            jaccard:
+                similarity.jaccard,
+
+            dice:
+                similarity.dice,
+
+            f1:
+                similarity.f1,
+
+            ngram:
+                similarity.ngram,
+
+            contains:
+                similarity.contains,
+
+            phrase:
+                similarity.phrase,
+
+            wordOrder:
+                similarity.wordOrder,
+
+            overlap,
+
+            precision,
+
+            recall,
+
+            recency,
+
+            frequency,
+
+            quality:
+                qualityCombined,
+
+            sameUser,
+
+            sameLanguage,
+
+            sameCategory
+        };
+    };
+
+
+/* ============================================================
+   2.32 - RELEVANCE LEVEL
+============================================================ */
+
+AnswerMemory.prototype.getRelevanceLevel =
+    function (
+        score
+    ) {
+        const value =
+            answerMemoryClamp(
+                score,
+                0,
+                1
+            );
+
+        if (
+            value >=
+            0.92
+        ) {
+            return "exact";
+        }
+
+        if (
+            value >=
+            0.82
+        ) {
+            return "very_high";
+        }
+
+        if (
+            value >=
+            0.70
+        ) {
+            return "high";
+        }
+
+        if (
+            value >=
+            0.55
+        ) {
+            return "medium";
+        }
+
+        if (
+            value >=
+            0.40
+        ) {
+            return "low";
+        }
+
+        return "very_low";
+    };
+
+
+/* ============================================================
+   2.33 - RECORD QUALITY UPDATE
+============================================================ */
+
+AnswerMemory.prototype.updateRecordQuality =
+    function (
+        record,
+        patch = {}
+    ) {
+        if (
+            !record
+        ) {
+            return null;
+        }
+
+        if (
+            patch.quality !==
+            undefined
+        ) {
+            record.quality =
+                answerMemoryClamp(
+                    patch.quality,
+                    0,
+                    1
+                );
+        }
+
+        if (
+            patch.confidence !==
+            undefined
+        ) {
+            record.confidence =
+                answerMemoryClamp(
+                    patch.confidence,
+                    0,
+                    1
+                );
+        }
+
+        if (
+            patch.importance !==
+            undefined
+        ) {
+            record.importance =
+                answerMemoryClamp(
+                    patch.importance,
+                    0,
+                    1
+                );
+        }
+
+        return record;
+    };
+
+
+/* ============================================================
+   2.34 - RECORD ACCESS
+============================================================ */
+
+AnswerMemory.prototype.touchRecord =
+    function (
+        record,
+        type = "read"
+    ) {
+        if (
+            !record
+        ) {
+            return false;
+        }
+
+        const now =
+            answerMemoryNowISO();
+
+        record.updatedAt =
+            record.updatedAt ||
+            now;
+
+        if (
+            type ===
+            "read" ||
+            type ===
+            "hit"
+        ) {
+            record.lastReadAt =
+                now;
+
+            record.hits =
+                Number(
+                    record.hits ||
+                        0
+                ) + 1;
+
+            record.frequency =
+                Number(
+                    record.frequency ||
+                        0
+                ) + 0.25;
+        }
+
+        if (
+            type ===
+            "write"
+        ) {
+            record.lastWriteAt =
+                now;
+
+            record.saves =
+                Number(
+                    record.saves ||
+                        0
+                ) + 1;
+        }
+
+        record.updatedAt =
+            now;
+
+        return true;
+    };
+
+
+/* ============================================================
+   2.35 - RECORD DUPLICATE MERGE
+============================================================ */
+
+AnswerMemory.prototype.mergeDuplicateRecord =
+    function (
+        existing,
+        incoming
+    ) {
+        if (
+            !existing
+        ) {
+            return incoming;
+        }
+
+        if (
+            !incoming
+        ) {
+            return existing;
+        }
+
+        existing.frequency =
+            Number(
+                existing.frequency ||
+                    0
+            ) +
+            Number(
+                incoming.frequency ||
+                    0
+            );
+
+        existing.hits =
+            Number(
+                existing.hits ||
+                    0
+            ) +
+            Number(
+                incoming.hits ||
+                    0
+            );
+
+        existing.saves =
+            Number(
+                existing.saves ||
+                    0
+            ) +
+            Number(
+                incoming.saves ||
+                    0
+            );
+
+        existing.duplicateCount =
+            Number(
+                existing.duplicateCount ||
+                    0
+            ) + 1;
+
+        existing.quality =
+            answerMemoryClamp(
+                (
+                    Number(
+                        existing.quality ??
+                            0.70
+                    ) +
+                    Number(
+                        incoming.quality ??
+                            0.70
+                    )
+                ) /
+                    2,
+                0,
+                1
+            );
+
+        existing.confidence =
+            answerMemoryClamp(
+                (
+                    Number(
+                        existing.confidence ??
+                            0.80
+                    ) +
+                    Number(
+                        incoming.confidence ??
+                            0.80
+                    )
+                ) /
+                    2,
+                0,
+                1
+            );
+
+        existing.importance =
+            Math.max(
+                Number(
+                    existing.importance ??
+                        0.50
+                ),
+                Number(
+                    incoming.importance ??
+                        0.50
+                )
+            );
+
+        existing.tags =
+            answerMemoryUniqueArray(
+                [
+                    ...(existing.tags ||
+                        []),
+                    ...(incoming.tags ||
+                        [])
+                ]
+            ).slice(
+                0,
+                100
+            );
+
+        existing.keywords =
+            answerMemoryUniqueArray(
+                [
+                    ...(existing.keywords ||
+                        []),
+                    ...(incoming.keywords ||
+                        [])
+                ]
+            );
+
+        existing.metadata =
+            Object.assign(
+                {},
+                answerMemoryEnsureObject(
+                    existing.metadata
+                ),
+                answerMemoryEnsureObject(
+                    incoming.metadata
+                )
+            );
+
+        if (
+            incoming.quality >
+            existing.quality
+        ) {
+            existing.answer =
+                incoming.answer;
+
+            existing.normalizedAnswer =
+                incoming.normalizedAnswer;
+
+            existing.answerHash =
+                incoming.answerHash;
+        }
+
+        existing.updatedAt =
+            answerMemoryNowISO();
+
+        existing.version =
+            Number(
+                existing.version ||
+                    1
+            ) + 1;
+
+        return existing;
+    };
+
+
+/* ============================================================
+   2.36 - SAVE ANSWER V2
+============================================================ */
+
+AnswerMemory.prototype.saveAnswerV2 =
+    function (
+        question,
+        answer,
+        options = {}
+    ) {
+        if (
+            !this.config?.enabled
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "disabled"
+            };
+        }
+
+        const q =
+            answerMemorySafeString(
+                question,
+                ""
+            ).trim();
+
+        const a =
+            answerMemorySafeString(
+                answer,
+                ""
+            ).trim();
+
+        if (
+            q.length <
+            Number(
+                this.config
+                    ?.minimumQuestionLength ||
+                    4
+            )
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "question_too_short"
+            };
+        }
+
+        if (
+            a.length <
+            Number(
+                this.config
+                    ?.minimumAnswerLength ||
+                    2
+            )
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "answer_too_short"
+            };
+        }
+
+        if (
+            q.length >
+            Number(
+                this.config
+                    ?.maximumQuestionLength ||
+                    10000
+            )
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "question_too_long"
+            };
+        }
+
+        if (
+            a.length >
+            Number(
+                this.config
+                    ?.maximumAnswerLength ||
+                    30000
+            )
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "answer_too_long"
+            };
+        }
+
+        const duplicate =
+            this.findDuplicate(
+                q,
+                {
+                    ...options
+                }
+            );
+
+        if (
+            duplicate?.record
+        ) {
+            const existing =
+                duplicate.record;
+
+            const incoming =
+                answerMemoryCreateRecord(
+                    q,
+                    a,
+                    options
+                );
+
+            const sameAnswer =
+                answerMemoryCombinedSimilarity(
+                    existing.answer,
+                    a
+                ).score >=
+                0.90;
+
+            if (
+                sameAnswer ||
+                options.updateOnConflict ===
+                    false
+            ) {
+                this.mergeDuplicateRecord(
+                    existing,
+                    incoming
+                );
+
+                this.stats.duplicates =
+                    Number(
+                        this.stats
+                            .duplicates ||
+                            0
+                    ) + 1;
+
+                this.stats.totalWrites =
+                    Number(
+                        this.stats
+                            .totalWrites ||
+                            0
+                    ) + 1;
+
+                this.stats.lastWrite =
+                    answerMemoryNowISO();
+
+                this.addHistoryV2(
+                    "duplicate",
+                    existing,
+                    {
+                        similarity:
+                            duplicate.score
+                    }
+                );
+
+                this.persist();
+
+                return {
+                    ok: true,
+                    duplicate: true,
+                    created: false,
+                    updated: true,
+                    id:
+                        existing.id,
+                    score:
+                        duplicate.score,
+                    relevance:
+                        this.getRelevanceLevel(
+                            duplicate.score
+                        ),
+                    record:
+                        this.publicRecord(
+                            existing
+                        )
+                };
+            }
+
+            existing.answer =
+                a;
+
+            existing.normalizedAnswer =
+                answerMemoryNormalizeTurkish(
+                    a
+                );
+
+            existing.answerHash =
+                answerMemoryHash(
+                    existing.normalizedAnswer
+                );
+
+            existing.version =
+                Number(
+                    existing.version ||
+                        1
+                ) + 1;
+
+            existing.updates =
+                Number(
+                    existing.updates ||
+                        0
+                ) + 1;
+
+            existing.frequency =
+                Number(
+                    existing.frequency ||
+                        1
+                ) + 1;
+
+            existing.updatedAt =
+                answerMemoryNowISO();
+
+            if (
+                options.quality !==
+                undefined
+            ) {
+                existing.quality =
+                    answerMemoryClamp(
+                        options.quality,
+                        0,
+                        1
+                    );
+            }
+
+            if (
+                options.confidence !==
+                undefined
+            ) {
+                existing.confidence =
+                    answerMemoryClamp(
+                        options.confidence,
+                        0,
+                        1
+                    );
+            }
+
+            this.stats.updates =
+                Number(
+                    this.stats
+                        .updates ||
+                        0
+                ) + 1;
+
+            this.stats.totalWrites =
+                Number(
+                    this.stats
+                        .totalWrites ||
+                        0
+                ) + 1;
+
+            this.stats.lastWrite =
+                answerMemoryNowISO();
+
+            this.addHistoryV2(
+                "update",
+                existing,
+                {
+                    similarity:
+                        duplicate.score
+                }
+            );
+
+            this.persist();
+
+            return {
+                ok: true,
+                duplicate: false,
+                created: false,
+                updated: true,
+                id:
+                    existing.id,
+                score:
+                    duplicate.score,
+                record:
+                    this.publicRecord(
+                        existing
+                    )
+            };
+        }
+
+        const record =
+            answerMemoryCreateRecord(
+                q,
+                a,
                 options
             );
 
+        const validation =
+            answerMemoryValidateRecord(
+                record
+            );
+
         if (
-            similar.length > 0
+            !validation.ok
         ) {
-
-            const best =
-                similar[0];
-
-            if (
-                best.score >=
-                (
-                    options.minimumSimilarity ??
-                    this.options
-                        .minimumSimilarity
-                )
-            ) {
-
-                this.markHit(
-                    best.entry.id
-                );
-
-                return {
-
-                    found: true,
-
-                    type: "similar",
-
-                    score: best.score,
-
-                    entry:
-                        this.get(
-                            best.entry.id
-                        ),
-
-                    results: similar
-
-                };
-
-            }
-
+            return validation;
         }
 
-        database.totalMisses++;
+        this.records[
+            record.id
+        ] = record;
 
-        saveDatabase({
-            skipBackup: true
-        });
+        this.stats.totalEntries =
+            Object.keys(
+                this.records
+            ).length;
+
+        this.stats.totalWrites =
+            Number(
+                this.stats
+                    .totalWrites ||
+                    0
+            ) + 1;
+
+        this.stats.lastWrite =
+            answerMemoryNowISO();
+
+        this.indexRecordV2(
+            record
+        );
+
+        this.addHistoryV2(
+            "save",
+            record
+        );
+
+        this.persist();
 
         return {
-
-            found: false,
-
-            type: "miss",
-
-            score: 0,
-
-            entry: null,
-
-            results: similar
-
+            ok: true,
+            duplicate: false,
+            created: true,
+            updated: false,
+            id:
+                record.id,
+            score: 1,
+            relevance:
+                "new",
+            record:
+                this.publicRecord(
+                    record
+                )
         };
+    };
 
-    }
 
-    /* =====================================================
-       FIND SIMILAR
-    ===================================================== */
+/* ============================================================
+   2.37 - INDEX RECORD V2
+============================================================ */
 
-    findSimilar(
-        question,
-        options = {}
+AnswerMemory.prototype.indexRecordV2 =
+    function (
+        record
     ) {
-
-        const minimum =
-            options.minimumSimilarity ??
-            this.options
-                .minimumSimilarity;
-
-        const maxResults =
-            options.maxResults ??
-            this.options
-                .maxResults;
-
-        const query =
-            cleanText(
-                question
-            );
-
-        if (!query) {
-
-            return [];
-
+        if (
+            !record ||
+            !record.id
+        ) {
+            return false;
         }
 
-        const results = [];
+        const tokens =
+            answerMemoryUniqueArray(
+                record.tokens ||
+                    answerMemoryTokenize(
+                        record.question
+                    )
+            );
+
+        record.tokens =
+            tokens;
+
+        record.tokenCount =
+            tokens.length;
+
+        if (
+            !this.index ||
+            typeof this.index !==
+                "object"
+        ) {
+            this.index = {};
+        }
 
         for (
-            const entry of Object.values(
-                database.entries
-            )
+            const token
+            of tokens
         ) {
-
             if (
-                entry.enabled === false
+                !Array.isArray(
+                    this.index[token]
+                )
             ) {
-
-                continue;
-
+                this.index[token] =
+                    [];
             }
 
             if (
-                entry.archived === true
+                !this.index[
+                    token
+                ].includes(
+                    record.id
+                )
             ) {
-
-                continue;
-
-            }
-
-            const score =
-                calculateSimilarity(
-                    query,
-                    entry.question
+                this.index[
+                    token
+                ].push(
+                    record.id
                 );
-
-            if (
-                score >= minimum
-            ) {
-
-                results.push({
-
-                    score,
-
-                    entry:
-                        clone(entry)
-
-                });
-
             }
-
         }
 
-        results.sort(
-            (a, b) =>
-                b.score - a.score
-        );
-
-        return results.slice(
-            0,
-            maxResults
-        );
-
-    }
-
-    /* =====================================================
-       MARK HIT
-    ===================================================== */
-
-    markHit(id) {
-
-        const entry =
-            database.entries[id];
-
-        if (!entry) {
-
-            return false;
-
+        if (
+            !this.userIndex ||
+            typeof this.userIndex !==
+                "object"
+        ) {
+            this.userIndex = {};
         }
 
-        entry.hitCount =
-            safeInteger(
-                entry.hitCount,
-                0
-            ) + 1;
-
-        entry.usageCount =
-            safeInteger(
-                entry.usageCount,
-                0
-            ) + 1;
-
-        entry.lastUsedAt =
-            nowISO();
-
-        database.totalHits++;
-
-        saveDatabase({
-            skipBackup: true
-        });
-
-        return true;
-
-    }
-
-    /* =====================================================
-       MARK MISS
-    ===================================================== */
-
-    markMiss(id) {
-
-        const entry =
-            database.entries[id];
-
-        if (!entry) {
-
-            return false;
-
-        }
-
-        entry.missCount =
-            safeInteger(
-                entry.missCount,
-                0
-            ) + 1;
-
-        saveDatabase({
-            skipBackup: true
-        });
-
-        return true;
-
-    }
-
-    /* =====================================================
-       MARK SUCCESS
-    ===================================================== */
-
-    markSuccess(id) {
-
-        const entry =
-            database.entries[id];
-
-        if (!entry) {
-
-            return false;
-
-        }
-
-        entry.successCount =
-            safeInteger(
-                entry.successCount,
-                0
-            ) + 1;
-
-        const total =
-            entry.successCount +
-            entry.failureCount;
-
-        if (total > 0) {
-
-            entry.qualityScore =
-                entry.successCount /
-                total;
-
-        }
-
-        entry.updatedAt =
-            nowISO();
-
-        saveDatabase({
-            skipBackup: true
-        });
-
-        return true;
-
-    }
-
-    /* =====================================================
-       MARK FAILURE
-    ===================================================== */
-
-    markFailure(id) {
-
-        const entry =
-            database.entries[id];
-
-        if (!entry) {
-
-            return false;
-
-        }
-
-        entry.failureCount =
-            safeInteger(
-                entry.failureCount,
-                0
-            ) + 1;
-
-        const total =
-            entry.successCount +
-            entry.failureCount;
-
-        if (total > 0) {
-
-            entry.qualityScore =
-                entry.successCount /
-                total;
-
-        }
-
-        entry.updatedAt =
-            nowISO();
-
-        saveDatabase({
-            skipBackup: true
-        });
-
-        return true;
-
-    }
-
-    /* =====================================================
-       GET ALL
-    ===================================================== */
-
-    getAll(
-        options = {}
-    ) {
-
-        let entries =
-            Object.values(
-                database.entries
+        const userId =
+            answerMemoryNormalizeUserId2(
+                record.userId
             );
 
         if (
-            options.enabledOnly
+            !Array.isArray(
+                this.userIndex[
+                    userId
+                ]
+            )
         ) {
-
-            entries =
-                entries.filter(
-                    entry =>
-                        entry.enabled !== false
-                );
-
+            this.userIndex[
+                userId
+            ] = [];
         }
 
         if (
-            options.excludeArchived
+            !this.userIndex[
+                userId
+            ].includes(
+                record.id
+            )
         ) {
+            this.userIndex[
+                userId
+            ].push(
+                record.id
+            );
+        }
 
-            entries =
-                entries.filter(
-                    entry =>
-                        entry.archived !== true
+        return true;
+    };
+
+
+/* ============================================================
+   2.38 - REMOVE INDEX V2
+============================================================ */
+
+AnswerMemory.prototype.removeRecordFromIndexV2 =
+    function (
+        record
+    ) {
+        if (
+            !record
+        ) {
+            return false;
+        }
+
+        const tokens =
+            answerMemoryUniqueArray(
+                record.tokens ||
+                    []
+            );
+
+        if (
+            this.index &&
+            typeof this.index ===
+                "object"
+        ) {
+            for (
+                const token
+                of tokens
+            ) {
+                if (
+                    !Array.isArray(
+                        this.index[
+                            token
+                        ]
+                    )
+                ) {
+                    continue;
+                }
+
+                this.index[
+                    token
+                ] =
+                    this.index[
+                        token
+                    ].filter(
+                        id =>
+                            id !==
+                            record.id
+                    );
+
+                if (
+                    this.index[
+                        token
+                    ].length ===
+                    0
+                ) {
+                    delete this.index[
+                        token
+                    ];
+                }
+            }
+        }
+
+        const userId =
+            answerMemoryNormalizeUserId2(
+                record.userId
+            );
+
+        if (
+            this.userIndex &&
+            Array.isArray(
+                this.userIndex[
+                    userId
+                ]
+            )
+        ) {
+            this.userIndex[
+                userId
+            ] =
+                this.userIndex[
+                    userId
+                ].filter(
+                    id =>
+                        id !==
+                        record.id
                 );
 
+            if (
+                this.userIndex[
+                    userId
+                ].length ===
+                0
+            ) {
+                delete this.userIndex[
+                    userId
+                ];
+            }
         }
+
+        return true;
+    };
+
+
+/* ============================================================
+   2.39 - ADD HISTORY V2
+============================================================ */
+
+AnswerMemory.prototype.addHistoryV2 =
+    function (
+        event,
+        record,
+        extra = {}
+    ) {
+        if (
+            this.config?.historyEnabled ===
+            false
+        ) {
+            return false;
+        }
+
+        if (
+            !Array.isArray(
+                this.history
+            )
+        ) {
+            this.history =
+                [];
+        }
+
+        const historyRecord = {
+            id:
+                answerMemoryCreateId(
+                    "history"
+                ),
+
+            timestamp:
+                answerMemoryNowISO(),
+
+            event:
+                answerMemorySafeString(
+                    event,
+                    "unknown"
+                ),
+
+            recordId:
+                record?.id ||
+                null,
+
+            userId:
+                record?.userId ||
+                extra.userId ||
+                null,
+
+            question:
+                record?.question ||
+                extra.question ||
+                extra.query ||
+                null,
+
+            score:
+                extra.score ??
+                null,
+
+            similarity:
+                extra.similarity ??
+                null,
+
+            category:
+                record?.category ||
+                extra.category ||
+                "general",
+
+            source:
+                record?.source ||
+                extra.source ||
+                null,
+
+            metadata:
+                answerMemoryEnsureObject(
+                    extra.metadata
+                )
+        };
+
+        this.history.push(
+            historyRecord
+        );
+
+        const maxHistory =
+            Number(
+                this.config
+                    ?.maximumHistory ||
+                    50000
+            );
+
+        if (
+            this.history.length >
+            maxHistory
+        ) {
+            this.history =
+                this.history.slice(
+                    -maxHistory
+                );
+        }
+
+        return true;
+    };
+
+
+/* ============================================================
+   2.40 - GET RECORD V2
+============================================================ */
+
+AnswerMemory.prototype.getRecordV2 =
+    function (
+        id
+    ) {
+        if (
+            !id ||
+            !this.records
+        ) {
+            return null;
+        }
+
+        const record =
+            this.records[id];
+
+        if (
+            !record
+        ) {
+            return null;
+        }
+
+        return this.publicRecord(
+            record
+        );
+    };
+
+
+/* ============================================================
+   2.41 - UPDATE RECORD V2
+============================================================ */
+
+AnswerMemory.prototype.updateRecordV2 =
+    function (
+        id,
+        patch = {}
+    ) {
+        if (
+            !this.records
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "records_unavailable"
+            };
+        }
+
+        const record =
+            this.records[id];
+
+        if (
+            !record
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "not_found"
+            };
+        }
+
+        this.removeRecordFromIndexV2(
+            record
+        );
+
+        if (
+            patch.question !==
+            undefined
+        ) {
+            record.question =
+                answerMemorySafeString(
+                    patch.question,
+                    ""
+                ).trim();
+
+            record.normalizedQuestion =
+                answerMemoryNormalizeTurkish(
+                    record.question
+                );
+
+            record.searchQuestion =
+                answerMemorySearchNormalize(
+                    record.question
+                );
+
+            record.questionHash =
+                answerMemoryHash(
+                    record.normalizedQuestion
+                );
+
+            record.tokens =
+                answerMemoryUniqueArray(
+                    answerMemoryTokenize(
+                        record.question
+                    )
+                );
+
+            record.keywords =
+                answerMemoryExtractKeywords(
+                    record.question
+                );
+
+            record.tokenCount =
+                record.tokens.length;
+
+            record.keywordCount =
+                record.keywords.length;
+
+            record.questionType =
+                answerMemoryDetectQuestionType(
+                    record.question
+                );
+
+            record.category =
+                patch.category ??
+                answerMemoryDetectCategory(
+                    record.question
+                );
+        }
+
+        if (
+            patch.answer !==
+            undefined
+        ) {
+            record.answer =
+                answerMemorySafeString(
+                    patch.answer,
+                    ""
+                ).trim();
+
+            record.normalizedAnswer =
+                answerMemoryNormalizeTurkish(
+                    record.answer
+                );
+
+            record.answerHash =
+                answerMemoryHash(
+                    record.normalizedAnswer
+                );
+        }
+
+        if (
+            patch.userId !==
+            undefined
+        ) {
+            record.userId =
+                answerMemoryNormalizeUserId2(
+                    patch.userId
+                );
+        }
+
+        if (
+            patch.userName !==
+            undefined
+        ) {
+            record.userName =
+                answerMemoryNormalizeUserName2(
+                    patch.userName
+                );
+        }
+
+        if (
+            patch.tags !==
+            undefined
+        ) {
+            record.tags =
+                answerMemoryNormalizeTags(
+                    patch.tags
+                );
+        }
+
+        const numericFields = [
+            "importance",
+            "confidence",
+            "quality"
+        ];
+
+        for (
+            const field
+            of numericFields
+        ) {
+            if (
+                patch[field] !==
+                undefined
+            ) {
+                record[field] =
+                    answerMemoryClamp(
+                        patch[field],
+                        0,
+                        1
+                    );
+            }
+        }
+
+        const booleanFields = [
+            "active",
+            "archived",
+            "pinned",
+            "favorite",
+            "verified",
+            "trusted"
+        ];
+
+        for (
+            const field
+            of booleanFields
+        ) {
+            if (
+                patch[field] !==
+                undefined
+            ) {
+                record[field] =
+                    Boolean(
+                        patch[field]
+                    );
+            }
+        }
+
+        if (
+            patch.category !==
+            undefined
+        ) {
+            record.category =
+                answerMemorySafeString(
+                    patch.category,
+                    record.category ||
+                        "general"
+                );
+        }
+
+        if (
+            patch.language !==
+            undefined
+        ) {
+            record.language =
+                answerMemorySafeString(
+                    patch.language,
+                    record.language ||
+                        "tr"
+                );
+        }
+
+        if (
+            patch.scope !==
+            undefined
+        ) {
+            record.scope =
+                answerMemorySafeString(
+                    patch.scope,
+                    record.scope ||
+                        "user"
+                );
+        }
+
+        if (
+            patch.source !==
+            undefined
+        ) {
+            record.source =
+                answerMemorySafeString(
+                    patch.source,
+                    record.source ||
+                        "chat"
+                );
+        }
+
+        if (
+            patch.model !==
+            undefined
+        ) {
+            record.model =
+                answerMemorySafeString(
+                    patch.model,
+                    record.model ||
+                        "local"
+                );
+        }
+
+        if (
+            patch.metadata !==
+            undefined
+        ) {
+            record.metadata =
+                Object.assign(
+                    {},
+                    answerMemoryEnsureObject(
+                        record.metadata
+                    ),
+                    answerMemoryEnsureObject(
+                        patch.metadata
+                    )
+                );
+        }
+
+        if (
+            patch.custom !==
+            undefined
+        ) {
+            record.custom =
+                Object.assign(
+                    {},
+                    answerMemoryEnsureObject(
+                        record.custom
+                    ),
+                    answerMemoryEnsureObject(
+                        patch.custom
+                    )
+                );
+        }
+
+        record.updatedAt =
+            answerMemoryNowISO();
+
+        record.version =
+            Number(
+                record.version ||
+                    1
+            ) + 1;
+
+        record.updates =
+            Number(
+                record.updates ||
+                    0
+            ) + 1;
+
+        this.indexRecordV2(
+            record
+        );
+
+        this.stats.updates =
+            Number(
+                this.stats
+                    .updates ||
+                    0
+            ) + 1;
+
+        this.stats.totalWrites =
+            Number(
+                this.stats
+                    .totalWrites ||
+                    0
+            ) + 1;
+
+        this.stats.lastWrite =
+            answerMemoryNowISO();
+
+        this.addHistoryV2(
+            "manual_update",
+            record
+        );
+
+        this.persist();
+
+        return {
+            ok: true,
+            id,
+            record:
+                this.publicRecord(
+                    record
+                )
+        };
+    };
+
+
+/* ============================================================
+   2.42 - ARCHIVE RECORD
+============================================================ */
+
+AnswerMemory.prototype.archiveRecordV2 =
+    function (
+        id
+    ) {
+        const record =
+            this.records?.[id];
+
+        if (
+            !record
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "not_found"
+            };
+        }
+
+        record.archived =
+            true;
+
+        record.active =
+            false;
+
+        record.updatedAt =
+            answerMemoryNowISO();
+
+        this.removeRecordFromIndexV2(
+            record
+        );
+
+        this.stats.deletions =
+            Number(
+                this.stats
+                    .deletions ||
+                    0
+            ) + 1;
+
+        this.addHistoryV2(
+            "archive",
+            record
+        );
+
+        this.persist();
+
+        return {
+            ok: true,
+            id,
+            record:
+                this.publicRecord(
+                    record
+                )
+        };
+    };
+
+
+/* ============================================================
+   2.43 - RESTORE RECORD
+============================================================ */
+
+AnswerMemory.prototype.restoreRecordV2 =
+    function (
+        id
+    ) {
+        const record =
+            this.records?.[id];
+
+        if (
+            !record
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "not_found"
+            };
+        }
+
+        record.archived =
+            false;
+
+        record.active =
+            true;
+
+        record.updatedAt =
+            answerMemoryNowISO();
+
+        this.indexRecordV2(
+            record
+        );
+
+        this.addHistoryV2(
+            "restore",
+            record
+        );
+
+        this.persist();
+
+        return {
+            ok: true,
+            id,
+            record:
+                this.publicRecord(
+                    record
+                )
+        };
+    };
+
+
+/* ============================================================
+   2.44 - HARD DELETE RECORD
+============================================================ */
+
+AnswerMemory.prototype.hardDeleteRecordV2 =
+    function (
+        id
+    ) {
+        const record =
+            this.records?.[id];
+
+        if (
+            !record
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "not_found"
+            };
+        }
+
+        this.removeRecordFromIndexV2(
+            record
+        );
+
+        delete this.records[
+            id
+        ];
+
+        this.stats.deletions =
+            Number(
+                this.stats
+                    .deletions ||
+                    0
+            ) + 1;
+
+        this.stats.totalEntries =
+            Object.keys(
+                this.records
+            ).length;
+
+        this.stats.lastWrite =
+            answerMemoryNowISO();
+
+        this.addHistoryV2(
+            "permanent_delete",
+            record
+        );
+
+        this.persist();
+
+        return {
+            ok: true,
+            id,
+            permanent: true
+        };
+    };
+
+
+/* ============================================================
+   2.45 - LIST ACTIVE RECORDS
+============================================================ */
+
+AnswerMemory.prototype.listActiveRecordsV2 =
+    function (
+        options = {}
+    ) {
+        const records =
+            Object.values(
+                this.records ||
+                    {}
+            );
+
+        let result =
+            records.filter(
+                record =>
+                    record &&
+                    record.active !==
+                        false
+            );
 
         if (
             options.userId
         ) {
-
-            entries =
-                entries.filter(
-                    entry =>
-                        entry.userId ===
-                        options.userId
+            const userId =
+                answerMemoryNormalizeUserId2(
+                    options.userId
                 );
 
+            result =
+                result.filter(
+                    record =>
+                        answerMemoryNormalizeUserId2(
+                            record.userId
+                        ) ===
+                        userId
+                );
         }
 
         if (
             options.category
         ) {
-
-            entries =
-                entries.filter(
-                    entry =>
-                        entry.category ===
+            result =
+                result.filter(
+                    record =>
+                        record.category ===
                         options.category
                 );
-
         }
 
         if (
             options.language
         ) {
-
-            entries =
-                entries.filter(
-                    entry =>
-                        entry.language ===
+            result =
+                result.filter(
+                    record =>
+                        record.language ===
                         options.language
                 );
-
         }
 
-        return entries.map(
-            clone
-        );
-
-    }
-
-    /* =====================================================
-       COUNT
-    ===================================================== */
-
-    count() {
-
-        return Object.keys(
-            database.entries
-        ).length;
-
-    }
-
-    /* =====================================================
-       STATS
-    ===================================================== */
-
-    stats() {
-
-        const entries =
-            Object.values(
-                database.entries
-            );
-
-        let enabled = 0;
-        let archived = 0;
-        let pinned = 0;
-        let totalUsage = 0;
-
-        for (
-            const entry of entries
-        ) {
-
-            if (
-                entry.enabled !== false
-            ) {
-
-                enabled++;
-
-            }
-
-            if (
-                entry.archived === true
-            ) {
-
-                archived++;
-
-            }
-
-            if (
-                entry.pinned === true
-            ) {
-
-                pinned++;
-
-            }
-
-            totalUsage +=
-                safeInteger(
-                    entry.usageCount,
-                    0
-                );
-
-        }
-
-        return {
-
-            total:
-                entries.length,
-
-            enabled,
-
-            archived,
-
-            pinned,
-
-            totalUsage,
-
-            totalLookups:
-                database.totalLookups,
-
-            totalHits:
-                database.totalHits,
-
-            totalMisses:
-                database.totalMisses,
-
-            totalSaves:
-                database.totalSaves,
-
-            totalUpdates:
-                database.totalUpdates,
-
-            totalErrors:
-                database.totalErrors,
-
-            hitRate:
-                database.totalLookups > 0
-                    ? database.totalHits /
-                      database.totalLookups
-                    : 0
-
-        };
-
-    }
-
-}
-
-/* =========================================================
-   32. SINGLETON
-========================================================= */
-
-const answerMemory =
-    new AnswerMemory();
-
-/* =========================================================
-   33. BASIC API
-========================================================= */
-
-function saveAnswer(
-    question,
-    answer,
-    options = {}
-) {
-
-    return answerMemory.add({
-
-        question,
-
-        answer,
-
-        ...options
-
-    });
-
-}
-
-function findAnswer(
-    question,
-    options = {}
-) {
-
-    return answerMemory.lookup(
-        question,
-        options
-    );
-
-}
-
-function findExactAnswer(
-    question
-) {
-
-    return answerMemory.findExact(
-        question
-    );
-
-}
-
-function findSimilarAnswers(
-    question,
-    options = {}
-) {
-
-    return answerMemory.findSimilar(
-        question,
-        options
-    );
-
-}
-
-/* =========================================================
-   34. EXPORTS
-========================================================= */
-
-module.exports = {
-
-    AnswerMemory,
-
-    answerMemory,
-
-    saveAnswer,
-
-    findAnswer,
-
-    findExactAnswer,
-
-    findSimilarAnswers,
-
-    calculateSimilarity,
-
-    normalizeQuestion,
-
-    normalizeAnswer,
-
-    tokenize,
-
-    createHash,
-
-    generateId,
-
-    MEMORY_CONFIG,
-
-    MEMORY_FILES: {
-
-        database:
-            ANSWER_MEMORY_FILE,
-
-        backups:
-            ANSWER_MEMORY_BACKUP_DIR,
-
-        logs:
-            ANSWER_MEMORY_LOG_DIR
-
-    }
-
-};
-
-/* =========================================================
-   PART 1 END
-========================================================= */
-/* ============================================================
-   TÜRKAI — ANSWER MEMORY ENGINE
-   PART 2 / 5
-   GELİŞMİŞ HAFIZA • PUANLAMA • KULLANICI • ÖĞRENME
-============================================================ */
-
-/* ============================================================
-   35. MEMORY QUALITY ENGINE
-============================================================ */
-
-class MemoryQualityEngine {
-
-    constructor() {
-
-        this.weights = {
-
-            similarity: 0.35,
-
-            quality: 0.20,
-
-            confidence: 0.15,
-
-            usage: 0.10,
-
-            success: 0.10,
-
-            freshness: 0.05,
-
-            personalization: 0.05
-
-        };
-
-    }
-
-    clamp(value, min = 0, max = 1) {
-
-        return Math.min(
-            max,
-            Math.max(
-                min,
-                safeNumber(value, 0)
-            )
-        );
-
-    }
-
-    calculateFreshness(entry) {
-
-        if (!entry) {
-
-            return 0;
-
-        }
-
-        const created =
-            new Date(
-                entry.updatedAt ||
-                entry.createdAt ||
-                nowISO()
-            ).getTime();
-
-        const current =
-            Date.now();
-
-        const age =
-            Math.max(
-                0,
-                current - created
-            );
-
-        const day =
-            1000 *
-            60 *
-            60 *
-            24;
-
-        const ageDays =
-            age / day;
-
-        /*
-         * Yeni cevaplara küçük bir avantaj.
-         * Ancak eski ve çok kullanılan cevaplar
-         * tamamen kaybolmaz.
-         */
-
-        return this.clamp(
-            1 /
+        result.sort(
             (
-                1 +
-                ageDays / 30
-            )
-        );
-
-    }
-
-    calculateUsage(entry) {
-
-        if (!entry) {
-
-            return 0;
-
-        }
-
-        const usage =
-            safeNumber(
-                entry.usageCount,
-                0
-            );
-
-        return this.clamp(
-            Math.log10(
-                usage + 1
-            ) / 3
-        );
-
-    }
-
-    calculateSuccess(entry) {
-
-        if (!entry) {
-
-            return 0;
-
-        }
-
-        const success =
-            safeNumber(
-                entry.successCount,
-                0
-            );
-
-        const failure =
-            safeNumber(
-                entry.failureCount,
-                0
-            );
-
-        const total =
-            success +
-            failure;
-
-        if (total === 0) {
-
-            return 0.5;
-
-        }
-
-        return this.clamp(
-            success / total
-        );
-
-    }
-
-    calculatePersonalization(
-        entry,
-        userId
-    ) {
-
-        if (
-            !entry ||
-            !userId
-        ) {
-
-            return 0;
-
-        }
-
-        if (
-            entry.userId ===
-            userId
-        ) {
-
-            return 1;
-
-        }
-
-        if (
-            !entry.userId
-        ) {
-
-            return 0.35;
-
-        }
-
-        return 0;
-
-    }
-
-    calculateScore(
-        entry,
-        similarity,
-        userId = null
-    ) {
-
-        if (!entry) {
-
-            return 0;
-
-        }
-
-        const similarityScore =
-            this.clamp(
-                similarity
-            );
-
-        const qualityScore =
-            this.clamp(
-                entry.qualityScore ??
-                0.5
-            );
-
-        const confidenceScore =
-            this.clamp(
-                entry.confidence ??
-                0.5
-            );
-
-        const usageScore =
-            this.calculateUsage(
-                entry
-            );
-
-        const successScore =
-            this.calculateSuccess(
-                entry
-            );
-
-        const freshnessScore =
-            this.calculateFreshness(
-                entry
-            );
-
-        const personalizationScore =
-            this.calculatePersonalization(
-                entry,
-                userId
-            );
-
-        const score =
-
-            similarityScore *
-            this.weights.similarity +
-
-            qualityScore *
-            this.weights.quality +
-
-            confidenceScore *
-            this.weights.confidence +
-
-            usageScore *
-            this.weights.usage +
-
-            successScore *
-            this.weights.success +
-
-            freshnessScore *
-            this.weights.freshness +
-
-            personalizationScore *
-            this.weights.personalization;
-
-        return this.clamp(
-            score
-        );
-
-    }
-
-}
-
-/* ============================================================
-   36. QUALITY ENGINE INSTANCE
-============================================================ */
-
-const memoryQuality =
-    new MemoryQualityEngine();
-
-/* ============================================================
-   37. USER MEMORY INDEX
-============================================================ */
-
-class UserAnswerIndex {
-
-    constructor() {
-
-        this.index = new Map();
-
-        this.rebuild();
-
-    }
-
-    rebuild() {
-
-        this.index.clear();
-
-        const entries =
-            Object.values(
-                database.entries
-            );
-
-        for (
-            const entry of entries
-        ) {
-
-            if (!entry.userId) {
-
-                continue;
-
-            }
-
-            if (
-                !this.index.has(
-                    entry.userId
-                )
-            ) {
-
-                this.index.set(
-                    entry.userId,
-                    new Set()
-                );
-
-            }
-
-            this.index
-                .get(entry.userId)
-                .add(entry.id);
-
-        }
-
-    }
-
-    add(entry) {
-
-        if (
-            !entry ||
-            !entry.userId
-        ) {
-
-            return;
-
-        }
-
-        if (
-            !this.index.has(
-                entry.userId
-            )
-        ) {
-
-            this.index.set(
-                entry.userId,
-                new Set()
-            );
-
-        }
-
-        this.index
-            .get(entry.userId)
-            .add(entry.id);
-
-    }
-
-    remove(entry) {
-
-        if (
-            !entry ||
-            !entry.userId
-        ) {
-
-            return;
-
-        }
-
-        const set =
-            this.index.get(
-                entry.userId
-            );
-
-        if (!set) {
-
-            return;
-
-        }
-
-        set.delete(
-            entry.id
-        );
-
-        if (
-            set.size === 0
-        ) {
-
-            this.index.delete(
-                entry.userId
-            );
-
-        }
-
-    }
-
-    getUserEntryIds(
-        userId
-    ) {
-
-        if (!userId) {
-
-            return [];
-
-        }
-
-        const set =
-            this.index.get(
-                userId
-            );
-
-        if (!set) {
-
-            return [];
-
-        }
-
-        return [
-            ...set
-        ];
-
-    }
-
-    countUserEntries(
-        userId
-    ) {
-
-        return this
-            .getUserEntryIds(
-                userId
-            )
-            .length;
-
-    }
-
-}
-
-/* ============================================================
-   38. USER INDEX INSTANCE
-============================================================ */
-
-const userAnswerIndex =
-    new UserAnswerIndex();
-
-/* ============================================================
-   39. MEMORY LEARNING ENGINE
-============================================================ */
-
-class MemoryLearningEngine {
-
-    constructor(memory) {
-
-        this.memory =
-            memory;
-
-        this.events = [];
-
-        this.maxEvents = 5000;
-
-    }
-
-    pushEvent(event) {
-
-        this.events.push({
-
-            id:
-                generateId(
-                    "learn"
-                ),
-
-            timestamp:
-                nowISO(),
-
-            ...event
-
-        });
-
-        if (
-            this.events.length >
-            this.maxEvents
-        ) {
-
-            this.events =
-                this.events.slice(
-                    -this.maxEvents
-                );
-
-        }
-
-    }
-
-    learnFromResult(
-        question,
-        result,
-        context = {}
-    ) {
-
-        if (!result) {
-
-            return null;
-
-        }
-
-        this.pushEvent({
-
-            type:
-                result.found
-                    ? "memory_hit"
-                    : "memory_miss",
-
-            question:
-                cleanText(
-                    question
-                ),
-
-            memoryId:
-                result.entry
-                    ? result.entry.id
-                    : null,
-
-            score:
-                safeNumber(
-                    result.score,
-                    0
-                ),
-
-            userId:
-                context.userId ||
-                null,
-
-            sessionId:
-                context.sessionId ||
-                null
-
-        });
-
-        return result;
-
-    }
-
-    learnAnswer(
-        question,
-        answer,
-        context = {}
-    ) {
-
-        const cleanQuestion =
-            cleanText(
-                question
-            );
-
-        const cleanAnswer =
-            cleanText(
-                answer
-            );
-
-        if (
-            !cleanQuestion ||
-            !cleanAnswer
-        ) {
-
-            return null;
-
-        }
-
-        const existing =
-            this.memory.findExact(
-                cleanQuestion
-            );
-
-        if (existing) {
-
-            const merged =
-                this.mergeAnswer(
-                    existing,
-                    cleanAnswer
-                );
-
-            const updated =
-                this.memory.update(
-                    existing.id,
-                    merged
-                );
-
-            this.pushEvent({
-
-                type:
-                    "answer_updated",
-
-                question:
-                    cleanQuestion,
-
-                memoryId:
-                    existing.id,
-
-                userId:
-                    context.userId ||
-                    null
-
-            });
-
-            return updated;
-
-        }
-
-        const entry =
-            this.memory.add({
-
-                question:
-                    cleanQuestion,
-
-                answer:
-                    cleanAnswer,
-
-                userId:
-                    context.userId ||
-                    null,
-
-                sessionId:
-                    context.sessionId ||
-                    null,
-
-                conversationId:
-                    context.conversationId ||
-                    null,
-
-                language:
-                    context.language ||
-                    "tr",
-
-                category:
-                    context.category ||
-                    "general",
-
-                tags:
-                    context.tags ||
-                    [],
-
-                sources:
-                    context.sources ||
-                    [],
-
-                model:
-                    context.model ||
-                    "local-memory",
-
-                provider:
-                    context.provider ||
-                    "memory",
-
-                confidence:
-                    safeNumber(
-                        context.confidence,
-                        0.7
-                    ),
-
-                qualityScore:
-                    safeNumber(
-                        context.qualityScore,
-                        0.7
-                    ),
-
-                metadata:
-                    context.metadata ||
-                    {}
-
-            });
-
-        if (entry) {
-
-            userAnswerIndex.add(
-                entry
-            );
-
-        }
-
-        this.pushEvent({
-
-            type:
-                "answer_learned",
-
-            question:
-                cleanQuestion,
-
-            memoryId:
-                entry
-                    ? entry.id
-                    : null,
-
-            userId:
-                context.userId ||
-                null
-
-        });
-
-        return entry;
-
-    }
-
-    mergeAnswer(
-        existing,
-        newAnswer
-    ) {
-
-        const oldAnswer =
-            cleanText(
-                existing.answer
-            );
-
-        const cleanNew =
-            cleanText(
-                newAnswer
-            );
-
-        if (!oldAnswer) {
-
-            return {
-
-                answer:
-                    cleanNew,
-
-                confidence:
-                    Math.min(
-                        1,
-                        (
-                            safeNumber(
-                                existing.confidence,
-                                0.5
-                            ) +
-                            0.1
-                        )
-                    )
-
-            };
-
-        }
-
-        if (
-            oldAnswer ===
-            cleanNew
-        ) {
-
-            return {
-
-                usageCount:
-                    safeInteger(
-                        existing.usageCount,
-                        0
-                    ) + 1,
-
-                confidence:
-                    Math.min(
-                        1,
-                        safeNumber(
-                            existing.confidence,
-                            0.5
-                        ) + 0.02
-                    )
-
-            };
-
-        }
-
-        /*
-         * Yeni cevap mevcut cevabı tamamen silmez.
-         * Alternatif cevapları metadata içinde saklar.
-         */
-
-        const metadata =
-            existing.metadata &&
-            typeof existing.metadata ===
-                "object"
-                ? clone(
-                    existing.metadata
-                )
-                : {};
-
-        if (
-            !Array.isArray(
-                metadata.alternativeAnswers
-            )
-        ) {
-
-            metadata.alternativeAnswers =
-                [];
-
-        }
-
-        const alreadyExists =
-            metadata.alternativeAnswers
-                .some(
-                    item =>
-                        item &&
-                        item.text ===
-                        cleanNew
-                );
-
-        if (
-            !alreadyExists
-        ) {
-
-            metadata.alternativeAnswers
-                .push({
-
-                    text:
-                        cleanNew,
-
-                    addedAt:
-                        nowISO()
-
-                });
-
-        }
-
-        if (
-            metadata.alternativeAnswers
-                .length > 10
-        ) {
-
-            metadata.alternativeAnswers =
-                metadata.alternativeAnswers
-                    .slice(-10);
-
-        }
-
-        return {
-
-            metadata,
-
-            usageCount:
-                safeInteger(
-                    existing.usageCount,
-                    0
-                ) + 1
-
-        };
-
-    }
-
-    getEvents() {
-
-        return clone(
-            this.events
-        );
-
-    }
-
-    clearEvents() {
-
-        this.events = [];
-
-    }
-
-}
-
-/* ============================================================
-   40. LEARNING ENGINE INSTANCE
-============================================================ */
-
-const memoryLearning =
-    new MemoryLearningEngine(
-        answerMemory
-    );
-
-/* ============================================================
-   41. ADVANCED SIMILAR SEARCH
-============================================================ */
-
-AnswerMemory.prototype.findAdvanced =
-function(
-    question,
-    options = {}
-) {
-
-    const query =
-        cleanText(
-            question
-        );
-
-    if (!query) {
-
-        return [];
-
-    }
-
-    const minimum =
-        options.minimumSimilarity ??
-        this.options
-            .minimumSimilarity;
-
-    const maximum =
-        options.maxResults ??
-        this.options
-            .maxResults;
-
-    const userId =
-        options.userId ||
-        null;
-
-    const candidates = [];
-
-    let entries;
-
-    if (userId) {
-
-        const ids =
-            userAnswerIndex
-                .getUserEntryIds(
-                    userId
-                );
-
-        entries =
-            ids
-                .map(
-                    id =>
-                        database.entries[id]
-                )
-                .filter(Boolean);
-
-        /*
-         * Genel hafıza da aramaya dahil edilir.
-         */
-
-        const generalEntries =
-            Object.values(
-                database.entries
-            )
-                .filter(
-                    entry =>
-                        !entry.userId
-                );
-
-        entries.push(
-            ...generalEntries
-        );
-
-    } else {
-
-        entries =
-            Object.values(
-                database.entries
-            );
-
-    }
-
-    for (
-        const entry of entries
-    ) {
-
-        if (
-            !entry ||
-            entry.enabled === false ||
-            entry.archived === true
-        ) {
-
-            continue;
-
-        }
-
-        const similarity =
-            calculateSimilarity(
-                query,
-                entry.question
-            );
-
-        if (
-            similarity <
-            minimum
-        ) {
-
-            continue;
-
-        }
-
-        const finalScore =
-            memoryQuality
-                .calculateScore(
-                    entry,
-                    similarity,
-                    userId
-                );
-
-        candidates.push({
-
-            id:
-                entry.id,
-
-            score:
-                finalScore,
-
-            similarity,
-
-            quality:
-                safeNumber(
-                    entry.qualityScore,
-                    0.5
-                ),
-
-            confidence:
-                safeNumber(
-                    entry.confidence,
-                    0.5
-                ),
-
-            usage:
-                safeInteger(
-                    entry.usageCount,
-                    0
-                ),
-
-            personalized:
-                Boolean(
-                    userId &&
-                    entry.userId ===
-                    userId
-                ),
-
-            entry:
-                clone(entry)
-
-        });
-
-    }
-
-    candidates.sort(
-        (a, b) => {
-
-            if (
-                b.score !==
-                a.score
-            ) {
+                a,
+                b
+            ) => {
+                const dateA =
+                    new Date(
+                        a.updatedAt ||
+                            a.createdAt ||
+                            0
+                    ).getTime();
+
+                const dateB =
+                    new Date(
+                        b.updatedAt ||
+                            b.createdAt ||
+                            0
+                    ).getTime();
 
                 return (
-                    b.score -
-                    a.score
+                    dateB -
+                    dateA
                 );
-
             }
+        );
 
-            return (
-                b.similarity -
-                a.similarity
+        const limit =
+            answerMemoryClamp(
+                options.limit ??
+                    100,
+                1,
+                10000
             );
 
-        }
-    );
-
-    return candidates.slice(
-        0,
-        maximum
-    );
-
-};
-
-/* ============================================================
-   42. SMART LOOKUP
-============================================================ */
-
-AnswerMemory.prototype.smartLookup =
-function(
-    question,
-    options = {}
-) {
-
-    const query =
-        cleanText(
-            question
-        );
-
-    if (!query) {
-
-        return {
-
-            found: false,
-
-            type: "empty",
-
-            score: 0,
-
-            entry: null,
-
-            results: []
-
-        };
-
-    }
-
-    database.totalLookups++;
-
-    const exact =
-        this.findExact(
-            query
-        );
-
-    if (exact) {
-
-        this.markHit(
-            exact.id
-        );
-
-        memoryLearning.learnFromResult(
-            query,
-            {
-
-                found: true,
-
-                score: 1,
-
-                entry: exact
-
-            },
-            options
-        );
-
-        return {
-
-            found: true,
-
-            type: "exact",
-
-            score: 1,
-
-            entry:
-                this.get(
-                    exact.id
-                ),
-
-            results: []
-
-        };
-
-    }
-
-    const results =
-        this.findAdvanced(
-            query,
-            options
-        );
-
-    const best =
-        results[0] || null;
-
-    if (
-        best &&
-        best.score >=
-        (
-            options.minimumScore ??
-            this.options
-                .minimumSimilarity
-        )
-    ) {
-
-        this.markHit(
-            best.id
-        );
-
-        memoryLearning.learnFromResult(
-            query,
-            {
-
-                found: true,
-
-                score:
-                    best.score,
-
-                entry:
-                    best.entry
-
-            },
-            options
-        );
-
-        return {
-
-            found: true,
-
-            type: "advanced",
-
-            score:
-                best.score,
-
-            entry:
-                this.get(
-                    best.id
-                ),
-
-            results
-
-        };
-
-    }
-
-    database.totalMisses++;
-
-    memoryLearning.learnFromResult(
-        query,
-        {
-
-            found: false,
-
-            score: 0,
-
-            entry: null
-
-        },
-        options
-    );
-
-    saveDatabase({
-        skipBackup: true
-    });
-
-    return {
-
-        found: false,
-
-        type: "miss",
-
-        score: 0,
-
-        entry: null,
-
-        results
-
-    };
-
-};
-
-/* ============================================================
-   43. USER-SPECIFIC SAVE
-============================================================ */
-
-function saveUserAnswer(
-    userId,
-    question,
-    answer,
-    options = {}
-) {
-
-    if (!userId) {
-
-        throw new Error(
-            "userId gerekli."
-        );
-
-    }
-
-    return memoryLearning.learnAnswer(
-        question,
-        answer,
-        {
-
-            ...options,
-
-            userId
-
-        }
-    );
-
-}
-
-/* ============================================================
-   44. SMART ANSWER FINDER
-============================================================ */
-
-function findSmartAnswer(
-    question,
-    options = {}
-) {
-
-    return answerMemory.smartLookup(
-        question,
-        options
-    );
-
-}
-
-/* ============================================================
-   45. MEMORY FEEDBACK
-============================================================ */
-
-function memoryFeedback(
-    memoryId,
-    feedback,
-    options = {}
-) {
-
-    if (!memoryId) {
-
-        return null;
-
-    }
-
-    const value =
-        String(
-            feedback ||
-            ""
-        ).toLocaleLowerCase(
-            "tr-TR"
-        );
-
-    if (
-        [
-            "good",
-            "iyi",
-            "correct",
-            "doğru",
-            "dogru",
-            "positive",
-            "up"
-        ].includes(value)
-    ) {
-
-        answerMemory.markSuccess(
-            memoryId
-        );
-
-        const entry =
-            answerMemory.get(
-                memoryId
-            );
-
-        if (entry) {
-
-            answerMemory.update(
-                memoryId,
-                {
-
-                    confidence:
-                        Math.min(
-                            1,
-                            safeNumber(
-                                entry.confidence,
-                                0.5
-                            ) + 0.05
-                        ),
-
-                    qualityScore:
-                        Math.min(
-                            1,
-                            safeNumber(
-                                entry.qualityScore,
-                                0.5
-                            ) + 0.05
-                        )
-
-                }
-            );
-
-        }
-
-        return {
-
-            success: true,
-
-            type: "positive"
-
-        };
-
-    }
-
-    if (
-        [
-            "bad",
-            "kötü",
-            "kotu",
-            "wrong",
-            "yanlış",
-            "yanlis",
-            "negative",
-            "down"
-        ].includes(value)
-    ) {
-
-        answerMemory.markFailure(
-            memoryId
-        );
-
-        const entry =
-            answerMemory.get(
-                memoryId
-            );
-
-        if (entry) {
-
-            answerMemory.update(
-                memoryId,
-                {
-
-                    confidence:
-                        Math.max(
-                            0,
-                            safeNumber(
-                                entry.confidence,
-                                0.5
-                            ) - 0.08
-                        ),
-
-                    qualityScore:
-                        Math.max(
-                            0,
-                            safeNumber(
-                                entry.qualityScore,
-                                0.5
-                            ) - 0.08
-                        )
-
-                }
-            );
-
-        }
-
-        return {
-
-            success: true,
-
-            type: "negative"
-
-        };
-
-    }
-
-    return {
-
-        success: false,
-
-        type: "unknown"
-
-    };
-
-}
-
-/* ============================================================
-   46. PIN MEMORY
-============================================================ */
-
-function pinMemory(
-    memoryId
-) {
-
-    const entry =
-        answerMemory.get(
-            memoryId
-        );
-
-    if (!entry) {
-
-        return false;
-
-    }
-
-    answerMemory.update(
-        memoryId,
-        {
-
-            pinned: true
-
-        }
-    );
-
-    return true;
-
-}
-
-/* ============================================================
-   47. UNPIN MEMORY
-============================================================ */
-
-function unpinMemory(
-    memoryId
-) {
-
-    const entry =
-        answerMemory.get(
-            memoryId
-        );
-
-    if (!entry) {
-
-        return false;
-
-    }
-
-    answerMemory.update(
-        memoryId,
-        {
-
-            pinned: false
-
-        }
-    );
-
-    return true;
-
-}
-
-/* ============================================================
-   48. ARCHIVE MEMORY
-============================================================ */
-
-function archiveMemory(
-    memoryId
-) {
-
-    const entry =
-        answerMemory.get(
-            memoryId
-        );
-
-    if (!entry) {
-
-        return false;
-
-    }
-
-    answerMemory.update(
-        memoryId,
-        {
-
-            archived: true
-
-        }
-    );
-
-    return true;
-
-}
-
-/* ============================================================
-   49. RESTORE MEMORY
-============================================================ */
-
-function restoreMemory(
-    memoryId
-) {
-
-    const entry =
-        answerMemory.get(
-            memoryId
-        );
-
-    if (!entry) {
-
-        return false;
-
-    }
-
-    answerMemory.update(
-        memoryId,
-        {
-
-            archived: false,
-
-            enabled: true
-
-        }
-    );
-
-    return true;
-
-}
-
-/* ============================================================
-   50. DISABLE MEMORY
-============================================================ */
-
-function disableMemory(
-    memoryId
-) {
-
-    const entry =
-        answerMemory.get(
-            memoryId
-        );
-
-    if (!entry) {
-
-        return false;
-
-    }
-
-    answerMemory.update(
-        memoryId,
-        {
-
-            enabled: false
-
-        }
-    );
-
-    return true;
-
-}
-
-/* ============================================================
-   51. ENABLE MEMORY
-============================================================ */
-
-function enableMemory(
-    memoryId
-) {
-
-    const entry =
-        answerMemory.get(
-            memoryId
-        );
-
-    if (!entry) {
-
-        return false;
-
-    }
-
-    answerMemory.update(
-        memoryId,
-        {
-
-            enabled: true
-
-        }
-    );
-
-    return true;
-
-}
-
-/* ============================================================
-   52. USER MEMORY STATS
-============================================================ */
-
-function getUserMemoryStats(
-    userId
-) {
-
-    if (!userId) {
-
-        return {
-
-            userId: null,
-
-            total: 0,
-
-            pinned: 0,
-
-            archived: 0,
-
-            usage: 0
-
-        };
-
-    }
-
-    const ids =
-        userAnswerIndex
-            .getUserEntryIds(
-                userId
-            );
-
-    let pinned = 0;
-    let archived = 0;
-    let usage = 0;
-
-    for (
-        const id of ids
-    ) {
-
-        const entry =
-            database.entries[id];
-
-        if (!entry) {
-
-            continue;
-
-        }
-
-        if (
-            entry.pinned
-        ) {
-
-            pinned++;
-
-        }
-
-        if (
-            entry.archived
-        ) {
-
-            archived++;
-
-        }
-
-        usage +=
-            safeInteger(
-                entry.usageCount,
-                0
-            );
-
-    }
-
-    return {
-
-        userId,
-
-        total:
-            ids.length,
-
-        pinned,
-
-        archived,
-
-        usage
-
-    };
-
-}
-
-/* ============================================================
-   53. USER MEMORY LIST
-============================================================ */
-
-function getUserMemories(
-    userId,
-    options = {}
-) {
-
-    if (!userId) {
-
-        return [];
-
-    }
-
-    const ids =
-        userAnswerIndex
-            .getUserEntryIds(
-                userId
-            );
-
-    let entries =
-        ids
-            .map(
-                id =>
-                    database.entries[id]
-            )
-            .filter(Boolean);
-
-    if (
-        options.includeArchived !== true
-    ) {
-
-        entries =
-            entries.filter(
-                entry =>
-                    entry.archived !== true
-            );
-
-    }
-
-    if (
-        options.enabledOnly
-    ) {
-
-        entries =
-            entries.filter(
-                entry =>
-                    entry.enabled !== false
-            );
-
-    }
-
-    if (
-        options.category
-    ) {
-
-        entries =
-            entries.filter(
-                entry =>
-                    entry.category ===
-                    options.category
-            );
-
-    }
-
-    entries.sort(
-        (a, b) => {
-
-            const aTime =
-                new Date(
-                    a.updatedAt ||
-                    a.createdAt
-                ).getTime();
-
-            const bTime =
-                new Date(
-                    b.updatedAt ||
-                    b.createdAt
-                ).getTime();
-
-            return bTime - aTime;
-
-        }
-    );
-
-    const limit =
-        Math.max(
-            1,
-            Math.min(
-                1000,
-                safeInteger(
-                    options.limit,
-                    100
-                )
-            )
-        );
-
-    return entries
-        .slice(0, limit)
-        .map(clone);
-
-}
-
-/* ============================================================
-   54. EXPORT ADDITIONS
-============================================================ */
-
-module.exports.MemoryQualityEngine =
-    MemoryQualityEngine;
-
-module.exports.memoryQuality =
-    memoryQuality;
-
-module.exports.UserAnswerIndex =
-    UserAnswerIndex;
-
-module.exports.userAnswerIndex =
-    userAnswerIndex;
-
-module.exports.MemoryLearningEngine =
-    MemoryLearningEngine;
-
-module.exports.memoryLearning =
-    memoryLearning;
-
-module.exports.saveUserAnswer =
-    saveUserAnswer;
-
-module.exports.findSmartAnswer =
-    findSmartAnswer;
-
-module.exports.memoryFeedback =
-    memoryFeedback;
-
-module.exports.pinMemory =
-    pinMemory;
-
-module.exports.unpinMemory =
-    unpinMemory;
-
-module.exports.archiveMemory =
-    archiveMemory;
-
-module.exports.restoreMemory =
-    restoreMemory;
-
-module.exports.disableMemory =
-    disableMemory;
-
-module.exports.enableMemory =
-    enableMemory;
-
-module.exports.getUserMemoryStats =
-    getUserMemoryStats;
-
-module.exports.getUserMemories =
-    getUserMemories;
-
-/* ============================================================
-   55. GLOBAL MEMORY STATUS
-============================================================ */
-
-function getMemoryStatus() {
-
-    return {
-
-        engine:
-            "TürkAI Answer Memory",
-
-        version:
-            MEMORY_CONFIG.version,
-
-        database:
-            ANSWER_MEMORY_FILE,
-
-        entries:
-            answerMemory.count(),
-
-        users:
-            userAnswerIndex.index.size,
-
-        statistics:
-            answerMemory.stats(),
-
-        learningEvents:
-            memoryLearning.events.length,
-
-        features: {
-
-            exactSearch:
-                true,
-
-            similaritySearch:
-                true,
-
-            advancedRanking:
-                true,
-
-            userMemory:
-                true,
-
-            automaticLearning:
-                true,
-
-            feedbackLearning:
-                true,
-
-            backups:
-                true,
-
-            persistentStorage:
-                true
-
-        },
-
-        timestamp:
-            nowISO()
-
-    };
-
-}
-
-module.exports.getMemoryStatus =
-    getMemoryStatus;
-
-/* ============================================================
-   56. SAFE RELOAD
-============================================================ */
-
-function reloadAnswerMemory() {
-
-    const result =
-        reloadDatabase();
-
-    if (result) {
-
-        userAnswerIndex.rebuild();
-
-    }
-
-    return result;
-
-}
-
-module.exports.reloadAnswerMemory =
-    reloadAnswerMemory;
-
-/* ============================================================
-   57. FORCE SAVE
-============================================================ */
-
-function forceSaveAnswerMemory() {
-
-    return saveDatabase();
-
-}
-
-module.exports.forceSaveAnswerMemory =
-    forceSaveAnswerMemory;
-
-/* ============================================================
-   58. RESET — ADMIN USE
-============================================================ */
-
-function resetAnswerMemory(
-    confirmation
-) {
-
-    if (
-        confirmation !==
-        "RESET_TURKAI_ANSWER_MEMORY"
-    ) {
-
-        throw new Error(
-            "Reset doğrulaması başarısız."
-        );
-
-    }
-
-    database =
-        createDefaultDatabase();
-
-    userAnswerIndex.rebuild();
-
-    memoryLearning.clearEvents();
-
-    return saveDatabase({
-        skipBackup: false
-    });
-
-}
-
-module.exports.resetAnswerMemory =
-    resetAnswerMemory;
-
-/* ============================================================
-   59. FINAL STATUS
-============================================================ */
-
-console.log(
-    `[TürkAI] Answer Memory Engine hazır — ${answerMemory.count()} kayıt`
-);
-
-/* ============================================================
-   PART 2 END
-============================================================ */
-/* ============================================================
-   TÜRKAI — ANSWER MEMORY ENGINE
-   PART 3 / 5
-   GELİŞMİŞ ARAMA • TÜRKÇE VARIATION • KATEGORİ • TAG
-   OTOMATİK ÖĞRENME • DUPLICATE ENGINE
-============================================================ */
-
-/* ============================================================
-   60. TURKISH TEXT ENGINE
-============================================================ */
-
-class TurkishTextEngine {
-
-    constructor() {
-
-        this.stopWords = new Set([
-
-            "acaba",
-            "ama",
-            "ancak",
-            "artık",
-            "aslında",
-            "az",
-            "bazı",
-            "belki",
-            "ben",
-            "bence",
-            "beni",
-            "benim",
-            "bir",
-            "biraz",
-            "biri",
-            "birçok",
-            "birkaç",
-            "biz",
-            "bize",
-            "bizi",
-            "bizim",
-            "bu",
-            "buna",
-            "bunu",
-            "bunun",
-            "bütün",
-            "da",
-            "daha",
-            "de",
-            "defa",
-            "diye",
-            "dolayı",
-            "en",
-            "fakat",
-            "gibi",
-            "hangi",
-            "hangisi",
-            "hani",
-            "hem",
-            "hep",
-            "hepsi",
-            "her",
-            "herhangi",
-            "hiç",
-            "için",
-            "ile",
-            "ise",
-            "işte",
-            "kadar",
-            "karşı",
-            "ki",
-            "kim",
-            "kime",
-            "kimi",
-            "kimse",
-            "mu",
-            "mı",
-            "mi",
-            "mü",
-            "nasıl",
-            "ne",
-            "neden",
-            "nerede",
-            "nereye",
-            "niçin",
-            "niye",
-            "o",
-            "olan",
-            "olarak",
-            "onlar",
-            "onlara",
-            "onları",
-            "onların",
-            "onu",
-            "onun",
-            "sanki",
-            "şey",
-            "şu",
-            "şuna",
-            "şunu",
-            "tarafından",
-            "tüm",
-            "ve",
-            "veya",
-            "ya",
-            "yani",
-            "yine",
-            "yok",
-            "çok",
-            "şeklinde"
-
-        ]);
-
-    }
-
-    normalizeTurkish(
-        text
-    ) {
-
-        return normalizeQuestion(
-            text
-        );
-
-    }
-
-    removeStopWords(
-        text
-    ) {
-
-        return tokenize(text)
-            .filter(
-                token =>
-                    !this.stopWords
-                        .has(token)
-            );
-
-    }
-
-    stemSimple(
-        word
-    ) {
-
-        let value =
-            String(
-                word || ""
-            ).toLocaleLowerCase(
-                "tr-TR"
-            );
-
-        const suffixes = [
-
-            "lerinizden",
-            "larınızdan",
-            "leriniz",
-            "larınız",
-            "lerimiz",
-            "larımız",
-            "lerinden",
-            "larından",
-            "lerine",
-            "larına",
-            "lerini",
-            "larını",
-            "lerden",
-            "lardan",
-            "lerin",
-            "ların",
-            "lere",
-            "lara",
-            "leri",
-            "ları",
-            "lerin",
-            "ların",
-            "lik",
-            "lık",
-            "lük",
-            "luk",
-            "ci",
-            "cı",
-            "cu",
-            "cü",
-            "çı",
-            "çi",
-            "çu",
-            "çü",
-            "dan",
-            "den",
-            "tan",
-            "ten",
-            "dır",
-            "dir",
-            "dur",
-            "dür",
-            "tır",
-            "tir",
-            "tur",
-            "tür",
-            "dır",
-            "dir",
-            "dur",
-            "dür",
-            "yı",
-            "yi",
-            "yu",
-            "yü",
-            "ya",
-            "ye",
-            "ın",
-            "in",
-            "un",
-            "ün",
-            "ım",
-            "im",
-            "um",
-            "üm",
-            "ım",
-            "im",
-            "um",
-            "üm",
-            "a",
-            "e",
-            "ı",
-            "i",
-            "u",
-            "ü"
-
-        ];
-
-        for (
-            const suffix of suffixes
-        ) {
-
-            if (
-                value.length >
-                suffix.length + 3 &&
-                value.endsWith(
-                    suffix
-                )
-            ) {
-
-                value =
-                    value.slice(
-                        0,
-                        -suffix.length
-                    );
-
-                break;
-
-            }
-
-        }
-
-        return value;
-
-    }
-
-    stemTokens(
-        text
-    ) {
-
-        return this
-            .removeStopWords(
-                text
-            )
-            .map(
-                token =>
-                    this.stemSimple(
-                        token
-                    )
-            )
-            .filter(
-                Boolean
-            );
-
-    }
-
-    keywordSet(
-        text
-    ) {
-
-        return new Set(
-            this.stemTokens(
-                text
-            )
-        );
-
-    }
-
-    keywordSimilarity(
-        textA,
-        textB
-    ) {
-
-        const a =
-            this.keywordSet(
-                textA
-            );
-
-        const b =
-            this.keywordSet(
-                textB
-            );
-
-        if (
-            a.size === 0 ||
-            b.size === 0
-        ) {
-
-            return 0;
-
-        }
-
-        let same = 0;
-
-        for (
-            const word of a
-        ) {
-
-            if (
-                b.has(word)
-            ) {
-
-                same++;
-
-            }
-
-        }
-
-        const union =
-            new Set([
-                ...a,
-                ...b
-            ]).size;
-
-        if (!union) {
-
-            return 0;
-
-        }
-
-        return same / union;
-
-    }
-
-    extractKeywords(
-        text,
-        limit = 20
-    ) {
-
-        const tokens =
-            this.stemTokens(
-                text
-            );
-
-        const frequency = {};
-
-        for (
-            const token of tokens
-        ) {
-
-            frequency[token] =
-                (
-                    frequency[token] ||
-                    0
-                ) + 1;
-
-        }
-
-        return Object.entries(
-            frequency
-        )
-            .sort(
-                (a, b) =>
-                    b[1] - a[1]
-            )
+        return result
             .slice(
                 0,
                 limit
             )
             .map(
-                item =>
-                    item[0]
-            );
-
-    }
-
-}
-
-/* ============================================================
-   61. TURKISH TEXT INSTANCE
-============================================================ */
-
-const turkishText =
-    new TurkishTextEngine();
-
-/* ============================================================
-   62. QUESTION VARIATION ENGINE
-============================================================ */
-
-class QuestionVariationEngine {
-
-    constructor() {
-
-        this.patterns = [
-
-            {
-                regex:
-                    /^nedir\s+(.+)$/i,
-
-                transform:
-                    value =>
-                        `${value} nedir`
-
-            },
-
-            {
-                regex:
-                    /^(.+)\s+nedir$/i,
-
-                transform:
-                    value =>
-                        `nedir ${value}`
-
-            },
-
-            {
-                regex:
-                    /^(.+)\s+ne demek$/i,
-
-                transform:
-                    value =>
-                        `${value} anlamı nedir`
-
-            },
-
-            {
-                regex:
-                    /^(.+)\s+nasıl yapılır$/i,
-
-                transform:
-                    value =>
-                        `${value} nasıl yapılır`
-
-            },
-
-            {
-                regex:
-                    /^(.+)\s+yapmak$/i,
-
-                transform:
-                    value =>
-                        `${value} nasıl yapılır`
-
-            }
-
-        ];
-
-    }
-
-    generate(
-        question
-    ) {
-
-        const original =
-            cleanText(
-                question
-            );
-
-        if (!original) {
-
-            return [];
-
-        }
-
-        const variations =
-            new Set();
-
-        variations.add(
-            original
-        );
-
-        variations.add(
-            normalizeQuestion(
-                original
-            )
-        );
-
-        for (
-            const pattern of
-            this.patterns
-        ) {
-
-            const match =
-                original.match(
-                    pattern.regex
-                );
-
-            if (!match) {
-
-                continue;
-
-            }
-
-            try {
-
-                const variation =
-                    pattern.transform(
-                        match[1]
-                    );
-
-                if (
-                    variation
-                ) {
-
-                    variations.add(
-                        cleanText(
-                            variation
-                        )
-                    );
-
-                }
-
-            } catch (_) {}
-
-        }
-
-        return [
-            ...variations
-        ]
-            .filter(Boolean)
-            .slice(
-                0,
-                20
-            );
-
-    }
-
-}
-
-/* ============================================================
-   63. VARIATION INSTANCE
-============================================================ */
-
-const questionVariations =
-    new QuestionVariationEngine();
-
-/* ============================================================
-   64. CATEGORY ENGINE
-============================================================ */
-
-class MemoryCategoryEngine {
-
-    constructor() {
-
-        this.categories = {
-
-            coding: [
-
-                "kod",
-                "javascript",
-                "python",
-                "html",
-                "css",
-                "java",
-                "c++",
-                "c#",
-                "node",
-                "programlama",
-                "fonksiyon",
-                "değişken",
-                "api",
-                "backend",
-                "frontend"
-
-            ],
-
-            technology: [
-
-                "bilgisayar",
-                "telefon",
-                "android",
-                "iphone",
-                "windows",
-                "linux",
-                "işlemci",
-                "ram",
-                "ekran kartı",
-                "internet",
-                "wifi",
-                "bluetooth",
-                "teknoloji"
-
-            ],
-
-            education: [
-
-                "ders",
-                "matematik",
-                "fen",
-                "türkçe",
-                "ingilizce",
-                "tarih",
-                "coğrafya",
-                "ödev",
-                "sınav",
-                "konu",
-                "öğren",
-                "okul"
-
-            ],
-
-            science: [
-
-                "bilim",
-                "fizik",
-                "kimya",
-                "biyoloji",
-                "uzay",
-                "gezegen",
-                "atom",
-                "molekül",
-                "enerji",
-                "yerçekimi"
-
-            ],
-
-            general: []
-
-        };
-
-    }
-
-    detect(
-        question
-    ) {
-
-        const text =
-            normalizeQuestion(
-                question
-            );
-
-        let best =
-            "general";
-
-        let bestScore =
-            0;
-
-        for (
-            const [category, words]
-            of Object.entries(
-                this.categories
-            )
-        ) {
-
-            if (
-                category ===
-                "general"
-            ) {
-
-                continue;
-
-            }
-
-            let score = 0;
-
-            for (
-                const word of words
-            ) {
-
-                if (
-                    text.includes(
-                        word
+                record =>
+                    this.publicRecord(
+                        record
                     )
-                ) {
+            );
+    };
 
-                    score++;
 
-                }
+/* ============================================================
+   2.46 - USER RECORD COUNT
+============================================================ */
 
-            }
-
-            if (
-                score >
-                bestScore
-            ) {
-
-                bestScore =
-                    score;
-
-                best =
-                    category;
-
-            }
-
-        }
-
-        return {
-
-            category:
-                best,
-
-            score:
-                bestScore
-
-        };
-
-    }
-
-    addCategory(
-        name,
-        keywords
+AnswerMemory.prototype.getUserRecordCountV2 =
+    function (
+        userId
     ) {
-
-        const category =
-            cleanText(
-                name
+        const normalized =
+            answerMemoryNormalizeUserId2(
+                userId
             );
 
-        if (!category) {
+        return Object.values(
+            this.records ||
+                {}
+        ).filter(
+            record =>
+                record &&
+                answerMemoryNormalizeUserId2(
+                    record.userId
+                ) ===
+                    normalized &&
+                record.active !==
+                    false
+        ).length;
+    };
 
-            return false;
 
-        }
+/* ============================================================
+   2.47 - CATEGORY COUNTS
+============================================================ */
 
-        if (
-            !Array.isArray(
-                keywords
-            )
-        ) {
-
-            return false;
-
-        }
-
-        if (
-            !this.categories[
-                category
-            ]
-        ) {
-
-            this.categories[
-                category
-            ] = [];
-
-        }
+AnswerMemory.prototype.getCategoryCountsV2 =
+    function () {
+        const counts =
+            {};
 
         for (
-            const keyword of
-            keywords
+            const record
+            of Object.values(
+                this.records ||
+                    {}
+            )
         ) {
-
-            const clean =
-                normalizeQuestion(
-                    keyword
-                );
-
             if (
-                clean &&
-                !this.categories[
-                    category
-                ].includes(
-                    clean
-                )
+                !record ||
+                record.active ===
+                    false
             ) {
-
-                this.categories[
-                    category
-                ].push(
-                    clean
-                );
-
+                continue;
             }
 
+            const category =
+                record.category ||
+                "general";
+
+            counts[
+                category
+            ] =
+                (
+                    counts[
+                        category
+                    ] || 0
+                ) + 1;
         }
 
-        return true;
+        return counts;
+    };
 
-    }
-
-    listCategories() {
-
-        return clone(
-            this.categories
-        );
-
-    }
-
-}
 
 /* ============================================================
-   65. CATEGORY INSTANCE
+   2.48 - LANGUAGE COUNTS
 ============================================================ */
 
-const memoryCategories =
-    new MemoryCategoryEngine();
+AnswerMemory.prototype.getLanguageCountsV2 =
+    function () {
+        const counts =
+            {};
+
+        for (
+            const record
+            of Object.values(
+                this.records ||
+                    {}
+            )
+        ) {
+            if (
+                !record ||
+                record.active ===
+                    false
+            ) {
+                continue;
+            }
+
+            const language =
+                record.language ||
+                "unknown";
+
+            counts[
+                language
+            ] =
+                (
+                    counts[
+                        language
+                    ] || 0
+                ) + 1;
+        }
+
+        return counts;
+    };
+
 
 /* ============================================================
-   66. TAG ENGINE
+   2.49 - USER COUNTS
 ============================================================ */
 
-class MemoryTagEngine {
+AnswerMemory.prototype.getUserCountsV2 =
+    function () {
+        const counts =
+            {};
 
-    constructor() {
+        for (
+            const record
+            of Object.values(
+                this.records ||
+                    {}
+            )
+        ) {
+            if (
+                !record ||
+                record.active ===
+                    false
+            ) {
+                continue;
+            }
 
-        this.maxTags =
-            MEMORY_CONFIG
-                .limits
-                .maxTags;
+            const userId =
+                answerMemoryNormalizeUserId2(
+                    record.userId
+                );
 
-    }
+            counts[
+                userId
+            ] =
+                (
+                    counts[
+                        userId
+                    ] || 0
+                ) + 1;
+        }
 
-    normalizeTag(
-        tag
+        return counts;
+    };
+
+
+/* ============================================================
+   2.50 - SEARCH PREPARATION
+============================================================ */
+
+AnswerMemory.prototype.prepareSearchQueryV2 =
+    function (
+        question
     ) {
-
-        return cleanText(
-            tag
-        )
-            .toLocaleLowerCase(
-                "tr-TR"
-            )
-            .replace(
-                /^#/,
+        const original =
+            answerMemorySafeString(
+                question,
                 ""
-            )
-            .replace(
-                /\s+/g,
-                "-"
+            ).trim();
+
+        const normalized =
+            answerMemoryNormalizeTurkish(
+                original
             );
 
-    }
+        const search =
+            answerMemorySearchNormalize(
+                original
+            );
 
-    createTags(
-        question,
-        options = {}
-    ) {
-
-        const tags =
-            new Set();
+        const tokens =
+            answerMemoryTokenize(
+                original
+            );
 
         const keywords =
-            turkishText
-                .extractKeywords(
-                    question,
-                    15
-                );
-
-        for (
-            const keyword of
-            keywords
-        ) {
-
-            const tag =
-                this.normalizeTag(
-                    keyword
-                );
-
-            if (
-                tag
-            ) {
-
-                tags.add(
-                    tag
-                );
-
-            }
-
-        }
+            answerMemoryExtractKeywords(
+                original
+            );
 
         const category =
-            options.category ||
-            memoryCategories
-                .detect(
-                    question
-                )
-                .category;
-
-        if (
-            category &&
-            category !==
-            "general"
-        ) {
-
-            tags.add(
-                this.normalizeTag(
-                    category
-                )
+            answerMemoryDetectCategory(
+                original
             );
 
-        }
-
-        if (
-            options.tags &&
-            Array.isArray(
-                options.tags
-            )
-        ) {
-
-            for (
-                const item of
-                options.tags
-            ) {
-
-                const tag =
-                    this.normalizeTag(
-                        item
-                    );
-
-                if (
-                    tag
-                ) {
-
-                    tags.add(
-                        tag
-                    );
-
-                }
-
-            }
-
-        }
-
-        return [
-            ...tags
-        ].slice(
-            0,
-            this.maxTags
-        );
-
-    }
-
-}
-
-/* ============================================================
-   67. TAG INSTANCE
-============================================================ */
-
-const memoryTags =
-    new MemoryTagEngine();
-
-/* ============================================================
-   68. DUPLICATE DETECTOR
-============================================================ */
-
-class MemoryDuplicateEngine {
-
-    constructor(memory) {
-
-        this.memory =
-            memory;
-
-    }
-
-    detect(
-        question,
-        options = {}
-    ) {
-
-        const normalized =
-            normalizeQuestion(
-                question
+        const language =
+            answerMemoryDetectLanguage(
+                original
             );
 
-        if (!normalized) {
-
-            return {
-
-                duplicate: false,
-
-                score: 0,
-
-                entry: null
-
-            };
-
-        }
-
-        const exact =
-            this.memory.findExact(
-                normalized
-            );
-
-        if (exact) {
-
-            return {
-
-                duplicate: true,
-
-                type: "exact",
-
-                score: 1,
-
-                entry: exact
-
-            };
-
-        }
-
-        const results =
-            this.memory.findAdvanced(
-                normalized,
-                {
-
-                    minimumSimilarity:
-                        options.minimumSimilarity ??
-                        0.78,
-
-                    maxResults:
-                        options.maxResults ??
-                        5,
-
-                    userId:
-                        options.userId ||
-                        null
-
-                }
-            );
-
-        const best =
-            results[0];
-
-        if (
-            best &&
-            best.similarity >=
-            (
-                options.duplicateThreshold ??
-                0.88
-            )
-        ) {
-
-            return {
-
-                duplicate: true,
-
-                type: "similar",
-
-                score:
-                    best.similarity,
-
-                entry:
-                    best.entry,
-
-                results
-
-            };
-
-        }
-
-        return {
-
-            duplicate: false,
-
-            type: "new",
-
-            score:
-                best
-                    ? best.similarity
-                    : 0,
-
-            entry:
-                best
-                    ? best.entry
-                    : null,
-
-            results
-
-        };
-
-    }
-
-}
-
-/* ============================================================
-   69. DUPLICATE INSTANCE
-============================================================ */
-
-const memoryDuplicates =
-    new MemoryDuplicateEngine(
-        answerMemory
-    );
-
-/* ============================================================
-   70. ENHANCED ADD
-============================================================ */
-
-AnswerMemory.prototype.addSmart =
-function(
-    data = {}
-) {
-
-    const question =
-        cleanText(
-            data.question
-        );
-
-    const answer =
-        cleanText(
-            data.answer
-        );
-
-    if (!question) {
-
-        throw new Error(
-            "Soru gerekli."
-        );
-
-    }
-
-    if (!answer) {
-
-        throw new Error(
-            "Cevap gerekli."
-        );
-
-    }
-
-    const categoryResult =
-        memoryCategories.detect(
-            question
-        );
-
-    const category =
-        data.category ||
-        categoryResult.category;
-
-    const tags =
-        memoryTags.createTags(
-            question,
-            {
-
-                category,
-
-                tags:
-                    data.tags ||
-                    []
-
-            }
-        );
-
-    const duplicate =
-        memoryDuplicates.detect(
-            question,
-            {
-
-                userId:
-                    data.userId ||
-                    null,
-
-                duplicateThreshold:
-                    data.duplicateThreshold ??
-                    0.88
-
-            }
-        );
-
-    if (
-        duplicate.duplicate &&
-        duplicate.entry
-    ) {
-
-        const updated =
-            this.update(
-                duplicate.entry.id,
-                {
-
-                    answer,
-
-                    category,
-
-                    tags,
-
-                    confidence:
-                        data.confidence ??
-                        duplicate.entry
-                            .confidence,
-
-                    qualityScore:
-                        data.qualityScore ??
-                        duplicate.entry
-                            .qualityScore,
-
-                    metadata:
-                        {
-
-                            ...(duplicate.entry
-                                .metadata ||
-                                {}),
-
-                            lastSmartUpdate:
-                                nowISO()
-
-                        }
-
-                }
+        const questionType =
+            answerMemoryDetectQuestionType(
+                original
             );
 
         return {
-
-            entry:
-                updated,
-
-            created:
-                false,
-
-            updated:
-                true,
-
-            duplicate:
-
-                true,
-
-            duplicateType:
-                duplicate.type
-
-        };
-
-    }
-
-    const entry =
-        this.add({
-
-            ...data,
-
-            question,
-
-            answer,
-
-            category,
-
-            tags
-
-        });
-
-    if (entry) {
-
-        userAnswerIndex.add(
-            entry
-        );
-
-    }
-
-    return {
-
-        entry,
-
-        created:
-            true,
-
-        updated:
-            false,
-
-        duplicate:
-            false
-
-    };
-
-};
-
-/* ============================================================
-   71. SMART QUESTION SEARCH
-============================================================ */
-
-AnswerMemory.prototype.searchQuestion =
-function(
-    question,
-    options = {}
-) {
-
-    const query =
-        cleanText(
-            question
-        );
-
-    if (!query) {
-
-        return [];
-
-    }
-
-    const variations =
-        questionVariations
-            .generate(
-                query
-            );
-
-    const resultMap =
-        new Map();
-
-    for (
-        const variation of
-        variations
-    ) {
-
-        const direct =
-            this.findAdvanced(
-                variation,
-                {
-
-                    minimumSimilarity:
-                        options.minimumSimilarity ??
-                        0.35,
-
-                    maxResults:
-                        options.maxResults ??
-                        20,
-
-                    userId:
-                        options.userId ||
-                        null
-
-                }
-            );
-
-        for (
-            const result of
-            direct
-        ) {
-
-            if (
-                !resultMap.has(
-                    result.id
-                )
-            ) {
-
-                resultMap.set(
-                    result.id,
-                    {
-
-                        ...result,
-
-                        variation
-
-                    }
-                );
-
-            } else {
-
-                const existing =
-                    resultMap.get(
-                        result.id
-                    );
-
-                if (
-                    result.score >
-                    existing.score
-                ) {
-
-                    resultMap.set(
-                        result.id,
-                        {
-
-                            ...result,
-
-                            variation
-
-                        }
-                    );
-
-                }
-
-            }
-
-        }
-
-    }
-
-    return [
-        ...resultMap.values()
-    ]
-        .sort(
-            (a, b) =>
-                b.score -
-                a.score
-        )
-        .slice(
-            0,
-            options.maxResults ??
-            20
-        );
-
-};
-
-/* ============================================================
-   72. CATEGORY SEARCH
-============================================================ */
-
-AnswerMemory.prototype.searchCategory =
-function(
-    category,
-    options = {}
-) {
-
-    const normalized =
-        normalizeQuestion(
-            category
-        );
-
-    if (!normalized) {
-
-        return [];
-
-    }
-
-    let entries =
-        Object.values(
-            database.entries
-        );
-
-    entries =
-        entries.filter(
-            entry =>
-                normalizeQuestion(
-                    entry.category
-                ) ===
-                normalized
-        );
-
-    if (
-        options.userId
-    ) {
-
-        entries =
-            entries.filter(
-                entry =>
-                    entry.userId ===
-                    options.userId ||
-                    !entry.userId
-            );
-
-    }
-
-    if (
-        options.includeArchived !==
-        true
-    ) {
-
-        entries =
-            entries.filter(
-                entry =>
-                    entry.archived !== true
-            );
-
-    }
-
-    if (
-        options.enabledOnly
-    ) {
-
-        entries =
-            entries.filter(
-                entry =>
-                    entry.enabled !== false
-            );
-
-    }
-
-    entries.sort(
-        (a, b) =>
-            safeInteger(
-                b.usageCount,
-                0
-            ) -
-            safeInteger(
-                a.usageCount,
-                0
-            )
-    );
-
-    return entries
-        .slice(
-            0,
-            options.maxResults ??
-            100
-        )
-        .map(
-            clone
-        );
-
-};
-
-/* ============================================================
-   73. TAG SEARCH
-============================================================ */
-
-AnswerMemory.prototype.searchTag =
-function(
-    tag,
-    options = {}
-) {
-
-    const normalizedTag =
-        memoryTags.normalizeTag(
-            tag
-        );
-
-    if (!normalizedTag) {
-
-        return [];
-
-    }
-
-    const entries =
-        Object.values(
-            database.entries
-        )
-            .filter(
-                entry => {
-
-                    if (
-                        entry.archived ===
-                        true
-                    ) {
-
-                        return false;
-
-                    }
-
-                    if (
-                        options.enabledOnly &&
-                        entry.enabled ===
-                        false
-                    ) {
-
-                        return false;
-
-                    }
-
-                    return Array.isArray(
-                        entry.tags
-                    ) &&
-                    entry.tags.some(
-                        item =>
-                            memoryTags
-                                .normalizeTag(
-                                    item
-                                ) ===
-                            normalizedTag
-                    );
-
-                }
-            )
-            .sort(
-                (a, b) =>
-                    safeInteger(
-                        b.usageCount,
-                        0
-                    ) -
-                    safeInteger(
-                        a.usageCount,
-                        0
-                    )
-            );
-
-    return entries
-        .slice(
-            0,
-            options.maxResults ??
-            100
-        )
-        .map(
-            clone
-        );
-
-};
-
-/* ============================================================
-   74. KEYWORD SEARCH
-============================================================ */
-
-AnswerMemory.prototype.searchKeywords =
-function(
-    keywords,
-    options = {}
-) {
-
-    let list;
-
-    if (
-        Array.isArray(
-            keywords
-        )
-    ) {
-
-        list =
-            keywords
-                .map(
-                    item =>
-                        normalizeQuestion(
-                            item
-                        )
-                )
-                .filter(Boolean);
-
-    } else {
-
-        list =
-            turkishText
-                .extractKeywords(
-                    String(
-                        keywords ||
-                        ""
-                    ),
-                    20
-                );
-
-    }
-
-    if (
-        list.length === 0
-    ) {
-
-        return [];
-
-    }
-
-    const results = [];
-
-    for (
-        const entry of
-        Object.values(
-            database.entries
-        )
-    ) {
-
-        if (
-            entry.enabled === false ||
-            entry.archived === true
-        ) {
-
-            continue;
-
-        }
-
-        const text =
-            `${entry.question} ${entry.answer}`;
-
-        const normalized =
-            normalizeQuestion(
-                text
-            );
-
-        let matched = 0;
-
-        for (
-            const keyword of
-            list
-        ) {
-
-            if (
-                normalized.includes(
-                    keyword
-                )
-            ) {
-
-                matched++;
-
-            }
-
-        }
-
-        if (
-            matched === 0
-        ) {
-
-            continue;
-
-        }
-
-        results.push({
-
-            entry:
-                clone(entry),
-
-            matched,
-
-            ratio:
-                matched /
-                list.length
-
-        });
-
-    }
-
-    results.sort(
-        (a, b) => {
-
-            if (
-                b.ratio !==
-                a.ratio
-            ) {
-
-                return (
-                    b.ratio -
-                    a.ratio
-                );
-
-            }
-
-            return (
-                b.matched -
-                a.matched
-            );
-
-        }
-    );
-
-    return results.slice(
-        0,
-        options.maxResults ??
-        50
-    );
-
-};
-
-/* ============================================================
-   75. AUTO CATEGORY + TAG UPDATE
-============================================================ */
-
-function enrichMemoryEntry(
-    memoryId
-) {
-
-    const entry =
-        answerMemory.get(
-            memoryId
-        );
-
-    if (!entry) {
-
-        return null;
-
-    }
-
-    const categoryResult =
-        memoryCategories.detect(
-            entry.question
-        );
-
-    const category =
-        entry.category &&
-        entry.category !==
-        "general"
-            ? entry.category
-            : categoryResult.category;
-
-    const tags =
-        memoryTags.createTags(
-            entry.question,
-            {
-
-                category,
-
-                tags:
-                    entry.tags ||
-                    []
-
-            }
-        );
-
-    return answerMemory.update(
-        memoryId,
-        {
-
-            category,
-
-            tags
-
-        }
-    );
-
-}
-
-/* ============================================================
-   76. AUTO ENRICH ALL
-============================================================ */
-
-function enrichAllMemories(
-    options = {}
-) {
-
-    const entries =
-        Object.values(
-            database.entries
-        );
-
-    let updated = 0;
-
-    const limit =
-        options.limit ??
-        entries.length;
-
-    for (
-        const entry of
-        entries.slice(
-            0,
-            limit
-        )
-    ) {
-
-        if (!entry) {
-
-            continue;
-
-        }
-
-        try {
-
-            const result =
-                enrichMemoryEntry(
-                    entry.id
-                );
-
-            if (result) {
-
-                updated++;
-
-            }
-
-        } catch (_) {}
-
-    }
-
-    return {
-
-        processed:
-            Math.min(
-                limit,
-                entries.length
-            ),
-
-        updated
-
-    };
-
-}
-
-/* ============================================================
-   77. FIND BEST ANSWER
-============================================================ */
-
-function findBestMemoryAnswer(
-    question,
-    options = {}
-) {
-
-    const results =
-        answerMemory.searchQuestion(
-            question,
-            {
-
-                ...options,
-
-                maxResults:
-                    options.maxResults ??
-                    10,
-
-                minimumSimilarity:
-                    options.minimumSimilarity ??
-                    0.40
-
-            }
-        );
-
-    if (
-        results.length === 0
-    ) {
-
-        return null;
-
-    }
-
-    const first =
-        results[0];
-
-    if (
-        first.score <
-        (
-            options.minimumScore ??
-            0.55
-        )
-    ) {
-
-        return null;
-
-    }
-
-    return {
-
-        answer:
-            first.entry.answer,
-
-        entry:
-            first.entry,
-
-        score:
-            first.score,
-
-        similarity:
-            first.similarity,
-
-        alternatives:
-            results
-                .slice(1, 5)
-                .map(
-                    item =>
-                        ({
-                            answer:
-                                item.entry
-                                    .answer,
-
-                            score:
-                                item.score,
-
-                            entryId:
-                                item.entry
-                                    .id
-
-                        })
-                )
-
-    };
-
-}
-
-/* ============================================================
-   78. LEARN FROM AI RESPONSE
-============================================================ */
-
-function learnAIResponse(
-    question,
-    answer,
-    context = {}
-) {
-
-    const cleanQuestion =
-        cleanText(
-            question
-        );
-
-    const cleanAnswer =
-        cleanText(
-            answer
-        );
-
-    if (
-        !cleanQuestion ||
-        !cleanAnswer
-    ) {
-
-        return {
-
-            success: false,
-
-            reason:
-                "question_or_answer_empty"
-
-        };
-
-    }
-
-    /*
-     * Çok kısa / hata benzeri cevapları
-     * otomatik hafızaya almıyoruz.
-     */
-
-    if (
-        cleanAnswer.length <
-        (
-            MEMORY_CONFIG
-                .cleanup
-                .minimumAnswerLength
-        )
-    ) {
-
-        return {
-
-            success: false,
-
-            reason:
-                "answer_too_short"
-
-        };
-
-    }
-
-    const result =
-        answerMemory.addSmart({
-
-            question:
-                cleanQuestion,
-
-            answer:
-                cleanAnswer,
-
-            userId:
-                context.userId ||
-                null,
-
-            sessionId:
-                context.sessionId ||
-                null,
-
-            conversationId:
-                context.conversationId ||
-                null,
-
-            language:
-                context.language ||
-                "tr",
-
-            model:
-                context.model ||
-                "unknown",
-
-            provider:
-                context.provider ||
-                "unknown",
-
-            confidence:
-                context.confidence ??
-                0.65,
-
-            qualityScore:
-                context.qualityScore ??
-                0.65,
-
-            tags:
-                context.tags ||
-                [],
-
-            sources:
-                context.sources ||
-                [],
-
-            metadata:
-                {
-
-                    learnedAutomatically:
-                        true,
-
-                    learnedAt:
-                        nowISO(),
-
-                    ...(
-                        context.metadata ||
-                        {}
-                    )
-
-                }
-
-        });
-
-    return {
-
-        success:
-            Boolean(
-                result &&
-                result.entry
-            ),
-
-        ...result
-
-    };
-
-}
-
-/* ============================================================
-   79. LEARN ONLY IF USEFUL
-============================================================ */
-
-function learnIfUseful(
-    question,
-    answer,
-    context = {}
-) {
-
-    const q =
-        cleanText(
-            question
-        );
-
-    const a =
-        cleanText(
-            answer
-        );
-
-    if (!q || !a) {
-
-        return {
-
-            learned: false,
-
-            reason:
-                "empty"
-
-        };
-
-    }
-
-    const badPatterns = [
-
-        "hata oluştu",
-        "bir hata oluştu",
-        "şu anda cevap veremiyorum",
-        "cevap veremiyorum",
-        "unknown error",
-        "internal server error",
-        "rate limit",
-        "too many requests",
-        "timeout",
-        "network error"
-
-    ];
-
-    const normalizedAnswer =
-        normalizeQuestion(
-            a
-        );
-
-    for (
-        const pattern of
-        badPatterns
-    ) {
-
-        if (
-            normalizedAnswer
-                .includes(
-                    pattern
-                )
-        ) {
-
-            return {
-
-                learned: false,
-
-                reason:
-                    "error_answer"
-
-            };
-
-        }
-
-    }
-
-    const result =
-        learnAIResponse(
-            q,
-            a,
-            context
-        );
-
-    return {
-
-        learned:
-            result.success,
-
-        reason:
-            result.success
-                ? "saved"
-                : result.reason ||
-                  "not_saved",
-
-        result
-
-    };
-
-}
-
-/* ============================================================
-   80. MEMORY MERGE
-============================================================ */
-
-function mergeMemories(
-    targetId,
-    sourceId
-) {
-
-    if (
-        targetId ===
-        sourceId
-    ) {
-
-        return null;
-
-    }
-
-    const target =
-        answerMemory.get(
-            targetId
-        );
-
-    const source =
-        answerMemory.get(
-            sourceId
-        );
-
-    if (
-        !target ||
-        !source
-    ) {
-
-        return null;
-
-    }
-
-    const targetMetadata =
-        target.metadata &&
-        typeof target.metadata ===
-            "object"
-            ? clone(
-                target.metadata
-            )
-            : {};
-
-    const sourceMetadata =
-        source.metadata &&
-        typeof source.metadata ===
-            "object"
-            ? clone(
-                source.metadata
-            )
-            : {};
-
-    const alternatives = [
-
-        ...(
-            targetMetadata
-                .alternativeAnswers ||
-            []
-        ),
-
-        {
-
-            text:
-                source.answer,
-
-            sourceId:
-                source.id,
-
-            mergedAt:
-                nowISO()
-
-        },
-
-        ...(
-            sourceMetadata
-                .alternativeAnswers ||
-            []
-        )
-
-    ];
-
-    const unique =
-        [];
-
-    const seen =
-        new Set();
-
-    for (
-        const item of
-        alternatives
-    ) {
-
-        if (
-            !item ||
-            !item.text
-        ) {
-
-            continue;
-
-        }
-
-        const key =
-            normalizeQuestion(
-                item.text
-            );
-
-        if (
-            seen.has(
-                key
-            )
-        ) {
-
-            continue;
-
-        }
-
-        seen.add(
-            key
-        );
-
-        unique.push(
-            item
-        );
-
-    }
-
-    targetMetadata
-        .alternativeAnswers =
-        unique.slice(
-            -20
-        );
-
-    const mergedTags =
-        [
-            ...(target.tags || []),
-            ...(source.tags || [])
-        ];
-
-    const finalTags =
-        memoryTags.createTags(
-            target.question,
-            {
-
-                category:
-                    target.category,
-
-                tags:
-                    mergedTags
-
-            }
-        );
-
-    const updated =
-        answerMemory.update(
-            target.id,
-            {
-
-                metadata:
-                    targetMetadata,
-
-                tags:
-                    finalTags,
-
-                usageCount:
-                    safeInteger(
-                        target.usageCount,
-                        0
-                    ) +
-                    safeInteger(
-                        source.usageCount,
-                        0
-                    ),
-
-                hitCount:
-                    safeInteger(
-                        target.hitCount,
-                        0
-                    ) +
-                    safeInteger(
-                        source.hitCount,
-                        0
-                    ),
-
-                successCount:
-                    safeInteger(
-                        target.successCount,
-                        0
-                    ) +
-                    safeInteger(
-                        source.successCount,
-                        0
-                    )
-
-            }
-        );
-
-    answerMemory.delete(
-        source.id
-    );
-
-    userAnswerIndex.rebuild();
-
-    return updated;
-
-}
-
-/* ============================================================
-   81. FIND DUPLICATES
-============================================================ */
-
-function findMemoryDuplicates(
-    options = {}
-) {
-
-    const entries =
-        Object.values(
-            database.entries
-        );
-
-    const duplicates = [];
-
-    const threshold =
-        options.threshold ??
-        0.88;
-
-    for (
-        let i = 0;
-        i < entries.length;
-        i++
-    ) {
-
-        const a =
-            entries[i];
-
-        if (!a) {
-
-            continue;
-
-        }
-
-        for (
-            let j = i + 1;
-            j < entries.length;
-            j++
-        ) {
-
-            const b =
-                entries[j];
-
-            if (!b) {
-
-                continue;
-
-            }
-
-            if (
-                a.userId &&
-                b.userId &&
-                a.userId !==
-                b.userId
-            ) {
-
-                continue;
-
-            }
-
-            const score =
-                calculateSimilarity(
-                    a.question,
-                    b.question
-                );
-
-            if (
-                score >=
-                threshold
-            ) {
-
-                duplicates.push({
-
-                    first:
-                        clone(a),
-
-                    second:
-                        clone(b),
-
-                    score
-
-                });
-
-            }
-
-            if (
-                duplicates.length >=
-                (
-                    options.limit ??
-                    100
-                )
-            ) {
-
-                return duplicates;
-
-            }
-
-        }
-
-    }
-
-    duplicates.sort(
-        (a, b) =>
-            b.score -
-            a.score
-    );
-
-    return duplicates;
-
-}
-
-/* ============================================================
-   82. AUTO CLEAN DUPLICATES
-============================================================ */
-
-function cleanupDuplicateMemories(
-    options = {}
-) {
-
-    const duplicates =
-        findMemoryDuplicates(
-            options
-        );
-
-    let merged = 0;
-
-    for (
-        const duplicate of
-        duplicates
-    ) {
-
-        const first =
-            duplicate.first;
-
-        const second =
-            duplicate.second;
-
-        if (
-            !first ||
-            !second
-        ) {
-
-            continue;
-
-        }
-
-        /*
-         * Daha kaliteli olanı hedef olarak seçiyoruz.
-         */
-
-        const firstQuality =
-            safeNumber(
-                first.qualityScore,
-                0.5
-            );
-
-        const secondQuality =
-            safeNumber(
-                second.qualityScore,
-                0.5
-            );
-
-        const target =
-            firstQuality >=
-            secondQuality
-                ? first
-                : second;
-
-        const source =
-            target.id ===
-            first.id
-                ? second
-                : first;
-
-        try {
-
-            mergeMemories(
-                target.id,
-                source.id
-            );
-
-            merged++;
-
-        } catch (_) {}
-
-    }
-
-    return {
-
-        found:
-            duplicates.length,
-
-        merged
-
-    };
-
-}
-
-/* ============================================================
-   83. EXPORT PART 3
-============================================================ */
-
-module.exports.TurkishTextEngine =
-    TurkishTextEngine;
-
-module.exports.turkishText =
-    turkishText;
-
-module.exports.QuestionVariationEngine =
-    QuestionVariationEngine;
-
-module.exports.questionVariations =
-    questionVariations;
-
-module.exports.MemoryCategoryEngine =
-    MemoryCategoryEngine;
-
-module.exports.memoryCategories =
-    memoryCategories;
-
-module.exports.MemoryTagEngine =
-    MemoryTagEngine;
-
-module.exports.memoryTags =
-    memoryTags;
-
-module.exports.MemoryDuplicateEngine =
-    MemoryDuplicateEngine;
-
-module.exports.memoryDuplicates =
-    memoryDuplicates;
-
-module.exports.enrichMemoryEntry =
-    enrichMemoryEntry;
-
-module.exports.enrichAllMemories =
-    enrichAllMemories;
-
-module.exports.findBestMemoryAnswer =
-    findBestMemoryAnswer;
-
-module.exports.learnAIResponse =
-    learnAIResponse;
-
-module.exports.learnIfUseful =
-    learnIfUseful;
-
-module.exports.mergeMemories =
-    mergeMemories;
-
-module.exports.findMemoryDuplicates =
-    findMemoryDuplicates;
-
-module.exports.cleanupDuplicateMemories =
-    cleanupDuplicateMemories;
-
-/* ============================================================
-   84. MEMORY SEARCH API OBJECT
-============================================================ */
-
-const memorySearch = {
-
-    exact(
-        question
-    ) {
-
-        return answerMemory.findExact(
-            question
-        );
-
-    },
-
-    similar(
-        question,
-        options = {}
-    ) {
-
-        return answerMemory.findSimilar(
-            question,
-            options
-        );
-
-    },
-
-    smart(
-        question,
-        options = {}
-    ) {
-
-        return answerMemory.smartLookup(
-            question,
-            options
-        );
-
-    },
-
-    question(
-        question,
-        options = {}
-    ) {
-
-        return answerMemory.searchQuestion(
-            question,
-            options
-        );
-
-    },
-
-    category(
-        category,
-        options = {}
-    ) {
-
-        return answerMemory.searchCategory(
-            category,
-            options
-        );
-
-    },
-
-    tag(
-        tag,
-        options = {}
-    ) {
-
-        return answerMemory.searchTag(
-            tag,
-            options
-        );
-
-    },
-
-    keywords(
-        keywords,
-        options = {}
-    ) {
-
-        return answerMemory.searchKeywords(
+            original,
+            normalized,
+            search,
+            tokens,
             keywords,
-            options
-        );
-
-    },
-
-    best(
-        question,
-        options = {}
-    ) {
-
-        return findBestMemoryAnswer(
-            question,
-            options
-        );
-
-    }
-
-};
-
-module.exports.memorySearch =
-    memorySearch;
-
-/* ============================================================
-   85. MEMORY LEARNING API
-============================================================ */
-
-const memoryLearningAPI = {
-
-    learn(
-        question,
-        answer,
-        context = {}
-    ) {
-
-        return learnAIResponse(
-            question,
-            answer,
-            context
-        );
-
-    },
-
-    learnIfUseful(
-        question,
-        answer,
-        context = {}
-    ) {
-
-        return learnIfUseful(
-            question,
-            answer,
-            context
-        );
-
-    },
-
-    feedback(
-        memoryId,
-        feedback
-    ) {
-
-        return memoryFeedback(
-            memoryId,
-            feedback
-        );
-
-    },
-
-    enrich(
-        memoryId
-    ) {
-
-        return enrichMemoryEntry(
-            memoryId
-        );
-
-    },
-
-    enrichAll(
-        options = {}
-    ) {
-
-        return enrichAllMemories(
-            options
-        );
-
-    },
-
-    merge(
-        targetId,
-        sourceId
-    ) {
-
-        return mergeMemories(
-            targetId,
-            sourceId
-        );
-
-    },
-
-    cleanupDuplicates(
-        options = {}
-    ) {
-
-        return cleanupDuplicateMemories(
-            options
-        );
-
-    }
-
-};
-
-module.exports.memoryLearningAPI =
-    memoryLearningAPI;
-
-/* ============================================================
-   86. MEMORY ENGINE HEALTH
-============================================================ */
-
-function getMemoryHealth() {
-
-    const stats =
-        answerMemory.stats();
-
-    const hitRate =
-        stats.hitRate;
-
-    let status =
-        "healthy";
-
-    if (
-        stats.totalErrors > 10
-    ) {
-
-        status =
-            "warning";
-
-    }
-
-    if (
-        stats.totalEntries === 0
-    ) {
-
-        status =
-            "empty";
-
-    }
-
-    return {
-
-        status,
-
-        database:
-            ANSWER_MEMORY_FILE,
-
-        entries:
-            stats.total,
-
-        hitRate,
-
-        users:
-            userAnswerIndex.index.size,
-
-        learningEvents:
-            memoryLearning
-                .events
-                .length,
-
-        backupDirectory:
-            ANSWER_MEMORY_BACKUP_DIR,
-
-        timestamp:
-            nowISO()
-
+            category,
+            language,
+            questionType
+        };
     };
 
-}
-
-module.exports.getMemoryHealth =
-    getMemoryHealth;
 
 /* ============================================================
-   87. AUTO SAVE TIMER
-============================================================ */
-
-let memoryAutoSaveTimer =
-    null;
-
-function startMemoryAutoSave(
-    interval = 60000
-) {
-
-    if (
-        memoryAutoSaveTimer
-    ) {
-
-        clearInterval(
-            memoryAutoSaveTimer
-        );
-
-    }
-
-    memoryAutoSaveTimer =
-        setInterval(
-            () => {
-
-                try {
-
-                    saveDatabase({
-                        skipBackup: true
-                    });
-
-                } catch (error) {
-
-                    database.totalErrors++;
-
-                }
-
-            },
-            Math.max(
-                10000,
-                interval
-            )
-        );
-
-    /*
-     * Node.js uygulamasının kapanmasını
-     * engellememesi için unref.
-     */
-
-    if (
-        memoryAutoSaveTimer &&
-        typeof memoryAutoSaveTimer.unref ===
-            "function"
-    ) {
-
-        memoryAutoSaveTimer.unref();
-
-    }
-
-    return true;
-
-}
-
-function stopMemoryAutoSave() {
-
-    if (
-        memoryAutoSaveTimer
-    ) {
-
-        clearInterval(
-            memoryAutoSaveTimer
-        );
-
-        memoryAutoSaveTimer =
-            null;
-
-    }
-
-    return true;
-
-}
-
-module.exports.startMemoryAutoSave =
-    startMemoryAutoSave;
-
-module.exports.stopMemoryAutoSave =
-    stopMemoryAutoSave;
-
-/* ============================================================
-   88. START AUTOMATIC MEMORY SAVE
-============================================================ */
-
-if (
-    MEMORY_CONFIG.storage.autoSave
-) {
-
-    startMemoryAutoSave(
-        60000
-    );
-
-}
-
-/* ============================================================
-   89. PROCESS SHUTDOWN SAVE
-============================================================ */
-
-function registerMemoryShutdownHandlers() {
-
-    const shutdown =
-        () => {
-
-            try {
-
-                saveDatabase({
-                    skipBackup: true
-                });
-
-            } catch (_) {}
-
-        };
-
-    process.once(
-        "beforeExit",
-        shutdown
-    );
-
-}
-
-registerMemoryShutdownHandlers();
-
-/* ============================================================
-   90. PART 3 READY
+   PART 2 STATUS
 ============================================================ */
 
 console.log(
-    "[TürkAI] Advanced Answer Memory Part 3 aktif."
+    "[AnswerMemory] Part 2/5 loaded."
+);
+
+console.log(
+    "[AnswerMemory] Turkish normalization : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Token engine           : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Similarity engine       : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Duplicate detection    : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Record engine           : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Search preparation      : ACTIVE"
 );
 
 /* ============================================================
-   PART 3 END
+   END OF PART 2
 ============================================================ */
-// ============================================================
-// TÜRKAI ANSWER MEMORY ENGINE
-// PART 4 / 5
-// Advanced ranking, context memory, user profiles,
-// semantic groups, confidence management and maintenance
-// ============================================================
+/* ============================================================
+   TÜRKAI ANSWER MEMORY ENGINE 5.0
+   PART 3 / 5
+   ADVANCED SEARCH + RANKING + CANDIDATE ENGINE
+   + CACHE + RESULT ENGINE
+============================================================ */
 
-/* ------------------------------------------------------------
-   1. ADVANCED CONTEXT ENGINE
------------------------------------------------------------- */
 
-class MemoryContextEngine {
-    constructor() {
-        this.maxContextItems = 12;
-        this.maxContextChars = 12000;
-        this.defaultWindow = 8;
-    }
+/* ============================================================
+   3.0 - SEARCH CONSTANTS
+============================================================ */
 
-    clean(value) {
-        if (value === undefined || value === null) return "";
-        return String(value).trim();
-    }
+const ANSWER_MEMORY_SEARCH_LIMITS_3 = {
+    minimumTopK:
+        1,
 
-    createContextItem(item) {
-        if (!item || typeof item !== "object") return null;
+    maximumTopK:
+        100,
 
-        return {
-            id: item.id || null,
-            question: this.clean(item.question),
-            answer: this.clean(item.answer),
-            category: item.category || "general",
-            tags: Array.isArray(item.tags) ? item.tags : [],
-            confidence: Number(item.confidence || 0),
-            quality: Number(item.quality || 0),
-            createdAt: item.createdAt || null,
-            updatedAt: item.updatedAt || null
-        };
-    }
+    defaultTopK:
+        8,
 
-    buildContext(items, options = {}) {
-        const list = Array.isArray(items)
-            ? items
-                .map(item => this.createContextItem(item))
-                .filter(Boolean)
-            : [];
+    maximumCandidates:
+        50000,
 
-        const maxItems = Number(options.maxItems || this.maxContextItems);
-        const maxChars = Number(options.maxChars || this.maxContextChars);
+    minimumCandidateScore:
+        0.05,
 
-        const selected = [];
-        let totalChars = 0;
+    minimumReturnScore:
+        0.30,
 
-        for (const item of list) {
-            const estimated = (
-                item.question.length +
-                item.answer.length +
-                100
-            );
+    exactThreshold:
+        0.96,
 
-            if (
-                selected.length >= maxItems ||
-                totalChars + estimated > maxChars
-            ) {
-                break;
-            }
+    strongThreshold:
+        0.86,
 
-            selected.push(item);
-            totalChars += estimated;
-        }
+    goodThreshold:
+        0.72,
 
-        return selected;
-    }
-
-    formatContext(items) {
-        const context = this.buildContext(items);
-
-        if (!context.length) {
-            return "";
-        }
-
-        return context
-            .map((item, index) => {
-                return [
-                    `# Hafıza ${index + 1}`,
-                    `Soru: ${item.question}`,
-                    `Cevap: ${item.answer}`,
-                    `Kategori: ${item.category}`
-                ].join("\n");
-            })
-            .join("\n\n");
-    }
-
-    findRelevant(question, entries, limit = 6) {
-        if (!question || !Array.isArray(entries)) {
-            return [];
-        }
-
-        const results = entries
-            .map(entry => {
-                const similarity = typeof hybridSimilarity === "function"
-                    ? hybridSimilarity(question, entry.question || "")
-                    : 0;
-
-                return {
-                    entry,
-                    score: similarity
-                };
-            })
-            .filter(result => result.score > 0.05)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, limit);
-
-        return results;
-    }
-}
-
-const memoryContextEngine = new MemoryContextEngine();
-
-/* ------------------------------------------------------------
-   2. USER MEMORY PROFILE ENGINE
------------------------------------------------------------- */
-
-class UserMemoryProfileEngine {
-    constructor() {
-        this.profiles = new Map();
-        this.maxInterests = 50;
-        this.maxPreferences = 50;
-        this.maxHistory = 100;
-    }
-
-    normalizeUserId(userId) {
-        if (
-            userId === undefined ||
-            userId === null ||
-            userId === ""
-        ) {
-            return "anonymous";
-        }
-
-        return String(userId).trim().slice(0, 200);
-    }
-
-    createProfile(userId) {
-        const id = this.normalizeUserId(userId);
-
-        if (!this.profiles.has(id)) {
-            this.profiles.set(id, {
-                userId: id,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-
-                interests: [],
-                preferences: {},
-                topics: {},
-                categories: {},
-                history: [],
-
-                totalQuestions: 0,
-                totalMemoryHits: 0,
-                totalMemoryMisses: 0,
-
-                lastQuestion: null,
-                lastAnswer: null,
-                lastCategory: null
-            });
-        }
-
-        return this.profiles.get(id);
-    }
-
-    touch(profile) {
-        profile.updatedAt = new Date().toISOString();
-        return profile;
-    }
-
-    addInterest(userId, interest) {
-        const profile = this.createProfile(userId);
-        const value = String(interest || "").trim();
-
-        if (!value) {
-            return profile;
-        }
-
-        if (!profile.interests.includes(value)) {
-            profile.interests.push(value);
-        }
-
-        if (profile.interests.length > this.maxInterests) {
-            profile.interests = profile.interests.slice(-this.maxInterests);
-        }
-
-        return this.touch(profile);
-    }
-
-    setPreference(userId, key, value) {
-        const profile = this.createProfile(userId);
-
-        if (!key) {
-            return profile;
-        }
-
-        profile.preferences[String(key)] = value;
-
-        if (
-            Object.keys(profile.preferences).length >
-            this.maxPreferences
-        ) {
-            const keys = Object.keys(profile.preferences);
-            const excess =
-                keys.length - this.maxPreferences;
-
-            for (let i = 0; i < excess; i++) {
-                delete profile.preferences[keys[i]];
-            }
-        }
-
-        return this.touch(profile);
-    }
-
-    incrementTopic(userId, topic) {
-        const profile = this.createProfile(userId);
-        const value = String(topic || "").trim();
-
-        if (!value) {
-            return profile;
-        }
-
-        profile.topics[value] =
-            Number(profile.topics[value] || 0) + 1;
-
-        return this.touch(profile);
-    }
-
-    incrementCategory(userId, category) {
-        const profile = this.createProfile(userId);
-        const value = category || "general";
-
-        profile.categories[value] =
-            Number(profile.categories[value] || 0) + 1;
-
-        return this.touch(profile);
-    }
-
-    recordQuestion(userId, data = {}) {
-        const profile = this.createProfile(userId);
-
-        const question =
-            String(data.question || "").trim();
-
-        const answer =
-            String(data.answer || "").trim();
-
-        const category =
-            data.category || "general";
-
-        profile.totalQuestions += 1;
-        profile.lastQuestion = question;
-        profile.lastAnswer = answer;
-        profile.lastCategory = category;
-
-        this.incrementCategory(userId, category);
-
-        if (question) {
-            const words = question
-                .toLowerCase()
-                .split(/\s+/)
-                .filter(Boolean)
-                .slice(0, 15);
-
-            for (const word of words) {
-                if (word.length >= 4) {
-                    this.incrementTopic(userId, word);
-                }
-            }
-        }
-
-        profile.history.push({
-            question,
-            answer,
-            category,
-            timestamp: new Date().toISOString()
-        });
-
-        if (profile.history.length > this.maxHistory) {
-            profile.history =
-                profile.history.slice(-this.maxHistory);
-        }
-
-        return this.touch(profile);
-    }
-
-    recordHit(userId) {
-        const profile = this.createProfile(userId);
-        profile.totalMemoryHits += 1;
-        return this.touch(profile);
-    }
-
-    recordMiss(userId) {
-        const profile = this.createProfile(userId);
-        profile.totalMemoryMisses += 1;
-        return this.touch(profile);
-    }
-
-    getProfile(userId) {
-        return this.createProfile(userId);
-    }
-
-    deleteProfile(userId) {
-        const id = this.normalizeUserId(userId);
-        return this.profiles.delete(id);
-    }
-
-    clear() {
-        this.profiles.clear();
-    }
-
-    getAll() {
-        return Array.from(this.profiles.values());
-    }
-
-    stats() {
-        const profiles = this.getAll();
-
-        let questions = 0;
-        let hits = 0;
-        let misses = 0;
-
-        for (const profile of profiles) {
-            questions += Number(profile.totalQuestions || 0);
-            hits += Number(profile.totalMemoryHits || 0);
-            misses += Number(profile.totalMemoryMisses || 0);
-        }
-
-        return {
-            users: profiles.length,
-            questions,
-            hits,
-            misses,
-            hitRate: hits + misses > 0
-                ? hits / (hits + misses)
-                : 0
-        };
-    }
-}
-
-const userMemoryProfiles =
-    new UserMemoryProfileEngine();
-
-/* ------------------------------------------------------------
-   3. CONTEXT-AWARE SEARCH
------------------------------------------------------------- */
-
-answerMemory.contextLookup = function(question, options = {}) {
-    const source = this.getAll();
-
-    if (!question || !source.length) {
-        return {
-            found: false,
-            results: [],
-            context: ""
-        };
-    }
-
-    const relevant =
-        memoryContextEngine.findRelevant(
-            question,
-            source,
-            Number(options.limit || 8)
-        );
-
-    const entries = relevant.map(item => item.entry);
-
-    return {
-        found: entries.length > 0,
-        results: relevant,
-        context:
-            memoryContextEngine.formatContext(entries)
-    };
-};
-
-/* ------------------------------------------------------------
-   4. USER-AWARE MEMORY SEARCH
------------------------------------------------------------- */
-
-answerMemory.userLookup = function(
-    userId,
-    question,
-    options = {}
-) {
-    const profile =
-        userMemoryProfiles.getProfile(userId);
-
-    const result =
-        this.contextLookup(question, options);
-
-    if (result.found) {
-        userMemoryProfiles.recordHit(userId);
-    } else {
-        userMemoryProfiles.recordMiss(userId);
-    }
-
-    return {
-        ...result,
-        user: {
-            userId: profile.userId,
-            interests: profile.interests,
-            preferences: profile.preferences,
-            categories: profile.categories
-        }
-    };
-};
-
-/* ------------------------------------------------------------
-   5. PERSONALIZATION SCORE
------------------------------------------------------------- */
-
-function calculatePersonalizationScore(
-    entry,
-    profile
-) {
-    if (!entry || !profile) {
-        return 0;
-    }
-
-    let score = 0;
-
-    const category =
-        entry.category || "general";
-
-    if (
-        profile.categories &&
-        Number(profile.categories[category] || 0) > 0
-    ) {
-        score += 0.4;
-    }
-
-    const tags =
-        Array.isArray(entry.tags)
-            ? entry.tags
-            : [];
-
-    for (const tag of tags) {
-        if (
-            profile.interests &&
-            profile.interests.includes(tag)
-        ) {
-            score += 0.1;
-        }
-    }
-
-    if (score > 1) {
-        score = 1;
-    }
-
-    return score;
-}
-
-/* ------------------------------------------------------------
-   6. PERSONALIZED SEARCH
------------------------------------------------------------- */
-
-answerMemory.personalizedLookup =
-function(userId, question, options = {}) {
-
-    const profile =
-        userMemoryProfiles.getProfile(userId);
-
-    const entries = this.getAll();
-
-    if (!question || !entries.length) {
-        return {
-            found: false,
-            results: []
-        };
-    }
-
-    const results = entries
-        .map(entry => {
-
-            const similarity =
-                typeof hybridSimilarity === "function"
-                    ? hybridSimilarity(
-                        question,
-                        entry.question || ""
-                    )
-                    : 0;
-
-            const quality =
-                Number(entry.quality || 0);
-
-            const confidence =
-                Number(entry.confidence || 0);
-
-            const usage =
-                Number(entry.hits || entry.usage || 0);
-
-            const personalization =
-                calculatePersonalizationScore(
-                    entry,
-                    profile
-                );
-
-            const finalScore =
-                similarity * 0.50 +
-                quality * 0.15 +
-                confidence * 0.15 +
-                Math.min(usage / 20, 1) * 0.05 +
-                personalization * 0.15;
-
-            return {
-                entry,
-                similarity,
-                personalization,
-                score: finalScore
-            };
-        })
-        .filter(item => item.similarity >= 0.08)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, Number(options.limit || 10));
-
-    if (results.length) {
-        userMemoryProfiles.recordHit(userId);
-    } else {
-        userMemoryProfiles.recordMiss(userId);
-    }
-
-    return {
-        found: results.length > 0,
-        results,
-        best: results[0] || null
-    };
-};
-
-/* ------------------------------------------------------------
-   7. MEMORY CONFIDENCE ENGINE
------------------------------------------------------------- */
-
-class MemoryConfidenceEngine {
-    calculate(entry) {
-        if (!entry) {
-            return 0;
-        }
-
-        const quality =
-            Number(entry.quality || 0);
-
-        const confidence =
-            Number(entry.confidence || 0);
-
-        const successes =
-            Number(entry.successCount || 0);
-
-        const failures =
-            Number(entry.failureCount || 0);
-
-        const total =
-            successes + failures;
-
-        const successRate =
-            total > 0
-                ? successes / total
-                : 0.5;
-
-        const usage =
-            Number(entry.hits || entry.usage || 0);
-
-        const usageScore =
-            Math.min(usage / 50, 1);
-
-        const score =
-            quality * 0.30 +
-            confidence * 0.30 +
-            successRate * 0.25 +
-            usageScore * 0.15;
-
-        return Math.max(
-            0,
-            Math.min(1, score)
-        );
-    }
-
-    classify(score) {
-        if (score >= 0.85) {
-            return "very_high";
-        }
-
-        if (score >= 0.70) {
-            return "high";
-        }
-
-        if (score >= 0.50) {
-            return "medium";
-        }
-
-        if (score >= 0.30) {
-            return "low";
-        }
-
-        return "very_low";
-    }
-
-    explain(entry) {
-        const score = this.calculate(entry);
-
-        return {
-            score,
-            level: this.classify(score)
-        };
-    }
-}
-
-const memoryConfidenceEngine =
-    new MemoryConfidenceEngine();
-
-/* ------------------------------------------------------------
-   8. CONFIDENCE UPDATE
------------------------------------------------------------- */
-
-answerMemory.updateConfidence =
-function(id, feedback = {}) {
-
-    const entry = this.get(id);
-
-    if (!entry) {
-        return null;
-    }
-
-    let confidence =
-        Number(entry.confidence || 0.5);
-
-    const positive =
-        Boolean(feedback.positive);
-
-    const negative =
-        Boolean(feedback.negative);
-
-    if (positive) {
-        confidence += 0.08;
-    }
-
-    if (negative) {
-        confidence -= 0.12;
-    }
-
-    if (
-        typeof feedback.score === "number"
-    ) {
-        confidence =
-            confidence * 0.7 +
-            feedback.score * 0.3;
-    }
-
-    confidence =
-        Math.max(0, Math.min(1, confidence));
-
-    entry.confidence = confidence;
-    entry.confidenceLevel =
-        memoryConfidenceEngine.classify(
-            confidence
-        );
-
-    entry.updatedAt =
-        new Date().toISOString();
-
-    this.save();
-
-    return entry;
-};
-
-/* ------------------------------------------------------------
-   9. MEMORY DECAY ENGINE
------------------------------------------------------------- */
-
-class MemoryDecayEngine {
-    constructor() {
-        this.halfLifeDays = 90;
-    }
-
-    ageInDays(date) {
-        if (!date) {
-            return 0;
-        }
-
-        const timestamp =
-            new Date(date).getTime();
-
-        if (!Number.isFinite(timestamp)) {
-            return 0;
-        }
-
-        const diff =
-            Date.now() - timestamp;
-
-        return Math.max(
-            0,
-            diff / 86400000
-        );
-    }
-
-    calculate(entry) {
-        const date =
-            entry.updatedAt ||
-            entry.createdAt;
-
-        const age =
-            this.ageInDays(date);
-
-        const decay =
-            Math.pow(
-                0.5,
-                age / this.halfLifeDays
-            );
-
-        return Math.max(
-            0,
-            Math.min(1, decay)
-        );
-    }
-
-    apply(entry) {
-        if (!entry) {
-            return null;
-        }
-
-        const decay =
-            this.calculate(entry);
-
-        entry.decayScore = decay;
-
-        return entry;
-    }
-}
-
-const memoryDecayEngine =
-    new MemoryDecayEngine();
-
-/* ------------------------------------------------------------
-   10. ADVANCED MEMORY RANKER
------------------------------------------------------------- */
-
-class AdvancedMemoryRanker {
-    score(question, entry, profile = null) {
-        if (!question || !entry) {
-            return 0;
-        }
-
-        const similarity =
-            typeof hybridSimilarity === "function"
-                ? hybridSimilarity(
-                    question,
-                    entry.question || ""
-                )
-                : 0;
-
-        const quality =
-            Number(entry.quality || 0);
-
-        const confidence =
-            memoryConfidenceEngine.calculate(entry);
-
-        const decay =
-            memoryDecayEngine.calculate(entry);
-
-        const personalization =
-            profile
-                ? calculatePersonalizationScore(
-                    entry,
-                    profile
-                )
-                : 0;
-
-        const hits =
-            Number(
-                entry.hits ||
-                entry.usage ||
-                0
-            );
-
-        const usageScore =
-            Math.min(hits / 50, 1);
-
-        const exactBoost =
-            String(question).trim().toLowerCase() ===
-            String(entry.question || "")
-                .trim()
-                .toLowerCase()
-                ? 0.20
-                : 0;
-
-        const score =
-            similarity * 0.40 +
-            quality * 0.10 +
-            confidence * 0.15 +
-            decay * 0.05 +
-            personalization * 0.10 +
-            usageScore * 0.05 +
-            exactBoost;
-
-        return Math.max(
-            0,
-            Math.min(1, score)
-        );
-    }
-
-    rank(question, entries, profile = null, limit = 10) {
-        return entries
-            .map(entry => ({
-                entry,
-                score: this.score(
-                    question,
-                    entry,
-                    profile
-                )
-            }))
-            .sort((a, b) => b.score - a.score)
-            .slice(0, limit);
-    }
-}
-
-const advancedMemoryRanker =
-    new AdvancedMemoryRanker();
-
-/* ------------------------------------------------------------
-   11. BEST ANSWER ENGINE
------------------------------------------------------------- */
-
-answerMemory.getBestAnswer =
-function(question, options = {}) {
-
-    const entries = this.getAll();
-
-    if (!question || !entries.length) {
-        return null;
-    }
-
-    const userId =
-        options.userId || "anonymous";
-
-    const profile =
-        userMemoryProfiles.getProfile(userId);
-
-    const ranked =
-        advancedMemoryRanker.rank(
-            question,
-            entries,
-            profile,
-            Number(options.limit || 10)
-        );
-
-    const minimum =
-        Number(
-            options.minimumScore || 0.42
-        );
-
-    const valid =
-        ranked.filter(
-            item => item.score >= minimum
-        );
-
-    if (!valid.length) {
-        userMemoryProfiles.recordMiss(userId);
-        return null;
-    }
-
-    const best = valid[0];
-
-    userMemoryProfiles.recordHit(userId);
-
-    if (best.entry && best.entry.id) {
-        this.markHit(best.entry.id);
-    }
-
-    return {
-        id: best.entry.id,
-        question: best.entry.question,
-        answer: best.entry.answer,
-        category: best.entry.category,
-        tags: best.entry.tags,
-        score: best.score,
-        confidence:
-            memoryConfidenceEngine.calculate(
-                best.entry
-            ),
-        confidenceLevel:
-            memoryConfidenceEngine.classify(
-                memoryConfidenceEngine.calculate(
-                    best.entry
-                )
-            )
-    };
-};
-
-/* ------------------------------------------------------------
-   12. QUESTION + ANSWER CONTEXT LEARNING
------------------------------------------------------------- */
-
-function learnConversationToMemory(
-    userId,
-    question,
-    answer,
-    options = {}
-) {
-    const q =
-        String(question || "").trim();
-
-    const a =
-        String(answer || "").trim();
-
-    if (!q || !a) {
-        return null;
-    }
-
-    const category =
-        options.category ||
-        MemoryCategoryEngine.detectCategory(q);
-
-    const tags =
-        Array.isArray(options.tags)
-            ? options.tags
-            : MemoryTagEngine.generateTags(
-                q,
-                category
-            );
-
-    const result =
-        answerMemory.addSmart({
-            question: q,
-            answer: a,
-            category,
-            tags,
-            source: options.source || "conversation",
-            confidence:
-                typeof options.confidence === "number"
-                    ? options.confidence
-                    : 0.65,
-            quality:
-                typeof options.quality === "number"
-                    ? options.quality
-                    : 0.60
-        });
-
-    userMemoryProfiles.recordQuestion(
-        userId,
-        {
-            question: q,
-            answer: a,
-            category
-        }
-    );
-
-    return result;
-}
-
-/* ------------------------------------------------------------
-   13. PUBLIC CONVERSATION LEARNING API
------------------------------------------------------------- */
-
-const conversationMemoryAPI = {
-
-    learn(userId, question, answer, options = {}) {
-        return learnConversationToMemory(
-            userId,
-            question,
-            answer,
-            options
-        );
-    },
-
-    find(userId, question, options = {}) {
-        return answerMemory.personalizedLookup(
-            userId,
-            question,
-            options
-        );
-    },
-
-    best(userId, question, options = {}) {
-        return answerMemory.getBestAnswer(
-            question,
-            {
-                ...options,
-                userId
-            }
-        );
-    },
-
-    profile(userId) {
-        return userMemoryProfiles.getProfile(
-            userId
-        );
-    },
-
-    addInterest(userId, interest) {
-        return userMemoryProfiles.addInterest(
-            userId,
-            interest
-        );
-    },
-
-    setPreference(userId, key, value) {
-        return userMemoryProfiles.setPreference(
-            userId,
-            key,
-            value
-        );
-    }
-};
-
-/* ------------------------------------------------------------
-   14. MEMORY QUALITY RE-EVALUATION
------------------------------------------------------------- */
-
-function recalculateAllMemoryConfidence() {
-
-    const entries =
-        answerMemory.getAll();
-
-    let changed = 0;
-
-    for (const entry of entries) {
-
-        const confidence =
-            memoryConfidenceEngine.calculate(
-                entry
-            );
-
-        const old =
-            Number(entry.confidence || 0);
-
-        if (
-            Math.abs(old - confidence) >
-            0.001
-        ) {
-            entry.confidence =
-                Number(
-                    confidence.toFixed(4)
-                );
-
-            entry.confidenceLevel =
-                memoryConfidenceEngine.classify(
-                    confidence
-                );
-
-            entry.updatedAt =
-                new Date().toISOString();
-
-            changed++;
-        }
-    }
-
-    if (changed > 0) {
-        answerMemory.save();
-    }
-
-    return {
-        changed,
-        total: entries.length
-    };
-}
-
-/* ------------------------------------------------------------
-   15. DECAY MAINTENANCE
------------------------------------------------------------- */
-
-function applyMemoryDecay() {
-
-    const entries =
-        answerMemory.getAll();
-
-    for (const entry of entries) {
-        memoryDecayEngine.apply(entry);
-    }
-
-    answerMemory.save();
-
-    return {
-        processed: entries.length,
-        timestamp: new Date().toISOString()
-    };
-}
-
-/* ------------------------------------------------------------
-   16. LOW QUALITY MEMORY CLEANER
------------------------------------------------------------- */
-
-function cleanupLowQualityMemories(
-    options = {}
-) {
-    const minimum =
-        Number(
-            options.minimumConfidence || 0.10
-        );
-
-    const removeArchived =
-        options.removeArchived !== false;
-
-    const entries =
-        answerMemory.getAll();
-
-    let removed = 0;
-
-    for (const entry of entries) {
-
-        const confidence =
-            memoryConfidenceEngine.calculate(
-                entry
-            );
-
-        const archived =
-            Boolean(entry.archived);
-
-        const shouldRemove =
-            confidence < minimum &&
-            (
-                !removeArchived ||
-                archived
-            );
-
-        if (shouldRemove) {
-            if (answerMemory.delete(entry.id)) {
-                removed++;
-            }
-        }
-    }
-
-    return {
-        removed,
-        remaining: answerMemory.count()
-    };
-}
-
-/* ------------------------------------------------------------
-   17. MEMORY EXPORT ENGINE
------------------------------------------------------------- */
-
-function exportMemorySnapshot(
-    options = {}
-) {
-    const entries =
-        answerMemory.getAll();
-
-    const profiles =
-        userMemoryProfiles.getAll();
-
-    return {
-        version: "4.0.0",
-        exportedAt: new Date().toISOString(),
-
-        metadata: {
-            memoryCount: entries.length,
-            profileCount: profiles.length
-        },
-
-        memory: options.includeMemory !== false
-            ? entries
-            : [],
-
-        profiles: options.includeProfiles !== false
-            ? profiles
-            : []
-    };
-}
-
-/* ------------------------------------------------------------
-   18. MEMORY IMPORT ENGINE
------------------------------------------------------------- */
-
-function importMemorySnapshot(
-    snapshot,
-    options = {}
-) {
-    if (
-        !snapshot ||
-        typeof snapshot !== "object"
-    ) {
-        return {
-            imported: 0,
-            skipped: 0,
-            error: "Geçersiz snapshot."
-        };
-    }
-
-    const memory =
-        Array.isArray(snapshot.memory)
-            ? snapshot.memory
-            : [];
-
-    let imported = 0;
-    let skipped = 0;
-
-    for (const item of memory) {
-
-        if (
-            !item ||
-            !item.question ||
-            !item.answer
-        ) {
-            skipped++;
-            continue;
-        }
-
-        try {
-
-            if (
-                options.skipDuplicates !== false
-            ) {
-                const duplicate =
-                    answerMemory.findExact(
-                        item.question
-                    );
-
-                if (duplicate) {
-                    skipped++;
-                    continue;
-                }
-            }
-
-            answerMemory.addSmart({
-                ...item,
-                source:
-                    item.source ||
-                    "import"
-            });
-
-            imported++;
-
-        } catch (error) {
-            skipped++;
-        }
-    }
-
-    answerMemory.save();
-
-    return {
-        imported,
-        skipped,
-        total: answerMemory.count()
-    };
-}
-
-/* ------------------------------------------------------------
-   19. MEMORY BACKUP ROTATION
------------------------------------------------------------- */
-
-function rotateMemoryBackups(
-    maxBackups = 20
-) {
-    try {
-
-        ensureDirectory(MEMORY_BACKUP_DIR);
-
-        const files =
-            fs.readdirSync(
-                MEMORY_BACKUP_DIR
-            )
-            .filter(file =>
-                file.endsWith(".json")
-            )
-            .map(file => {
-
-                const full =
-                    path.join(
-                        MEMORY_BACKUP_DIR,
-                        file
-                    );
-
-                const stat =
-                    fs.statSync(full);
-
-                return {
-                    file,
-                    full,
-                    time: stat.mtimeMs
-                };
-            })
-            .sort(
-                (a, b) =>
-                    b.time - a.time
-            );
-
-        const remove =
-            files.slice(
-                Math.max(
-                    0,
-                    Number(maxBackups)
-                )
-            );
-
-        for (const item of remove) {
-            try {
-                fs.unlinkSync(item.full);
-            } catch (_) {}
-        }
-
-        return {
-            kept: Math.min(
-                files.length,
-                Number(maxBackups)
-            ),
-            removed: remove.length
-        };
-
-    } catch (error) {
-
-        return {
-            kept: 0,
-            removed: 0,
-            error: error.message
-        };
-    }
-}
-
-/* ------------------------------------------------------------
-   20. MEMORY HEALTH REPORT
------------------------------------------------------------- */
-
-function getAdvancedMemoryHealth() {
-
-    const entries =
-        answerMemory.getAll();
-
-    let highConfidence = 0;
-    let mediumConfidence = 0;
-    let lowConfidence = 0;
-
-    let archived = 0;
-    let pinned = 0;
-
-    for (const entry of entries) {
-
-        const confidence =
-            memoryConfidenceEngine.calculate(
-                entry
-            );
-
-        if (confidence >= 0.70) {
-            highConfidence++;
-        } else if (confidence >= 0.40) {
-            mediumConfidence++;
-        } else {
-            lowConfidence++;
-        }
-
-        if (entry.archived) {
-            archived++;
-        }
-
-        if (entry.pinned) {
-            pinned++;
-        }
-    }
-
-    const profiles =
-        userMemoryProfiles.stats();
-
-    return {
-        status: "ok",
-
-        memory: {
-            total: entries.length,
-            highConfidence,
-            mediumConfidence,
-            lowConfidence,
-            archived,
-            pinned
-        },
-
-        users: profiles,
-
-        timestamp:
-            new Date().toISOString()
-    };
-}
-
-/* ------------------------------------------------------------
-   21. MEMORY SEARCH PIPELINE
------------------------------------------------------------- */
-
-async function executeMemoryPipeline(
-    userId,
-    question,
-    options = {}
-) {
-    const q =
-        String(question || "").trim();
-
-    if (!q) {
-        return {
-            found: false,
-            answer: null,
-            source: "memory"
-        };
-    }
-
-    const exact =
-        answerMemory.findExact(q);
-
-    if (exact) {
-
-        answerMemory.markHit(
-            exact.id
-        );
-
-        userMemoryProfiles.recordHit(
-            userId
-        );
-
-        return {
-            found: true,
-            exact: true,
-            answer: exact.answer,
-            entry: exact,
-            score: 1,
-            source: "memory_exact"
-        };
-    }
-
-    const best =
-        answerMemory.getBestAnswer(
-            q,
-            {
-                ...options,
-                userId
-            }
-        );
-
-    if (
-        best &&
-        best.score >=
-        Number(
-            options.minimumScore || 0.55
-        )
-    ) {
-        return {
-            found: true,
-            exact: false,
-            answer: best.answer,
-            entry: best,
-            score: best.score,
-            source: "memory_smart"
-        };
-    }
-
-    return {
-        found: false,
-        exact: false,
-        answer: null,
-        entry: null,
-        score: 0,
-        source: "memory"
-    };
-}
-
-/* ------------------------------------------------------------
-   22. MEMORY ANSWER GUARD
------------------------------------------------------------- */
-
-function isMemoryAnswerUsable(
-    result,
-    options = {}
-) {
-    if (!result) {
-        return false;
-    }
-
-    if (!result.found) {
-        return false;
-    }
-
-    const minimum =
-        Number(
-            options.minimumScore || 0.55
-        );
-
-    if (
-        typeof result.score === "number" &&
-        result.score < minimum
-    ) {
-        return false;
-    }
-
-    const answer =
-        String(
-            result.answer || ""
-        ).trim();
-
-    if (!answer) {
-        return false;
-    }
-
-    const badPatterns = [
-        /^bilmiyorum$/i,
-        /^emin değilim$/i,
-        /^hata oluştu/i,
-        /^error/i,
-        /^undefined$/i,
-        /^null$/i
-    ];
-
-    for (const pattern of badPatterns) {
-        if (pattern.test(answer)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-/* ------------------------------------------------------------
-   23. MEMORY RESPONSE FORMATTER
------------------------------------------------------------- */
-
-function formatMemoryResponse(
-    result,
-    options = {}
-) {
-    if (
-        !isMemoryAnswerUsable(
-            result,
-            options
-        )
-    ) {
-        return null;
-    }
-
-    const answer =
-        String(result.answer).trim();
-
-    if (
-        options.includeMeta !== true
-    ) {
-        return answer;
-    }
-
-    return {
-        answer,
-        source:
-            result.source || "memory",
-        score:
-            Number(
-                result.score || 0
-            ),
-        category:
-            result.entry &&
-            result.entry.category
-                ? result.entry.category
-                : "general"
-    };
-}
-
-/* ------------------------------------------------------------
-   24. MEMORY AUTO-LEARNING FILTER
------------------------------------------------------------- */
-
-function shouldLearnResponse(
-    question,
-    answer,
-    options = {}
-) {
-    const q =
-        String(question || "").trim();
-
-    const a =
-        String(answer || "").trim();
-
-    if (!q || !a) {
-        return false;
-    }
-
-    if (q.length < 3) {
-        return false;
-    }
-
-    if (a.length < 3) {
-        return false;
-    }
-
-    if (a.length > 50000) {
-        return false;
-    }
-
-    const blockedAnswerPatterns = [
-        /internal server error/i,
-        /rate limit/i,
-        /too many requests/i,
-        /quota exceeded/i,
-        /api key/i,
-        /invalid api/i,
-        /network error/i
-    ];
-
-    for (
-        const pattern
-        of blockedAnswerPatterns
-    ) {
-        if (pattern.test(a)) {
-            return false;
-        }
-    }
-
-    if (
-        options.force === true
-    ) {
-        return true;
-    }
-
-    return true;
-}
-
-/* ------------------------------------------------------------
-   25. AUTO LEARN WRAPPER
------------------------------------------------------------- */
-
-function autoLearnConversation(
-    userId,
-    question,
-    answer,
-    options = {}
-) {
-    if (
-        !shouldLearnResponse(
-            question,
-            answer,
-            options
-        )
-    ) {
-        return {
-            learned: false,
-            reason: "filtered"
-        };
-    }
-
-    try {
-
-        const result =
-            learnConversationToMemory(
-                userId,
-                question,
-                answer,
-                options
-            );
-
-        return {
-            learned: Boolean(result),
-            result
-        };
-
-    } catch (error) {
-
-        return {
-            learned: false,
-            error: error.message
-        };
-    }
-}
-
-/* ------------------------------------------------------------
-   26. MEMORY FEEDBACK PROCESSOR
------------------------------------------------------------- */
-
-function processMemoryFeedback(
-    id,
-    feedback = {}
-) {
-    const entry =
-        answerMemory.get(id);
-
-    if (!entry) {
-        return null;
-    }
-
-    if (
-        feedback.positive === true
-    ) {
-        answerMemory.markSuccess(id);
-    }
-
-    if (
-        feedback.negative === true
-    ) {
-        answerMemory.markFailure(id);
-    }
-
-    const updated =
-        answerMemory.updateConfidence(
-            id,
-            feedback
-        );
-
-    return {
-        entry: updated,
-        confidence:
-            memoryConfidenceEngine.explain(
-                updated
-            )
-    };
-}
-
-/* ------------------------------------------------------------
-   27. MEMORY QUERY ANALYTICS
------------------------------------------------------------- */
-
-class MemoryQueryAnalytics {
-    constructor() {
-        this.queries = [];
-        this.maxQueries = 5000;
-    }
-
-    record(data = {}) {
-
-        const item = {
-            question:
-                String(
-                    data.question || ""
-                ).slice(0, 1000),
-
-            userId:
-                String(
-                    data.userId ||
-                    "anonymous"
-                ).slice(0, 200),
-
-            found:
-                Boolean(data.found),
-
-            score:
-                Number(data.score || 0),
-
-            source:
-                data.source ||
-                "memory",
-
-            timestamp:
-                new Date().toISOString()
-        };
-
-        this.queries.push(item);
-
-        if (
-            this.queries.length >
-            this.maxQueries
-        ) {
-            this.queries =
-                this.queries.slice(
-                    -this.maxQueries
-                );
-        }
-
-        return item;
-    }
-
-    getRecent(limit = 100) {
-        return this.queries.slice(
-            -Number(limit)
-        );
-    }
-
-    stats() {
-
-        const total =
-            this.queries.length;
-
-        let found = 0;
-        let scoreTotal = 0;
-
-        for (
-            const query
-            of this.queries
-        ) {
-            if (query.found) {
-                found++;
-            }
-
-            scoreTotal +=
-                Number(
-                    query.score || 0
-                );
-        }
-
-        return {
-            total,
-            found,
-            misses: total - found,
-            hitRate:
-                total > 0
-                    ? found / total
-                    : 0,
-
-            averageScore:
-                total > 0
-                    ? scoreTotal / total
-                    : 0
-        };
-    }
-
-    clear() {
-        this.queries = [];
-    }
-}
-
-const memoryQueryAnalytics =
-    new MemoryQueryAnalytics();
-
-/* ------------------------------------------------------------
-   28. ANALYTICS-AWARE SEARCH
------------------------------------------------------------- */
-
-async function searchMemoryWithAnalytics(
-    userId,
-    question,
-    options = {}
-) {
-    const result =
-        await executeMemoryPipeline(
-            userId,
-            question,
-            options
-        );
-
-    memoryQueryAnalytics.record({
-        userId,
-        question,
-        found: result.found,
-        score: result.score,
-        source: result.source
-    });
-
-    return result;
-}
-
-/* ------------------------------------------------------------
-   29. FINAL PUBLIC API
------------------------------------------------------------- */
-
-const advancedMemoryAPI = {
-
-    contextLookup(question, options) {
-        return answerMemory.contextLookup(
-            question,
-            options
-        );
-    },
-
-    personalizedLookup(
-        userId,
-        question,
-        options
-    ) {
-        return answerMemory.personalizedLookup(
-            userId,
-            question,
-            options
-        );
-    },
-
-    bestAnswer(
-        userId,
-        question,
-        options
-    ) {
-        return answerMemory.getBestAnswer(
-            question,
-            {
-                ...options,
-                userId
-            }
-        );
-    },
-
-    pipeline(
-        userId,
-        question,
-        options
-    ) {
-        return executeMemoryPipeline(
-            userId,
-            question,
-            options
-        );
-    },
-
-    search(
-        userId,
-        question,
-        options
-    ) {
-        return searchMemoryWithAnalytics(
-            userId,
-            question,
-            options
-        );
-    },
-
-    learn(
-        userId,
-        question,
-        answer,
-        options
-    ) {
-        return autoLearnConversation(
-            userId,
-            question,
-            answer,
-            options
-        );
-    },
-
-    feedback(id, feedback) {
-        return processMemoryFeedback(
-            id,
-            feedback
-        );
-    },
-
-    health() {
-        return getAdvancedMemoryHealth();
-    },
-
-    analytics() {
-        return memoryQueryAnalytics.stats();
-    },
-
-    export(options) {
-        return exportMemorySnapshot(
-            options
-        );
-    },
-
-    import(snapshot, options) {
-        return importMemorySnapshot(
-            snapshot,
-            options
-        );
-    },
-
-    maintenance() {
-        return {
-            confidence:
-                recalculateAllMemoryConfidence(),
-
-            decay:
-                applyMemoryDecay(),
-
-            backups:
-                rotateMemoryBackups()
-        };
-    }
-};
-
-/* ------------------------------------------------------------
-   30. EXTENDED EXPORTS
------------------------------------------------------------- */
-
-module.exports = {
-    ...module.exports,
-
-    MemoryContextEngine,
-    memoryContextEngine,
-
-    UserMemoryProfileEngine,
-    userMemoryProfiles,
-
-    MemoryConfidenceEngine,
-    memoryConfidenceEngine,
-
-    MemoryDecayEngine,
-    memoryDecayEngine,
-
-    AdvancedMemoryRanker,
-    advancedMemoryRanker,
-
-    MemoryQueryAnalytics,
-    memoryQueryAnalytics,
-
-    calculatePersonalizationScore,
-
-    learnConversationToMemory,
-    conversationMemoryAPI,
-
-    recalculateAllMemoryConfidence,
-    applyMemoryDecay,
-    cleanupLowQualityMemories,
-
-    exportMemorySnapshot,
-    importMemorySnapshot,
-
-    rotateMemoryBackups,
-    getAdvancedMemoryHealth,
-
-    executeMemoryPipeline,
-    isMemoryAnswerUsable,
-    formatMemoryResponse,
-
-    shouldLearnResponse,
-    autoLearnConversation,
-
-    processMemoryFeedback,
-    searchMemoryWithAnalytics,
-
-    advancedMemoryAPI
-};
-
-/* ------------------------------------------------------------
-   31. GLOBAL TURKAI MEMORY BRIDGE
------------------------------------------------------------- */
-
-if (
-    typeof global !== "undefined"
-) {
-    global.turkAIMemory = {
-        answerMemory,
-        userProfiles:
-            userMemoryProfiles,
-
-        context:
-            memoryContextEngine,
-
-        confidence:
-            memoryConfidenceEngine,
-
-        decay:
-            memoryDecayEngine,
-
-        ranker:
-            advancedMemoryRanker,
-
-        analytics:
-            memoryQueryAnalytics,
-
-        api:
-            advancedMemoryAPI
-    };
-}
-
-/* ------------------------------------------------------------
-   32. MEMORY ENGINE STATUS
------------------------------------------------------------- */
-
-try {
-
-    const health =
-        getAdvancedMemoryHealth();
-
-    console.log(
-        "[TürkAI Memory] Advanced engine hazır."
-    );
-
-    console.log(
-        `[TürkAI Memory] Hafıza: ${health.memory.total}`
-    );
-
-    console.log(
-        `[TürkAI Memory] Kullanıcı profili: ${health.users.users}`
-    );
-
-} catch (error) {
-
-    console.warn(
-        "[TürkAI Memory] Durum okunamadı:",
-        error.message
-    );
-}
-
-/* ------------------------------------------------------------
-   PART 4 END
------------------------------------------------------------- */
-// ============================================================
-// TÜRKAI ANSWER MEMORY ENGINE
-// PART 5 / 5 — FINAL
-// Production bridge, persistence, import/export,
-// API helpers, diagnostics and server integration
-// ============================================================
-
-/* ------------------------------------------------------------
-   1. FINAL MEMORY CONFIGURATION
------------------------------------------------------------- */
-
-const FINAL_MEMORY_CONFIG = {
-    version: "5.0.0",
-
-    enabled: true,
-
-    autoLearn: true,
-
-    autoSave: true,
-
-    smartSearch: true,
-
-    personalizedSearch: true,
-
-    contextSearch: true,
-
-    analytics: true,
-
-    confidenceEngine: true,
-
-    decayEngine: true,
-
-    duplicateProtection: true,
-
-    maxAnswerLength: 50000,
-
-    minimumLearnConfidence: 0.45,
-
-    minimumSearchScore: 0.55,
-
-    maximumContextItems: 12,
-
-    maximumSearchResults: 15,
-
-    maintenanceInterval:
-        1000 * 60 * 30
+    weakThreshold:
+        0.50
 };
 
 
-/* ------------------------------------------------------------
-   2. SAFE MEMORY STATE
------------------------------------------------------------- */
+/* ============================================================
+   3.1 - SAFE NUMBER
+============================================================ */
 
-const finalMemoryState = {
-
-    initialized: false,
-
-    lastInitialization:
-        null,
-
-    lastSave:
-        null,
-
-    lastSearch:
-        null,
-
-    lastLearning:
-        null,
-
-    lastMaintenance:
-        null,
-
-    searches:
-        0,
-
-    learned:
-        0,
-
-    hits:
-        0,
-
-    misses:
-        0,
-
-    errors:
-        0
-};
-
-
-/* ------------------------------------------------------------
-   3. SAFE STRING
------------------------------------------------------------- */
-
-function memorySafeString(
+function answerMemorySafeNumber3(
     value,
-    maxLength = 100000
+    fallback = 0
+) {
+    const number =
+        Number(value);
+
+    if (
+        Number.isFinite(
+            number
+        )
+    ) {
+        return number;
+    }
+
+    return fallback;
+}
+
+
+/* ============================================================
+   3.2 - SAFE BOOLEAN
+============================================================ */
+
+function answerMemorySafeBoolean3(
+    value,
+    fallback = false
 ) {
     if (
         value === undefined ||
         value === null
     ) {
-        return "";
-    }
-
-    return String(value)
-        .replace(/\u0000/g, "")
-        .slice(0, maxLength)
-        .trim();
-}
-
-
-/* ------------------------------------------------------------
-   4. USER ID NORMALIZER
------------------------------------------------------------- */
-
-function memoryUserId(
-    userId
-) {
-    return memorySafeString(
-        userId || "anonymous",
-        200
-    ) || "anonymous";
-}
-
-
-/* ------------------------------------------------------------
-   5. QUESTION NORMALIZER
------------------------------------------------------------- */
-
-function memoryQuestion(
-    question
-) {
-    return memorySafeString(
-        question,
-        10000
-    );
-}
-
-
-/* ------------------------------------------------------------
-   6. ANSWER NORMALIZER
------------------------------------------------------------- */
-
-function memoryAnswer(
-    answer
-) {
-    return memorySafeString(
-        answer,
-        FINAL_MEMORY_CONFIG.maxAnswerLength
-    );
-}
-
-
-/* ------------------------------------------------------------
-   7. MEMORY ELIGIBILITY
------------------------------------------------------------- */
-
-function isEligibleMemory(
-    question,
-    answer,
-    options = {}
-) {
-    const q =
-        memoryQuestion(question);
-
-    const a =
-        memoryAnswer(answer);
-
-    if (!q || !a) {
-        return false;
-    }
-
-    if (q.length < 2) {
-        return false;
-    }
-
-    if (a.length < 2) {
-        return false;
+        return fallback;
     }
 
     if (
-        options.skipFilter === true
+        typeof value ===
+        "boolean"
     ) {
-        return true;
+        return value;
     }
 
-    const badAnswers = [
-        "undefined",
-        "null",
-        "[object object]",
-        "internal server error",
-        "service unavailable",
-        "gateway timeout",
-        "rate limit exceeded",
-        "too many requests",
-        "quota exceeded"
-    ];
-
-    const lower =
-        a.toLowerCase();
-
-    for (
-        const bad
-        of badAnswers
+    if (
+        typeof value ===
+        "string"
     ) {
+        const normalized =
+            value
+                .trim()
+                .toLocaleLowerCase(
+                    "tr-TR"
+                );
+
         if (
-            lower === bad ||
-            lower.includes(bad)
+            [
+                "true",
+                "1",
+                "yes",
+                "evet",
+                "on"
+            ].includes(
+                normalized
+            )
+        ) {
+            return true;
+        }
+
+        if (
+            [
+                "false",
+                "0",
+                "no",
+                "hayır",
+                "off"
+            ].includes(
+                normalized
+            )
         ) {
             return false;
         }
     }
 
-    return true;
+    return Boolean(
+        value
+    );
 }
 
 
-/* ------------------------------------------------------------
-   8. FINAL MEMORY INITIALIZER
------------------------------------------------------------- */
+/* ============================================================
+   3.3 - CACHE KEY CREATOR
+============================================================ */
 
-function initializeFinalMemory() {
-
-    if (
-        finalMemoryState.initialized
-    ) {
-        return true;
-    }
-
-    try {
-
-        if (
-            typeof initializeDatabase ===
-            "function"
-        ) {
-            initializeDatabase();
-        }
-
-    } catch (_) {
-        // Database may already be initialized.
-    }
-
-    try {
-
-        if (
-            typeof reloadDatabase ===
-            "function"
-        ) {
-            reloadDatabase();
-        }
-
-    } catch (_) {
-        // Existing in-memory database is usable.
-    }
-
-    finalMemoryState.initialized =
-        true;
-
-    finalMemoryState.lastInitialization =
-        new Date().toISOString();
-
-    return true;
-}
-
-
-/* ------------------------------------------------------------
-   9. FINAL SEARCH
------------------------------------------------------------- */
-
-async function finalMemorySearch(
-    userId,
+function answerMemoryCreateSearchCacheKey3(
     question,
     options = {}
 ) {
-    initializeFinalMemory();
+    const prepared =
+        typeof answerMemoryNormalizeTurkish ===
+            "function"
+            ? answerMemoryNormalizeTurkish(
+                  question
+              )
+            : String(
+                  question || ""
+              )
+                  .trim()
+                  .toLocaleLowerCase(
+                      "tr-TR"
+                  );
 
-    const uid =
-        memoryUserId(userId);
+    const payload = {
+        q:
+            prepared,
 
-    const q =
-        memoryQuestion(question);
+        userId:
+            options.userId ||
+            "anonymous",
 
-    if (!q) {
-        return {
-            found: false,
-            answer: null,
-            score: 0,
-            source: "memory"
-        };
+        scope:
+            options.scope ||
+            null,
+
+        category:
+            options.category ||
+            null,
+
+        language:
+            options.language ||
+            null,
+
+        topK:
+            options.topK ||
+            ANSWER_MEMORY_SEARCH_LIMITS_3.defaultTopK,
+
+        minimumScore:
+            options.minimumScore ??
+            ANSWER_MEMORY_SEARCH_LIMITS_3.minimumReturnScore,
+
+        userOnly:
+            Boolean(
+                options.userOnly
+            ),
+
+        includeArchived:
+            Boolean(
+                options.includeArchived
+            ),
+
+        includeInactive:
+            Boolean(
+                options.includeInactive
+            )
+    };
+
+    return (
+        "search:" +
+        answerMemoryHash(
+            JSON.stringify(
+                payload
+            )
+        )
+    );
+}
+
+
+/* ============================================================
+   3.4 - CACHE ENTRY VALIDATION
+============================================================ */
+
+function answerMemoryValidateCacheEntry3(
+    entry,
+    ttl
+) {
+    if (
+        !entry ||
+        typeof entry !==
+            "object"
+    ) {
+        return false;
     }
 
-    finalMemoryState.searches++;
-    finalMemoryState.lastSearch =
-        new Date().toISOString();
+    const createdAt =
+        answerMemorySafeNumber3(
+            entry.createdAt,
+            0
+        );
 
-    try {
+    if (
+        createdAt <= 0
+    ) {
+        return false;
+    }
+
+    const age =
+        Date.now() -
+        createdAt;
+
+    return (
+        age >= 0 &&
+        age <=
+            Math.max(
+                1000,
+                Number(
+                    ttl || 0
+                )
+            ) &&
+        entry.response &&
+        typeof entry.response ===
+            "object"
+    );
+}
+
+
+/* ============================================================
+   3.5 - CACHE READ
+============================================================ */
+
+AnswerMemory.prototype.getSearchCache3 =
+    function (
+        key
+    ) {
+        if (
+            !this.cache ||
+            typeof this.cache !==
+                "object"
+        ) {
+            return null;
+        }
+
+        const ttl =
+            answerMemorySafeNumber3(
+                this.config?.cacheTTL,
+                1000 * 60 * 15
+            );
+
+        const entry =
+            this.cache[key];
 
         if (
-            options.exact !== false &&
-            typeof answerMemory.findExact ===
-            "function"
+            !answerMemoryValidateCacheEntry3(
+                entry,
+                ttl
+            )
         ) {
+            if (
+                entry
+            ) {
+                delete this.cache[
+                    key
+                ];
+            }
 
-            const exact =
-                answerMemory.findExact(q);
+            return null;
+        }
 
-            if (exact) {
+        try {
+            return JSON.parse(
+                JSON.stringify(
+                    entry.response
+                )
+            );
+        } catch {
+            return null;
+        }
+    };
 
-                finalMemoryState.hits++;
 
-                if (
-                    typeof answerMemory.markHit ===
-                    "function"
-                ) {
-                    answerMemory.markHit(
-                        exact.id
-                    );
-                }
+/* ============================================================
+   3.6 - CACHE WRITE
+============================================================ */
 
-                try {
-                    userMemoryProfiles
-                        .recordHit(uid);
-                } catch (_) {}
+AnswerMemory.prototype.setSearchCache3 =
+    function (
+        key,
+        response
+    ) {
+        if (
+            !this.cache ||
+            typeof this.cache !==
+                "object"
+        ) {
+            this.cache = {};
+        }
 
-                return {
-                    found: true,
-                    answer: exact.answer,
-                    entry: exact,
-                    score: 1,
-                    exact: true,
-                    source: "memory_exact"
-                };
+        this.cache[key] = {
+            createdAt:
+                Date.now(),
+
+            response:
+                JSON.parse(
+                    JSON.stringify(
+                        response
+                    )
+                )
+        };
+
+        const keys =
+            Object.keys(
+                this.cache
+            );
+
+        /*
+        --------------------------------------------------------
+        Cache çok büyürse eski girişleri temizle.
+        --------------------------------------------------------
+        */
+
+        if (
+            keys.length >
+            10000
+        ) {
+            const removeCount =
+                keys.length -
+                8000;
+
+            for (
+                let i = 0;
+                i < removeCount;
+                i++
+            ) {
+                delete this.cache[
+                    keys[i]
+                ];
             }
         }
 
-        let result = null;
+        return true;
+    };
+
+
+/* ============================================================
+   3.7 - CACHE CLEAR
+============================================================ */
+
+AnswerMemory.prototype.clearSearchCache3 =
+    function () {
+        this.cache = {};
+
+        try {
+            answerMemoryWriteJSON(
+                ANSWER_MEMORY_FILES.cache,
+                this.cache
+            );
+        } catch {}
+
+        return {
+            ok: true,
+            cleared: true
+        };
+    };
+
+
+/* ============================================================
+   3.8 - SEARCH CANDIDATE BY TOKEN
+============================================================ */
+
+AnswerMemory.prototype.getTokenCandidates3 =
+    function (
+        token
+    ) {
+        if (
+            !token ||
+            !this.index ||
+            typeof this.index !==
+                "object"
+        ) {
+            return [];
+        }
+
+        const ids =
+            this.index[token];
 
         if (
-            FINAL_MEMORY_CONFIG.personalizedSearch &&
-            typeof answerMemory.getBestAnswer ===
-            "function"
+            !Array.isArray(
+                ids
+            )
         ) {
+            return [];
+        }
 
-            result =
-                answerMemory.getBestAnswer(
-                    q,
-                    {
-                        ...options,
-                        userId: uid,
+        return ids;
+    };
 
-                        minimumScore:
-                            options.minimumScore ||
-                            FINAL_MEMORY_CONFIG.minimumSearchScore
+
+/* ============================================================
+   3.9 - GET USER CANDIDATES
+============================================================ */
+
+AnswerMemory.prototype.getUserCandidates3 =
+    function (
+        userId
+    ) {
+        if (
+            !this.userIndex ||
+            typeof this.userIndex !==
+                "object"
+        ) {
+            return [];
+        }
+
+        const normalized =
+            typeof answerMemoryNormalizeUserId2 ===
+                "function"
+                ? answerMemoryNormalizeUserId2(
+                      userId
+                  )
+                : String(
+                      userId ||
+                          "anonymous"
+                  );
+
+        const ids =
+            this.userIndex[
+                normalized
+            ];
+
+        return Array.isArray(
+            ids
+        )
+            ? ids
+            : [];
+    };
+
+
+/* ============================================================
+   3.10 - GLOBAL CANDIDATE COLLECTION
+============================================================ */
+
+AnswerMemory.prototype.collectSearchCandidates3 =
+    function (
+        query,
+        options = {}
+    ) {
+        const prepared =
+            this.prepareSearchQueryV2
+                ? this.prepareSearchQueryV2(
+                      query
+                  )
+                : {
+                      original:
+                          query,
+                      tokens:
+                          typeof answerMemoryTokenize ===
+                              "function"
+                              ? answerMemoryTokenize(
+                                    query
+                                )
+                              : []
+                  };
+
+        const candidateIds =
+            new Set();
+
+        /*
+        --------------------------------------------------------
+        1. Kullanıcının kendi kayıtları
+        --------------------------------------------------------
+        */
+
+        if (
+            options.userId
+        ) {
+            const userIds =
+                this.getUserCandidates3(
+                    options.userId
+                );
+
+            for (
+                const id
+                of userIds
+            ) {
+                candidateIds.add(
+                    id
+                );
+            }
+        }
+
+        /*
+        --------------------------------------------------------
+        2. Token indeksinden adaylar
+        --------------------------------------------------------
+        */
+
+        const tokens =
+            Array.isArray(
+                prepared.tokens
+            )
+                ? prepared.tokens
+                : [];
+
+        const keywords =
+            Array.isArray(
+                prepared.keywords
+            )
+                ? prepared.keywords
+                : [];
+
+        const searchTokens =
+            answerMemoryUniqueArray(
+                [
+                    ...tokens,
+                    ...keywords
+                ]
+            );
+
+        /*
+        En ayırt edici tokenlardan başlayalım.
+        Çok yaygın kısa kelimeleri atla.
+        */
+
+        const usefulTokens =
+            searchTokens.filter(
+                token =>
+                    String(
+                        token
+                    ).length >=
+                    2
+            );
+
+        usefulTokens.sort(
+            (
+                a,
+                b
+            ) => {
+                const aCount =
+                    Array.isArray(
+                        this.index?.[a]
+                    )
+                        ? this.index[
+                              a
+                          ].length
+                        : Number.MAX_SAFE_INTEGER;
+
+                const bCount =
+                    Array.isArray(
+                        this.index?.[b]
+                    )
+                        ? this.index[
+                              b
+                          ].length
+                        : Number.MAX_SAFE_INTEGER;
+
+                return (
+                    aCount -
+                    bCount
+                );
+            }
+        );
+
+        const tokenLimit =
+            Math.min(
+                20,
+                usefulTokens.length
+            );
+
+        for (
+            let i = 0;
+            i < tokenLimit;
+            i++
+        ) {
+            const token =
+                usefulTokens[i];
+
+            const ids =
+                this.getTokenCandidates3(
+                    token
+                );
+
+            for (
+                const id
+                of ids
+            ) {
+                candidateIds.add(
+                    id
+                );
+
+                if (
+                    candidateIds.size >=
+                    ANSWER_MEMORY_SEARCH_LIMITS_3.maximumCandidates
+                ) {
+                    break;
+                }
+            }
+
+            if (
+                candidateIds.size >=
+                ANSWER_MEMORY_SEARCH_LIMITS_3.maximumCandidates
+            ) {
+                break;
+            }
+        }
+
+        /*
+        --------------------------------------------------------
+        3. Arama indeksi boşsa tüm aktif kayıtlar
+        --------------------------------------------------------
+        */
+
+        if (
+            candidateIds.size ===
+            0
+        ) {
+            for (
+                const record
+                of Object.values(
+                    this.records ||
+                        {}
+                )
+            ) {
+                if (
+                    !record
+                ) {
+                    continue;
+                }
+
+                if (
+                    record.active ===
+                    false &&
+                    !options.includeInactive
+                ) {
+                    continue;
+                }
+
+                if (
+                    record.archived ===
+                    true &&
+                    !options.includeArchived
+                ) {
+                    continue;
+                }
+
+                candidateIds.add(
+                    record.id
+                );
+
+                if (
+                    candidateIds.size >=
+                    ANSWER_MEMORY_SEARCH_LIMITS_3.maximumCandidates
+                ) {
+                    break;
+                }
+            }
+        }
+
+        return [
+            ...candidateIds
+        ];
+    };
+
+
+/* ============================================================
+   3.11 - FILTER RECORD
+============================================================ */
+
+AnswerMemory.prototype.filterSearchRecord3 =
+    function (
+        record,
+        options = {}
+    ) {
+        if (
+            !record
+        ) {
+            return false;
+        }
+
+        if (
+            record.active ===
+                false &&
+            !options.includeInactive
+        ) {
+            return false;
+        }
+
+        if (
+            record.archived ===
+                true &&
+            !options.includeArchived
+        ) {
+            return false;
+        }
+
+        if (
+            options.userOnly
+        ) {
+            const wantedUser =
+                typeof answerMemoryNormalizeUserId2 ===
+                    "function"
+                    ? answerMemoryNormalizeUserId2(
+                          options.userId
+                      )
+                    : String(
+                          options.userId ||
+                              "anonymous"
+                      );
+
+            const recordUser =
+                typeof answerMemoryNormalizeUserId2 ===
+                    "function"
+                    ? answerMemoryNormalizeUserId2(
+                          record.userId
+                      )
+                    : String(
+                          record.userId ||
+                              "anonymous"
+                      );
+
+            if (
+                wantedUser !==
+                recordUser
+            ) {
+                return false;
+            }
+        }
+
+        if (
+            options.userId &&
+            options.scope ===
+                "user"
+        ) {
+            /*
+            Kullanıcı araması isteniyorsa kendi
+            kullanıcısına ait kayıtları + explicit global
+            kayıtları tut.
+            */
+
+            const wantedUser =
+                typeof answerMemoryNormalizeUserId2 ===
+                    "function"
+                    ? answerMemoryNormalizeUserId2(
+                          options.userId
+                      )
+                    : String(
+                          options.userId ||
+                              "anonymous"
+                      );
+
+            const recordUser =
+                typeof answerMemoryNormalizeUserId2 ===
+                    "function"
+                    ? answerMemoryNormalizeUserId2(
+                          record.userId
+                      )
+                    : String(
+                          record.userId ||
+                              "anonymous"
+                      );
+
+            if (
+                wantedUser !==
+                    recordUser &&
+                record.scope !==
+                    "global"
+            ) {
+                return false;
+            }
+        }
+
+        if (
+            options.scope &&
+            options.scope !==
+                "any"
+        ) {
+            if (
+                record.scope !==
+                options.scope
+            ) {
+                return false;
+            }
+        }
+
+        if (
+            options.category &&
+            options.category !==
+                "any"
+        ) {
+            if (
+                record.category !==
+                options.category
+            ) {
+                return false;
+            }
+        }
+
+        if (
+            options.language &&
+            options.language !==
+                "any"
+        ) {
+            if (
+                record.language !==
+                options.language
+            ) {
+                return false;
+            }
+        }
+
+        if (
+            Array.isArray(
+                options.tags
+            ) &&
+            options.tags.length >
+                0
+        ) {
+            const recordTags =
+                new Set(
+                    answerMemoryNormalizeTags(
+                        record.tags || []
+                    )
+                );
+
+            const requiredTags =
+                answerMemoryNormalizeTags(
+                    options.tags
+                );
+
+            const hasAllTags =
+                options.matchAllTags ===
+                true;
+
+            if (
+                hasAllTags
+            ) {
+                for (
+                    const tag
+                    of requiredTags
+                ) {
+                    if (
+                        !recordTags.has(
+                            tag
+                        )
+                    ) {
+                        return false;
                     }
+                }
+            } else {
+                let found = false;
+
+                for (
+                    const tag
+                    of requiredTags
+                ) {
+                    if (
+                        recordTags.has(
+                            tag
+                        )
+                    ) {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (
+                    !found
+                ) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    };
+
+
+/* ============================================================
+   3.12 - RECENCY SCORE V3
+============================================================ */
+
+AnswerMemory.prototype.calculateRecencyScore3 =
+    function (
+        record,
+        options = {}
+    ) {
+        if (
+            !record
+        ) {
+            return 0;
+        }
+
+        const timestamp =
+            new Date(
+                record.updatedAt ||
+                    record.createdAt ||
+                    0
+            ).getTime();
+
+        if (
+            !Number.isFinite(
+                timestamp
+            )
+        ) {
+            return 0;
+        }
+
+        const age =
+            Math.max(
+                0,
+                Date.now() -
+                    timestamp
+            );
+
+        const defaultHalfLife =
+            1000 *
+            60 *
+            60 *
+            24 *
+            30;
+
+        const halfLife =
+            answerMemorySafeNumber3(
+                options.recencyHalfLife ??
+                    this.config
+                        ?.recencyHalfLife ??
+                    defaultHalfLife,
+                defaultHalfLife
+            );
+
+        if (
+            halfLife <=
+            0
+        ) {
+            return 0;
+        }
+
+        return answerMemoryClamp(
+            Math.pow(
+                0.5,
+                age /
+                    halfLife
+            ),
+            0,
+            1
+        );
+    };
+
+
+/* ============================================================
+   3.13 - FREQUENCY SCORE V3
+============================================================ */
+
+AnswerMemory.prototype.calculateFrequencyScore3 =
+    function (
+        record
+    ) {
+        if (
+            !record
+        ) {
+            return 0;
+        }
+
+        const frequency =
+            Math.max(
+                0,
+                answerMemorySafeNumber3(
+                    record.frequency,
+                    0
+                )
+            );
+
+        const hits =
+            Math.max(
+                0,
+                answerMemorySafeNumber3(
+                    record.hits,
+                    0
+                )
+            );
+
+        const reads =
+            frequency +
+            hits;
+
+        return answerMemoryClamp(
+            Math.log1p(
+                reads
+            ) /
+                10,
+            0,
+            1
+        );
+    };
+
+
+/* ============================================================
+   3.14 - IMPORTANCE SCORE V3
+============================================================ */
+
+AnswerMemory.prototype.calculateImportanceScore3 =
+    function (
+        record
+    ) {
+        if (
+            !record
+        ) {
+            return 0;
+        }
+
+        const importance =
+            answerMemorySafeNumber3(
+                record.importance,
+                0.50
+            );
+
+        const confidence =
+            answerMemorySafeNumber3(
+                record.confidence,
+                0.80
+            );
+
+        const quality =
+            answerMemorySafeNumber3(
+                record.quality,
+                0.70
+            );
+
+        let score =
+            (
+                importance *
+                0.35
+            ) +
+            (
+                confidence *
+                0.35
+            ) +
+            (
+                quality *
+                0.30
+            );
+
+        if (
+            record.verified
+        ) {
+            score +=
+                0.05;
+        }
+
+        if (
+            record.trusted
+        ) {
+            score +=
+                0.05;
+        }
+
+        if (
+            record.pinned
+        ) {
+            score +=
+                0.03;
+        }
+
+        if (
+            record.favorite
+        ) {
+            score +=
+                0.02;
+        }
+
+        return answerMemoryClamp(
+            score,
+            0,
+            1
+        );
+    };
+
+
+/* ============================================================
+   3.15 - USER MATCH BONUS
+============================================================ */
+
+AnswerMemory.prototype.calculateUserBonus3 =
+    function (
+        record,
+        options = {}
+    ) {
+        if (
+            !record ||
+            !options.userId
+        ) {
+            return 0;
+        }
+
+        const left =
+            typeof answerMemoryNormalizeUserId2 ===
+                "function"
+                ? answerMemoryNormalizeUserId2(
+                      options.userId
+                  )
+                : String(
+                      options.userId
+                  );
+
+        const right =
+            typeof answerMemoryNormalizeUserId2 ===
+                "function"
+                ? answerMemoryNormalizeUserId2(
+                      record.userId
+                  )
+                : String(
+                      record.userId
+                  );
+
+        if (
+            left ===
+            right
+        ) {
+            return 0.08;
+        }
+
+        if (
+            record.scope ===
+            "global"
+        ) {
+            return 0.02;
+        }
+
+        return 0;
+    };
+
+
+/* ============================================================
+   3.16 - CATEGORY BONUS
+============================================================ */
+
+AnswerMemory.prototype.calculateCategoryBonus3 =
+    function (
+        record,
+        options = {}
+    ) {
+        if (
+            !record ||
+            !options.category
+        ) {
+            return 0;
+        }
+
+        return (
+            record.category ===
+            options.category
+        )
+            ? 0.04
+            : 0;
+    };
+
+
+/* ============================================================
+   3.17 - LANGUAGE BONUS
+============================================================ */
+
+AnswerMemory.prototype.calculateLanguageBonus3 =
+    function (
+        record,
+        options = {}
+    ) {
+        if (
+            !record ||
+            !options.language
+        ) {
+            return 0;
+        }
+
+        return (
+            record.language ===
+            options.language
+        )
+            ? 0.03
+            : 0;
+    };
+
+
+/* ============================================================
+   3.18 - QUERY/RECORD SCORE V3
+============================================================ */
+
+AnswerMemory.prototype.calculateSearchScore3 =
+    function (
+        query,
+        record,
+        options = {}
+    ) {
+        if (
+            !record
+        ) {
+            return null;
+        }
+
+        const candidateQuestion =
+            record.searchQuestion ||
+            record.normalizedQuestion ||
+            record.question ||
+            "";
+
+        const similarity =
+            answerMemoryCombinedSimilarity(
+                query,
+                candidateQuestion
+            );
+
+        const queryTokens =
+            answerMemoryTokenize(
+                query
+            );
+
+        const recordTokens =
+            Array.isArray(
+                record.tokens
+            )
+                ? record.tokens
+                : answerMemoryTokenize(
+                      record.question
+                  );
+
+        const overlap =
+            answerMemoryTokenOverlap(
+                queryTokens,
+                recordTokens
+            );
+
+        const precision =
+            answerMemoryPrecision(
+                queryTokens,
+                recordTokens
+            );
+
+        const recall =
+            answerMemoryRecall(
+                queryTokens,
+                recordTokens
+            );
+
+        const recency =
+            this.calculateRecencyScore3(
+                record,
+                options
+            );
+
+        const frequency =
+            this.calculateFrequencyScore3(
+                record
+            );
+
+        const importance =
+            this.calculateImportanceScore3(
+                record
+            );
+
+        const userBonus =
+            this.calculateUserBonus3(
+                record,
+                options
+            );
+
+        const categoryBonus =
+            this.calculateCategoryBonus3(
+                record,
+                options
+            );
+
+        const languageBonus =
+            this.calculateLanguageBonus3(
+                record,
+                options
+            );
+
+        const exactBonus =
+            similarity.exact >=
+            1
+                ? 0.15
+                : similarity.exact >
+                  0
+                ? 0.04
+                : 0;
+
+        const phraseBonus =
+            answerMemorySafeNumber3(
+                similarity.phrase,
+                0
+            ) *
+            0.08;
+
+        const wordOrderBonus =
+            answerMemorySafeNumber3(
+                similarity.wordOrder,
+                0
+            ) *
+            0.05;
+
+        /*
+        --------------------------------------------------------
+        Ana puan:
+        similarity ağır basar.
+        Kalite ve güncellik de destekler.
+        --------------------------------------------------------
+        */
+
+        let score =
+            (
+                similarity.score *
+                0.48
+            ) +
+            (
+                overlap *
+                0.07
+            ) +
+            (
+                precision *
+                0.04
+            ) +
+            (
+                recall *
+                0.04
+            ) +
+            (
+                recency *
+                0.08
+            ) +
+            (
+                frequency *
+                0.06
+            ) +
+            (
+                importance *
+                0.13
+            ) +
+            exactBonus +
+            phraseBonus +
+            wordOrderBonus +
+            userBonus +
+            categoryBonus +
+            languageBonus;
+
+        if (
+            record.archived
+        ) {
+            score -=
+                0.10;
+        }
+
+        if (
+            record.active ===
+            false
+        ) {
+            score -=
+                0.20;
+        }
+
+        score =
+            answerMemoryClamp(
+                score,
+                0,
+                1
+            );
+
+        const relevance =
+            this.getRelevanceLevel3(
+                score
+            );
+
+        return {
+            score,
+
+            relevance,
+
+            similarity:
+                similarity.score,
+
+            exact:
+                similarity.exact,
+
+            jaccard:
+                similarity.jaccard,
+
+            dice:
+                similarity.dice,
+
+            f1:
+                similarity.f1,
+
+            ngram:
+                similarity.ngram,
+
+            contains:
+                similarity.contains,
+
+            phrase:
+                similarity.phrase,
+
+            wordOrder:
+                similarity.wordOrder,
+
+            overlap,
+
+            precision,
+
+            recall,
+
+            recency,
+
+            frequency,
+
+            importance,
+
+            userBonus,
+
+            categoryBonus,
+
+            languageBonus
+        };
+    };
+
+
+/* ============================================================
+   3.19 - RELEVANCE LEVEL V3
+============================================================ */
+
+AnswerMemory.prototype.getRelevanceLevel3 =
+    function (
+        score
+    ) {
+        const value =
+            answerMemoryClamp(
+                score,
+                0,
+                1
+            );
+
+        if (
+            value >=
+            ANSWER_MEMORY_SEARCH_LIMITS_3.exactThreshold
+        ) {
+            return "exact";
+        }
+
+        if (
+            value >=
+            ANSWER_MEMORY_SEARCH_LIMITS_3.strongThreshold
+        ) {
+            return "very_high";
+        }
+
+        if (
+            value >=
+            ANSWER_MEMORY_SEARCH_LIMITS_3.goodThreshold
+        ) {
+            return "high";
+        }
+
+        if (
+            value >=
+            ANSWER_MEMORY_SEARCH_LIMITS_3.weakThreshold
+        ) {
+            return "medium";
+        }
+
+        if (
+            value >=
+            0.30
+        ) {
+            return "low";
+        }
+
+        return "very_low";
+    };
+
+
+/* ============================================================
+   3.20 - ANSWER CONFIDENCE
+============================================================ */
+
+AnswerMemory.prototype.calculateAnswerConfidence3 =
+    function (
+        result,
+        record
+    ) {
+        if (
+            !result ||
+            !record
+        ) {
+            return 0;
+        }
+
+        let confidence =
+            (
+                Number(
+                    result.score
+                ) *
+                0.55
+            ) +
+            (
+                Number(
+                    record.confidence ??
+                        0.80
+                ) *
+                0.20
+            ) +
+            (
+                Number(
+                    record.quality ??
+                        0.70
+                ) *
+                0.15
+            ) +
+            (
+                Number(
+                    record.importance ??
+                        0.50
+                ) *
+                0.10
+            );
+
+        if (
+            result.exact >=
+            1
+        ) {
+            confidence +=
+                0.08;
+        }
+
+        if (
+            record.verified
+        ) {
+            confidence +=
+                0.03;
+        }
+
+        if (
+            record.trusted
+        ) {
+            confidence +=
+                0.03;
+        }
+
+        return answerMemoryClamp(
+            confidence,
+            0,
+            1
+        );
+    };
+
+
+/* ============================================================
+   3.21 - RESULT BUILDER
+============================================================ */
+
+AnswerMemory.prototype.buildSearchResult3 =
+    function (
+        record,
+        ranking,
+        options = {}
+    ) {
+        if (
+            !record ||
+            !ranking
+        ) {
+            return null;
+        }
+
+        const confidence =
+            this.calculateAnswerConfidence3(
+                ranking,
+                record
+            );
+
+        const result = {
+            id:
+                record.id,
+
+            question:
+                record.question,
+
+            answer:
+                record.answer,
+
+            userId:
+                record.userId,
+
+            userName:
+                record.userName,
+
+            scope:
+                record.scope,
+
+            language:
+                record.language,
+
+            category:
+                record.category,
+
+            questionType:
+                record.questionType,
+
+            tags:
+                Array.isArray(
+                    record.tags
+                )
+                    ? [
+                          ...record.tags
+                      ]
+                    : [],
+
+            score:
+                ranking.score,
+
+            relevance:
+                ranking.relevance,
+
+            confidence,
+
+            similarity:
+                ranking.similarity,
+
+            exact:
+                ranking.exact,
+
+            quality:
+                Number(
+                    record.quality ??
+                        0.70
+                ),
+
+            importance:
+                Number(
+                    record.importance ??
+                        0.50
+                ),
+
+            frequency:
+                Number(
+                    record.frequency ??
+                        1
+                ),
+
+            hits:
+                Number(
+                    record.hits ||
+                        0
+                ),
+
+            createdAt:
+                record.createdAt,
+
+            updatedAt:
+                record.updatedAt,
+
+            lastReadAt:
+                record.lastReadAt,
+
+            source:
+                record.source,
+
+            model:
+                record.model,
+
+            pinned:
+                Boolean(
+                    record.pinned
+                ),
+
+            favorite:
+                Boolean(
+                    record.favorite
+                ),
+
+            verified:
+                Boolean(
+                    record.verified
+                ),
+
+            trusted:
+                Boolean(
+                    record.trusted
+                ),
+
+            archived:
+                Boolean(
+                    record.archived
+                )
+        };
+
+        /*
+        Debug modu aktifse ayrıntılı scoring döndür.
+        */
+
+        if (
+            options.includeScores ===
+            true
+        ) {
+            result.scores = {
+                similarity:
+                    ranking.similarity,
+
+                jaccard:
+                    ranking.jaccard,
+
+                dice:
+                    ranking.dice,
+
+                f1:
+                    ranking.f1,
+
+                ngram:
+                    ranking.ngram,
+
+                contains:
+                    ranking.contains,
+
+                phrase:
+                    ranking.phrase,
+
+                wordOrder:
+                    ranking.wordOrder,
+
+                overlap:
+                    ranking.overlap,
+
+                precision:
+                    ranking.precision,
+
+                recall:
+                    ranking.recall,
+
+                recency:
+                    ranking.recency,
+
+                frequency:
+                    ranking.frequency,
+
+                importance:
+                    ranking.importance,
+
+                userBonus:
+                    ranking.userBonus,
+
+                categoryBonus:
+                    ranking.categoryBonus,
+
+                languageBonus:
+                    ranking.languageBonus
+            };
+        }
+
+        return result;
+    };
+
+
+/* ============================================================
+   3.22 - ADVANCED SEARCH
+============================================================ */
+
+AnswerMemory.prototype.searchAdvanced3 =
+    function (
+        question,
+        options = {}
+    ) {
+        const query =
+            answerMemorySafeString(
+                question,
+                ""
+            ).trim();
+
+        if (
+            !query
+        ) {
+            return {
+                ok: false,
+                query: "",
+                count: 0,
+                results: [],
+                best: null,
+                reason:
+                    "empty_query"
+            };
+        }
+
+        const minimumLength =
+            Number(
+                this.config
+                    ?.minimumQuestionLength ||
+                    4
+            );
+
+        if (
+            query.length <
+            minimumLength
+        ) {
+            return {
+                ok: false,
+                query,
+                count: 0,
+                results: [],
+                best: null,
+                reason:
+                    "query_too_short"
+            };
+        }
+
+        const prepared =
+            this.prepareSearchQueryV2
+                ? this.prepareSearchQueryV2(
+                      query
+                  )
+                : {
+                      original:
+                          query,
+                      normalized:
+                          answerMemoryNormalizeTurkish(
+                              query
+                          ),
+                      tokens:
+                          answerMemoryTokenize(
+                              query
+                          ),
+                      keywords:
+                          answerMemoryExtractKeywords(
+                              query
+                          ),
+                      category:
+                          answerMemoryDetectCategory(
+                              query
+                          ),
+                      language:
+                          answerMemoryDetectLanguage(
+                              query
+                          ),
+                      questionType:
+                          answerMemoryDetectQuestionType(
+                              query
+                          )
+                  };
+
+        const effectiveOptions = {
+            ...options
+        };
+
+        if (
+            effectiveOptions.autoCategory !==
+            false &&
+            !effectiveOptions.category
+        ) {
+            effectiveOptions.category =
+                options.disableAutoCategory
+                    ? null
+                    : prepared.category;
+        }
+
+        if (
+            effectiveOptions.autoLanguage !==
+            false &&
+            !effectiveOptions.language
+        ) {
+            effectiveOptions.language =
+                prepared.language !==
+                "unknown"
+                    ? prepared.language
+                    : null;
+        }
+
+        const cacheKey =
+            answerMemoryCreateSearchCacheKey3(
+                query,
+                effectiveOptions
+            );
+
+        if (
+            this.config?.cacheEnabled !==
+                false &&
+            effectiveOptions.cache !==
+                false
+        ) {
+            const cached =
+                this.getSearchCache3(
+                    cacheKey
+                );
+
+            if (
+                cached
+            ) {
+                this.stats.cacheHits =
+                    Number(
+                        this.stats
+                            .cacheHits ||
+                            0
+                    ) + 1;
+
+                this.stats.searches =
+                    Number(
+                        this.stats.searches ||
+                            0
+                    ) + 1;
+
+                this.stats.totalReads =
+                    Number(
+                        this.stats
+                            .totalReads ||
+                            0
+                    ) + 1;
+
+                this.stats.lastSearch =
+                    answerMemoryNowISO();
+
+                return {
+                    ...cached,
+                    cached: true
+                };
+            }
+
+            this.stats.cacheMisses =
+                Number(
+                    this.stats
+                        .cacheMisses ||
+                        0
+                ) + 1;
+        }
+
+        const candidateIds =
+            this.collectSearchCandidates3(
+                prepared.original,
+                effectiveOptions
+            );
+
+        const ranked = [];
+
+        const minimumScore =
+            Number(
+                effectiveOptions.minimumScore ??
+                    this.config
+                        ?.minimumScoreToReturn ??
+                    ANSWER_MEMORY_SEARCH_LIMITS_3.minimumReturnScore
+            );
+
+        for (
+            const id
+            of candidateIds
+        ) {
+            const record =
+                this.records?.[id];
+
+            if (
+                !record
+            ) {
+                continue;
+            }
+
+            if (
+                !this.filterSearchRecord3(
+                    record,
+                    effectiveOptions
+                )
+            ) {
+                continue;
+            }
+
+            const ranking =
+                this.calculateSearchScore3(
+                    prepared.original,
+                    record,
+                    effectiveOptions
+                );
+
+            if (
+                !ranking
+            ) {
+                continue;
+            }
+
+            if (
+                ranking.score <
+                minimumScore
+            ) {
+                continue;
+            }
+
+            const result =
+                this.buildSearchResult3(
+                    record,
+                    ranking,
+                    effectiveOptions
+                );
+
+            if (
+                result
+            ) {
+                ranked.push({
+                    result,
+                    record,
+                    ranking
+                });
+            }
+        }
+
+        ranked.sort(
+            (
+                a,
+                b
+            ) => {
+                if (
+                    b.result.score !==
+                    a.result.score
+                ) {
+                    return (
+                        b.result.score -
+                        a.result.score
+                    );
+                }
+
+                if (
+                    b.result.confidence !==
+                    a.result.confidence
+                ) {
+                    return (
+                        b.result.confidence -
+                        a.result.confidence
+                    );
+                }
+
+                const aDate =
+                    new Date(
+                        a.record.updatedAt ||
+                            a.record.createdAt ||
+                            0
+                    ).getTime();
+
+                const bDate =
+                    new Date(
+                        b.record.updatedAt ||
+                            b.record.createdAt ||
+                            0
+                    ).getTime();
+
+                return (
+                    bDate -
+                    aDate
+                );
+            }
+        );
+
+        const requestedTopK =
+            answerMemorySafeNumber3(
+                effectiveOptions.topK,
+                ANSWER_MEMORY_SEARCH_LIMITS_3.defaultTopK
+            );
+
+        const topK =
+            Math.floor(
+                answerMemoryClamp(
+                    requestedTopK,
+                    ANSWER_MEMORY_SEARCH_LIMITS_3.minimumTopK,
+                    ANSWER_MEMORY_SEARCH_LIMITS_3.maximumTopK
+                )
+            );
+
+        const results =
+            ranked
+                .slice(
+                    0,
+                    topK
+                )
+                .map(
+                    item =>
+                        item.result
+                );
+
+        const best =
+            results[0] ||
+            null;
+
+        /*
+        --------------------------------------------------------
+        Hit / miss metrikleri.
+        --------------------------------------------------------
+        */
+
+        this.stats.searches =
+            Number(
+                this.stats.searches ||
+                0
+            ) + 1;
+
+        this.stats.totalReads =
+            Number(
+                this.stats.totalReads ||
+                0
+            ) + 1;
+
+        this.stats.lastRead =
+            answerMemoryNowISO();
+
+        this.stats.lastSearch =
+            answerMemoryNowISO();
+
+        if (
+            best
+        ) {
+            this.stats.totalHits =
+                Number(
+                    this.stats
+                        .totalHits ||
+                    0
+                ) + 1;
+
+            this.stats.lastHit =
+                answerMemoryNowISO();
+
+            this.hitCount =
+                Number(
+                    this.hitCount ||
+                    0
+                ) + 1;
+        } else {
+            this.stats.totalMisses =
+                Number(
+                    this.stats
+                        .totalMisses ||
+                    0
+                ) + 1;
+
+            this.stats.lastMiss =
+                answerMemoryNowISO();
+
+            this.missCount =
+                Number(
+                    this.missCount ||
+                    0
+                ) + 1;
+        }
+
+        /*
+        --------------------------------------------------------
+        Kayıtların erişim sayaçlarını artır.
+        --------------------------------------------------------
+        */
+
+        const touchTopResults =
+            effectiveOptions.touchResults !==
+            false;
+
+        if (
+            touchTopResults
+        ) {
+            const touchLimit =
+                Math.min(
+                    5,
+                    results.length
+                );
+
+            for (
+                let i = 0;
+                i < touchLimit;
+                i++
+            ) {
+                const id =
+                    results[i].id;
+
+                const record =
+                    this.records?.[id];
+
+                if (
+                    !record
+                ) {
+                    continue;
+                }
+
+                record.hits =
+                    Number(
+                        record.hits ||
+                        0
+                    ) + 1;
+
+                record.frequency =
+                    Number(
+                        record.frequency ||
+                        1
+                    ) + (
+                        i === 0
+                            ? 0.50
+                            : 0.15
+                    );
+
+                record.lastReadAt =
+                    answerMemoryNowISO();
+            }
+        }
+
+        const response = {
+            ok: true,
+
+            query:
+                prepared.original,
+
+            normalizedQuery:
+                prepared.normalized,
+
+            tokens:
+                prepared.tokens,
+
+            keywords:
+                prepared.keywords,
+
+            detectedCategory:
+                prepared.category,
+
+            detectedLanguage:
+                prepared.language,
+
+            questionType:
+                prepared.questionType,
+
+            count:
+                results.length,
+
+            totalCandidates:
+                candidateIds.length,
+
+            totalRanked:
+                ranked.length,
+
+            results,
+
+            best,
+
+            confidence:
+                best
+                    ? best.confidence
+                    : 0,
+
+            relevance:
+                best
+                    ? best.relevance
+                    : "none",
+
+            hit:
+                Boolean(
+                    best
+                ),
+
+            cached:
+                false
+        };
+
+        /*
+        --------------------------------------------------------
+        Cache
+        --------------------------------------------------------
+        */
+
+        if (
+            this.config?.cacheEnabled !==
+                false &&
+            effectiveOptions.cache !==
+                false
+        ) {
+            this.setSearchCache3(
+                cacheKey,
+                response
+            );
+        }
+
+        /*
+        --------------------------------------------------------
+        History
+        --------------------------------------------------------
+        */
+
+        if (
+            effectiveOptions.recordHistory !==
+                false &&
+            typeof this.addHistoryV2 ===
+                "function"
+        ) {
+            this.addHistoryV2(
+                best
+                    ? "advanced_search_hit"
+                    : "advanced_search_miss",
+                best
+                    ? this.records?.[
+                          best.id
+                      ]
+                    : null,
+                {
+                    query:
+                        prepared.original,
+
+                    score:
+                        best?.score ??
+                        null,
+
+                    userId:
+                        effectiveOptions.userId ||
+                        null,
+
+                    category:
+                        prepared.category,
+
+                    source:
+                        "searchAdvanced3"
+                }
+            );
+        }
+
+        if (
+            effectiveOptions.persist !==
+            false
+        ) {
+            try {
+                this.persist();
+            } catch {}
+        }
+
+        return response;
+    };
+
+
+/* ============================================================
+   3.23 - SIMPLE SEARCH OVERRIDE
+============================================================ */
+
+AnswerMemory.prototype.searchV3 =
+    function (
+        question,
+        options = {}
+    ) {
+        return this.searchAdvanced3(
+            question,
+            options
+        );
+    };
+
+
+/* ============================================================
+   3.24 - FIND BEST ANSWER
+============================================================ */
+
+AnswerMemory.prototype.findBestAnswer3 =
+    function (
+        question,
+        options = {}
+    ) {
+        const result =
+            this.searchAdvanced3(
+                question,
+                {
+                    ...options,
+                    topK: 1
+                }
+            );
+
+        if (
+            !result?.best
+        ) {
+            return null;
+        }
+
+        return result.best;
+    };
+
+
+/* ============================================================
+   3.25 - GET ANSWER TEXT ONLY
+============================================================ */
+
+AnswerMemory.prototype.getAnswerText3 =
+    function (
+        question,
+        options = {}
+    ) {
+        const best =
+            this.findBestAnswer3(
+                question,
+                options
+            );
+
+        if (
+            !best
+        ) {
+            return null;
+        }
+
+        return (
+            best.answer ||
+            null
+        );
+    };
+
+
+/* ============================================================
+   3.26 - IS ANSWER USABLE
+============================================================ */
+
+AnswerMemory.prototype.isAnswerUsable3 =
+    function (
+        result,
+        options = {}
+    ) {
+        if (
+            !result
+        ) {
+            return false;
+        }
+
+        const minimumScore =
+            Number(
+                options.minimumScore ??
+                    this.config
+                        ?.minimumScoreToReturn ??
+                    0.30
+            );
+
+        const minimumConfidence =
+            Number(
+                options.minimumConfidence ??
+                    0.55
+            );
+
+        if (
+            Number(
+                result.score
+            ) <
+            minimumScore
+        ) {
+            return false;
+        }
+
+        if (
+            Number(
+                result.confidence
+            ) <
+            minimumConfidence
+        ) {
+            return false;
+        }
+
+        if (
+            result.relevance ===
+            "very_low"
+        ) {
+            return false;
+        }
+
+        return true;
+    };
+
+
+/* ============================================================
+   3.27 - CHAT MEMORY DECISION
+============================================================ */
+
+AnswerMemory.prototype.decideForChat3 =
+    function (
+        question,
+        options = {}
+    ) {
+        const currentQuestion =
+            answerMemorySafeString(
+                question,
+                ""
+            ).trim();
+
+        if (
+            !currentQuestion
+        ) {
+            return {
+                useMemory: false,
+                reason:
+                    "empty_question",
+                result: null
+            };
+        }
+
+        /*
+        --------------------------------------------------------
+        Güncel bilgi içeren soruları otomatik olarak
+        hafızadan cevaplamama seçeneği.
+        --------------------------------------------------------
+        */
+
+        const currentKnowledgePattern =
+            /(bugün|şimdi|şu anda|güncel|son dakika|son durum|en son|bugünkü|yarın|dün|hava durumu|dolar|euro|altın|borsa|kur ne kadar)/iu;
+
+        if (
+            currentKnowledgePattern.test(
+                currentQuestion
+            ) &&
+            options.allowCurrentMemory !==
+                true
+        ) {
+            return {
+                useMemory: false,
+                reason:
+                    "current_information",
+                result: null
+            };
+        }
+
+        const result =
+            this.searchAdvanced3(
+                currentQuestion,
+                {
+                    ...options,
+                    topK:
+                        options.topK ||
+                        3
+                }
+            );
+
+        if (
+            !result.best
+        ) {
+            return {
+                useMemory: false,
+                reason:
+                    "memory_miss",
+                result
+            };
+        }
+
+        const usable =
+            this.isAnswerUsable3(
+                result.best,
+                {
+                    minimumScore:
+                        options.minimumScore ??
+                        0.72,
+
+                    minimumConfidence:
+                        options.minimumConfidence ??
+                        0.65
+                }
+            );
+
+        if (
+            !usable
+        ) {
+            return {
+                useMemory: false,
+                reason:
+                    "low_confidence",
+                result
+            };
+        }
+
+        return {
+            useMemory: true,
+
+            reason:
+                result.best.exact >=
+                1
+                    ? "exact_memory_match"
+                    : "strong_memory_match",
+
+            result:
+                result.best
+        };
+    };
+
+
+/* ============================================================
+   3.28 - GET CONTEXT
+============================================================ */
+
+AnswerMemory.prototype.getMemoryContext3 =
+    function (
+        question,
+        options = {}
+    ) {
+        const result =
+            this.searchAdvanced3(
+                question,
+                {
+                    ...options,
+                    topK:
+                        options.topK ||
+                        5,
+                    touchResults:
+                        options.touchResults ??
+                        false
+                }
+            );
+
+        const usableResults =
+            result.results.filter(
+                item =>
+                    this.isAnswerUsable3(
+                        item,
+                        {
+                            minimumScore:
+                                options.minimumScore ??
+                                0.55,
+
+                            minimumConfidence:
+                                options.minimumConfidence ??
+                                0.55
+                        }
+                    )
+            );
+
+        return {
+            ok: true,
+
+            query:
+                result.query,
+
+            count:
+                usableResults.length,
+
+            results:
+                usableResults,
+
+            best:
+                usableResults[0] ||
+                null,
+
+            text:
+                usableResults
+                    .map(
+                        item =>
+                            `Soru: ${item.question}\nCevap: ${item.answer}`
+                    )
+                    .join(
+                        "\n\n"
+                    )
+        };
+    };
+
+
+/* ============================================================
+   3.29 - MEMORY HIT HELPER
+============================================================ */
+
+AnswerMemory.prototype.getMemoryHit3 =
+    function (
+        question,
+        options = {}
+    ) {
+        const decision =
+            this.decideForChat3(
+                question,
+                options
+            );
+
+        if (
+            !decision.useMemory
+        ) {
+            return null;
+        }
+
+        return decision.result;
+    };
+
+
+/* ============================================================
+   3.30 - SEARCH SUMMARY
+============================================================ */
+
+AnswerMemory.prototype.searchSummary3 =
+    function (
+        question,
+        options = {}
+    ) {
+        const result =
+            this.searchAdvanced3(
+                question,
+                {
+                    ...options,
+                    topK:
+                        options.topK ||
+                        5
+                }
+            );
+
+        return {
+            ok:
+                result.ok,
+
+            query:
+                result.query,
+
+            found:
+                result.count > 0,
+
+            count:
+                result.count,
+
+            bestId:
+                result.best?.id ||
+                null,
+
+            bestScore:
+                result.best?.score ??
+                0,
+
+            bestConfidence:
+                result.best?.confidence ??
+                0,
+
+            relevance:
+                result.best?.relevance ||
+                "none",
+
+            detectedCategory:
+                result.detectedCategory,
+
+            detectedLanguage:
+                result.detectedLanguage,
+
+            questionType:
+                result.questionType,
+
+            cached:
+                Boolean(
+                    result.cached
+                )
+        };
+    };
+
+
+/* ============================================================
+   3.31 - INDEX REPAIR
+============================================================ */
+
+AnswerMemory.prototype.repairIndex3 =
+    function () {
+        this.index = {};
+        this.userIndex = {};
+
+        let indexed =
+            0;
+
+        for (
+            const record
+            of Object.values(
+                this.records ||
+                    {}
+            )
+        ) {
+            if (
+                !record ||
+                !record.id
+            ) {
+                continue;
+            }
+
+            if (
+                !Array.isArray(
+                    record.tokens
+                )
+            ) {
+                record.tokens =
+                    answerMemoryUniqueArray(
+                        answerMemoryTokenize(
+                            record.question
+                        )
+                    );
+            }
+
+            if (
+                !Array.isArray(
+                    record.keywords
+                )
+            ) {
+                record.keywords =
+                    answerMemoryExtractKeywords(
+                        record.question
+                    );
+            }
+
+            this.indexRecordV2
+                ? this.indexRecordV2(
+                      record
+                  )
+                : this.indexRecord(
+                      record
+                  );
+
+            indexed++;
+        }
+
+        this.stats.rebuilds =
+            Number(
+                this.stats.rebuilds ||
+                    0
+            ) + 1;
+
+        this.stats.lastMaintenance =
+            answerMemoryNowISO();
+
+        this.persist();
+
+        return {
+            ok: true,
+
+            indexed,
+
+            tokens:
+                Object.keys(
+                    this.index ||
+                        {}
+                ).length,
+
+            users:
+                Object.keys(
+                    this.userIndex ||
+                        {}
+                ).length
+        };
+    };
+
+
+/* ============================================================
+   3.32 - SEARCH DIAGNOSTICS
+============================================================ */
+
+AnswerMemory.prototype.getSearchDiagnostics3 =
+    function (
+        question,
+        options = {}
+    ) {
+        const prepared =
+            this.prepareSearchQueryV2
+                ? this.prepareSearchQueryV2(
+                      question
+                  )
+                : null;
+
+        const candidateIds =
+            this.collectSearchCandidates3(
+                question,
+                options
+            );
+
+        const diagnostics = {
+            ok: true,
+
+            query:
+                answerMemorySafeString(
+                    question,
+                    ""
+                ),
+
+            prepared,
+
+            candidateCount:
+                candidateIds.length,
+
+            candidates: [],
+
+            indexTokenCount:
+                Object.keys(
+                    this.index ||
+                        {}
+                ).length,
+
+            totalRecords:
+                Object.keys(
+                    this.records ||
+                        {}
+                ).length
+        };
+
+        const max =
+            Math.min(
+                50,
+                candidateIds.length
+            );
+
+        for (
+            let i = 0;
+            i < max;
+            i++
+        ) {
+            const id =
+                candidateIds[i];
+
+            const record =
+                this.records?.[id];
+
+            if (
+                !record
+            ) {
+                continue;
+            }
+
+            const ranking =
+                this.calculateSearchScore3(
+                    question,
+                    record,
+                    options
+                );
+
+            diagnostics.candidates.push(
+                {
+                    id,
+                    question:
+                        record.question,
+                    score:
+                        ranking?.score ??
+                        0,
+                    similarity:
+                        ranking?.similarity ??
+                        0,
+                    relevance:
+                        ranking?.relevance ||
+                        "none",
+                    category:
+                        record.category,
+                    userId:
+                        record.userId
+                }
+            );
+        }
+
+        diagnostics.candidates.sort(
+            (
+                a,
+                b
+            ) =>
+                b.score -
+                a.score
+        );
+
+        return diagnostics;
+    };
+
+
+/* ============================================================
+   3.33 - SEARCH STATS
+============================================================ */
+
+AnswerMemory.prototype.getSearchStats3 =
+    function () {
+        const totalSearches =
+            Number(
+                this.stats
+                    ?.searches ||
+                    0
+            );
+
+        const totalHits =
+            Number(
+                this.stats
+                    ?.totalHits ||
+                    0
+            );
+
+        const totalMisses =
+            Number(
+                this.stats
+                    ?.totalMisses ||
+                    0
+            );
+
+        const cacheHits =
+            Number(
+                this.stats
+                    ?.cacheHits ||
+                    0
+            );
+
+        const cacheMisses =
+            Number(
+                this.stats
+                    ?.cacheMisses ||
+                    0
+            );
+
+        const hitRate =
+            totalSearches >
+            0
+                ? totalHits /
+                  totalSearches
+                : 0;
+
+        const cacheTotal =
+            cacheHits +
+            cacheMisses;
+
+        const cacheHitRate =
+            cacheTotal >
+            0
+                ? cacheHits /
+                  cacheTotal
+                : 0;
+
+        return {
+            totalSearches,
+
+            totalHits,
+
+            totalMisses,
+
+            hitRate:
+                answerMemoryClamp(
+                    hitRate,
+                    0,
+                    1
+                ),
+
+            cacheHits,
+
+            cacheMisses,
+
+            cacheHitRate:
+                answerMemoryClamp(
+                    cacheHitRate,
+                    0,
+                    1
+                ),
+
+            records:
+                Object.keys(
+                    this.records ||
+                        {}
+                ).length,
+
+            indexTokens:
+                Object.keys(
+                    this.index ||
+                        {}
+                ).length
+        };
+    };
+
+
+/* ============================================================
+   3.34 - COMPATIBILITY GLOBAL FUNCTIONS
+============================================================ */
+
+function searchAnswerMemory3(
+    question,
+    options = {}
+) {
+    if (
+        !globalAnswerMemoryInstance
+    ) {
+        return {
+            ok: false,
+            results: [],
+            best: null,
+            reason:
+                "memory_unavailable"
+        };
+    }
+
+    return globalAnswerMemoryInstance.searchAdvanced3(
+        question,
+        options
+    );
+}
+
+
+function findBestAnswerMemory3(
+    question,
+    options = {}
+) {
+    if (
+        !globalAnswerMemoryInstance
+    ) {
+        return null;
+    }
+
+    return globalAnswerMemoryInstance.findBestAnswer3(
+        question,
+        options
+    );
+}
+
+
+function getMemoryContext3(
+    question,
+    options = {}
+) {
+    if (
+        !globalAnswerMemoryInstance
+    ) {
+        return {
+            ok: false,
+            results: [],
+            best: null,
+            text: ""
+        };
+    }
+
+    return globalAnswerMemoryInstance.getMemoryContext3(
+        question,
+        options
+    );
+}
+
+
+/* ============================================================
+   3.35 - GLOBAL API
+============================================================ */
+
+globalThis.searchAnswerMemory3 =
+    searchAnswerMemory3;
+
+globalThis.findBestAnswerMemory3 =
+    findBestAnswerMemory3;
+
+globalThis.getMemoryContext3 =
+    getMemoryContext3;
+
+
+/* ============================================================
+   3.36 - ANSWER MEMORY SEARCH BRIDGE
+============================================================ */
+
+globalThis.turkAIAnswerMemorySearch =
+    function (
+        question,
+        options = {}
+    ) {
+        return searchAnswerMemory3(
+            question,
+            options
+        );
+    };
+
+
+globalThis.turkAIAnswerMemoryBest =
+    function (
+        question,
+        options = {}
+    ) {
+        return findBestAnswerMemory3(
+            question,
+            options
+        );
+    };
+
+
+globalThis.turkAIAnswerMemoryContext =
+    function (
+        question,
+        options = {}
+    ) {
+        return getMemoryContext3(
+            question,
+            options
+        );
+    };
+
+
+/* ============================================================
+   3.37 - DEFAULT SEARCH METHODS
+============================================================ */
+
+/*
+Part 1'de oluşturulmuş search() varsa onu koruyoruz.
+Ama yeni motoru kullanmak için searchSmart()
+ve searchAdvanced() sunuyoruz.
+*/
+
+AnswerMemory.prototype.searchSmart =
+    function (
+        question,
+        options = {}
+    ) {
+        return this.searchAdvanced3(
+            question,
+            options
+        );
+    };
+
+
+AnswerMemory.prototype.searchAdvanced =
+    function (
+        question,
+        options = {}
+    ) {
+        return this.searchAdvanced3(
+            question,
+            options
+        );
+    };
+
+
+AnswerMemory.prototype.findBest =
+    function (
+        question,
+        options = {}
+    ) {
+        return this.findBestAnswer3(
+            question,
+            options
+        );
+    };
+
+
+AnswerMemory.prototype.getContext =
+    function (
+        question,
+        options = {}
+    ) {
+        return this.getMemoryContext3(
+            question,
+            options
+        );
+    };
+
+
+/* ============================================================
+   3.38 - SEARCH ENGINE STATUS
+============================================================ */
+
+function answerMemorySearchEngineStatus3() {
+    const instance =
+        globalAnswerMemoryInstance;
+
+    return {
+        ok:
+            Boolean(
+                instance
+            ),
+
+        version:
+            ANSWER_MEMORY_VERSION,
+
+        engine:
+            "Advanced Search Engine 3",
+
+        enabled:
+            Boolean(
+                instance?.config
+                    ?.enabled
+            ),
+
+        cache:
+            Boolean(
+                instance?.config
+                    ?.cacheEnabled
+            ),
+
+        records:
+            Object.keys(
+                instance?.records ||
+                    {}
+            ).length,
+
+        indexedTokens:
+            Object.keys(
+                instance?.index ||
+                    {}
+            ).length,
+
+        users:
+            Object.keys(
+                instance?.userIndex ||
+                    {}
+            ).length,
+
+        stats:
+            instance
+                ? instance.getSearchStats3()
+                : null
+    };
+}
+
+
+globalThis.answerMemorySearchEngineStatus3 =
+    answerMemorySearchEngineStatus3;
+
+
+/* ============================================================
+   3.39 - PART 3 LOG
+============================================================ */
+
+console.log(
+    "[AnswerMemory] Part 3/5 loaded."
+);
+
+console.log(
+    "[AnswerMemory] Advanced search        : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Ranking engine          : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Candidate engine        : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Similarity fusion       : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Search cache            : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Chat memory decision    : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Context builder         : ACTIVE"
+);
+
+/* ============================================================
+   END OF PART 3
+============================================================ */
+/* ============================================================
+   TÜRKAI ANSWER MEMORY ENGINE 5.0
+   PART 4 / 5
+   AUTO LEARNING + USER MEMORY + QUALITY ENGINE
+   + HISTORY + ANALYTICS + BULK OPERATIONS
+============================================================ */
+
+
+/* ============================================================
+   4.0 - ANSWER QUALITY CONSTANTS
+============================================================ */
+
+const ANSWER_MEMORY_QUALITY_RULES_4 = {
+    defaultQuality:
+        0.70,
+
+    minimumQuality:
+        0,
+
+    maximumQuality:
+        1,
+
+    defaultConfidence:
+        0.80,
+
+    defaultImportance:
+        0.50,
+
+    hitPositive:
+        0.025,
+
+    missNegative:
+        0.045,
+
+    verifiedBonus:
+        0.05,
+
+    trustedBonus:
+        0.05,
+
+    pinnedBonus:
+        0.025,
+
+    favoriteBonus:
+        0.015,
+
+    duplicatePositive:
+        0.01,
+
+    badAnswerPenalty:
+        0.12,
+
+    maximumQualityHistory:
+        100
+};
+
+
+/* ============================================================
+   4.1 - SAFE TEXT V4
+============================================================ */
+
+function answerMemorySafeText4(
+    value,
+    fallback = ""
+) {
+    if (
+        value === undefined ||
+        value === null
+    ) {
+        return fallback;
+    }
+
+    if (
+        typeof value === "string"
+    ) {
+        return value.trim();
+    }
+
+    if (
+        typeof value === "number" ||
+        typeof value === "boolean" ||
+        typeof value === "bigint"
+    ) {
+        return String(
+            value
+        ).trim();
+    }
+
+    try {
+        return JSON.stringify(
+            value
+        ).trim();
+    } catch {
+        return fallback;
+    }
+}
+
+
+/* ============================================================
+   4.2 - QUALITY CLAMP
+============================================================ */
+
+function answerMemoryQualityClamp4(
+    value,
+    fallback = 0.70
+) {
+    const numeric =
+        Number(value);
+
+    if (
+        !Number.isFinite(
+            numeric
+        )
+    ) {
+        return fallback;
+    }
+
+    return answerMemoryClamp(
+        numeric,
+        ANSWER_MEMORY_QUALITY_RULES_4.minimumQuality,
+        ANSWER_MEMORY_QUALITY_RULES_4.maximumQuality
+    );
+}
+
+
+/* ============================================================
+   4.3 - QUALITY SCORE BUILDER
+============================================================ */
+
+function answerMemoryBuildQuality4(
+    options = {}
+) {
+    let quality =
+        answerMemoryQualityClamp4(
+            options.quality,
+            ANSWER_MEMORY_QUALITY_RULES_4.defaultQuality
+        );
+
+    let confidence =
+        answerMemoryQualityClamp4(
+            options.confidence,
+            ANSWER_MEMORY_QUALITY_RULES_4.defaultConfidence
+        );
+
+    let importance =
+        answerMemoryQualityClamp4(
+            options.importance,
+            ANSWER_MEMORY_QUALITY_RULES_4.defaultImportance
+        );
+
+    if (
+        options.verified
+    ) {
+        quality +=
+            ANSWER_MEMORY_QUALITY_RULES_4
+                .verifiedBonus;
+    }
+
+    if (
+        options.trusted
+    ) {
+        quality +=
+            ANSWER_MEMORY_QUALITY_RULES_4
+                .trustedBonus;
+    }
+
+    if (
+        options.pinned
+    ) {
+        quality +=
+            ANSWER_MEMORY_QUALITY_RULES_4
+                .pinnedBonus;
+    }
+
+    if (
+        options.favorite
+    ) {
+        quality +=
+            ANSWER_MEMORY_QUALITY_RULES_4
+                .favoriteBonus;
+    }
+
+    quality =
+        answerMemoryQualityClamp4(
+            quality
+        );
+
+    return {
+        quality,
+        confidence,
+        importance
+    };
+}
+
+
+/* ============================================================
+   4.4 - RECORD QUALITY PROFILE
+============================================================ */
+
+AnswerMemory.prototype.getQualityProfile4 =
+    function (
+        record
+    ) {
+        if (
+            !record
+        ) {
+            return null;
+        }
+
+        const quality =
+            answerMemoryQualityClamp4(
+                record.quality,
+                0.70
+            );
+
+        const confidence =
+            answerMemoryQualityClamp4(
+                record.confidence,
+                0.80
+            );
+
+        const importance =
+            answerMemoryQualityClamp4(
+                record.importance,
+                0.50
+            );
+
+        const hits =
+            Math.max(
+                0,
+                Number(
+                    record.hits ||
+                        0
+                )
+            );
+
+        const misses =
+            Math.max(
+                0,
+                Number(
+                    record.misses ||
+                        0
+                )
+            );
+
+        const totalFeedback =
+            hits +
+            misses;
+
+        const feedbackRate =
+            totalFeedback >
+            0
+                ? hits /
+                  totalFeedback
+                : 0.50;
+
+        const qualityScore =
+            answerMemoryClamp(
+                (
+                    quality *
+                    0.40
+                ) +
+                (
+                    confidence *
+                    0.25
+                ) +
+                (
+                    importance *
+                    0.15
+                ) +
+                (
+                    feedbackRate *
+                    0.20
+                ),
+                0,
+                1
+            );
+
+        return {
+            quality,
+            confidence,
+            importance,
+            hits,
+            misses,
+            totalFeedback,
+            feedbackRate,
+            qualityScore
+        };
+    };
+
+
+/* ============================================================
+   4.5 - FEEDBACK EVENT
+============================================================ */
+
+AnswerMemory.prototype.recordFeedback4 =
+    function (
+        id,
+        feedback,
+        options = {}
+    ) {
+        const record =
+            this.records?.[id];
+
+        if (
+            !record
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "not_found"
+            };
+        }
+
+        const normalized =
+            answerMemorySafeText4(
+                feedback,
+                ""
+            )
+                .toLocaleLowerCase(
+                    "tr-TR"
+                )
+                .trim();
+
+        const positiveValues = [
+            "positive",
+            "good",
+            "correct",
+            "helpful",
+            "like",
+            "up",
+            "true",
+            "1",
+            "evet",
+            "doğru",
+            "iyi",
+            "yararlı"
+        ];
+
+        const negativeValues = [
+            "negative",
+            "bad",
+            "wrong",
+            "unhelpful",
+            "dislike",
+            "down",
+            "false",
+            "0",
+            "hayır",
+            "yanlış",
+            "kötü",
+            "yararsız"
+        ];
+
+        const isPositive =
+            positiveValues.includes(
+                normalized
+            );
+
+        const isNegative =
+            negativeValues.includes(
+                normalized
+            );
+
+        if (
+            !isPositive &&
+            !isNegative
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "invalid_feedback"
+            };
+        }
+
+        const now =
+            answerMemoryNowISO();
+
+        if (
+            isPositive
+        ) {
+            record.hits =
+                Number(
+                    record.hits ||
+                        0
+                ) + 1;
+
+            record.frequency =
+                Number(
+                    record.frequency ||
+                        1
+                ) + 0.50;
+
+            record.quality =
+                answerMemoryQualityClamp4(
+                    Number(
+                        record.quality ??
+                            0.70
+                    ) +
+                        ANSWER_MEMORY_QUALITY_RULES_4
+                            .hitPositive
+                );
+
+            record.confidence =
+                answerMemoryQualityClamp4(
+                    Number(
+                        record.confidence ??
+                            0.80
+                    ) +
+                        0.015
                 );
         }
 
         if (
-            result &&
-            typeof result.answer ===
-            "string"
+            isNegative
         ) {
+            record.misses =
+                Number(
+                    record.misses ||
+                        0
+                ) + 1;
 
-            finalMemoryState.hits++;
-
-            return {
-                found: true,
-                answer: result.answer,
-                entry: result,
-                score:
+            record.quality =
+                answerMemoryQualityClamp4(
                     Number(
-                        result.score || 0
-                    ),
-                exact: false,
-                source: "memory_smart"
-            };
+                        record.quality ??
+                            0.70
+                    ) -
+                        ANSWER_MEMORY_QUALITY_RULES_4
+                            .missNegative
+                );
+
+            record.confidence =
+                answerMemoryQualityClamp4(
+                    Number(
+                        record.confidence ??
+                            0.80
+                    ) -
+                        0.020
+                );
         }
 
-        finalMemoryState.misses++;
+        record.updatedAt =
+            now;
 
-        return {
-            found: false,
-            answer: null,
-            entry: null,
-            score: 0,
-            exact: false,
-            source: "memory"
-        };
+        record.lastReadAt =
+            now;
 
-    } catch (error) {
-
-        finalMemoryState.errors++;
-
-        return {
-            found: false,
-            answer: null,
-            entry: null,
-            score: 0,
-            source: "memory_error",
-            error: error.message
-        };
-    }
-}
-
-
-/* ------------------------------------------------------------
-   10. SYNCHRONOUS SEARCH
------------------------------------------------------------- */
-
-function finalMemorySearchSync(
-    userId,
-    question,
-    options = {}
-) {
-    initializeFinalMemory();
-
-    const uid =
-        memoryUserId(userId);
-
-    const q =
-        memoryQuestion(question);
-
-    if (!q) {
-        return {
-            found: false,
-            answer: null,
-            score: 0,
-            source: "memory"
-        };
-    }
-
-    try {
-
-        const exact =
-            answerMemory.findExact(q);
-
-        if (exact) {
-
-            finalMemoryState.hits++;
-
-            answerMemory.markHit(
-                exact.id
-            );
-
-            try {
-                userMemoryProfiles
-                    .recordHit(uid);
-            } catch (_) {}
-
-            return {
-                found: true,
-                answer: exact.answer,
-                entry: exact,
-                score: 1,
-                exact: true,
-                source: "memory_exact"
-            };
-        }
-
-        const best =
-            answerMemory.getBestAnswer(
-                q,
+        record.metadata =
+            Object.assign(
+                {},
+                answerMemoryEnsureObject(
+                    record.metadata
+                ),
                 {
-                    ...options,
-                    userId: uid
+                    lastFeedback:
+                        isPositive
+                            ? "positive"
+                            : "negative",
+
+                    lastFeedbackAt:
+                        now
                 }
             );
 
         if (
-            best &&
-            Number(best.score || 0) >=
-            Number(
-                options.minimumScore ||
-                FINAL_MEMORY_CONFIG.minimumSearchScore
+            !Array.isArray(
+                record.feedbackHistory
             )
         ) {
+            record.feedbackHistory =
+                [];
+        }
 
-            finalMemoryState.hits++;
+        record.feedbackHistory.push({
+            type:
+                isPositive
+                    ? "positive"
+                    : "negative",
 
+            timestamp:
+                now,
+
+            userId:
+                options.userId ||
+                record.userId ||
+                null,
+
+            note:
+                answerMemorySafeText4(
+                    options.note,
+                    ""
+                )
+        });
+
+        if (
+            record.feedbackHistory.length >
+            ANSWER_MEMORY_QUALITY_RULES_4
+                .maximumQualityHistory
+        ) {
+            record.feedbackHistory =
+                record.feedbackHistory.slice(
+                    -ANSWER_MEMORY_QUALITY_RULES_4
+                        .maximumQualityHistory
+                );
+        }
+
+        this.stats.lastWrite =
+            now;
+
+        this.addHistoryV2?.(
+            isPositive
+                ? "feedback_positive"
+                : "feedback_negative",
+            record,
+            {
+                userId:
+                    options.userId ||
+                    record.userId ||
+                    null,
+
+                source:
+                    "feedback"
+            }
+        );
+
+        this.persist();
+
+        return {
+            ok: true,
+
+            id,
+
+            feedback:
+                isPositive
+                    ? "positive"
+                    : "negative",
+
+            quality:
+                record.quality,
+
+            confidence:
+                record.confidence,
+
+            hits:
+                record.hits,
+
+            misses:
+                record.misses
+        };
+    };
+
+
+/* ============================================================
+   4.6 - MARK POSITIVE
+============================================================ */
+
+AnswerMemory.prototype.markHelpful4 =
+    function (
+        id,
+        options = {}
+    ) {
+        return this.recordFeedback4(
+            id,
+            "positive",
+            options
+        );
+    };
+
+
+/* ============================================================
+   4.7 - MARK NEGATIVE
+============================================================ */
+
+AnswerMemory.prototype.markUnhelpful4 =
+    function (
+        id,
+        options = {}
+    ) {
+        return this.recordFeedback4(
+            id,
+            "negative",
+            options
+        );
+    };
+
+
+/* ============================================================
+   4.8 - VERIFY RECORD
+============================================================ */
+
+AnswerMemory.prototype.verifyRecord4 =
+    function (
+        id,
+        verified = true,
+        options = {}
+    ) {
+        const record =
+            this.records?.[id];
+
+        if (
+            !record
+        ) {
             return {
-                found: true,
-                answer: best.answer,
-                entry: best,
-                score:
-                    Number(
-                        best.score || 0
-                    ),
-                exact: false,
-                source: "memory_smart"
+                ok: false,
+                reason:
+                    "not_found"
             };
         }
 
-        finalMemoryState.misses++;
+        record.verified =
+            Boolean(
+                verified
+            );
+
+        if (
+            record.verified
+        ) {
+            record.quality =
+                answerMemoryQualityClamp4(
+                    Number(
+                        record.quality ??
+                            0.70
+                    ) + 0.05
+                );
+
+            record.confidence =
+                answerMemoryQualityClamp4(
+                    Number(
+                        record.confidence ??
+                            0.80
+                    ) + 0.03
+                );
+        }
+
+        record.updatedAt =
+            answerMemoryNowISO();
+
+        this.addHistoryV2?.(
+            record.verified
+                ? "verify"
+                : "unverify",
+            record,
+            {
+                userId:
+                    options.userId ||
+                    null
+            }
+        );
+
+        this.persist();
 
         return {
-            found: false,
-            answer: null,
-            entry: null,
-            score: 0,
-            source: "memory"
+            ok: true,
+            id,
+            verified:
+                record.verified,
+            quality:
+                record.quality,
+            confidence:
+                record.confidence
         };
-
-    } catch (error) {
-
-        finalMemoryState.errors++;
-
-        return {
-            found: false,
-            answer: null,
-            score: 0,
-            source: "memory_error",
-            error: error.message
-        };
-    }
-}
+    };
 
 
-/* ------------------------------------------------------------
-   11. FINAL LEARN FUNCTION
------------------------------------------------------------- */
+/* ============================================================
+   4.9 - TRUST RECORD
+============================================================ */
 
-function finalMemoryLearn(
-    userId,
-    question,
-    answer,
-    options = {}
-) {
-    initializeFinalMemory();
-
-    const uid =
-        memoryUserId(userId);
-
-    const q =
-        memoryQuestion(question);
-
-    const a =
-        memoryAnswer(answer);
-
-    if (
-        !isEligibleMemory(
-            q,
-            a,
-            options
-        )
+AnswerMemory.prototype.trustRecord4 =
+    function (
+        id,
+        trusted = true,
+        options = {}
     ) {
-        return {
-            learned: false,
-            reason: "not_eligible"
-        };
-    }
+        const record =
+            this.records?.[id];
 
-    try {
+        if (
+            !record
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "not_found"
+            };
+        }
+
+        record.trusted =
+            Boolean(
+                trusted
+            );
+
+        if (
+            record.trusted
+        ) {
+            record.quality =
+                answerMemoryQualityClamp4(
+                    Number(
+                        record.quality ??
+                            0.70
+                    ) + 0.05
+                );
+
+            record.confidence =
+                answerMemoryQualityClamp4(
+                    Number(
+                        record.confidence ??
+                            0.80
+                    ) + 0.03
+                );
+        }
+
+        record.updatedAt =
+            answerMemoryNowISO();
+
+        this.addHistoryV2?.(
+            record.trusted
+                ? "trust"
+                : "untrust",
+            record,
+            {
+                userId:
+                    options.userId ||
+                    null
+            }
+        );
+
+        this.persist();
+
+        return {
+            ok: true,
+            id,
+            trusted:
+                record.trusted,
+            quality:
+                record.quality,
+            confidence:
+                record.confidence
+        };
+    };
+
+
+/* ============================================================
+   4.10 - PIN RECORD
+============================================================ */
+
+AnswerMemory.prototype.pinRecord4 =
+    function (
+        id,
+        pinned = true,
+        options = {}
+    ) {
+        const record =
+            this.records?.[id];
+
+        if (
+            !record
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "not_found"
+            };
+        }
+
+        record.pinned =
+            Boolean(
+                pinned
+            );
+
+        record.updatedAt =
+            answerMemoryNowISO();
+
+        this.addHistoryV2?.(
+            record.pinned
+                ? "pin"
+                : "unpin",
+            record
+        );
+
+        this.persist();
+
+        return {
+            ok: true,
+            id,
+            pinned:
+                record.pinned
+        };
+    };
+
+
+/* ============================================================
+   4.11 - FAVORITE RECORD
+============================================================ */
+
+AnswerMemory.prototype.favoriteRecord4 =
+    function (
+        id,
+        favorite = true,
+        options = {}
+    ) {
+        const record =
+            this.records?.[id];
+
+        if (
+            !record
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "not_found"
+            };
+        }
+
+        record.favorite =
+            Boolean(
+                favorite
+            );
+
+        record.updatedAt =
+            answerMemoryNowISO();
+
+        this.addHistoryV2?.(
+            record.favorite
+                ? "favorite"
+                : "unfavorite",
+            record
+        );
+
+        this.persist();
+
+        return {
+            ok: true,
+            id,
+            favorite:
+                record.favorite
+        };
+    };
+
+
+/* ============================================================
+   4.12 - AUTO LEARN DECISION
+============================================================ */
+
+AnswerMemory.prototype.shouldAutoLearn4 =
+    function (
+        question,
+        answer,
+        options = {}
+    ) {
+        const q =
+            answerMemorySafeText4(
+                question,
+                ""
+            );
+
+        const a =
+            answerMemorySafeText4(
+                answer,
+                ""
+            );
+
+        if (
+            !this.config?.enabled
+        ) {
+            return {
+                learn: false,
+                reason:
+                    "memory_disabled"
+            };
+        }
+
+        if (
+            this.config?.autoLearn ===
+            false
+        ) {
+            return {
+                learn: false,
+                reason:
+                    "auto_learning_disabled"
+            };
+        }
+
+        if (
+            q.length <
+            Number(
+                this.config
+                    ?.minimumQuestionLength ||
+                    4
+            )
+        ) {
+            return {
+                learn: false,
+                reason:
+                    "question_too_short"
+            };
+        }
+
+        if (
+            a.length <
+            Number(
+                this.config
+                    ?.minimumAnswerLength ||
+                    2
+            )
+        ) {
+            return {
+                learn: false,
+                reason:
+                    "answer_too_short"
+            };
+        }
+
+        /*
+        --------------------------------------------------------
+        Güncel veriler doğrudan kalıcı cevap hafızasına
+        yazılmasın.
+        --------------------------------------------------------
+        */
+
+        const currentPattern =
+            /(bugün|şimdi|şu anda|güncel|son dakika|son durum|en son|bugünkü|yarın|dün|hava durumu|dolar|euro|altın|borsa|kur ne kadar)/iu;
+
+        if (
+            currentPattern.test(
+                q
+            ) &&
+            options.allowCurrent !==
+                true
+        ) {
+            return {
+                learn: false,
+                reason:
+                    "current_information"
+            };
+        }
+
+        /*
+        --------------------------------------------------------
+        Çok kısa / anlamsız cevapları filtrele.
+        --------------------------------------------------------
+        */
+
+        if (
+            a.length <
+            10 &&
+            options.allowShortAnswer !==
+                true
+        ) {
+            return {
+                learn: false,
+                reason:
+                    "answer_too_short_for_learning"
+            };
+        }
+
+        /*
+        --------------------------------------------------------
+        Komut, parola, token gibi hassas verileri
+        kalıcı cevap hafızasına alma.
+        --------------------------------------------------------
+        */
+
+        const sensitivePattern =
+            /(parola|şifre|password|token|api[_ -]?key|secret|private[_ -]?key|access[_ -]?token)/iu;
+
+        if (
+            sensitivePattern.test(
+                q
+            ) ||
+            sensitivePattern.test(
+                a
+            )
+        ) {
+            return {
+                learn: false,
+                reason:
+                    "sensitive_content"
+            };
+        }
+
+        /*
+        --------------------------------------------------------
+        Sistem komutları için otomatik öğrenmeyi varsayılan
+        olarak kapat.
+        --------------------------------------------------------
+        */
+
+        if (
+            /^\s*(sudo|rm\s+-rf|format\b|del\b|shutdown\b|powershell\b|cmd\.exe\b)/iu.test(
+                q
+            ) &&
+            options.allowSystemCommands !==
+                true
+        ) {
+            return {
+                learn: false,
+                reason:
+                    "system_command"
+            };
+        }
+
+        const duplicate =
+            this.findDuplicate
+                ? this.findDuplicate(
+                      q,
+                      options
+                  )
+                : null;
+
+        if (
+            duplicate
+        ) {
+            return {
+                learn: true,
+                reason:
+                    "update_existing",
+                duplicate
+            };
+        }
+
+        return {
+            learn: true,
+            reason:
+                "new_answer"
+        };
+    };
+
+
+/* ============================================================
+   4.13 - SMART AUTO LEARN
+============================================================ */
+
+AnswerMemory.prototype.smartAutoLearn4 =
+    function (
+        question,
+        answer,
+        options = {}
+    ) {
+        const decision =
+            this.shouldAutoLearn4(
+                question,
+                answer,
+                options
+            );
+
+        if (
+            !decision.learn
+        ) {
+            return {
+                ok: false,
+                learned: false,
+                reason:
+                    decision.reason
+            };
+        }
+
+        const category =
+            options.category ||
+            answerMemoryDetectCategory(
+                question
+            );
+
+        const language =
+            options.language ||
+            answerMemoryDetectLanguage(
+                question
+            );
+
+        const quality =
+            answerMemoryBuildQuality4(
+                {
+                    ...options,
+
+                    category,
+
+                    language
+                }
+            );
 
         let result;
 
+        /*
+        --------------------------------------------------------
+        Yeni motor varsa V2 save kullan.
+        --------------------------------------------------------
+        */
+
         if (
-            typeof answerMemory.addSmart ===
+            typeof this.saveAnswerV2 ===
             "function"
         ) {
-
             result =
-                answerMemory.addSmart({
-                    question: q,
-                    answer: a,
+                this.saveAnswerV2(
+                    question,
+                    answer,
+                    {
+                        ...options,
 
-                    category:
-                        options.category ||
-                        MemoryCategoryEngine
-                            .detectCategory(q),
+                        category,
 
-                    tags:
-                        Array.isArray(options.tags)
-                            ? options.tags
-                            : MemoryTagEngine
-                                .generateTags(
-                                    q,
-                                    options.category ||
-                                    "general"
-                                ),
+                        language,
 
-                    source:
-                        options.source ||
-                        "ai_response",
+                        quality:
+                            quality.quality,
 
-                    userId: uid,
+                        confidence:
+                            quality.confidence,
 
-                    confidence:
-                        typeof options.confidence ===
-                        "number"
-                            ? options.confidence
-                            : 0.65,
+                        importance:
+                            quality.importance,
 
-                    quality:
-                        typeof options.quality ===
-                        "number"
-                            ? options.quality
-                            : 0.65
-                });
-
+                        source:
+                            options.source ||
+                            "auto-learn"
+                    }
+                );
         } else {
-
             result =
-                answerMemory.add({
-                    question: q,
-                    answer: a
-                });
+                this.save(
+                    question,
+                    answer,
+                    {
+                        ...options,
+
+                        category,
+
+                        language,
+
+                        quality:
+                            quality.quality
+                    }
+                );
         }
 
-        try {
+        return {
+            ...result,
 
-            userMemoryProfiles.recordQuestion(
-                uid,
-                {
-                    question: q,
-                    answer: a,
+            learned:
+                Boolean(
+                    result?.ok
+                ),
 
-                    category:
-                        options.category ||
-                        "general"
-                }
+            autoLearn:
+                true,
+
+            decision:
+                decision.reason
+        };
+    };
+
+
+/* ============================================================
+   4.14 - USER MEMORY PROFILE
+============================================================ */
+
+AnswerMemory.prototype.getUserMemoryProfile4 =
+    function (
+        userId
+    ) {
+        const normalizedUser =
+            answerMemoryNormalizeUserId2
+                ? answerMemoryNormalizeUserId2(
+                      userId
+                  )
+                : String(
+                      userId ||
+                          "anonymous"
+                  );
+
+        const records =
+            Object.values(
+                this.records ||
+                    {}
+            ).filter(
+                record =>
+                    record &&
+                    record.active !==
+                        false &&
+                    answerMemoryNormalizeUserId2
+                        ? answerMemoryNormalizeUserId2(
+                              record.userId
+                          ) ===
+                          normalizedUser
+                        : String(
+                              record.userId ||
+                                  "anonymous"
+                          ) ===
+                          normalizedUser
             );
 
-        } catch (_) {}
+        const categories =
+            {};
 
-        finalMemoryState.learned++;
+        const languages =
+            {};
 
-        finalMemoryState.lastLearning =
-            new Date().toISOString();
+        const tags =
+            {};
+
+        let qualityTotal =
+            0;
+
+        let confidenceTotal =
+            0;
+
+        let importanceTotal =
+            0;
+
+        let hits =
+            0;
+
+        let misses =
+            0;
+
+        for (
+            const record
+            of records
+        ) {
+            const category =
+                record.category ||
+                "general";
+
+            const language =
+                record.language ||
+                "unknown";
+
+            categories[
+                category
+            ] =
+                (
+                    categories[
+                        category
+                    ] || 0
+                ) + 1;
+
+            languages[
+                language
+            ] =
+                (
+                    languages[
+                        language
+                    ] || 0
+                ) + 1;
+
+            for (
+                const tag
+                of answerMemoryNormalizeTags(
+                    record.tags || []
+                )
+            ) {
+                tags[tag] =
+                    (
+                        tags[tag] ||
+                        0
+                    ) + 1;
+            }
+
+            qualityTotal +=
+                Number(
+                    record.quality ??
+                        0.70
+                );
+
+            confidenceTotal +=
+                Number(
+                    record.confidence ??
+                        0.80
+                );
+
+            importanceTotal +=
+                Number(
+                    record.importance ??
+                        0.50
+                );
+
+            hits +=
+                Number(
+                    record.hits ||
+                        0
+                );
+
+            misses +=
+                Number(
+                    record.misses ||
+                        0
+                );
+        }
+
+        const sortObject =
+            object => {
+                return Object.entries(
+                    object
+                )
+                    .sort(
+                        (
+                            a,
+                            b
+                        ) =>
+                            b[1] -
+                            a[1]
+                    )
+                    .reduce(
+                        (
+                            output,
+                            [
+                                key,
+                                value
+                            ]
+                        ) => {
+                            output[
+                                key
+                            ] =
+                                value;
+
+                            return output;
+                        },
+                        {}
+                    );
+            };
+
+        const average =
+            value =>
+                records.length
+                    ? value /
+                      records.length
+                    : 0;
+
+        return {
+            ok: true,
+
+            userId:
+                normalizedUser,
+
+            recordCount:
+                records.length,
+
+            categories:
+                sortObject(
+                    categories
+                ),
+
+            languages:
+                sortObject(
+                    languages
+                ),
+
+            tags:
+                sortObject(
+                    tags
+                ),
+
+            averageQuality:
+                average(
+                    qualityTotal
+                ),
+
+            averageConfidence:
+                average(
+                    confidenceTotal
+                ),
+
+            averageImportance:
+                average(
+                    importanceTotal
+                ),
+
+            hits,
+
+            misses,
+
+            feedbackRate:
+                hits + misses >
+                0
+                    ? hits /
+                      (
+                          hits +
+                          misses
+                      )
+                    : 0,
+
+            favoriteCount:
+                records.filter(
+                    record =>
+                        Boolean(
+                            record.favorite
+                        )
+                ).length,
+
+            pinnedCount:
+                records.filter(
+                    record =>
+                        Boolean(
+                            record.pinned
+                        )
+                ).length,
+
+            verifiedCount:
+                records.filter(
+                    record =>
+                        Boolean(
+                            record.verified
+                        )
+                ).length,
+
+            trustedCount:
+                records.filter(
+                    record =>
+                        Boolean(
+                            record.trusted
+                        )
+                ).length
+        };
+    };
+
+
+/* ============================================================
+   4.15 - USER QUESTIONS
+============================================================ */
+
+AnswerMemory.prototype.getUserQuestions4 =
+    function (
+        userId,
+        options = {}
+    ) {
+        const normalizedUser =
+            answerMemoryNormalizeUserId2
+                ? answerMemoryNormalizeUserId2(
+                      userId
+                  )
+                : String(
+                      userId ||
+                          "anonymous"
+                  );
+
+        let records =
+            Object.values(
+                this.records ||
+                    {}
+            ).filter(
+                record =>
+                    record &&
+                    record.active !==
+                        false &&
+                    (
+                        answerMemoryNormalizeUserId2
+                            ? answerMemoryNormalizeUserId2(
+                                  record.userId
+                              ) ===
+                              normalizedUser
+                            : String(
+                                  record.userId ||
+                                      ""
+                              ) ===
+                              normalizedUser
+                    )
+            );
 
         if (
-            options.save !== false &&
-            typeof answerMemory.save ===
-            "function"
+            options.category
         ) {
-            answerMemory.save();
+            records =
+                records.filter(
+                    record =>
+                        record.category ===
+                        options.category
+                );
+        }
+
+        if (
+            options.search
+        ) {
+            const search =
+                answerMemorySearchNormalize(
+                    options.search
+                );
+
+            records =
+                records.filter(
+                    record =>
+                        answerMemorySearchNormalize(
+                            record.question
+                        ).includes(
+                            search
+                        )
+                );
+        }
+
+        records.sort(
+            (
+                a,
+                b
+            ) =>
+                (
+                    new Date(
+                        b.updatedAt ||
+                            b.createdAt ||
+                            0
+                    ).getTime() || 0
+                ) -
+                (
+                    new Date(
+                        a.updatedAt ||
+                            a.createdAt ||
+                            0
+                    ).getTime() || 0
+                )
+        );
+
+        const limit =
+            Math.floor(
+                answerMemoryClamp(
+                    options.limit ??
+                        100,
+                    1,
+                    10000
+                )
+            );
+
+        return records
+            .slice(
+                0,
+                limit
+            )
+            .map(
+                record =>
+                    this.publicRecord(
+                        record
+                    )
+            );
+    };
+
+
+/* ============================================================
+   4.16 - USER TOPICS
+============================================================ */
+
+AnswerMemory.prototype.getUserTopics4 =
+    function (
+        userId,
+        options = {}
+    ) {
+        const profile =
+            this.getUserMemoryProfile4(
+                userId
+            );
+
+        const categories =
+            Object.entries(
+                profile.categories ||
+                    {}
+            )
+                .sort(
+                    (
+                        a,
+                        b
+                    ) =>
+                        b[1] -
+                        a[1]
+                );
+
+        const tags =
+            Object.entries(
+                profile.tags ||
+                    {}
+            )
+                .sort(
+                    (
+                        a,
+                        b
+                    ) =>
+                        b[1] -
+                        a[1]
+                );
+
+        return {
+            ok: true,
+
+            userId:
+                profile.userId,
+
+            topCategories:
+                categories.slice(
+                    0,
+                    options.categoryLimit ||
+                        10
+                ),
+
+            topTags:
+                tags.slice(
+                    0,
+                    options.tagLimit ||
+                        30
+                ),
+
+            languages:
+                profile.languages
+        };
+    };
+
+
+/* ============================================================
+   4.17 - HISTORY V4
+============================================================ */
+
+AnswerMemory.prototype.addHistoryV4 =
+    function (
+        event,
+        record,
+        extra = {}
+    ) {
+        if (
+            this.config?.historyEnabled ===
+            false
+        ) {
+            return false;
+        }
+
+        if (
+            !Array.isArray(
+                this.history
+            )
+        ) {
+            this.history =
+                [];
+        }
+
+        const entry = {
+            id:
+                answerMemoryCreateId(
+                    "history4"
+                ),
+
+            timestamp:
+                answerMemoryNowISO(),
+
+            event:
+                answerMemorySafeText4(
+                    event,
+                    "unknown"
+                ),
+
+            recordId:
+                record?.id ||
+                extra.recordId ||
+                null,
+
+            userId:
+                record?.userId ||
+                extra.userId ||
+                null,
+
+            question:
+                record?.question ||
+                extra.question ||
+                extra.query ||
+                null,
+
+            answer:
+                extra.includeAnswer
+                    ? record?.answer ||
+                      null
+                    : undefined,
+
+            score:
+                extra.score ??
+                null,
+
+            confidence:
+                extra.confidence ??
+                null,
+
+            category:
+                record?.category ||
+                extra.category ||
+                null,
+
+            source:
+                record?.source ||
+                extra.source ||
+                null,
+
+            metadata:
+                answerMemoryEnsureObject(
+                    extra.metadata
+                )
+        };
+
+        this.history.push(
+            entry
+        );
+
+        const maximum =
+            Number(
+                this.config
+                    ?.maximumHistory ||
+                    50000
+            );
+
+        if (
+            this.history.length >
+            maximum
+        ) {
+            this.history =
+                this.history.slice(
+                    -maximum
+                );
+        }
+
+        return true;
+    };
+
+
+/* ============================================================
+   4.18 - HISTORY QUERY
+============================================================ */
+
+AnswerMemory.prototype.queryHistory4 =
+    function (
+        options = {}
+    ) {
+        let items =
+            Array.isArray(
+                this.history
+            )
+                ? [
+                      ...this.history
+                  ]
+                : [];
+
+        if (
+            options.event
+        ) {
+            items =
+                items.filter(
+                    item =>
+                        item.event ===
+                        options.event
+                );
+        }
+
+        if (
+            options.userId
+        ) {
+            const userId =
+                answerMemoryNormalizeUserId2
+                    ? answerMemoryNormalizeUserId2(
+                          options.userId
+                      )
+                    : String(
+                          options.userId
+                      );
+
+            items =
+                items.filter(
+                    item =>
+                        (
+                            answerMemoryNormalizeUserId2
+                                ? answerMemoryNormalizeUserId2(
+                                      item.userId
+                                  )
+                                : String(
+                                      item.userId
+                                  )
+                        ) ===
+                        userId
+                );
+        }
+
+        if (
+            options.recordId
+        ) {
+            items =
+                items.filter(
+                    item =>
+                        item.recordId ===
+                        options.recordId
+                );
+        }
+
+        if (
+            options.category
+        ) {
+            items =
+                items.filter(
+                    item =>
+                        item.category ===
+                        options.category
+                );
+        }
+
+        if (
+            options.from
+        ) {
+            const from =
+                new Date(
+                    options.from
+                ).getTime();
+
+            if (
+                Number.isFinite(
+                    from
+                )
+            ) {
+                items =
+                    items.filter(
+                        item =>
+                            new Date(
+                                item.timestamp
+                            ).getTime() >=
+                            from
+                    );
+            }
+        }
+
+        if (
+            options.to
+        ) {
+            const to =
+                new Date(
+                    options.to
+                ).getTime();
+
+            if (
+                Number.isFinite(
+                    to
+                )
+            ) {
+                items =
+                    items.filter(
+                        item =>
+                            new Date(
+                                item.timestamp
+                            ).getTime() <=
+                            to
+                    );
+            }
+        }
+
+        items.reverse();
+
+        const limit =
+            Math.floor(
+                answerMemoryClamp(
+                    options.limit ??
+                        100,
+                    1,
+                    50000
+                )
+            );
+
+        return {
+            ok: true,
+
+            count:
+                Math.min(
+                    limit,
+                    items.length
+                ),
+
+            total:
+                items.length,
+
+            items:
+                items.slice(
+                    0,
+                    limit
+                )
+        };
+    };
+
+
+/* ============================================================
+   4.19 - BULK TAG
+============================================================ */
+
+AnswerMemory.prototype.bulkTag4 =
+    function (
+        ids,
+        tags,
+        options = {}
+    ) {
+        const idList =
+            answerMemoryUniqueArray(
+                Array.isArray(
+                    ids
+                )
+                    ? ids
+                    : [ids]
+            );
+
+        const newTags =
+            answerMemoryNormalizeTags(
+                tags
+            );
+
+        let updated = 0;
+
+        for (
+            const id
+            of idList
+        ) {
+            const record =
+                this.records?.[id];
+
+            if (
+                !record
+            ) {
+                continue;
+            }
+
+            record.tags =
+                answerMemoryNormalizeTags(
+                    [
+                        ...(record.tags ||
+                            []),
+                        ...newTags
+                    ]
+                );
+
+            record.updatedAt =
+                answerMemoryNowISO();
+
+            updated++;
+        }
+
+        if (
+            updated > 0
+        ) {
+            this.persist();
         }
 
         return {
-            learned: true,
-            result
+            ok: true,
+
+            requested:
+                idList.length,
+
+            updated,
+
+            tags:
+                newTags
         };
+    };
 
-    } catch (error) {
 
-        finalMemoryState.errors++;
+/* ============================================================
+   4.20 - BULK ARCHIVE
+============================================================ */
+
+AnswerMemory.prototype.bulkArchive4 =
+    function (
+        ids,
+        options = {}
+    ) {
+        const idList =
+            answerMemoryUniqueArray(
+                Array.isArray(
+                    ids
+                )
+                    ? ids
+                    : [ids]
+            );
+
+        let updated = 0;
+
+        for (
+            const id
+            of idList
+        ) {
+            const result =
+                this.archiveRecordV2
+                    ? this.archiveRecordV2(
+                          id
+                      )
+                    : this.remove(
+                          id
+                      );
+
+            if (
+                result?.ok
+            ) {
+                updated++;
+            }
+        }
 
         return {
-            learned: false,
-            error: error.message
+            ok: true,
+
+            requested:
+                idList.length,
+
+            updated
         };
-    }
-}
+    };
 
 
-/* ------------------------------------------------------------
-   12. LEARN ONLY IF USEFUL
------------------------------------------------------------- */
+/* ============================================================
+   4.21 - BULK RESTORE
+============================================================ */
 
-function finalMemoryLearnIfUseful(
-    userId,
+AnswerMemory.prototype.bulkRestore4 =
+    function (
+        ids
+    ) {
+        const idList =
+            answerMemoryUniqueArray(
+                Array.isArray(
+                    ids
+                )
+                    ? ids
+                    : [ids]
+            );
+
+        let restored = 0;
+
+        for (
+            const id
+            of idList
+        ) {
+            const result =
+                this.restoreRecordV2
+                    ? this.restoreRecordV2(
+                          id
+                      )
+                    : this.restore(
+                          id
+                      );
+
+            if (
+                result?.ok
+            ) {
+                restored++;
+            }
+        }
+
+        return {
+            ok: true,
+
+            requested:
+                idList.length,
+
+            restored
+        };
+    };
+
+
+/* ============================================================
+   4.22 - BULK DELETE
+============================================================ */
+
+AnswerMemory.prototype.bulkDelete4 =
+    function (
+        ids,
+        options = {}
+    ) {
+        const idList =
+            answerMemoryUniqueArray(
+                Array.isArray(
+                    ids
+                )
+                    ? ids
+                    : [ids]
+            );
+
+        let deleted = 0;
+
+        for (
+            const id
+            of idList
+        ) {
+            let result;
+
+            if (
+                options.permanent
+            ) {
+                result =
+                    this.hardDeleteRecordV2
+                        ? this.hardDeleteRecordV2(
+                              id
+                          )
+                        : this.remove(
+                              id,
+                              {
+                                  permanent:
+                                      true
+                              }
+                          );
+            } else {
+                result =
+                    this.archiveRecordV2
+                        ? this.archiveRecordV2(
+                              id
+                          )
+                        : this.remove(
+                              id
+                          );
+            }
+
+            if (
+                result?.ok
+            ) {
+                deleted++;
+            }
+        }
+
+        return {
+            ok: true,
+
+            requested:
+                idList.length,
+
+            deleted,
+
+            permanent:
+                Boolean(
+                    options.permanent
+                )
+        };
+    };
+
+
+/* ============================================================
+   4.23 - BULK VERIFY
+============================================================ */
+
+AnswerMemory.prototype.bulkVerify4 =
+    function (
+        ids,
+        verified = true
+    ) {
+        const idList =
+            answerMemoryUniqueArray(
+                Array.isArray(
+                    ids
+                )
+                    ? ids
+                    : [ids]
+            );
+
+        let updated = 0;
+
+        for (
+            const id
+            of idList
+        ) {
+            const result =
+                this.verifyRecord4(
+                    id,
+                    verified
+                );
+
+            if (
+                result?.ok
+            ) {
+                updated++;
+            }
+        }
+
+        return {
+            ok: true,
+            requested:
+                idList.length,
+            updated,
+            verified:
+                Boolean(
+                    verified
+                )
+        };
+    };
+
+
+/* ============================================================
+   4.24 - BULK TRUST
+============================================================ */
+
+AnswerMemory.prototype.bulkTrust4 =
+    function (
+        ids,
+        trusted = true
+    ) {
+        const idList =
+            answerMemoryUniqueArray(
+                Array.isArray(
+                    ids
+                )
+                    ? ids
+                    : [ids]
+            );
+
+        let updated = 0;
+
+        for (
+            const id
+            of idList
+        ) {
+            const result =
+                this.trustRecord4(
+                    id,
+                    trusted
+                );
+
+            if (
+                result?.ok
+            ) {
+                updated++;
+            }
+        }
+
+        return {
+            ok: true,
+            requested:
+                idList.length,
+            updated,
+            trusted:
+                Boolean(
+                    trusted
+                )
+        };
+    };
+
+
+/* ============================================================
+   4.25 - QUALITY REBALANCE
+============================================================ */
+
+AnswerMemory.prototype.rebalanceQuality4 =
+    function (
+        options = {}
+    ) {
+        let changed = 0;
+
+        const minimum =
+            answerMemorySafeNumber3(
+                options.minimumQuality,
+                0.20
+            );
+
+        const maximum =
+            answerMemorySafeNumber3(
+                options.maximumQuality,
+                0.95
+            );
+
+        for (
+            const record
+            of Object.values(
+                this.records ||
+                    {}
+            )
+        ) {
+            if (
+                !record ||
+                record.active ===
+                    false
+            ) {
+                continue;
+            }
+
+            let quality =
+                answerMemoryQualityClamp4(
+                    record.quality,
+                    0.70
+                );
+
+            const hits =
+                Number(
+                    record.hits ||
+                        0
+                );
+
+            const misses =
+                Number(
+                    record.misses ||
+                        0
+                );
+
+            const total =
+                hits +
+                misses;
+
+            if (
+                total > 0
+            ) {
+                const feedbackRate =
+                    hits /
+                    total;
+
+                quality =
+                    (
+                        quality *
+                        0.70
+                    ) +
+                    (
+                        feedbackRate *
+                        0.30
+                    );
+            }
+
+            if (
+                record.verified
+            ) {
+                quality +=
+                    0.03;
+            }
+
+            if (
+                record.trusted
+            ) {
+                quality +=
+                    0.03;
+            }
+
+            const finalQuality =
+                answerMemoryClamp(
+                    quality,
+                    minimum,
+                    maximum
+                );
+
+            if (
+                Math.abs(
+                    finalQuality -
+                    Number(
+                        record.quality ||
+                            0
+                    )
+                ) >
+                0.001
+            ) {
+                record.quality =
+                    finalQuality;
+
+                record.updatedAt =
+                    answerMemoryNowISO();
+
+                changed++;
+            }
+        }
+
+        this.stats.lastMaintenance =
+            answerMemoryNowISO();
+
+        this.persist();
+
+        return {
+            ok: true,
+            changed
+        };
+    };
+
+
+/* ============================================================
+   4.26 - TOP ANSWERS
+============================================================ */
+
+AnswerMemory.prototype.getTopAnswers4 =
+    function (
+        options = {}
+    ) {
+        let records =
+            Object.values(
+                this.records ||
+                    {}
+            ).filter(
+                record =>
+                    record &&
+                    record.active !==
+                        false
+            );
+
+        if (
+            options.userId
+        ) {
+            const userId =
+                answerMemoryNormalizeUserId2
+                    ? answerMemoryNormalizeUserId2(
+                          options.userId
+                      )
+                    : String(
+                          options.userId
+                      );
+
+            records =
+                records.filter(
+                    record =>
+                        (
+                            answerMemoryNormalizeUserId2
+                                ? answerMemoryNormalizeUserId2(
+                                      record.userId
+                                  )
+                                : String(
+                                      record.userId
+                                  )
+                        ) ===
+                        userId
+                );
+        }
+
+        if (
+            options.category
+        ) {
+            records =
+                records.filter(
+                    record =>
+                        record.category ===
+                        options.category
+                );
+        }
+
+        records.sort(
+            (
+                a,
+                b
+            ) => {
+                const profileA =
+                    this.getQualityProfile4(
+                        a
+                    );
+
+                const profileB =
+                    this.getQualityProfile4(
+                        b
+                    );
+
+                return (
+                    profileB.qualityScore -
+                    profileA.qualityScore
+                );
+            }
+        );
+
+        const limit =
+            Math.floor(
+                answerMemoryClamp(
+                    options.limit ??
+                        20,
+                    1,
+                    500
+                )
+            );
+
+        return records
+            .slice(
+                0,
+                limit
+            )
+            .map(
+                record => {
+                    const profile =
+                        this.getQualityProfile4(
+                            record
+                        );
+
+                    return {
+                        ...this.publicRecord(
+                            record
+                        ),
+
+                        qualityScore:
+                            profile.qualityScore,
+
+                        feedbackRate:
+                            profile.feedbackRate
+                    };
+                }
+            );
+    };
+
+
+/* ============================================================
+   4.27 - MEMORY OVERVIEW
+============================================================ */
+
+AnswerMemory.prototype.getOverview4 =
+    function (
+        options = {}
+    ) {
+        const total =
+            Object.keys(
+                this.records ||
+                    {}
+            ).length;
+
+        const active =
+            Object.values(
+                this.records ||
+                    {}
+            ).filter(
+                record =>
+                    record &&
+                    record.active !==
+                        false
+            ).length;
+
+        const archived =
+            Object.values(
+                this.records ||
+                    {}
+            ).filter(
+                record =>
+                    record &&
+                    record.archived ===
+                        true
+            ).length;
+
+        const users =
+            new Set();
+
+        let qualityTotal =
+            0;
+
+        let confidenceTotal =
+            0;
+
+        let importanceTotal =
+            0;
+
+        for (
+            const record
+            of Object.values(
+                this.records ||
+                    {}
+            )
+        ) {
+            if (
+                !record
+            ) {
+                continue;
+            }
+
+            users.add(
+                answerMemoryNormalizeUserId2
+                    ? answerMemoryNormalizeUserId2(
+                          record.userId
+                      )
+                    : String(
+                          record.userId ||
+                              "anonymous"
+                      )
+            );
+
+            qualityTotal +=
+                Number(
+                    record.quality ??
+                        0.70
+                );
+
+            confidenceTotal +=
+                Number(
+                    record.confidence ??
+                        0.80
+                );
+
+            importanceTotal +=
+                Number(
+                    record.importance ??
+                        0.50
+                );
+        }
+
+        return {
+            ok: true,
+
+            version:
+                ANSWER_MEMORY_VERSION,
+
+            totalRecords:
+                total,
+
+            activeRecords:
+                active,
+
+            archivedRecords:
+                archived,
+
+            users:
+                users.size,
+
+            indexTokens:
+                Object.keys(
+                    this.index ||
+                        {}
+                ).length,
+
+            averageQuality:
+                total
+                    ? qualityTotal /
+                      total
+                    : 0,
+
+            averageConfidence:
+                total
+                    ? confidenceTotal /
+                      total
+                    : 0,
+
+            averageImportance:
+                total
+                    ? importanceTotal /
+                      total
+                    : 0,
+
+            stats:
+                this.stats,
+
+            search:
+                this.getSearchStats3
+                    ? this.getSearchStats3()
+                    : null,
+
+            health:
+                this.health()
+        };
+    };
+
+
+/* ============================================================
+   4.28 - EXPORT USER MEMORY
+============================================================ */
+
+AnswerMemory.prototype.exportUserMemory4 =
+    function (
+        userId,
+        options = {}
+    ) {
+        const normalizedUser =
+            answerMemoryNormalizeUserId2
+                ? answerMemoryNormalizeUserId2(
+                      userId
+                  )
+                : String(
+                      userId ||
+                          "anonymous"
+                  );
+
+        const records =
+            Object.values(
+                this.records ||
+                    {}
+            ).filter(
+                record =>
+                    record &&
+                    (
+                        answerMemoryNormalizeUserId2
+                            ? answerMemoryNormalizeUserId2(
+                                  record.userId
+                              ) ===
+                              normalizedUser
+                            : String(
+                                  record.userId ||
+                                      ""
+                              ) ===
+                              normalizedUser
+                    )
+            );
+
+        const payload = {
+            format:
+                "turkai-user-answer-memory",
+
+            version:
+                ANSWER_MEMORY_VERSION,
+
+            exportedAt:
+                answerMemoryNowISO(),
+
+            userId:
+                normalizedUser,
+
+            count:
+                records.length,
+
+            records:
+                records.map(
+                    record =>
+                        this.publicRecord(
+                            record
+                        )
+                ),
+
+            profile:
+                this.getUserMemoryProfile4(
+                    normalizedUser
+                ),
+
+            topics:
+                this.getUserTopics4(
+                    normalizedUser
+                )
+        };
+
+        const stamp =
+            new Date()
+                .toISOString()
+                .replace(
+                    /[:.]/g,
+                    "-"
+                );
+
+        const filename =
+            options.fileName ||
+            `user-memory-${normalizedUser}-${stamp}.json`;
+
+        const filePath =
+            path.join(
+                ANSWER_MEMORY_EXPORT_DIR,
+                filename
+            );
+
+        const ok =
+            answerMemoryWriteJSON(
+                filePath,
+                payload
+            );
+
+        return {
+            ok,
+
+            userId:
+                normalizedUser,
+
+            count:
+                records.length,
+
+            file:
+                filePath
+        };
+    };
+
+
+/* ============================================================
+   4.29 - SNAPSHOT
+============================================================ */
+
+AnswerMemory.prototype.createSnapshot4 =
+    function () {
+        return {
+            version:
+                ANSWER_MEMORY_VERSION,
+
+            timestamp:
+                answerMemoryNowISO(),
+
+            overview:
+                this.getOverview4(),
+
+            diagnostics:
+                this.diagnostics
+                    ? this.diagnostics()
+                    : null,
+
+            topAnswers:
+                this.getTopAnswers4({
+                    limit: 10
+                })
+        };
+    };
+
+
+/* ============================================================
+   4.30 - GLOBAL HELPERS
+============================================================ */
+
+function smartAutoLearnAnswer4(
     question,
     answer,
     options = {}
 ) {
-
     if (
-        options.force !== true &&
-        !shouldLearnResponse(
-            question,
-            answer,
-            options
-        )
+        !globalAnswerMemoryInstance
     ) {
         return {
+            ok: false,
             learned: false,
-            reason: "filtered"
+            reason:
+                "memory_unavailable"
         };
     }
 
-    return finalMemoryLearn(
-        userId,
+    return globalAnswerMemoryInstance.smartAutoLearn4(
         question,
         answer,
         options
@@ -10237,1464 +11411,3654 @@ function finalMemoryLearnIfUseful(
 }
 
 
-/* ------------------------------------------------------------
-   13. FEEDBACK
------------------------------------------------------------- */
-
-function finalMemoryFeedback(
-    id,
-    feedback = {}
-) {
-    initializeFinalMemory();
-
-    if (!id) {
-        return {
-            success: false,
-            error: "Memory ID gerekli."
-        };
-    }
-
-    try {
-
-        const result =
-            processMemoryFeedback(
-                id,
-                feedback
-            );
-
-        return {
-            success: Boolean(result),
-            result
-        };
-
-    } catch (error) {
-
-        finalMemoryState.errors++;
-
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-
-/* ------------------------------------------------------------
-   14. PIN MEMORY
------------------------------------------------------------- */
-
-function finalPinMemory(
-    id
-) {
-    const entry =
-        answerMemory.get(id);
-
-    if (!entry) {
-        return null;
-    }
-
-    entry.pinned = true;
-    entry.archived = false;
-
-    entry.updatedAt =
-        new Date().toISOString();
-
-    answerMemory.save();
-
-    return entry;
-}
-
-
-/* ------------------------------------------------------------
-   15. UNPIN MEMORY
------------------------------------------------------------- */
-
-function finalUnpinMemory(
-    id
-) {
-    const entry =
-        answerMemory.get(id);
-
-    if (!entry) {
-        return null;
-    }
-
-    entry.pinned = false;
-
-    entry.updatedAt =
-        new Date().toISOString();
-
-    answerMemory.save();
-
-    return entry;
-}
-
-
-/* ------------------------------------------------------------
-   16. ARCHIVE MEMORY
------------------------------------------------------------- */
-
-function finalArchiveMemory(
-    id
-) {
-    const entry =
-        answerMemory.get(id);
-
-    if (!entry) {
-        return null;
-    }
-
-    entry.archived = true;
-
-    entry.updatedAt =
-        new Date().toISOString();
-
-    answerMemory.save();
-
-    return entry;
-}
-
-
-/* ------------------------------------------------------------
-   17. RESTORE MEMORY
------------------------------------------------------------- */
-
-function finalRestoreMemory(
-    id
-) {
-    const entry =
-        answerMemory.get(id);
-
-    if (!entry) {
-        return null;
-    }
-
-    entry.archived = false;
-
-    entry.updatedAt =
-        new Date().toISOString();
-
-    answerMemory.save();
-
-    return entry;
-}
-
-
-/* ------------------------------------------------------------
-   18. USER MEMORY
------------------------------------------------------------- */
-
-function getUserMemory(
-    userId,
+function searchAnswerMemorySmart4(
+    question,
     options = {}
 ) {
-    const uid =
-        memoryUserId(userId);
-
-    const profile =
-        userMemoryProfiles
-            .getProfile(uid);
-
-    let entries =
-        answerMemory.getAll();
-
     if (
-        options.category
+        !globalAnswerMemoryInstance
     ) {
-        entries =
-            entries.filter(
-                item =>
-                    item.category ===
-                    options.category
-            );
+        return {
+            ok: false,
+            results: [],
+            best: null,
+            reason:
+                "memory_unavailable"
+        };
     }
 
-    if (
-        options.limit
-    ) {
-        entries =
-            entries.slice(
-                0,
-                Number(options.limit)
-            );
-    }
-
-    return {
-        userId: uid,
-
-        profile,
-
-        memories: entries,
-
-        total: entries.length
-    };
+    return globalAnswerMemoryInstance.searchAdvanced3(
+        question,
+        options
+    );
 }
 
 
-/* ------------------------------------------------------------
-   19. USER MEMORY CLEAR
------------------------------------------------------------- */
-
-function clearUserMemory(
+function getAnswerMemoryUserProfile4(
     userId
 ) {
-    const uid =
-        memoryUserId(userId);
-
-    userMemoryProfiles
-        .deleteProfile(uid);
-
-    return {
-        success: true,
-        userId: uid
-    };
-}
-
-
-/* ------------------------------------------------------------
-   20. MEMORY STATS FINAL
------------------------------------------------------------- */
-
-function finalMemoryStats() {
-
-    const basic =
-        typeof answerMemory.stats ===
-        "function"
-            ? answerMemory.stats()
-            : {};
-
-    const health =
-        typeof getAdvancedMemoryHealth ===
-        "function"
-            ? getAdvancedMemoryHealth()
-            : {};
-
-    const analytics =
-        memoryQueryAnalytics.stats();
-
-    return {
-
-        version:
-            FINAL_MEMORY_CONFIG.version,
-
-        enabled:
-            FINAL_MEMORY_CONFIG.enabled,
-
-        basic,
-
-        health,
-
-        analytics,
-
-        state: {
-            ...finalMemoryState
-        },
-
-        timestamp:
-            new Date().toISOString()
-    };
-}
-
-
-/* ------------------------------------------------------------
-   21. MEMORY MAINTENANCE
------------------------------------------------------------- */
-
-function runFinalMemoryMaintenance(
-    options = {}
-) {
-    initializeFinalMemory();
-
-    const started =
-        Date.now();
-
-    const result = {
-        startedAt:
-            new Date().toISOString(),
-
-        confidence: null,
-
-        decay: null,
-
-        duplicates: null,
-
-        backups: null,
-
-        durationMs: 0
-    };
-
-    try {
-
-        if (
-            options.confidence !== false &&
-            typeof recalculateAllMemoryConfidence ===
-            "function"
-        ) {
-            result.confidence =
-                recalculateAllMemoryConfidence();
-        }
-
-    } catch (error) {
-
-        result.confidence = {
-            error: error.message
-        };
-    }
-
-    try {
-
-        if (
-            options.decay !== false &&
-            typeof applyMemoryDecay ===
-            "function"
-        ) {
-            result.decay =
-                applyMemoryDecay();
-        }
-
-    } catch (error) {
-
-        result.decay = {
-            error: error.message
-        };
-    }
-
-    try {
-
-        if (
-            options.duplicates !== false &&
-            typeof cleanupDuplicateMemories ===
-            "function"
-        ) {
-            result.duplicates =
-                cleanupDuplicateMemories();
-        }
-
-    } catch (error) {
-
-        result.duplicates = {
-            error: error.message
-        };
-    }
-
-    try {
-
-        if (
-            typeof rotateMemoryBackups ===
-            "function"
-        ) {
-            result.backups =
-                rotateMemoryBackups(
-                    options.maxBackups || 20
-                );
-        }
-
-    } catch (error) {
-
-        result.backups = {
-            error: error.message
-        };
-    }
-
-    try {
-
-        answerMemory.save();
-
-    } catch (_) {}
-
-    result.durationMs =
-        Date.now() - started;
-
-    result.finishedAt =
-        new Date().toISOString();
-
-    finalMemoryState.lastMaintenance =
-        result.finishedAt;
-
-    return result;
-}
-
-
-/* ------------------------------------------------------------
-   22. MAINTENANCE TIMER
------------------------------------------------------------- */
-
-let finalMaintenanceTimer =
-    null;
-
-function startFinalMaintenanceTimer() {
-
     if (
-        finalMaintenanceTimer
+        !globalAnswerMemoryInstance
     ) {
-        return;
-    }
-
-    finalMaintenanceTimer =
-        setInterval(
-            () => {
-
-                try {
-
-                    runFinalMemoryMaintenance({
-                        confidence: true,
-                        decay: true,
-                        duplicates: true
-                    });
-
-                } catch (error) {
-
-                    finalMemoryState.errors++;
-
-                    console.warn(
-                        "[TürkAI Memory] Maintenance:",
-                        error.message
-                    );
-                }
-
-            },
-            FINAL_MEMORY_CONFIG
-                .maintenanceInterval
-        );
-
-    if (
-        finalMaintenanceTimer &&
-        typeof finalMaintenanceTimer.unref ===
-        "function"
-    ) {
-        finalMaintenanceTimer.unref();
-    }
-}
-
-
-function stopFinalMaintenanceTimer() {
-
-    if (
-        finalMaintenanceTimer
-    ) {
-        clearInterval(
-            finalMaintenanceTimer
-        );
-
-        finalMaintenanceTimer =
-            null;
-    }
-}
-
-
-/* ------------------------------------------------------------
-   23. CHAT MEMORY BRIDGE
------------------------------------------------------------- */
-
-async function processChatMemory(
-    data = {}
-) {
-    const userId =
-        memoryUserId(
-            data.userId
-        );
-
-    const question =
-        memoryQuestion(
-            data.question
-        );
-
-    const answer =
-        memoryAnswer(
-            data.answer
-        );
-
-    if (!question) {
-        return {
-            memoryFound: false,
-            answer: null
-        };
-    }
-
-    const search =
-        await finalMemorySearch(
-            userId,
-            question,
-            {
-                minimumScore:
-                    data.minimumScore ||
-                    FINAL_MEMORY_CONFIG
-                        .minimumSearchScore
-            }
-        );
-
-    if (
-        search.found &&
-        search.answer
-    ) {
-        return {
-            memoryFound: true,
-
-            answer:
-                search.answer,
-
-            source:
-                search.source,
-
-            score:
-                search.score,
-
-            entry:
-                search.entry
-        };
-    }
-
-    if (
-        answer &&
-        data.learn !== false &&
-        FINAL_MEMORY_CONFIG.autoLearn
-    ) {
-
-        const learned =
-            finalMemoryLearnIfUseful(
-                userId,
-                question,
-                answer,
-                {
-                    source:
-                        data.source ||
-                        "chat",
-
-                    category:
-                        data.category,
-
-                    tags:
-                        data.tags,
-
-                    confidence:
-                        data.confidence,
-
-                    quality:
-                        data.quality
-                }
-            );
-
-        return {
-            memoryFound: false,
-
-            answer: null,
-
-            learned:
-                learned.learned,
-
-            learningResult:
-                learned
-        };
-    }
-
-    return {
-        memoryFound: false,
-        answer: null
-    };
-}
-
-
-/* ------------------------------------------------------------
-   24. EXPRESS ROUTE FACTORY
------------------------------------------------------------- */
-
-function createMemoryRoutes(
-    express
-) {
-    if (!express) {
         return null;
     }
 
-    const router =
-        express.Router();
-
-    /* GET MEMORY STATUS */
-
-    router.get(
-        "/status",
-        (req, res) => {
-
-            try {
-
-                res.json({
-                    success: true,
-                    memory:
-                        finalMemoryStats()
-                });
-
-            } catch (error) {
-
-                res.status(500).json({
-                    success: false,
-                    error: error.message
-                });
-            }
-        }
+    return globalAnswerMemoryInstance.getUserMemoryProfile4(
+        userId
     );
-
-
-    /* POST MEMORY SEARCH */
-
-    router.post(
-        "/search",
-        async (req, res) => {
-
-            try {
-
-                const body =
-                    req.body || {};
-
-                const result =
-                    await finalMemorySearch(
-                        body.userId,
-                        body.question,
-                        body.options || {}
-                    );
-
-                res.json({
-                    success: true,
-                    ...result
-                });
-
-            } catch (error) {
-
-                res.status(500).json({
-                    success: false,
-                    error: error.message
-                });
-            }
-        }
-    );
-
-
-    /* POST MEMORY LEARN */
-
-    router.post(
-        "/learn",
-        (req, res) => {
-
-            try {
-
-                const body =
-                    req.body || {};
-
-                const result =
-                    finalMemoryLearnIfUseful(
-                        body.userId,
-                        body.question,
-                        body.answer,
-                        body.options || {}
-                    );
-
-                res.json({
-                    success: true,
-                    ...result
-                });
-
-            } catch (error) {
-
-                res.status(500).json({
-                    success: false,
-                    error: error.message
-                });
-            }
-        }
-    );
-
-
-    /* POST MEMORY FEEDBACK */
-
-    router.post(
-        "/feedback",
-        (req, res) => {
-
-            try {
-
-                const body =
-                    req.body || {};
-
-                const result =
-                    finalMemoryFeedback(
-                        body.id,
-                        body.feedback || {}
-                    );
-
-                res.json({
-                    success: true,
-                    ...result
-                });
-
-            } catch (error) {
-
-                res.status(500).json({
-                    success: false,
-                    error: error.message
-                });
-            }
-        }
-    );
-
-
-    /* GET USER MEMORY */
-
-    router.get(
-        "/user/:userId",
-        (req, res) => {
-
-            try {
-
-                const result =
-                    getUserMemory(
-                        req.params.userId
-                    );
-
-                res.json({
-                    success: true,
-                    ...result
-                });
-
-            } catch (error) {
-
-                res.status(500).json({
-                    success: false,
-                    error: error.message
-                });
-            }
-        }
-    );
-
-
-    /* POST MAINTENANCE */
-
-    router.post(
-        "/maintenance",
-        (req, res) => {
-
-            try {
-
-                const result =
-                    runFinalMemoryMaintenance(
-                        req.body || {}
-                    );
-
-                res.json({
-                    success: true,
-                    result
-                });
-
-            } catch (error) {
-
-                res.status(500).json({
-                    success: false,
-                    error: error.message
-                });
-            }
-        }
-    );
-
-
-    return router;
 }
 
 
-/* ------------------------------------------------------------
-   25. EXPRESS ATTACH HELPER
------------------------------------------------------------- */
-
-function attachMemoryRoutes(
-    app,
-    prefix = "/api/memory"
-) {
+function getAnswerMemoryOverview4() {
     if (
-        !app ||
-        typeof app.use !== "function"
+        !globalAnswerMemoryInstance
     ) {
-        return false;
+        return {
+            ok: false
+        };
     }
 
-    if (
-        typeof require !== "function"
-    ) {
-        return false;
-    }
-
-    try {
-
-        const express =
-            require("express");
-
-        const router =
-            createMemoryRoutes(
-                express
-            );
-
-        if (!router) {
-            return false;
-        }
-
-        app.use(
-            prefix,
-            router
-        );
-
-        return true;
-
-    } catch (error) {
-
-        console.warn(
-            "[TürkAI Memory] Route attach:",
-            error.message
-        );
-
-        return false;
-    }
+    return globalAnswerMemoryInstance.getOverview4();
 }
 
 
-/* ------------------------------------------------------------
-   26. SOCKET MEMORY BRIDGE
------------------------------------------------------------- */
+/* ============================================================
+   4.31 - GLOBAL BRIDGE
+============================================================ */
 
-function attachMemorySocket(
-    io
-) {
-    if (
-        !io ||
-        typeof io.on !== "function"
-    ) {
-        return false;
-    }
+globalThis.smartAutoLearnAnswer4 =
+    smartAutoLearnAnswer4;
 
-    try {
+globalThis.searchAnswerMemorySmart4 =
+    searchAnswerMemorySmart4;
 
-        io.on(
-            "connection",
-            socket => {
+globalThis.getAnswerMemoryUserProfile4 =
+    getAnswerMemoryUserProfile4;
 
-                socket.on(
-                    "memory:search",
-                    async payload => {
+globalThis.getAnswerMemoryOverview4 =
+    getAnswerMemoryOverview4;
 
-                        try {
 
-                            const data =
-                                payload || {};
-
-                            const result =
-                                await finalMemorySearch(
-                                    data.userId,
-                                    data.question,
-                                    data.options || {}
-                                );
-
-                            socket.emit(
-                                "memory:search:result",
-                                result
-                            );
-
-                        } catch (error) {
-
-                            socket.emit(
-                                "memory:search:result",
-                                {
-                                    found: false,
-                                    error:
-                                        error.message
-                                }
-                            );
-                        }
-                    }
-                );
-
-
-                socket.on(
-                    "memory:learn",
-                    payload => {
-
-                        try {
-
-                            const data =
-                                payload || {};
-
-                            const result =
-                                finalMemoryLearnIfUseful(
-                                    data.userId,
-                                    data.question,
-                                    data.answer,
-                                    data.options || {}
-                                );
-
-                            socket.emit(
-                                "memory:learn:result",
-                                result
-                            );
-
-                        } catch (error) {
-
-                            socket.emit(
-                                "memory:learn:result",
-                                {
-                                    learned: false,
-                                    error:
-                                        error.message
-                                }
-                            );
-                        }
-                    }
-                );
-
-
-                socket.on(
-                    "memory:feedback",
-                    payload => {
-
-                        try {
-
-                            const data =
-                                payload || {};
-
-                            const result =
-                                finalMemoryFeedback(
-                                    data.id,
-                                    data.feedback || {}
-                                );
-
-                            socket.emit(
-                                "memory:feedback:result",
-                                result
-                            );
-
-                        } catch (error) {
-
-                            socket.emit(
-                                "memory:feedback:result",
-                                {
-                                    success: false,
-                                    error:
-                                        error.message
-                                }
-                            );
-                        }
-                    }
-                );
-            }
-        );
-
-        return true;
-
-    } catch (error) {
-
-        console.warn(
-            "[TürkAI Memory] Socket attach:",
-            error.message
-        );
-
-        return false;
-    }
-}
-
-
-/* ------------------------------------------------------------
-   27. SERVER INTEGRATION OBJECT
------------------------------------------------------------- */
-
-const memoryServerIntegration = {
-
-    initialize:
-        initializeFinalMemory,
-
-    search:
-        finalMemorySearch,
-
-    searchSync:
-        finalMemorySearchSync,
-
-    learn:
-        finalMemoryLearn,
-
-    learnIfUseful:
-        finalMemoryLearnIfUseful,
-
-    feedback:
-        finalMemoryFeedback,
-
-    chat:
-        processChatMemory,
-
-    stats:
-        finalMemoryStats,
-
-    health:
-        getAdvancedMemoryHealth,
-
-    maintenance:
-        runFinalMemoryMaintenance,
-
-    createRoutes:
-        createMemoryRoutes,
-
-    attachRoutes:
-        attachMemoryRoutes,
-
-    attachSocket:
-        attachMemorySocket,
-
-    userMemory:
-        getUserMemory,
-
-    clearUser:
-        clearUserMemory,
-
-    pin:
-        finalPinMemory,
-
-    unpin:
-        finalUnpinMemory,
-
-    archive:
-        finalArchiveMemory,
-
-    restore:
-        finalRestoreMemory
-};
-
-
-/* ------------------------------------------------------------
-   28. TURKAI MEMORY SERVICE
------------------------------------------------------------- */
-
-const TurkAIMemoryService = {
-
-    name:
-        "TürkAI Answer Memory",
-
-    version:
-        FINAL_MEMORY_CONFIG.version,
-
-    config:
-        FINAL_MEMORY_CONFIG,
-
-    state:
-        finalMemoryState,
-
-    initialize() {
-        return initializeFinalMemory();
-    },
-
-    async search(
-        userId,
-        question,
-        options
-    ) {
-        return finalMemorySearch(
-            userId,
-            question,
-            options
-        );
-    },
-
-    searchSync(
-        userId,
-        question,
-        options
-    ) {
-        return finalMemorySearchSync(
-            userId,
-            question,
-            options
-        );
-    },
-
-    learn(
-        userId,
-        question,
-        answer,
-        options
-    ) {
-        return finalMemoryLearn(
-            userId,
-            question,
-            answer,
-            options
-        );
-    },
-
-    learnIfUseful(
-        userId,
-        question,
-        answer,
-        options
-    ) {
-        return finalMemoryLearnIfUseful(
-            userId,
-            question,
-            answer,
-            options
-        );
-    },
-
-    feedback(
-        id,
-        feedback
-    ) {
-        return finalMemoryFeedback(
-            id,
-            feedback
-        );
-    },
-
-    chat(
-        data
-    ) {
-        return processChatMemory(
-            data
-        );
-    },
-
-    stats() {
-        return finalMemoryStats();
-    },
-
-    maintenance(
-        options
-    ) {
-        return runFinalMemoryMaintenance(
-            options
-        );
-    }
-};
-
-
-/* ------------------------------------------------------------
-   29. FINAL GLOBAL BRIDGE
------------------------------------------------------------- */
+/* ============================================================
+   4.32 - TURKAI GLOBAL NAMESPACE
+============================================================ */
 
 if (
-    typeof global !== "undefined"
+    !globalThis.turkAIAnswerMemory
 ) {
+    globalThis.turkAIAnswerMemory =
+        globalAnswerMemoryInstance;
+}
 
-    global.TurkAIMemoryService =
-        TurkAIMemoryService;
+globalThis.turkAIAnswerMemory.smartLearn =
+    smartAutoLearnAnswer4;
 
-    global.memoryServerIntegration =
-        memoryServerIntegration;
+globalThis.turkAIAnswerMemory.smartSearch =
+    searchAnswerMemorySmart4;
 
-    global.processChatMemory =
-        processChatMemory;
+globalThis.turkAIAnswerMemory.userProfile =
+    getAnswerMemoryUserProfile4;
 
-    global.searchTurkAIMemory =
-        finalMemorySearch;
+globalThis.turkAIAnswerMemory.overview =
+    getAnswerMemoryOverview4;
 
-    global.learnTurkAIMemory =
-        finalMemoryLearnIfUseful;
+
+/* ============================================================
+   4.33 - FINAL STATUS
+============================================================ */
+
+console.log(
+    "[AnswerMemory] Part 4/5 loaded."
+);
+
+console.log(
+    "[AnswerMemory] Auto learning          : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Feedback engine        : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Quality engine         : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] User profiles          : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] User topics            : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] History engine         : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Bulk operations        : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Verification system    : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Trust system            : ACTIVE"
+);
+
+console.log(
+    "[AnswerMemory] Analytics               : ACTIVE"
+);
+
+/* ============================================================
+   END OF PART 4 / 5
+============================================================ */
+/* ============================================================
+   TÜRKAI ANSWER MEMORY ENGINE 5.0
+   PART 5 / 5
+   PERSISTENCE + MAINTENANCE + GLOBAL INSTANCE
+   + EXPORT / IMPORT + HEALTH + DIAGNOSTICS
+   + COMPATIBILITY + FINAL API
+============================================================ */
+
+
+/* ============================================================
+   5.0 - MEMORY MAINTENANCE CONSTANTS
+============================================================ */
+
+const ANSWER_MEMORY_MAINTENANCE_5 = {
+    cacheMaximum:
+        10000,
+
+    cacheKeep:
+        8000,
+
+    maximumBackups:
+        20,
+
+    inactiveRetentionDays:
+        365,
+
+    archivedRetentionDays:
+        365,
+
+    weakRecordRetentionDays:
+        180,
+
+    minimumWeakQuality:
+        0.30,
+
+    maintenanceIntervalMs:
+        1000 *
+        60 *
+        30,
+
+    backupIntervalMs:
+        1000 *
+        60 *
+        60 *
+        6
+};
+
+
+/* ============================================================
+   5.1 - DATE HELPERS
+============================================================ */
+
+function answerMemoryDateMs5(
+    value,
+    fallback = 0
+) {
+    const time =
+        new Date(
+            value
+        ).getTime();
+
+    return Number.isFinite(
+        time
+    )
+        ? time
+        : fallback;
 }
 
 
-/* ------------------------------------------------------------
-   30. FINAL AUTO SAVE
------------------------------------------------------------- */
+function answerMemoryAgeDays5(
+    value
+) {
+    const timestamp =
+        answerMemoryDateMs5(
+            value,
+            Date.now()
+        );
 
-let finalAutoSaveTimer =
-    null;
+    return Math.max(
+        0,
+        (
+            Date.now() -
+            timestamp
+        ) /
+        (
+            1000 *
+            60 *
+            60 *
+            24
+        )
+    );
+}
 
-function startFinalAutoSave() {
 
+/* ============================================================
+   5.2 - ERROR SAFE
+============================================================ */
+
+function answerMemoryError5(
+    error
+) {
     if (
-        finalAutoSaveTimer
+        !error
     ) {
-        return;
+        return {
+            name:
+                "UnknownError",
+
+            message:
+                "Unknown error",
+
+            stack:
+                null
+        };
+    }
+
+    return {
+        name:
+            String(
+                error.name ||
+                    "Error"
+            ),
+
+        message:
+            String(
+                error.message ||
+                    error
+            ),
+
+        stack:
+            error.stack
+                ? String(
+                      error.stack
+                  )
+                : null
+    };
+}
+
+
+/* ============================================================
+   5.3 - RECORD NORMALIZATION V5
+============================================================ */
+
+function answerMemoryNormalizeExistingRecord5(
+    record
+) {
+    if (
+        !record ||
+        typeof record !==
+            "object"
+    ) {
+        return null;
     }
 
     if (
-        FINAL_MEMORY_CONFIG.autoSave !== true
+        !record.id
     ) {
-        return;
+        record.id =
+            answerMemoryCreateId(
+                "answer"
+            );
     }
 
-    finalAutoSaveTimer =
-        setInterval(
-            () => {
+    record.version =
+        Number(
+            record.version ||
+                1
+        );
 
-                try {
+    record.createdAt =
+        record.createdAt ||
+        answerMemoryNowISO();
 
-                    if (
-                        typeof answerMemory.save ===
-                        "function"
-                    ) {
-                        answerMemory.save();
-                    }
+    record.updatedAt =
+        record.updatedAt ||
+        record.createdAt;
 
-                    finalMemoryState.lastSave =
-                        new Date().toISOString();
+    record.lastReadAt =
+        record.lastReadAt ||
+        null;
 
-                } catch (error) {
+    record.lastWriteAt =
+        record.lastWriteAt ||
+        record.updatedAt;
 
-                    finalMemoryState.errors++;
+    record.question =
+        answerMemorySafeText4(
+            record.question,
+            ""
+        );
 
-                    console.warn(
-                        "[TürkAI Memory] Auto-save:",
-                        error.message
+    record.answer =
+        answerMemorySafeText4(
+            record.answer,
+            ""
+        );
+
+    record.normalizedQuestion =
+        answerMemoryNormalizeTurkish(
+            record.question
+        );
+
+    record.normalizedAnswer =
+        answerMemoryNormalizeTurkish(
+            record.answer
+        );
+
+    record.searchQuestion =
+        answerMemorySearchNormalize(
+            record.question
+        );
+
+    record.questionHash =
+        answerMemoryHash(
+            record.normalizedQuestion
+        );
+
+    record.answerHash =
+        answerMemoryHash(
+            record.normalizedAnswer
+        );
+
+    record.userId =
+        answerMemoryNormalizeUserId2(
+            record.userId
+        );
+
+    record.userName =
+        answerMemoryNormalizeUserName2(
+            record.userName
+        );
+
+    record.scope =
+        answerMemorySafeText4(
+            record.scope,
+            "user"
+        );
+
+    record.language =
+        answerMemorySafeText4(
+            record.language,
+            answerMemoryDetectLanguage(
+                record.question
+            )
+        );
+
+    record.category =
+        answerMemorySafeText4(
+            record.category,
+            answerMemoryDetectCategory(
+                record.question
+            )
+        );
+
+    record.questionType =
+        answerMemorySafeText4(
+            record.questionType,
+            answerMemoryDetectQuestionType(
+                record.question
+            )
+        );
+
+    record.tags =
+        answerMemoryNormalizeTags(
+            record.tags ||
+                []
+        );
+
+    record.tokens =
+        answerMemoryUniqueArray(
+            Array.isArray(
+                record.tokens
+            )
+                ? record.tokens
+                : answerMemoryTokenize(
+                      record.question
+                  )
+        );
+
+    record.keywords =
+        answerMemoryUniqueArray(
+            Array.isArray(
+                record.keywords
+            )
+                ? record.keywords
+                : answerMemoryExtractKeywords(
+                      record.question
+                  )
+        );
+
+    record.tokenCount =
+        record.tokens.length;
+
+    record.keywordCount =
+        record.keywords.length;
+
+    record.importance =
+        answerMemoryQualityClamp4(
+            record.importance,
+            0.50
+        );
+
+    record.confidence =
+        answerMemoryQualityClamp4(
+            record.confidence,
+            0.80
+        );
+
+    record.quality =
+        answerMemoryQualityClamp4(
+            record.quality,
+            0.70
+        );
+
+    record.frequency =
+        Math.max(
+            1,
+            Number(
+                record.frequency ||
+                    1
+            )
+        );
+
+    record.hits =
+        Math.max(
+            0,
+            Number(
+                record.hits ||
+                    0
+            )
+        );
+
+    record.misses =
+        Math.max(
+            0,
+            Number(
+                record.misses ||
+                    0
+            )
+        );
+
+    record.saves =
+        Math.max(
+            1,
+            Number(
+                record.saves ||
+                    1
+            )
+        );
+
+    record.updates =
+        Math.max(
+            0,
+            Number(
+                record.updates ||
+                    0
+            )
+        );
+
+    record.duplicateCount =
+        Math.max(
+            0,
+            Number(
+                record.duplicateCount ||
+                    0
+            )
+        );
+
+    record.active =
+        record.active !== false;
+
+    record.archived =
+        Boolean(
+            record.archived
+        );
+
+    record.pinned =
+        Boolean(
+            record.pinned
+        );
+
+    record.favorite =
+        Boolean(
+            record.favorite
+        );
+
+    record.verified =
+        Boolean(
+            record.verified
+        );
+
+    record.trusted =
+        Boolean(
+            record.trusted
+        );
+
+    record.source =
+        answerMemorySafeText4(
+            record.source,
+            "chat"
+        );
+
+    record.model =
+        answerMemorySafeText4(
+            record.model,
+            "local"
+        );
+
+    record.conversationId =
+        answerMemorySafeText4(
+            record.conversationId,
+            ""
+        );
+
+    record.sessionId =
+        answerMemorySafeText4(
+            record.sessionId,
+            ""
+        );
+
+    record.projectId =
+        answerMemorySafeText4(
+            record.projectId,
+            ""
+        );
+
+    record.metadata =
+        answerMemoryEnsureObject(
+            record.metadata
+        );
+
+    record.custom =
+        answerMemoryEnsureObject(
+            record.custom
+        );
+
+    if (
+        !Array.isArray(
+            record.feedbackHistory
+        )
+    ) {
+        record.feedbackHistory =
+            [];
+    }
+
+    return record;
+}
+
+
+/* ============================================================
+   5.4 - NORMALIZE ALL STORED RECORDS
+============================================================ */
+
+AnswerMemory.prototype.normalizeAllRecords5 =
+    function () {
+        const records =
+            this.records || {};
+
+        const normalized = {};
+
+        let count = 0;
+        let invalid = 0;
+
+        for (
+            const [id, rawRecord]
+            of Object.entries(
+                records
+            )
+        ) {
+            const record =
+                answerMemoryNormalizeExistingRecord5(
+                    rawRecord
+                );
+
+            if (
+                !record
+            ) {
+                invalid++;
+                continue;
+            }
+
+            if (
+                !record.id
+            ) {
+                record.id =
+                    id;
+            }
+
+            normalized[
+                record.id
+            ] =
+                record;
+
+            count++;
+        }
+
+        this.records =
+            normalized;
+
+        return {
+            ok: true,
+            normalized:
+                count,
+            invalid
+        };
+    };
+
+
+/* ============================================================
+   5.5 - INDEX REBUILD V5
+============================================================ */
+
+AnswerMemory.prototype.rebuildIndex5 =
+    function (
+        options = {}
+    ) {
+        this.index = {};
+        this.userIndex = {};
+
+        const records =
+            Object.values(
+                this.records || {}
+            );
+
+        let indexed =
+            0;
+
+        let skipped =
+            0;
+
+        for (
+            const record
+            of records
+        ) {
+            if (
+                !record
+            ) {
+                skipped++;
+                continue;
+            }
+
+            answerMemoryNormalizeExistingRecord5(
+                record
+            );
+
+            if (
+                record.active ===
+                    false &&
+                options.includeInactive !==
+                    true
+            ) {
+                continue;
+            }
+
+            if (
+                record.archived ===
+                    true &&
+                options.includeArchived !==
+                    true
+            ) {
+                continue;
+            }
+
+            this.indexRecordV2
+                ? this.indexRecordV2(
+                      record
+                  )
+                : this.indexRecord(
+                      record
+                  );
+
+            indexed++;
+        }
+
+        this.stats.rebuilds =
+            Number(
+                this.stats?.rebuilds ||
+                    0
+            ) + 1;
+
+        this.stats.lastMaintenance =
+            answerMemoryNowISO();
+
+        if (
+            options.persist !==
+            false
+        ) {
+            this.persist();
+        }
+
+        return {
+            ok: true,
+
+            indexed,
+
+            skipped,
+
+            records:
+                Object.keys(
+                    this.records || {}
+                ).length,
+
+            tokens:
+                Object.keys(
+                    this.index || {}
+                ).length,
+
+            users:
+                Object.keys(
+                    this.userIndex || {}
+                ).length
+        };
+    };
+
+
+/* ============================================================
+   5.6 - CACHE MAINTENANCE
+============================================================ */
+
+AnswerMemory.prototype.maintainCache5 =
+    function () {
+        if (
+            !this.cache ||
+            typeof this.cache !==
+                "object"
+        ) {
+            this.cache = {};
+
+            return {
+                ok: true,
+                removed: 0,
+                remaining: 0
+            };
+        }
+
+        const now =
+            Date.now();
+
+        let removed =
+            0;
+
+        const ttl =
+            Number(
+                this.config?.cacheTTL ||
+                    1000 *
+                    60 *
+                    15
+            );
+
+        for (
+            const [key, entry]
+            of Object.entries(
+                this.cache
+            )
+        ) {
+            if (
+                !answerMemoryValidateCacheEntry3(
+                    entry,
+                    ttl
+                )
+            ) {
+                delete this.cache[
+                    key
+                ];
+
+                removed++;
+
+                continue;
+            }
+
+            const age =
+                now -
+                Number(
+                    entry.createdAt ||
+                        now
+                );
+
+            if (
+                age >
+                ttl
+            ) {
+                delete this.cache[
+                    key
+                ];
+
+                removed++;
+            }
+        }
+
+        const keys =
+            Object.keys(
+                this.cache
+            );
+
+        if (
+            keys.length >
+            ANSWER_MEMORY_MAINTENANCE_5
+                .cacheMaximum
+        ) {
+            const entries =
+                keys
+                    .map(
+                        key => ({
+                            key,
+
+                            createdAt:
+                                Number(
+                                    this.cache[
+                                        key
+                                    ]?.createdAt ||
+                                    0
+                                )
+                        })
+                    )
+                    .sort(
+                        (
+                            a,
+                            b
+                        ) =>
+                            a.createdAt -
+                            b.createdAt
+                    );
+
+            const removeCount =
+                Math.max(
+                    0,
+                    keys.length -
+                        ANSWER_MEMORY_MAINTENANCE_5
+                            .cacheKeep
+                );
+
+            for (
+                let i = 0;
+                i < removeCount;
+                i++
+            ) {
+                delete this.cache[
+                    entries[i].key
+                ];
+
+                removed++;
+            }
+        }
+
+        return {
+            ok: true,
+            removed,
+            remaining:
+                Object.keys(
+                    this.cache
+                ).length
+        };
+    };
+
+
+/* ============================================================
+   5.7 - RECORD MAINTENANCE
+============================================================ */
+
+AnswerMemory.prototype.maintainRecords5 =
+    function (
+        options = {}
+    ) {
+        const now =
+            Date.now();
+
+        const inactiveDays =
+            Number(
+                options.inactiveDays ??
+                    ANSWER_MEMORY_MAINTENANCE_5
+                        .inactiveRetentionDays
+            );
+
+        const archivedDays =
+            Number(
+                options.archivedDays ??
+                    ANSWER_MEMORY_MAINTENANCE_5
+                        .archivedRetentionDays
+            );
+
+        const weakDays =
+            Number(
+                options.weakDays ??
+                    ANSWER_MEMORY_MAINTENANCE_5
+                        .weakRecordRetentionDays
+            );
+
+        const minimumWeakQuality =
+            Number(
+                options.minimumWeakQuality ??
+                    ANSWER_MEMORY_MAINTENANCE_5
+                        .minimumWeakQuality
+            );
+
+        let removed =
+            0;
+
+        let archived =
+            0;
+
+        let touched =
+            0;
+
+        for (
+            const record
+            of Object.values(
+                this.records || {}
+            )
+        ) {
+            if (
+                !record
+            ) {
+                continue;
+            }
+
+            const ageDays =
+                answerMemoryAgeDays5(
+                    record.updatedAt ||
+                        record.createdAt
+                );
+
+            const inactive =
+                record.active ===
+                false;
+
+            const oldArchived =
+                record.archived ===
+                    true &&
+                ageDays >
+                    archivedDays;
+
+            const weak =
+                Number(
+                    record.hits ||
+                        0
+                ) === 0 &&
+                Number(
+                    record.frequency ||
+                        1
+                ) <=
+                    1 &&
+                Number(
+                    record.quality ??
+                        0.70
+                ) <=
+                    minimumWeakQuality &&
+                ageDays >
+                    weakDays;
+
+            if (
+                oldArchived ||
+                (
+                    inactive &&
+                    ageDays >
+                        inactiveDays
+                )
+            ) {
+                if (
+                    options.permanent ===
+                    true
+                ) {
+                    this.removeRecordFromIndexV2(
+                        record
+                    );
+
+                    delete this.records[
+                        record.id
+                    ];
+
+                    removed++;
+                } else {
+                    record.archived =
+                        true;
+
+                    record.active =
+                        false;
+
+                    record.updatedAt =
+                        answerMemoryNowISO();
+
+                    archived++;
+
+                    this.removeRecordFromIndexV2(
+                        record
                     );
                 }
 
-            },
-            1000 * 60
-        );
-
-    if (
-        finalAutoSaveTimer &&
-        typeof finalAutoSaveTimer.unref ===
-        "function"
-    ) {
-        finalAutoSaveTimer.unref();
-    }
-}
-
-
-function stopFinalAutoSave() {
-
-    if (
-        finalAutoSaveTimer
-    ) {
-
-        clearInterval(
-            finalAutoSaveTimer
-        );
-
-        finalAutoSaveTimer =
-            null;
-    }
-}
-
-
-/* ------------------------------------------------------------
-   31. PROCESS SHUTDOWN SAVE
------------------------------------------------------------- */
-
-function registerFinalShutdownHooks() {
-
-    if (
-        typeof process ===
-        "undefined"
-    ) {
-        return;
-    }
-
-    const saveOnExit = () => {
-
-        try {
+                continue;
+            }
 
             if (
-                typeof answerMemory.save ===
-                "function"
+                weak &&
+                options.archiveWeak !==
+                    false
             ) {
-                answerMemory.save();
+                if (
+                    !record.archived
+                ) {
+                    record.archived =
+                        true;
+
+                    record.active =
+                        false;
+
+                    record.updatedAt =
+                        answerMemoryNowISO();
+
+                    archived++;
+
+                    this.removeRecordFromIndexV2(
+                        record
+                    );
+                }
+
+                continue;
             }
 
-        } catch (_) {}
+            /*
+            Eski kayıtların scoring alanlarını normalize et.
+            */
 
-        stopFinalAutoSave();
-        stopFinalMaintenanceTimer();
+            answerMemoryNormalizeExistingRecord5(
+                record
+            );
+
+            touched++;
+        }
+
+        this.stats.totalEntries =
+            Object.keys(
+                this.records || {}
+            ).length;
+
+        this.stats.lastMaintenance =
+            answerMemoryNowISO();
+
+        this.persist();
+
+        return {
+            ok: true,
+
+            removed,
+
+            archived,
+
+            touched,
+
+            remaining:
+                Object.keys(
+                    this.records || {}
+                ).length
+        };
     };
 
-    try {
 
-        process.once(
-            "SIGINT",
-            () => {
-                saveOnExit();
-                process.exit(0);
+/* ============================================================
+   5.8 - FULL MAINTENANCE
+============================================================ */
+
+AnswerMemory.prototype.runMaintenance5 =
+    function (
+        options = {}
+    ) {
+        const started =
+            Date.now();
+
+        let normalizeResult =
+            null;
+
+        let cacheResult =
+            null;
+
+        let recordResult =
+            null;
+
+        let indexResult =
+            null;
+
+        const errors =
+            [];
+
+        try {
+            normalizeResult =
+                this.normalizeAllRecords5();
+        } catch (
+            error
+        ) {
+            errors.push({
+                step:
+                    "normalize",
+                error:
+                    answerMemoryError5(
+                        error
+                    )
+            });
+        }
+
+        try {
+            cacheResult =
+                this.maintainCache5();
+        } catch (
+            error
+        ) {
+            errors.push({
+                step:
+                    "cache",
+                error:
+                    answerMemoryError5(
+                        error
+                    )
+            });
+        }
+
+        try {
+            recordResult =
+                this.maintainRecords5(
+                    options
+                );
+        } catch (
+            error
+        ) {
+            errors.push({
+                step:
+                    "records",
+                error:
+                    answerMemoryError5(
+                        error
+                    )
+            });
+        }
+
+        try {
+            indexResult =
+                this.rebuildIndex5(
+                    {
+                        persist:
+                            false,
+
+                        includeInactive:
+                            false,
+
+                        includeArchived:
+                            false
+                    }
+                );
+        } catch (
+            error
+        ) {
+            errors.push({
+                step:
+                    "index",
+                error:
+                    answerMemoryError5(
+                        error
+                    )
+            });
+        }
+
+        try {
+            this.persist(
+                {
+                    backup:
+                        options.backup ===
+                        true
+                }
+            );
+        } catch (
+            error
+        ) {
+            errors.push({
+                step:
+                    "persist",
+                error:
+                    answerMemoryError5(
+                        error
+                    )
+            });
+        }
+
+        const durationMs =
+            Date.now() -
+            started;
+
+        return {
+            ok:
+                errors.length ===
+                0,
+
+            durationMs,
+
+            normalize:
+                normalizeResult,
+
+            cache:
+                cacheResult,
+
+            records:
+                recordResult,
+
+            index:
+                indexResult,
+
+            errors
+        };
+    };
+
+
+/* ============================================================
+   5.9 - BACKUP CREATOR
+============================================================ */
+
+AnswerMemory.prototype.createBackup5 =
+    function () {
+        try {
+            answerMemoryEnsureDirectories();
+
+            const stamp =
+                new Date()
+                    .toISOString()
+                    .replace(
+                        /[:.]/g,
+                        "-"
+                    );
+
+            const backupFile =
+                path.join(
+                    ANSWER_MEMORY_BACKUP_DIR,
+                    `answer-memory-${stamp}.json`
+                );
+
+            const payload = {
+                format:
+                    "turkai-answer-memory-backup",
+
+                version:
+                    ANSWER_MEMORY_VERSION,
+
+                createdAt:
+                    answerMemoryNowISO(),
+
+                config:
+                    this.config,
+
+                records:
+                    this.records,
+
+                index:
+                    this.index,
+
+                userIndex:
+                    this.userIndex,
+
+                stats:
+                    this.stats,
+
+                history:
+                    this.history
+            };
+
+            const ok =
+                answerMemoryWriteJSON(
+                    backupFile,
+                    payload
+                );
+
+            if (
+                ok
+            ) {
+                this.stats.backups =
+                    Number(
+                        this.stats
+                            .backups ||
+                            0
+                    ) + 1;
+
+                this.stats.lastBackup =
+                    answerMemoryNowISO();
+
+                this.rotateBackups5();
+            }
+
+            return {
+                ok,
+                file:
+                    backupFile
+            };
+        } catch (
+            error
+        ) {
+            return {
+                ok: false,
+                error:
+                    answerMemoryError5(
+                        error
+                    )
+            };
+        }
+    };
+
+
+/* ============================================================
+   5.10 - ROTATE BACKUPS
+============================================================ */
+
+AnswerMemory.prototype.rotateBackups5 =
+    function () {
+        try {
+            if (
+                !fs.existsSync(
+                    ANSWER_MEMORY_BACKUP_DIR
+                )
+            ) {
+                return {
+                    ok: true,
+                    removed: 0
+                };
+            }
+
+            const maximum =
+                Number(
+                    this.config
+                        ?.maxBackupFiles ||
+                    ANSWER_MEMORY_MAINTENANCE_5
+                        .maximumBackups
+                );
+
+            const files =
+                fs.readdirSync(
+                    ANSWER_MEMORY_BACKUP_DIR
+                )
+                    .filter(
+                        file =>
+                            file.startsWith(
+                                "answer-memory-"
+                            ) &&
+                            file.endsWith(
+                                ".json"
+                            )
+                    )
+                    .map(
+                        file => {
+                            const full =
+                                path.join(
+                                    ANSWER_MEMORY_BACKUP_DIR,
+                                    file
+                                );
+
+                            return {
+                                file,
+                                full,
+                                time:
+                                    fs.statSync(
+                                        full
+                                    ).mtimeMs
+                            };
+                        }
+                    )
+                    .sort(
+                        (
+                            a,
+                            b
+                        ) =>
+                            b.time -
+                            a.time
+                    );
+
+            let removed =
+                0;
+
+            for (
+                const item
+                of files.slice(
+                    maximum
+                )
+            ) {
+                try {
+                    fs.unlinkSync(
+                        item.full
+                    );
+
+                    removed++;
+                } catch {}
+            }
+
+            return {
+                ok: true,
+                removed
+            };
+        } catch (
+            error
+        ) {
+            return {
+                ok: false,
+                error:
+                    answerMemoryError5(
+                        error
+                    )
+            };
+        }
+    };
+
+
+/* ============================================================
+   5.11 - EXPORT MEMORY
+============================================================ */
+
+AnswerMemory.prototype.export5 =
+    function (
+        options = {}
+    ) {
+        try {
+            answerMemoryEnsureDirectories();
+
+            let records =
+                Object.values(
+                    this.records || {}
+                );
+
+            if (
+                options.userId
+            ) {
+                const userId =
+                    answerMemoryNormalizeUserId2(
+                        options.userId
+                    );
+
+                records =
+                    records.filter(
+                        record =>
+                            answerMemoryNormalizeUserId2(
+                                record.userId
+                            ) ===
+                            userId
+                    );
+            }
+
+            if (
+                options.category
+            ) {
+                records =
+                    records.filter(
+                        record =>
+                            record.category ===
+                            options.category
+                    );
+            }
+
+            if (
+                options.activeOnly
+            ) {
+                records =
+                    records.filter(
+                        record =>
+                            record.active !==
+                            false
+                    );
+            }
+
+            const timestamp =
+                new Date()
+                    .toISOString()
+                    .replace(
+                        /[:.]/g,
+                        "-"
+                    );
+
+            const filename =
+                options.fileName ||
+                `answer-memory-export-${timestamp}.json`;
+
+            const safeFilename =
+                filename
+                    .replace(
+                        /[<>:"/\\|?*]/g,
+                        "_"
+                    )
+                    .slice(
+                        0,
+                        180
+                    );
+
+            const filePath =
+                path.join(
+                    ANSWER_MEMORY_EXPORT_DIR,
+                    safeFilename
+                );
+
+            const payload = {
+                format:
+                    "turkai-answer-memory",
+
+                version:
+                    ANSWER_MEMORY_VERSION,
+
+                exportedAt:
+                    answerMemoryNowISO(),
+
+                count:
+                    records.length,
+
+                filters: {
+                    userId:
+                        options.userId ||
+                        null,
+
+                    category:
+                        options.category ||
+                        null,
+
+                    activeOnly:
+                        Boolean(
+                            options.activeOnly
+                        )
+                },
+
+                records:
+                    records.map(
+                        record =>
+                            this.publicRecord(
+                                record
+                            )
+                    ),
+
+                stats:
+                    options.includeStats
+                        ? this.stats
+                        : undefined
+            };
+
+            const ok =
+                answerMemoryWriteJSON(
+                    filePath,
+                    payload
+                );
+
+            if (
+                ok
+            ) {
+                this.stats.exports =
+                    Number(
+                        this.stats
+                            .exports ||
+                            0
+                    ) + 1;
+            }
+
+            return {
+                ok,
+                file:
+                    filePath,
+                count:
+                    records.length
+            };
+        } catch (
+            error
+        ) {
+            return {
+                ok: false,
+                error:
+                    answerMemoryError5(
+                        error
+                    )
+            };
+        }
+    };
+
+
+/* ============================================================
+   5.12 - IMPORT MEMORY
+============================================================ */
+
+AnswerMemory.prototype.import5 =
+    function (
+        input,
+        options = {}
+    ) {
+        try {
+            let payload =
+                input;
+
+            if (
+                typeof input ===
+                "string"
+            ) {
+                if (
+                    fs.existsSync(
+                        input
+                    )
+                ) {
+                    payload =
+                        answerMemoryReadJSON(
+                            input,
+                            {}
+                        );
+                } else {
+                    payload =
+                        JSON.parse(
+                            input
+                        );
+                }
+            }
+
+            if (
+                Buffer.isBuffer(
+                    payload
+                )
+            ) {
+                payload =
+                    JSON.parse(
+                        payload.toString(
+                            "utf8"
+                        )
+                    );
+            }
+
+            const data =
+                answerMemoryEnsureObject(
+                    payload
+                );
+
+            const imported =
+                Array.isArray(
+                    data.records
+                )
+                    ? data.records
+                    : Array.isArray(
+                          payload
+                      )
+                    ? payload
+                    : [];
+
+            let importedCount =
+                0;
+
+            let skipped =
+                0;
+
+            let updated =
+                0;
+
+            let created =
+                0;
+
+            for (
+                const item
+                of imported
+            ) {
+                if (
+                    !item ||
+                    !item.question ||
+                    !item.answer
+                ) {
+                    skipped++;
+                    continue;
+                }
+
+                const normalizedQuestion =
+                    answerMemoryNormalizeTurkish(
+                        item.question
+                    );
+
+                const existing =
+                    Object.values(
+                        this.records || {}
+                    ).find(
+                        record =>
+                            record &&
+                            record.active !==
+                                false &&
+                            record.questionHash ===
+                                answerMemoryHash(
+                                    normalizedQuestion
+                                ) &&
+                            (
+                                !options.userId ||
+                                answerMemoryNormalizeUserId2(
+                                    record.userId
+                                ) ===
+                                    answerMemoryNormalizeUserId2(
+                                        options.userId
+                                    )
+                            )
+                    );
+
+                if (
+                    existing &&
+                    options.updateOnConflict !==
+                        false
+                ) {
+                    existing.answer =
+                        answerMemorySafeText4(
+                            item.answer,
+                            existing.answer
+                        );
+
+                    existing.normalizedAnswer =
+                        answerMemoryNormalizeTurkish(
+                            existing.answer
+                        );
+
+                    existing.answerHash =
+                        answerMemoryHash(
+                            existing.normalizedAnswer
+                        );
+
+                    existing.updatedAt =
+                        answerMemoryNowISO();
+
+                    existing.version =
+                        Number(
+                            existing.version ||
+                                1
+                        ) + 1;
+
+                    existing.updates =
+                        Number(
+                            existing.updates ||
+                                0
+                        ) + 1;
+
+                    updated++;
+                    importedCount++;
+
+                    continue;
+                }
+
+                const result =
+                    this.saveAnswerV2(
+                        item.question,
+                        item.answer,
+                        {
+                            userId:
+                                options.userId ||
+                                item.userId,
+
+                            userName:
+                                item.userName,
+
+                            scope:
+                                item.scope,
+
+                            language:
+                                item.language,
+
+                            category:
+                                item.category,
+
+                            tags:
+                                item.tags,
+
+                            importance:
+                                item.importance,
+
+                            confidence:
+                                item.confidence,
+
+                            quality:
+                                item.quality,
+
+                            pinned:
+                                item.pinned,
+
+                            favorite:
+                                item.favorite,
+
+                            verified:
+                                item.verified,
+
+                            trusted:
+                                item.trusted,
+
+                            source:
+                                "import",
+
+                            model:
+                                item.model,
+
+                            metadata:
+                                item.metadata,
+
+                            custom:
+                                item.custom,
+
+                            updateOnConflict:
+                                options
+                                    .updateOnConflict !==
+                                false
+                        }
+                    );
+
+                if (
+                    result?.ok
+                ) {
+                    importedCount++;
+
+                    if (
+                        result.created
+                    ) {
+                        created++;
+                    }
+                } else {
+                    skipped++;
+                }
+            }
+
+            this.stats.imports =
+                Number(
+                    this.stats.imports ||
+                        0
+                ) + 1;
+
+            this.stats.lastWrite =
+                answerMemoryNowISO();
+
+            this.persist();
+
+            return {
+                ok: true,
+
+                imported:
+                    importedCount,
+
+                created,
+
+                updated,
+
+                skipped,
+
+                total:
+                    imported.length
+            };
+        } catch (
+            error
+        ) {
+            return {
+                ok: false,
+
+                imported: 0,
+
+                skipped: 0,
+
+                error:
+                    answerMemoryError5(
+                        error
+                    )
+            };
+        }
+    };
+
+
+/* ============================================================
+   5.13 - HEALTH REPORT
+============================================================ */
+
+AnswerMemory.prototype.getHealth5 =
+    function () {
+        let storageOk =
+            true;
+
+        const storageErrors =
+            [];
+
+        const filesToCheck = [
+            ANSWER_MEMORY_FILES.records,
+            ANSWER_MEMORY_FILES.index,
+            ANSWER_MEMORY_FILES.stats,
+            ANSWER_MEMORY_FILES.history,
+            ANSWER_MEMORY_FILES.config,
+            ANSWER_MEMORY_FILES.users,
+            ANSWER_MEMORY_FILES.cache
+        ];
+
+        for (
+            const filePath
+            of filesToCheck
+        ) {
+            try {
+                if (
+                    fs.existsSync(
+                        filePath
+                    )
+                ) {
+                    fs.accessSync(
+                        filePath,
+                        fs.constants.R_OK |
+                            fs.constants.W_OK
+                    );
+                }
+            } catch (
+                error
+            ) {
+                storageOk =
+                    false;
+
+                storageErrors.push(
+                    {
+                        file:
+                            filePath,
+
+                        error:
+                            error.message
+                    }
+                );
+            }
+        }
+
+        const total =
+            Object.keys(
+                this.records || {}
+            ).length;
+
+        const active =
+            Object.values(
+                this.records || {}
+            ).filter(
+                record =>
+                    record &&
+                    record.active !==
+                        false
+            ).length;
+
+        const archived =
+            Object.values(
+                this.records || {}
+            ).filter(
+                record =>
+                    record &&
+                    record.archived ===
+                        true
+            ).length;
+
+        const cacheEntries =
+            Object.keys(
+                this.cache || {}
+            ).length;
+
+        const indexTokens =
+            Object.keys(
+                this.index || {}
+            ).length;
+
+        const userCount =
+            Object.keys(
+                this.userIndex || {}
+            ).length;
+
+        return {
+            ok:
+                this.loaded ===
+                    true &&
+                this.config?.enabled !==
+                    false &&
+                storageOk,
+
+            version:
+                ANSWER_MEMORY_VERSION,
+
+            loaded:
+                Boolean(
+                    this.loaded
+                ),
+
+            enabled:
+                this.config?.enabled !==
+                false,
+
+            storage: {
+                ok:
+                    storageOk,
+
+                root:
+                    ANSWER_MEMORY_ROOT,
+
+                errors:
+                    storageErrors
+            },
+
+            records: {
+                total,
+                active,
+                archived
+            },
+
+            index: {
+                tokens:
+                    indexTokens,
+
+                users:
+                    userCount
+            },
+
+            cache: {
+                entries:
+                    cacheEntries,
+
+                enabled:
+                    this.config?.cacheEnabled !==
+                    false
+            },
+
+            statistics:
+                this.stats,
+
+            startedAt:
+                this.startedAt,
+
+            lastWriteAt:
+                this.lastWriteAt,
+
+            error:
+                this.lastLoadError
+        };
+    };
+
+
+/* ============================================================
+   5.14 - DIAGNOSTICS V5
+============================================================ */
+
+AnswerMemory.prototype.diagnostics5 =
+    function () {
+        const records =
+            Object.values(
+                this.records || {}
+            );
+
+        const categoryCounts =
+            {};
+
+        const userCounts =
+            {};
+
+        const sourceCounts =
+            {};
+
+        const languageCounts =
+            {};
+
+        let totalHits =
+            0;
+
+        let totalMisses =
+            0;
+
+        let totalQuality =
+            0;
+
+        let totalConfidence =
+            0;
+
+        let totalImportance =
+            0;
+
+        let totalAnswerLength =
+            0;
+
+        let totalQuestionLength =
+            0;
+
+        for (
+            const record
+            of records
+        ) {
+            if (
+                !record
+            ) {
+                continue;
+            }
+
+            const category =
+                record.category ||
+                "general";
+
+            const userId =
+                record.userId ||
+                "anonymous";
+
+            const source =
+                record.source ||
+                "unknown";
+
+            const language =
+                record.language ||
+                "unknown";
+
+            categoryCounts[
+                category
+            ] =
+                (
+                    categoryCounts[
+                        category
+                    ] || 0
+                ) + 1;
+
+            userCounts[
+                userId
+            ] =
+                (
+                    userCounts[
+                        userId
+                    ] || 0
+                ) + 1;
+
+            sourceCounts[
+                source
+            ] =
+                (
+                    sourceCounts[
+                        source
+                    ] || 0
+                ) + 1;
+
+            languageCounts[
+                language
+            ] =
+                (
+                    languageCounts[
+                        language
+                    ] || 0
+                ) + 1;
+
+            totalHits +=
+                Number(
+                    record.hits ||
+                        0
+                );
+
+            totalMisses +=
+                Number(
+                    record.misses ||
+                        0
+                );
+
+            totalQuality +=
+                Number(
+                    record.quality ??
+                        0.70
+                );
+
+            totalConfidence +=
+                Number(
+                    record.confidence ??
+                        0.80
+                );
+
+            totalImportance +=
+                Number(
+                    record.importance ??
+                        0.50
+                );
+
+            totalAnswerLength +=
+                String(
+                    record.answer ||
+                        ""
+                ).length;
+
+            totalQuestionLength +=
+                String(
+                    record.question ||
+                        ""
+                ).length;
+        }
+
+        const totalFeedback =
+            totalHits +
+            totalMisses;
+
+        return {
+            ok: true,
+
+            version:
+                ANSWER_MEMORY_VERSION,
+
+            records:
+                records.length,
+
+            active:
+                records.filter(
+                    record =>
+                        record.active !==
+                        false
+                ).length,
+
+            archived:
+                records.filter(
+                    record =>
+                        record.archived ===
+                        true
+                ).length,
+
+            users:
+                Object.keys(
+                    userCounts
+                ).length,
+
+            indexedTokens:
+                Object.keys(
+                    this.index || {}
+                ).length,
+
+            cacheEntries:
+                Object.keys(
+                    this.cache || {}
+                ).length,
+
+            categoryCounts,
+
+            userCounts,
+
+            sourceCounts,
+
+            languageCounts,
+
+            totalHits,
+
+            totalMisses,
+
+            feedbackRate:
+                totalFeedback >
+                0
+                    ? totalHits /
+                      totalFeedback
+                    : 0,
+
+            averageQuality:
+                records.length >
+                0
+                    ? totalQuality /
+                      records.length
+                    : 0,
+
+            averageConfidence:
+                records.length >
+                0
+                    ? totalConfidence /
+                      records.length
+                    : 0,
+
+            averageImportance:
+                records.length >
+                0
+                    ? totalImportance /
+                      records.length
+                    : 0,
+
+            averageQuestionLength:
+                records.length >
+                0
+                    ? totalQuestionLength /
+                      records.length
+                    : 0,
+
+            averageAnswerLength:
+                records.length >
+                0
+                    ? totalAnswerLength /
+                      records.length
+                    : 0,
+
+            search:
+                this.getSearchStats3
+                    ? this.getSearchStats3()
+                    : null,
+
+            health:
+                this.getHealth5()
+        };
+    };
+
+
+/* ============================================================
+   5.15 - SNAPSHOT V5
+============================================================ */
+
+AnswerMemory.prototype.snapshot5 =
+    function () {
+        return {
+            format:
+                "turkai-answer-memory-snapshot",
+
+            version:
+                ANSWER_MEMORY_VERSION,
+
+            timestamp:
+                answerMemoryNowISO(),
+
+            health:
+                this.getHealth5(),
+
+            diagnostics:
+                this.diagnostics5(),
+
+            topAnswers:
+                this.getTopAnswers4
+                    ? this.getTopAnswers4({
+                          limit: 20
+                      })
+                    : [],
+
+            recentHistory:
+                this.queryHistory4
+                    ? this.queryHistory4({
+                          limit: 20
+                      })
+                    : null
+        };
+    };
+
+
+/* ============================================================
+   5.16 - COMPATIBILITY SAVE
+============================================================ */
+
+AnswerMemory.prototype.saveAnswer =
+    function (
+        question,
+        answer,
+        options = {}
+    ) {
+        return this.saveAnswerV2(
+            question,
+            answer,
+            options
+        );
+    };
+
+
+/* ============================================================
+   5.17 - COMPATIBILITY SEARCH
+============================================================ */
+
+AnswerMemory.prototype.search =
+    function (
+        question,
+        options = {}
+    ) {
+        return this.searchAdvanced3(
+            question,
+            options
+        );
+    };
+
+
+AnswerMemory.prototype.find =
+    function (
+        question,
+        options = {}
+    ) {
+        return this.searchAdvanced3(
+            question,
+            {
+                ...options,
+                topK:
+                    options.topK ||
+                    1
             }
         );
+    };
 
-    } catch (_) {}
 
-    try {
+AnswerMemory.prototype.searchSmart =
+    function (
+        question,
+        options = {}
+    ) {
+        return this.searchAdvanced3(
+            question,
+            options
+        );
+    };
 
-        process.once(
-            "SIGTERM",
-            () => {
-                saveOnExit();
-                process.exit(0);
+
+/* ============================================================
+   5.18 - COMPATIBILITY HEALTH
+============================================================ */
+
+AnswerMemory.prototype.health =
+    function () {
+        return this.getHealth5();
+    };
+
+
+/* ============================================================
+   5.19 - COMPATIBILITY DIAGNOSTICS
+============================================================ */
+
+AnswerMemory.prototype.diagnostics =
+    function () {
+        return this.diagnostics5();
+    };
+
+
+/* ============================================================
+   5.20 - COMPATIBILITY EXPORT
+============================================================ */
+
+AnswerMemory.prototype.exportData =
+    function (
+        options = {}
+    ) {
+        return this.export5(
+            options
+        );
+    };
+
+
+/* ============================================================
+   5.21 - COMPATIBILITY IMPORT
+============================================================ */
+
+AnswerMemory.prototype.importData =
+    function (
+        input,
+        options = {}
+    ) {
+        return this.import5(
+            input,
+            options
+        );
+    };
+
+
+/* ============================================================
+   5.22 - COMPATIBILITY CLEAR
+============================================================ */
+
+AnswerMemory.prototype.clearMemory5 =
+    function (
+        options = {}
+    ) {
+        if (
+            options.backup !==
+            false
+        ) {
+            this.createBackup5();
+        }
+
+        this.records = {};
+        this.index = {};
+        this.userIndex = {};
+        this.history = [];
+        this.cache = {};
+
+        this.stats = {
+            totalEntries: 0,
+            totalReads: 0,
+            totalWrites: 0,
+            totalHits: 0,
+            totalMisses: 0,
+            duplicates: 0,
+            updates: 0,
+            deletions: 0,
+            searches: 0,
+            cacheHits: 0,
+            cacheMisses: 0,
+            imports: 0,
+            exports: 0,
+            rebuilds: 0,
+            backups: 0,
+            errors: 0,
+            lastWrite: null,
+            lastRead: null,
+            lastHit: null,
+            lastMiss: null,
+            lastSearch: null,
+            lastMaintenance:
+                answerMemoryNowISO(),
+            lastBackup:
+                this.stats?.lastBackup ||
+                null
+        };
+
+        this.persist();
+
+        return {
+            ok: true,
+            cleared: true
+        };
+    };
+
+
+/* ============================================================
+   5.23 - MEMORY CONTEXT TEXT
+============================================================ */
+
+AnswerMemory.prototype.buildContextText5 =
+    function (
+        question,
+        options = {}
+    ) {
+        const result =
+            this.getMemoryContext3
+                ? this.getMemoryContext3(
+                      question,
+                      {
+                          ...options,
+
+                          topK:
+                              options.topK ||
+                              5,
+
+                          touchResults:
+                              false
+                      }
+                  )
+                : null;
+
+        if (
+            !result?.results?.length
+        ) {
+            return {
+                ok: true,
+
+                text: "",
+
+                results: [],
+
+                best: null
+            };
+        }
+
+        const maxChars =
+            Math.max(
+                500,
+                Number(
+                    options.maxChars ||
+                        12000
+                )
+            );
+
+        let text = "";
+
+        const selected = [];
+
+        for (
+            const item
+            of result.results
+        ) {
+            const block =
+                [
+                    `Soru: ${item.question}`,
+
+                    `Cevap: ${item.answer}`,
+
+                    `Güven: ${(
+                        Number(
+                            item.confidence ||
+                                0
+                        ) *
+                        100
+                    ).toFixed(0)}%`,
+
+                    `Benzerlik: ${(
+                        Number(
+                            item.similarity ||
+                                0
+                        ) *
+                        100
+                    ).toFixed(0)}%`
+                ].join(
+                    "\n"
+                );
+
+            if (
+                (
+                    text.length +
+                    block.length +
+                    2
+                ) >
+                maxChars
+            ) {
+                break;
+            }
+
+            text +=
+                (
+                    text
+                        ? "\n\n"
+                        : ""
+                ) +
+                block;
+
+            selected.push(
+                item
+            );
+        }
+
+        return {
+            ok: true,
+
+            text,
+
+            results:
+                selected,
+
+            best:
+                selected[0] ||
+                null,
+
+            count:
+                selected.length
+        };
+    };
+
+
+/* ============================================================
+   5.24 - FINAL AUTO LEARNING BRIDGE
+============================================================ */
+
+AnswerMemory.prototype.learn =
+    function (
+        question,
+        answer,
+        options = {}
+    ) {
+        return this.smartAutoLearn4(
+            question,
+            answer,
+            options
+        );
+    };
+
+
+AnswerMemory.prototype.autoLearn =
+    function (
+        question,
+        answer,
+        options = {}
+    ) {
+        return this.smartAutoLearn4(
+            question,
+            answer,
+            options
+        );
+    };
+
+
+/* ============================================================
+   5.25 - MEMORY DECISION
+============================================================ */
+
+AnswerMemory.prototype.shouldUseMemory =
+    function (
+        question,
+        options = {}
+    ) {
+        return this.decideForChat3(
+            question,
+            options
+        );
+    };
+
+
+AnswerMemory.prototype.getMemoryAnswer =
+    function (
+        question,
+        options = {}
+    ) {
+        const decision =
+            this.decideForChat3(
+                question,
+                options
+            );
+
+        if (
+            !decision.useMemory
+        ) {
+            return null;
+        }
+
+        return (
+            decision.result ||
+            null
+        );
+    };
+
+
+/* ============================================================
+   5.26 - USER MEMORY EXPORT
+============================================================ */
+
+AnswerMemory.prototype.exportUser5 =
+    function (
+        userId,
+        options = {}
+    ) {
+        return this.export5(
+            {
+                ...options,
+
+                userId
             }
         );
+    };
 
-    } catch (_) {}
 
+/* ============================================================
+   5.27 - GET OVERVIEW
+============================================================ */
+
+AnswerMemory.prototype.overview =
+    function () {
+        if (
+            this.getOverview4
+        ) {
+            return this.getOverview4();
+        }
+
+        return {
+            ok: true,
+
+            totalRecords:
+                Object.keys(
+                    this.records || {}
+                ).length,
+
+            users:
+                Object.keys(
+                    this.userIndex || {}
+                ).length,
+
+            indexedTokens:
+                Object.keys(
+                    this.index || {}
+                ).length
+        };
+    };
+
+
+/* ============================================================
+   5.28 - GLOBAL INSTANCE
+============================================================ */
+
+/*
+Bu satırlar özellikle önemli.
+
+Part 2-4'te tanımlanan global fonksiyonların
+kullanabilmesi için gerçek instance burada oluşturuluyor.
+*/
+
+const globalAnswerMemoryInstance =
+    new AnswerMemory();
+
+
+/* ============================================================
+   5.29 - GLOBAL SAVE
+============================================================ */
+
+function saveAnswerMemory(
+    question,
+    answer,
+    options = {}
+) {
     try {
-
-        process.once(
-            "beforeExit",
-            saveOnExit
+        return globalAnswerMemoryInstance.saveAnswer(
+            question,
+            answer,
+            options
         );
+    } catch (
+        error
+    ) {
+        return {
+            ok: false,
 
-    } catch (_) {}
+            error:
+                answerMemoryError5(
+                    error
+                )
+        };
+    }
 }
 
 
-/* ------------------------------------------------------------
-   32. FINAL INITIALIZATION
------------------------------------------------------------- */
+/* ============================================================
+   5.30 - GLOBAL SEARCH
+============================================================ */
 
-try {
+function findAnswerMemory(
+    question,
+    options = {}
+) {
+    try {
+        return globalAnswerMemoryInstance.search(
+            question,
+            options
+        );
+    } catch (
+        error
+    ) {
+        return {
+            ok: false,
 
-    initializeFinalMemory();
+            query:
+                String(
+                    question ||
+                        ""
+                ),
 
-    startFinalAutoSave();
+            results: [],
 
-    startFinalMaintenanceTimer();
+            best: null,
 
-    registerFinalShutdownHooks();
-
-} catch (error) {
-
-    finalMemoryState.errors++;
-
-    console.warn(
-        "[TürkAI Memory] Final initialization:",
-        error.message
-    );
+            error:
+                answerMemoryError5(
+                    error
+                )
+        };
+    }
 }
 
 
-/* ------------------------------------------------------------
-   33. FINAL EXPORTS
------------------------------------------------------------- */
+/* ============================================================
+   5.31 - GLOBAL BEST ANSWER
+============================================================ */
+
+function findBestAnswerMemory(
+    question,
+    options = {}
+) {
+    try {
+        return globalAnswerMemoryInstance.findBestAnswer3(
+            question,
+            options
+        );
+    } catch {
+        return null;
+    }
+}
+
+
+/* ============================================================
+   5.32 - GLOBAL HEALTH
+============================================================ */
+
+function getAnswerMemoryHealth() {
+    try {
+        return globalAnswerMemoryInstance.getHealth5();
+    } catch (
+        error
+    ) {
+        return {
+            ok: false,
+
+            error:
+                answerMemoryError5(
+                    error
+                )
+        };
+    }
+}
+
+
+/* ============================================================
+   5.33 - GLOBAL STATS
+============================================================ */
+
+function getAnswerMemoryStats() {
+    try {
+        return globalAnswerMemoryInstance.getStats();
+    } catch (
+        error
+    ) {
+        return {
+            ok: false,
+
+            error:
+                answerMemoryError5(
+                    error
+                )
+        };
+    }
+}
+
+
+/* ============================================================
+   5.34 - GLOBAL DIAGNOSTICS
+============================================================ */
+
+function getAnswerMemoryDiagnostics() {
+    try {
+        return globalAnswerMemoryInstance.diagnostics5();
+    } catch (
+        error
+    ) {
+        return {
+            ok: false,
+
+            error:
+                answerMemoryError5(
+                    error
+                )
+        };
+    }
+}
+
+
+/* ============================================================
+   5.35 - GLOBAL AUTO LEARN
+============================================================ */
+
+function autoLearnAnswer(
+    question,
+    answer,
+    options = {}
+) {
+    try {
+        return globalAnswerMemoryInstance.smartAutoLearn4(
+            question,
+            answer,
+            options
+        );
+    } catch (
+        error
+    ) {
+        return {
+            ok: false,
+
+            learned: false,
+
+            error:
+                answerMemoryError5(
+                    error
+                )
+        };
+    }
+}
+
+
+/* ============================================================
+   5.36 - GLOBAL EXPORT
+============================================================ */
+
+function exportAnswerMemory(
+    options = {}
+) {
+    try {
+        return globalAnswerMemoryInstance.export5(
+            options
+        );
+    } catch (
+        error
+    ) {
+        return {
+            ok: false,
+
+            error:
+                answerMemoryError5(
+                    error
+                )
+        };
+    }
+}
+
+
+/* ============================================================
+   5.37 - GLOBAL IMPORT
+============================================================ */
+
+function importAnswerMemory(
+    input,
+    options = {}
+) {
+    try {
+        return globalAnswerMemoryInstance.import5(
+            input,
+            options
+        );
+    } catch (
+        error
+    ) {
+        return {
+            ok: false,
+
+            error:
+                answerMemoryError5(
+                    error
+                )
+        };
+    }
+}
+
+
+/* ============================================================
+   5.38 - GLOBAL CLEAR
+============================================================ */
+
+function clearAnswerMemory(
+    options = {}
+) {
+    try {
+        return globalAnswerMemoryInstance.clearMemory5(
+            options
+        );
+    } catch (
+        error
+    ) {
+        return {
+            ok: false,
+
+            error:
+                answerMemoryError5(
+                    error
+                )
+        };
+    }
+}
+
+
+/* ============================================================
+   5.39 - GLOBAL REBUILD
+============================================================ */
+
+function rebuildAnswerMemoryIndex() {
+    try {
+        return globalAnswerMemoryInstance.rebuildIndex5();
+    } catch (
+        error
+    ) {
+        return {
+            ok: false,
+
+            error:
+                answerMemoryError5(
+                    error
+                )
+        };
+    }
+}
+
+
+/* ============================================================
+   5.40 - GLOBAL DECISION
+============================================================ */
+
+function shouldUseAnswerMemory(
+    question,
+    options = {}
+) {
+    try {
+        return globalAnswerMemoryInstance.shouldUseMemory(
+            question,
+            options
+        );
+    } catch (
+        error
+    ) {
+        return {
+            useMemory: false,
+
+            reason:
+                "memory_error",
+
+            error:
+                answerMemoryError5(
+                    error
+                )
+        };
+    }
+}
+
+
+/* ============================================================
+   5.41 - GLOBAL CONTEXT
+============================================================ */
+
+function getAnswerMemoryContext(
+    question,
+    options = {}
+) {
+    try {
+        return globalAnswerMemoryInstance.buildContextText5(
+            question,
+            options
+        );
+    } catch (
+        error
+    ) {
+        return {
+            ok: false,
+
+            text: "",
+
+            results: [],
+
+            best: null,
+
+            error:
+                answerMemoryError5(
+                    error
+                )
+        };
+    }
+}
+
+
+/* ============================================================
+   5.42 - GLOBAL SNAPSHOT
+============================================================ */
+
+function getAnswerMemorySnapshot() {
+    try {
+        return globalAnswerMemoryInstance.snapshot5();
+    } catch (
+        error
+    ) {
+        return {
+            ok: false,
+
+            error:
+                answerMemoryError5(
+                    error
+                )
+        };
+    }
+}
+
+
+/* ============================================================
+   5.43 - TURKAI GLOBAL NAMESPACE
+============================================================ */
+
+globalThis.turkAIAnswerMemory =
+    globalAnswerMemoryInstance;
+
+globalThis.saveAnswerMemory =
+    saveAnswerMemory;
+
+globalThis.findAnswerMemory =
+    findAnswerMemory;
+
+globalThis.findBestAnswerMemory =
+    findBestAnswerMemory;
+
+globalThis.getAnswerMemoryHealth =
+    getAnswerMemoryHealth;
+
+globalThis.getAnswerMemoryStats =
+    getAnswerMemoryStats;
+
+globalThis.getAnswerMemoryDiagnostics =
+    getAnswerMemoryDiagnostics;
+
+globalThis.autoLearnAnswer =
+    autoLearnAnswer;
+
+globalThis.exportAnswerMemory =
+    exportAnswerMemory;
+
+globalThis.importAnswerMemory =
+    importAnswerMemory;
+
+globalThis.clearAnswerMemory =
+    clearAnswerMemory;
+
+globalThis.rebuildAnswerMemoryIndex =
+    rebuildAnswerMemoryIndex;
+
+globalThis.shouldUseAnswerMemory =
+    shouldUseAnswerMemory;
+
+globalThis.getAnswerMemoryContext =
+    getAnswerMemoryContext;
+
+globalThis.getAnswerMemorySnapshot =
+    getAnswerMemorySnapshot;
+
+
+/* ============================================================
+   5.44 - NAMESPACE METHODS
+============================================================ */
+
+globalThis.turkAIAnswerMemory.save =
+    saveAnswerMemory;
+
+globalThis.turkAIAnswerMemory.search =
+    findAnswerMemory;
+
+globalThis.turkAIAnswerMemory.findBest =
+    findBestAnswerMemory;
+
+globalThis.turkAIAnswerMemory.health =
+    getAnswerMemoryHealth;
+
+globalThis.turkAIAnswerMemory.stats =
+    getAnswerMemoryStats;
+
+globalThis.turkAIAnswerMemory.diagnostics =
+    getAnswerMemoryDiagnostics;
+
+globalThis.turkAIAnswerMemory.learn =
+    autoLearnAnswer;
+
+globalThis.turkAIAnswerMemory.export =
+    exportAnswerMemory;
+
+globalThis.turkAIAnswerMemory.import =
+    importAnswerMemory;
+
+globalThis.turkAIAnswerMemory.clear =
+    clearAnswerMemory;
+
+globalThis.turkAIAnswerMemory.rebuild =
+    rebuildAnswerMemoryIndex;
+
+globalThis.turkAIAnswerMemory.shouldUse =
+    shouldUseAnswerMemory;
+
+globalThis.turkAIAnswerMemory.context =
+    getAnswerMemoryContext;
+
+globalThis.turkAIAnswerMemory.snapshot =
+    getAnswerMemorySnapshot;
+
+
+/* ============================================================
+   5.45 - FINAL MODULE EXPORT
+============================================================ */
 
 module.exports = {
+    AnswerMemory,
 
-    ...module.exports,
+    answerMemory:
+        globalAnswerMemoryInstance,
 
-    FINAL_MEMORY_CONFIG,
+    instance:
+        globalAnswerMemoryInstance,
 
-    finalMemoryState,
+    version:
+        ANSWER_MEMORY_VERSION,
 
-    initializeFinalMemory,
+    ANSWER_MEMORY_VERSION,
 
-    memorySafeString,
-    memoryUserId,
-    memoryQuestion,
-    memoryAnswer,
+    config:
+        DEFAULT_ANSWER_MEMORY_CONFIG,
 
-    isEligibleMemory,
+    DEFAULT_ANSWER_MEMORY_CONFIG,
 
-    finalMemorySearch,
-    finalMemorySearchSync,
+    root:
+        ANSWER_MEMORY_ROOT,
 
-    finalMemoryLearn,
-    finalMemoryLearnIfUseful,
+    ANSWER_MEMORY_ROOT,
 
-    finalMemoryFeedback,
+    files:
+        ANSWER_MEMORY_FILES,
 
-    finalPinMemory,
-    finalUnpinMemory,
+    ANSWER_MEMORY_FILES,
 
-    finalArchiveMemory,
-    finalRestoreMemory,
+    saveAnswerMemory,
 
-    getUserMemory,
-    clearUserMemory,
+    rememberAnswer:
+        saveAnswerMemory,
 
-    finalMemoryStats,
+    findAnswerMemory,
 
-    runFinalMemoryMaintenance,
+    searchAnswerMemory:
+        findAnswerMemory,
 
-    startFinalMaintenanceTimer,
-    stopFinalMaintenanceTimer,
+    findBestAnswerMemory,
 
-    processChatMemory,
+    findKnowledgeAnswer:
+        findBestAnswerMemory,
 
-    createMemoryRoutes,
-    attachMemoryRoutes,
-    attachMemorySocket,
+    getAnswerMemoryHealth,
 
-    memoryServerIntegration,
-    TurkAIMemoryService,
+    getAnswerMemoryStats,
 
-    startFinalAutoSave,
-    stopFinalAutoSave
+    getAnswerMemoryDiagnostics,
+
+    autoLearnAnswer,
+
+    smartAutoLearnAnswer:
+        autoLearnAnswer,
+
+    exportAnswerMemory,
+
+    importAnswerMemory,
+
+    clearAnswerMemory,
+
+    rebuildAnswerMemoryIndex,
+
+    shouldUseAnswerMemory,
+
+    getAnswerMemoryContext,
+
+    getAnswerMemorySnapshot,
+
+    normalizeText:
+        answerMemoryNormalizeTurkish,
+
+    searchNormalize:
+        answerMemorySearchNormalize,
+
+    tokenize:
+        answerMemoryTokenize,
+
+    keywords:
+        answerMemoryExtractKeywords,
+
+    jaccard:
+        answerMemoryJaccardSimilarity,
+
+    dice:
+        answerMemoryDiceSimilarity,
+
+    similarity:
+        answerMemoryCombinedSimilarity,
+
+    detectCategory:
+        answerMemoryDetectCategory,
+
+    detectLanguage:
+        answerMemoryDetectLanguage,
+
+    detectQuestionType:
+        answerMemoryDetectQuestionType
 };
 
 
-/* ------------------------------------------------------------
-   34. FINAL READY MESSAGE
------------------------------------------------------------- */
+/* ============================================================
+   5.46 - AUTO MAINTENANCE
+============================================================ */
+
+let answerMemoryMaintenanceTimer5 =
+    null;
+
+let answerMemoryBackupTimer5 =
+    null;
+
+
+/* ============================================================
+   5.47 - MAINTENANCE TIMER
+============================================================ */
 
 try {
+    answerMemoryMaintenanceTimer5 =
+        setInterval(
+            () => {
+                try {
+                    globalAnswerMemoryInstance.runMaintenance5(
+                        {
+                            backup: false,
 
-    const stats =
-        finalMemoryStats();
+                            archiveWeak:
+                                true
+                        }
+                    );
+                } catch (
+                    error
+                ) {
+                    try {
+                        globalAnswerMemoryInstance.stats.errors =
+                            Number(
+                                globalAnswerMemoryInstance
+                                    .stats
+                                    .errors ||
+                                0
+                            ) + 1;
+                    } catch {}
 
-    console.log(
-        "============================================================"
-    );
+                    console.warn(
+                        "[AnswerMemory] Maintenance error:",
+                        error.message
+                    );
+                }
+            },
+            ANSWER_MEMORY_MAINTENANCE_5
+                .maintenanceIntervalMs
+        );
 
-    console.log(
-        " TURKAI ANSWER MEMORY ENGINE 5.0"
-    );
-
-    console.log(
-        "============================================================"
-    );
-
-    console.log(
-        ` Hafıza: ${stats.basic.count || stats.health?.memory?.total || 0}`
-    );
-
-    console.log(
-        ` Kullanıcılar: ${stats.health?.users?.users || 0}`
-    );
-
-    console.log(
-        ` Arama: ${stats.analytics?.total || 0}`
-    );
-
-    console.log(
-        ` Hit rate: ${(
-            Number(
-                stats.analytics?.hitRate || 0
-            ) * 100
-        ).toFixed(1)}%`
-    );
-
-    console.log(
-        " Smart Search: AKTİF"
-    );
-
-    console.log(
-        " Auto Learn: AKTİF"
-    );
-
-    console.log(
-        " Auto Save: AKTİF"
-    );
-
-    console.log(
-        " Personalization: AKTİF"
-    );
-
-    console.log(
-        " Confidence Engine: AKTİF"
-    );
-
-    console.log(
-        " Context Engine: AKTİF"
-    );
-
-    console.log(
-        "============================================================"
-    );
-
-} catch (error) {
-
+    if (
+        typeof
+            answerMemoryMaintenanceTimer5.unref ===
+        "function"
+    ) {
+        answerMemoryMaintenanceTimer5.unref();
+    }
+} catch (
+    error
+) {
     console.warn(
-        "[TürkAI Memory] Ready message:",
+        "[AnswerMemory] Maintenance timer failed:",
         error.message
     );
 }
 
 
 /* ============================================================
-   TÜRKAI ANSWER MEMORY ENGINE
-   PART 5 / 5 — END
+   5.48 - BACKUP TIMER
+============================================================ */
+
+try {
+    answerMemoryBackupTimer5 =
+        setInterval(
+            () => {
+                try {
+                    globalAnswerMemoryInstance
+                        .createBackup5();
+                } catch (
+                    error
+                ) {
+                    console.warn(
+                        "[AnswerMemory] Backup error:",
+                        error.message
+                    );
+                }
+            },
+            ANSWER_MEMORY_MAINTENANCE_5
+                .backupIntervalMs
+        );
+
+    if (
+        typeof
+            answerMemoryBackupTimer5.unref ===
+        "function"
+    ) {
+        answerMemoryBackupTimer5.unref();
+    }
+} catch (
+    error
+) {
+    console.warn(
+        "[AnswerMemory] Backup timer failed:",
+        error.message
+    );
+}
+
+
+/* ============================================================
+   5.49 - INITIAL INDEX CHECK
+============================================================ */
+
+try {
+    const storedRecords =
+        Object.keys(
+            globalAnswerMemoryInstance
+                .records || {}
+        ).length;
+
+    const storedTokens =
+        Object.keys(
+            globalAnswerMemoryInstance
+                .index || {}
+        ).length;
+
+    if (
+        storedRecords > 0 &&
+        storedTokens === 0
+    ) {
+        globalAnswerMemoryInstance
+            .rebuildIndex5(
+                {
+                    persist:
+                        true
+                }
+            );
+    }
+} catch (
+    error
+) {
+    console.warn(
+        "[AnswerMemory] Initial index check failed:",
+        error.message
+    );
+}
+
+
+/* ============================================================
+   5.50 - STARTUP LOG
+============================================================ */
+
+try {
+    const health =
+        getAnswerMemoryHealth();
+
+    console.log(
+        "=================================================="
+    );
+
+    console.log(
+        "TürkAI Answer Memory Engine 5.0"
+    );
+
+    console.log(
+        "Version       : " +
+            ANSWER_MEMORY_VERSION
+    );
+
+    console.log(
+        "Status        : " +
+            (
+                health.ok
+                    ? "READY"
+                    : "DEGRADED"
+            )
+    );
+
+    console.log(
+        "Records       : " +
+            (
+                health.records?.total ||
+                0
+            )
+    );
+
+    console.log(
+        "Active        : " +
+            (
+                health.records?.active ||
+                0
+            )
+    );
+
+    console.log(
+        "Archived      : " +
+            (
+                health.records?.archived ||
+                0
+            )
+    );
+
+    console.log(
+        "Index Tokens  : " +
+            (
+                health.index?.tokens ||
+                0
+            )
+    );
+
+    console.log(
+        "Users         : " +
+            (
+                health.index?.users ||
+                0
+            )
+    );
+
+    console.log(
+        "Cache         : " +
+            (
+                health.cache?.enabled
+                    ? "ACTIVE"
+                    : "OFF"
+            )
+    );
+
+    console.log(
+        "Auto Learn    : " +
+            (
+                globalAnswerMemoryInstance
+                    .config
+                    ?.autoLearn ===
+                false
+                    ? "OFF"
+                    : "ACTIVE"
+            )
+    );
+
+    console.log(
+        "Search        : ACTIVE"
+    );
+
+    console.log(
+        "Feedback      : ACTIVE"
+    );
+
+    console.log(
+        "Backup        : ACTIVE"
+    );
+
+    console.log(
+        "Export/Import : ACTIVE"
+    );
+
+    console.log(
+        "=================================================="
+    );
+} catch (
+    error
+) {
+    console.warn(
+        "[AnswerMemory] Startup report failed:",
+        error.message
+    );
+}
+
+
+/* ============================================================
+   5.51 - FINAL
+============================================================ */
+
+console.log(
+    "[AnswerMemory] Part 5/5 loaded."
+);
+
+console.log(
+    "[AnswerMemory] GLOBAL INSTANCE READY."
+);
+
+console.log(
+    "[AnswerMemory] FINAL API READY."
+);
+
+/* ============================================================
+   END OF ANSWER MEMORY ENGINE 5.0
 ============================================================ */
