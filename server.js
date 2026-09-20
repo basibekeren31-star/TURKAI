@@ -45361,4 +45361,5 @@ process.on(
 startTurkAIServer10();
 
 console.log(
-    "🔥🔥🔥 TÜRKAI MASTER SERVER 50.0 — 10/10 TAMAM
+    "🔥🔥🔥 TÜRKAI MASTER SERVER 50.0 — 10/10 TAMAMLANDI 🔥🔥🔥"
+);
