@@ -60,6 +60,11 @@ Part 20 -> Final Integration / Listen / Shutdown
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const {
+    installAnswerMemoryIntegration
+} = require(
+    "./answerMemoryIntegration"
+);
 const http = require("http");
 const express = require("express");
 
