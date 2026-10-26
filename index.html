@@ -1,0 +1,882 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080B11">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="TürkAI — sohbet, araştırma, hafıza ve üretkenlik çalışma alanı.">
+  <title>TürkAI — Akıllı Çalışma Alanı</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <script defer src="/app.js"></script>
+</head>
+
+<body>
+  <!-- SVG ikon kütüphanesi -->
+  <svg xmlns="http://www.w3.org/2000/svg" class="svg-definitions" aria-hidden="true">
+    <symbol id="i-logo" viewBox="0 0 24 24">
+      <path d="M12 2 21 7v10l-9 5-9-5V7l9-5Z" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <path d="m7 14 3-6 2 5 2-3 3 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l-2 2v-9.5A7.5 7.5 0 0 1 10.5 4h2A7.5 7.5 0 0 1 20 11.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m15.5 8.5-2.2 5-4.8 2 2-4.8 5-2.2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 9.5 4.3 4.3 0 0 0 7 18Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-brain" viewBox="0 0 24 24"><path d="M12 5a3 3 0 0 0-5.7-1A3.5 3.5 0 0 0 4 10a4 4 0 0 0 1 7.5A3.5 3.5 0 0 0 12 19V5Zm0 0a3 3 0 0 1 5.7-1A3.5 3.5 0 0 1 20 10a4 4 0 0 1-1 7.5A3.5 3.5 0 0 1 12 19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-memory" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9 9h6v6H9zM9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H10l2 2h7.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6zM14 3v5h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-file-text" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6zM14 3v5h5M9 13h7m-7 3h7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="8.5" cy="9" r="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m4 17 5-5 4 4 3-3 4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m16 10 5-3v10l-5-3z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5 11a7 7 0 0 0 14 0m-7 7v3m-4 0h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-volume" viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4H4Zm12-2a6 6 0 0 1 0 8m2-11a10 10 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-attach" viewBox="0 0 24 24"><path d="m8 12 7-7a4 4 0 0 1 6 6l-9 9a6 6 0 0 1-8-8l9-9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 8-5 4 5 4m8-8 5 4-5 4m-3-10-2 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m7 9 3 3-3 3m6 0h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m19.4 15 .1.1 1.2 1-1.5 2.6-1.5-.5a8 8 0 0 1-2 .9l-.3 1.6h-3l-.3-1.6a8 8 0 0 1-2-.9l-1.5.5-1.5-2.6 1.2-1a8 8 0 0 1 0-2l-1.2-1 1.5-2.6 1.5.5a8 8 0 0 1 2-.9l.3-1.6h3l.3 1.6a8 8 0 0 1 2 .9l1.5-.5 1.5 2.6-1.2 1a8 8 0 0 1 0 2Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9m4 0h3M4 12h3m4 0h9M4 18h9m4 0h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="15" cy="6" r="2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="15" cy="18" r="2" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4 21a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 20a7 7 0 0 1 14 0m1-15a3.5 3.5 0 0 1 0 7m2 2a5 5 0 0 1 3 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 10V7a4 4 0 0 1 7-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5m-7 7 7-7 7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 20h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m-5 5 5-5 5 5M4 20h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16m-10 4v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5m10-2a7 7 0 0 0-12-3L4 12m16 0-3 5a7 7 0 0 1-12-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-13h-7l0-7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-crown" viewBox="0 0 24 24"><path d="m3 7 5 4 4-7 4 7 5-4-2 12H5L3 7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 11v5m0-8h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m12 3 10 18H2L12 3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 9v5m0 3h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 9a2.5 2.5 0 1 1 4.3 1.7c-1.2 1.1-1.8 1.3-1.8 2.8m0 3h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-command" viewBox="0 0 24 24"><path d="M9 8V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V8Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  </svg>
+
+  <div id="appShell" class="app-shell" data-app="turkai" data-version="40.0.0">
+    <!-- SOL MENÜ -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-top">
+        <a class="brand" href="/" aria-label="TürkAI ana sayfa">
+          <span class="brand-icon"><svg><use href="#i-logo"></use></svg></span>
+          <span class="brand-copy"><strong>TürkAI</strong><small>AKILLI ÇALIŞMA ALANI</small></span>
+        </a>
+        <button id="closeSidebarButton" class="icon-button mobile-only" type="button" aria-label="Menüyü kapat">
+          <svg><use href="#i-close"></use></svg>
+        </button>
+      </div>
+
+      <button id="newChatButton" class="new-chat-button" type="button">
+        <svg><use href="#i-plus"></use></svg><span>Yeni sohbet</span>
+        <kbd>Ctrl K</kbd>
+      </button>
+
+      <div class="sidebar-label">ÇALIŞMA ALANI</div>
+      <nav class="primary-nav" aria-label="Ana menü">
+        <button class="nav-item active" type="button" data-view="chat">
+          <svg><use href="#i-message"></use></svg><span>Sohbet</span>
+        </button>
+        <button class="nav-item" type="button" data-view="research">
+          <svg><use href="#i-compass"></use></svg><span>Araştırma</span><span class="nav-badge">WEB</span>
+        </button>
+        <button class="nav-item" type="button" data-view="weather">
+          <svg><use href="#i-cloud"></use></svg><span>Hava durumu</span>
+        </button>
+        <button class="nav-item" type="button" data-view="memory">
+          <svg><use href="#i-brain"></use></svg><span>Cevap hafızası</span>
+        </button>
+        <button class="nav-item" type="button" data-view="files">
+          <svg><use href="#i-folder"></use></svg><span>Dosyalarım</span>
+        </button>
+        <button class="nav-item" type="button" data-view="media">
+          <svg><use href="#i-image"></use></svg><span>Medya stüdyosu</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-label">HESAP VE ARAÇLAR</div>
+      <nav class="primary-nav" aria-label="Hesap ve araçlar">
+        <button class="nav-item" type="button" data-view="plans">
+          <svg><use href="#i-crown"></use></svg><span>Paketler</span>
+        </button>
+        <button class="nav-item" type="button" data-view="notifications">
+          <svg><use href="#i-bell"></use></svg><span>Bildirimler</span><span id="notificationCount" class="count-badge hidden">0</span>
+        </button>
+        <button class="nav-item" type="button" data-view="system">
+          <svg><use href="#i-sliders"></use></svg><span>Sistem durumu</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+
+      <div class="sidebar-system-card">
+        <span class="status-dot" id="sidebarStatusDot"></span>
+        <div><strong id="sidebarStatusTitle">TürkAI hazır</strong><small id="sidebarStatusText">Bağlantı kontrol ediliyor</small></div>
+        <button id="refreshSystemButton" class="icon-button small" type="button" aria-label="Sistem durumunu yenile">
+          <svg><use href="#i-refresh"></use></svg>
+        </button>
+      </div>
+
+      <button id="accountButton" class="account-card" type="button">
+        <span class="account-avatar"><svg><use href="#i-user"></use></svg></span>
+        <span class="account-card-copy"><strong id="sidebarAccountName">Misafir kullanıcı</strong><small id="sidebarAccountPlan">Free paket</small></span>
+        <svg class="account-chevron"><use href="#i-chevron-down"></use></svg>
+      </button>
+    </aside>
+
+    <!-- ANA ALAN -->
+    <main class="main-area">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="openSidebarButton" class="icon-button mobile-only" type="button" aria-label="Menüyü aç">
+            <svg><use href="#i-command"></use></svg>
+          </button>
+          <div class="breadcrumb"><span>TürkAI</span><svg><use href="#i-chevron-right"></use></svg><strong id="currentViewTitle">Sohbet</strong></div>
+        </div>
+        <div class="topbar-actions">
+          <span class="connection-indicator"><span id="connectionDot" class="status-dot"></span><span id="connectionText">Kontrol ediliyor</span></span>
+          <button id="searchButton" class="icon-button" type="button" aria-label="Ara"><svg><use href="#i-search"></use></svg></button>
+          <button id="notificationsButton" class="icon-button" type="button" aria-label="Bildirimler"><svg><use href="#i-bell"></use></svg></button>
+          <button id="settingsButton" class="icon-button" type="button" aria-label="Ayarlar"><svg><use href="#i-settings"></use></svg></button>
+          <button id="topAccountButton" class="top-avatar" type="button" aria-label="Hesabım"><svg><use href="#i-user"></use></svg></button>
+        </div>
+      </header>
+
+      <div id="workspace" class="workspace">
+        <!-- SOHBET GÖRÜNÜMÜ -->
+        <section id="chatView" class="view-panel chat-view active" data-panel="chat">
+          <div id="chatScrollArea" class="chat-scroll-area">
+            <div id="welcomeState" class="welcome-state">
+              <div class="welcome-mark"><svg><use href="#i-logo"></use></svg><span></span></div>
+              <div class="welcome-eyebrow"><span class="status-dot"></span> TÜRKAI ÇALIŞMA ALANI</div>
+              <h1>Merhaba! <span>Nasıl yardımcı olayım?</span></h1>
+              <p class="welcome-description">Sorularını sor, fikirlerini geliştir, kod yaz veya araştırmanı başlat. TürkAI çalışma alanın hazır.</p>
+
+              <div class="prompt-grid">
+                <button class="prompt-card" type="button" data-prompt="TürkAI için kapsamlı bir yazılım geliştirme planı hazırla.">
+                  <span class="prompt-icon purple"><svg><use href="#i-code"></use></svg></span>
+                  <strong>Kod geliştir</strong><small>Bir fikri çalışan projeye dönüştür</small><svg class="prompt-arrow"><use href="#i-chevron-right"></use></svg>
+                </button>
+                <button class="prompt-card" type="button" data-prompt="Bu konu hakkında kaynaklarıyla kapsamlı bir araştırma yap: ">
+                  <span class="prompt-icon blue"><svg><use href="#i-compass"></use></svg></span>
+                  <strong>Araştırma yap</strong><small>Bir konuyu adım adım incele</small><svg class="prompt-arrow"><use href="#i-chevron-right"></use></svg>
+                </button>
+                <button class="prompt-card" type="button" data-prompt="Bana yeni ve yaratıcı proje fikirleri öner.">
+                  <span class="prompt-icon orange"><svg><use href="#i-zap"></use></svg></span>
+                  <strong>Fikir üret</strong><small>Yeni projeler ve yaratıcı çözümler</small><svg class="prompt-arrow"><use href="#i-chevron-right"></use></svg>
+                </button>
+                <button class="prompt-card" type="button" data-prompt="Yüklediğim dosyayı analiz et ve önemli noktalarını açıkla.">
+                  <span class="prompt-icon green"><svg><use href="#i-file-text"></use></svg></span>
+                  <strong>Dosya analiz et</strong><small>Belgelerinden anlamlı sonuçlar çıkar</small><svg class="prompt-arrow"><use href="#i-chevron-right"></use></svg>
+                </button>
+              </div>
+            </div>
+
+            <div id="messages" class="messages-container" aria-live="polite" aria-relevant="additions text"></div>
+
+            <div id="typingIndicator" class="typing-indicator hidden" aria-live="polite">
+              <span class="typing-avatar"><svg><use href="#i-logo"></use></svg></span>
+              <span class="typing-dots"><i></i><i></i><i></i></span>
+              <span id="typingText">TürkAI yanıt hazırlıyor</span>
+            </div>
+          </div>
+
+          <div class="composer-area">
+            <div id="attachmentPreview" class="attachment-preview hidden"></div>
+            <div class="composer-card">
+              <textarea id="messageInput" name="message" rows="1" maxlength="50000" placeholder="TürkAI'a mesajını yaz..." aria-label="Mesajın"></textarea>
+              <div class="composer-toolbar">
+                <div class="composer-tools">
+                  <button id="attachButton" class="tool-button" type="button" aria-label="Dosya ekle"><svg><use href="#i-attach"></use></svg><span>Dosya</span></button>
+                  <button id="researchToggleButton" class="tool-button" type="button" aria-pressed="false"><svg><use href="#i-globe"></use></svg><span>Araştır</span></button>
+                  <button id="weatherQuickButton" class="tool-button" type="button"><svg><use href="#i-cloud"></use></svg><span>Hava</span></button>
+                  <button id="memoryQuickButton" class="tool-button" type="button"><svg><use href="#i-brain"></use></svg><span>Hafıza</span></button>
+                  <button id="imageQuickButton" class="tool-button" type="button"><svg><use href="#i-image"></use></svg><span>Görsel</span></button>
+                  <button id="videoQuickButton" class="tool-button" type="button"><svg><use href="#i-video"></use></svg><span>Video</span></button>
+                </div>
+                <div class="composer-submit-tools">
+                  <label class="model-select-wrap" for="modelSelect"><span>MODEL</span>
+                    <select id="modelSelect" aria-label="Yapay zekâ modeli">
+                      <option value="auto">Auto</option>
+                      <option value="fast">Hızlı</option>
+                      <option value="smart">Akıllı</option>
+                      <option value="code">Kodlama</option>
+                      <option value="research">Araştırma</option>
+                    </select>
+                  </label>
+                  <button id="voiceInputButton" class="icon-button voice-button" type="button" aria-label="Sesli mesaj"><svg><use href="#i-mic"></use></svg></button>
+                  <button id="stopGenerationButton" class="icon-button hidden" type="button" aria-label="Yanıtı durdur"><svg><use href="#i-stop"></use></svg></button>
+                  <button id="sendButton" class="send-button" type="button" aria-label="Mesaj gönder"><svg><use href="#i-send"></use></svg></button>
+                </div>
+              </div>
+            </div>
+            <div class="composer-disclaimer">TürkAI hata yapabilir. Önemli bilgileri kontrol etmeyi unutma.</div>
+          </div>
+        </section>
+
+        <!-- ARAŞTIRMA -->
+        <section id="researchView" class="view-panel" data-panel="research">
+          <div class="panel-page">
+            <div class="page-heading">
+              <span class="panel-kicker">WEB RESEARCH</span>
+              <h1>Araştırma merkezi</h1>
+              <p>Bir konu gir, araştırma aracını kullan veya sonuçlarını incele.</p>
+            </div>
+            <form id="researchForm" class="large-search-form">
+              <svg><use href="#i-search"></use></svg>
+              <input id="researchQueryInput" type="search" placeholder="Araştırmak istediğin konuyu yaz..." required>
+              <button class="primary-button" type="submit">Araştır</button>
+            </form>
+            <div class="panel-card">
+              <div class="panel-card-heading"><div><h2>Araştırma sonuçları</h2><p>Sonuçlar, kullanılan bağlantılara göre gösterilir.</p></div><button id="clearResearchButton" class="secondary-button" type="button">Temizle</button></div>
+              <div id="researchResults" class="research-results">
+                <div class="empty-state"><span class="empty-state-icon"><svg><use href="#i-compass"></use></svg></span><h3>Henüz araştırma yok</h3><p>Bir arama başlatarak burada sonuçları görebilirsin.</p></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- HAVA DURUMU -->
+        <section id="weatherView" class="view-panel" data-panel="weather">
+          <div class="panel-page">
+            <div class="page-heading"><span class="panel-kicker">WEATHER</span><h1>Hava durumu</h1><p>Bir şehir seçerek hava durumu sorgusu başlat.</p></div>
+            <form id="weatherForm" class="large-search-form">
+              <svg><use href="#i-cloud"></use></svg>
+              <input id="weatherCityInput" type="text" value="Konya" placeholder="Şehir adı..." required>
+              <button class="primary-button" type="submit">Sorgula</button>
+            </form>
+            <div id="weatherResults" class="weather-results panel-card">
+              <div class="empty-state"><span class="empty-state-icon"><svg><use href="#i-sun"></use></svg></span><h3>Hava bilgisi bekleniyor</h3><p>Güncel hava verileri kullanılabilir bir hava durumu servisi gerektirir.</p></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CEVAP HAFIZASI -->
+        <section id="memoryView" class="view-panel" data-panel="memory">
+          <div class="panel-page">
+            <div class="page-heading"><span class="panel-kicker">ANSWER MEMORY</span><h1>Cevap hafızası</h1><p>Kaydedilen önemli notlarını ve tekrar kullanılabilir bilgileri yönet.</p></div>
+            <div class="memory-toolbar">
+              <label class="large-search-form compact-search"><svg><use href="#i-search"></use></svg><input id="memorySearchInput" type="search" placeholder="Hafızada ara..."></label>
+              <button id="addMemoryButton" class="primary-button" type="button"><svg><use href="#i-plus"></use></svg> Not ekle</button>
+            </div>
+            <div id="memoryStats" class="stat-grid">
+              <div class="stat-card"><span>Kaydedilen notlar</span><strong id="memoryCount">0</strong></div>
+              <div class="stat-card"><span>Hafıza durumu</span><strong id="memoryStatus">Hazır</strong></div>
+              <div class="stat-card"><span>Depolama</span><strong id="memoryStorage">Yerel / API</strong></div>
+            </div>
+            <div id="memoryList" class="memory-list panel-card">
+              <div class="empty-state"><span class="empty-state-icon"><svg><use href="#i-brain"></use></svg></span><h3>Hafıza henüz boş</h3><p>Önemli bilgileri ekleyebilir veya desteklenen bağlantı üzerinden kaydedebilirsin.</p></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- DOSYA MERKEZİ -->
+        <section id="filesView" class="view-panel" data-panel="files">
+          <div class="panel-page">
+            <div class="page-heading"><span class="panel-kicker">FILE CENTER</span><h1>Dosya merkezi</h1><p>Dosyalarını seç, yükle ve desteklenen işlemleri yönet.</p></div>
+            <div id="fileDropZone" class="file-drop-zone">
+              <span class="file-drop-icon"><svg><use href="#i-upload"></use></svg></span>
+              <h2>Dosyalarını buraya bırak</h2><p>veya cihazından dosya seç</p>
+              <button id="chooseFilesButton" class="primary-button" type="button">Dosya seç</button>
+              <small>Desteklenen türler ve boyut sınırları sunucu ayarlarına bağlıdır.</small>
+            </div>
+            <div class="panel-card">
+              <div class="panel-card-heading"><div><h2>Dosyalarım</h2><p>Bu alan uygulamanın desteklediği dosya listesini gösterir.</p></div><button id="refreshFilesButton" class="secondary-button" type="button"><svg><use href="#i-refresh"></use></svg> Yenile</button></div>
+              <div id="fileList" class="file-list"><div class="empty-state compact"><h3>Dosya bulunamadı</h3><p>Bir dosya seçerek başlayabilirsin.</p></div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- MEDYA STÜDYOSU -->
+        <section id="mediaView" class="view-panel" data-panel="media">
+          <div class="panel-page">
+            <div class="page-heading"><span class="panel-kicker">MEDIA STUDIO</span><h1>Medya stüdyosu</h1><p>Görsel ve video üretim araçlarını tek yerde yönet.</p></div>
+            <div class="media-studio-grid">
+              <article class="media-studio-card">
+                <span class="media-card-icon"><svg><use href="#i-image"></use></svg></span>
+                <h2>Görsel üretimi</h2><p>İstediğin görseli tarif et ve bağlı üretim servisini kullan.</p>
+                <button id="openImageModalButton" class="primary-button" type="button">Görsel oluştur</button>
+              </article>
+              <article class="media-studio-card">
+                <span class="media-card-icon"><svg><use href="#i-video"></use></svg></span>
+                <h2>Video üretimi</h2><p>Bir sahne fikrini açıklayarak uyumlu video servisine gönder.</p>
+                <button id="openVideoModalButton" class="primary-button" type="button">Video oluştur</button>
+              </article>
+            </div>
+            <div class="panel-card">
+              <div class="panel-card-heading"><div><h2>Üretim geçmişi</h2><p>Uygulama tarafından kaydedilmiş medya sonuçları.</p></div><button id="clearMediaHistoryButton" class="secondary-button" type="button">Geçmişi temizle</button></div>
+              <div id="mediaHistoryList" class="media-history-list"><div class="empty-state compact"><h3>Henüz üretim yok</h3><p>Üretilen ve kaydedilen sonuçlar burada görüntülenir.</p></div></div>
+            </div>
+          </div>
+        </section>
+        
+        <!-- DEVAM: 2. PARÇADA paketler, bildirimler, sistem, mobil menü ve modal bölümleri gelecek. -->
+
+<!-- TÜRKAI ULTRA — PART 2/2 -->
+
+<!-- PLANLAR -->
+<section id="plansPage" class="page hidden">
+  <header class="page-header">
+    <h1>Planlar</h1>
+    <p>TürkAI deneyimini ihtiyaçlarına göre genişlet.</p>
+  </header>
+
+  <div class="plans-grid">
+    <article class="plan-card">
+      <h2>Free</h2>
+      <p>Temel yapay zekâ özellikleri</p>
+      <ul>
+        <li>Temel sohbet</li>
+        <li>Standart hafıza</li>
+        <li>Temel araçlar</li>
+      </ul>
+      <button type="button" data-plan="free">Mevcut plan</button>
+    </article>
+
+    <article class="plan-card">
+      <h2>Pro</h2>
+      <p>Günlük kullanım için</p>
+      <ul>
+        <li>Gelişmiş sohbet</li>
+        <li>Kod desteği</li>
+        <li>Genişletilmiş araçlar</li>
+      </ul>
+      <button type="button" data-plan="pro">Pro'yu incele</button>
+    </article>
+
+    <article class="plan-card">
+      <h2>Plus</h2>
+      <p>Yoğun üretkenlik için</p>
+      <ul>
+        <li>Gelişmiş proje araçları</li>
+        <li>Araştırma desteği</li>
+        <li>Ek kullanım imkânları</li>
+      </ul>
+      <button type="button" data-plan="plus">Plus'ı incele</button>
+    </article>
+
+    <article class="plan-card">
+      <h2>Ultra</h2>
+      <p>TürkAI'nin kapsamlı deneyimi</p>
+      <ul>
+        <li>Gelişmiş proje akışı</li>
+        <li>Kodlama ve analiz araçları</li>
+        <li>Uygun olduğunda çoklu model desteği</li>
+      </ul>
+      <button type="button" data-plan="ultra">Ultra'yı incele</button>
+    </article>
+  </div>
+</section>
+
+<!-- BİLDİRİMLER -->
+<section id="notificationsPage" class="page hidden">
+  <header class="page-header">
+    <h1>Bildirimler</h1>
+    <p>TürkAI etkinlikleri ve sistem mesajları.</p>
+  </header>
+
+  <div id="notificationList" class="panel">
+    <p class="muted">Henüz bildirim yok.</p>
+  </div>
+
+  <button type="button" id="clearNotificationsBtn">
+    Bildirimleri temizle
+  </button>
+</section>
+
+<!-- SİSTEM DURUMU -->
+<section id="systemPage" class="page hidden">
+  <header class="page-header">
+    <h1>Sistem durumu</h1>
+    <p>Bağlantı ve servis bilgileri.</p>
+  </header>
+
+  <div class="status-grid">
+    <article class="panel">
+      <h3>Arayüz</h3>
+      <p id="uiStatus">Hazır</p>
+    </article>
+
+    <article class="panel">
+      <h3>Sunucu</h3>
+      <p id="serverStatus">Kontrol edilmedi</p>
+    </article>
+
+    <article class="panel">
+      <h3>Model</h3>
+      <p id="modelStatus">Seçilmedi</p>
+    </article>
+  </div>
+
+  <button type="button" id="checkServerBtn">
+    Sunucuyu kontrol et
+  </button>
+</section>
+
+<!-- AYARLAR -->
+<section id="settingsPage" class="page hidden">
+  <header class="page-header">
+    <h1>Ayarlar</h1>
+    <p>TürkAI deneyimini kişiselleştir.</p>
+  </header>
+
+  <div class="panel settings-group">
+    <label for="displayName">Görünen ad</label>
+    <input id="displayName" type="text" maxlength="60"
+      placeholder="Görünen adını yaz">
+
+    <label for="themeSelect">Tema</label>
+    <select id="themeSelect">
+      <option value="dark">Koyu</option>
+      <option value="light">Açık</option>
+      <option value="system">Sistem varsayılanı</option>
+    </select>
+
+    <label for="modelSelect">Tercih edilen model</label>
+    <select id="modelSelect">
+      <option value="auto">Otomatik seçim</option>
+      <option value="chat">Sohbet</option>
+      <option value="coding">Kodlama</option>
+      <option value="research">Araştırma</option>
+    </select>
+
+    <label class="setting-row">
+      <input id="memoryEnabled" type="checkbox" checked>
+      Yerel hafızayı etkinleştir
+    </label>
+
+    <label class="setting-row">
+      <input id="soundEnabled" type="checkbox">
+      Bildirim sesleri
+    </label>
+
+    <button type="button" id="saveSettingsBtn">
+      Ayarları kaydet
+    </button>
+  </div>
+
+  <div class="panel">
+    <h3>Gizlilik</h3>
+    <p>API anahtarlarını HTML içine yazma. Gizli anahtarlar sunucuda tutulmalıdır.</p>
+    <button type="button" id="clearLocalDataBtn">
+      Bu tarayıcıdaki TürkAI verilerini temizle
+    </button>
+  </div>
+</section>
+
+<!-- MOBİL ALT MENÜ -->
+<nav class="mobile-nav" aria-label="Mobil gezinme">
+  <button type="button" data-page="chatPage">Sohbet</button>
+  <button type="button" data-page="researchPage">Araştırma</button>
+  <button type="button" data-page="memoryPage">Hafıza</button>
+  <button type="button" data-page="settingsPage">Ayarlar</button>
+</nav>
+
+<!-- DOSYA SEÇİCİLERİ -->
+<input id="fileInput" type="file" hidden multiple>
+<input id="imageInput" type="file" accept="image/*" hidden multiple>
+<input id="documentInput"
+  type="file"
+  accept=".txt,.md,.pdf,.doc,.docx,.csv,.json"
+  hidden multiple>
+
+<!-- HESAP PENCERESİ -->
+<dialog id="accountDialog" class="app-dialog">
+  <div class="dialog-header">
+    <h2>Hesap</h2>
+    <button type="button" data-close-dialog="accountDialog"
+      aria-label="Kapat">✕</button>
+  </div>
+
+  <label for="accountEmail">E-posta</label>
+  <input id="accountEmail" type="email" autocomplete="email"
+    placeholder="ornek@mail.com">
+
+  <p id="accountMessage" role="status"></p>
+
+  <button type="button" id="accountContinueBtn">
+    Devam et
+  </button>
+</dialog>
+
+<!-- GÖRSEL OLUŞTURMA PENCERESİ -->
+<dialog id="imageDialog" class="app-dialog">
+  <div class="dialog-header">
+    <h2>Görsel oluştur</h2>
+    <button type="button" data-close-dialog="imageDialog"
+      aria-label="Kapat">✕</button>
+  </div>
+
+  <label for="imagePrompt">Görsel açıklaması</label>
+  <textarea id="imagePrompt" rows="4"
+    placeholder="Nasıl bir görsel istiyorsun?"></textarea>
+
+  <label for="imageStyle">Stil</label>
+  <select id="imageStyle">
+    <option value="realistic">Gerçekçi</option>
+    <option value="illustration">İllüstrasyon</option>
+    <option value="anime">Anime</option>
+    <option value="3d">3D</option>
+    <option value="pixel">Piksel sanat</option>
+  </select>
+
+  <button type="button" id="generateImageBtn">
+    Görsel isteği gönder
+  </button>
+
+  <div id="imageResult" aria-live="polite"></div>
+</dialog>
+
+<!-- VİDEO OLUŞTURMA PENCERESİ -->
+<dialog id="videoDialog" class="app-dialog">
+  <div class="dialog-header">
+    <h2>Video oluştur</h2>
+    <button type="button" data-close-dialog="videoDialog"
+      aria-label="Kapat">✕</button>
+  </div>
+
+  <label for="videoPrompt">Video fikri</label>
+  <textarea id="videoPrompt" rows="4"
+    placeholder="Videoyu tarif et"></textarea>
+
+  <label for="videoDuration">Süre</label>
+  <select id="videoDuration">
+    <option value="5">5 saniye</option>
+    <option value="10">10 saniye</option>
+    <option value="15">15 saniye</option>
+  </select>
+
+  <button type="button" id="generateVideoBtn">
+    Video isteği gönder
+  </button>
+
+  <div id="videoResult" aria-live="polite"></div>
+</dialog>
+
+<!-- ONAY PENCERESİ -->
+<dialog id="confirmDialog" class="app-dialog">
+  <h2 id="confirmTitle">Onay</h2>
+  <p id="confirmText">Bu işlemi yapmak istiyor musun?</p>
+  <div class="dialog-actions">
+    <button type="button" id="confirmCancelBtn">Vazgeç</button>
+    <button type="button" id="confirmAcceptBtn">Onayla</button>
+  </div>
+</dialog>
+
+<!-- YARDIM -->
+<dialog id="helpDialog" class="app-dialog">
+  <div class="dialog-header">
+    <h2>TürkAI yardımı</h2>
+    <button type="button" data-close-dialog="helpDialog"
+      aria-label="Kapat">✕</button>
+  </div>
+
+  <h3>Sohbet</h3>
+  <p>Mesajını yazıp gönder düğmesine bas.</p>
+
+  <h3>Kodlama</h3>
+  <p>İstediğin programlama dilini ve hedefini belirt.</p>
+
+  <h3>Araştırma</h3>
+  <p>Güncel bilgi gerekiyorsa sunucunun araştırma servisi kullanılmalıdır.</p>
+
+  <h3>Dosyalar</h3>
+  <p>Dosya yükleme desteği sunucu ve uygulama koduna bağlıdır.</p>
+</dialog>
+
+<!-- YÜKLEME VE MESAJ ALANLARI -->
+<div id="globalLoading" class="global-loading hidden"
+  role="status" aria-live="polite">
+  <span class="loading-spinner" aria-hidden="true"></span>
+  <span id="globalLoadingText">İşleniyor...</span>
+</div>
+
+<div id="toastStack" class="toast-stack"
+  aria-live="polite" aria-atomic="false"></div>
+
+<!-- TEMEL ARAYÜZ DAVRANIŞLARI -->
+<script>
+(() => {
+  "use strict";
+
+  const $ = (selector, root = document) =>
+    root.querySelector(selector);
+
+  const $$ = (selector, root = document) =>
+    [...root.querySelectorAll(selector)];
+
+  function showToast(message) {
+    const stack = $("#toastStack");
+    if (!stack) return;
+
+    const item = document.createElement("div");
+    item.className = "toast-item";
+    item.textContent = String(message);
+    stack.appendChild(item);
+
+    window.setTimeout(() => item.remove(), 3500);
+  }
+
+  function openDialog(id) {
+    const dialog = document.getElementById(id);
+    if (!dialog) return;
+
+    if (typeof dialog.showModal === "function") {
+      if (!dialog.open) dialog.showModal();
+    } else {
+      dialog.setAttribute("open", "");
+    }
+  }
+
+  function closeDialog(id) {
+    const dialog = document.getElementById(id);
+    if (!dialog) return;
+
+    if (typeof dialog.close === "function") {
+      dialog.close();
+    } else {
+      dialog.removeAttribute("open");
+    }
+  }
+
+  $$("[data-close-dialog]").forEach(button => {
+    button.addEventListener("click", () => {
+      closeDialog(button.dataset.closeDialog);
+    });
+  });
+
+  $$("[data-page]").forEach(button => {
+    button.addEventListener("click", () => {
+      const targetId = button.dataset.page;
+      const target = document.getElementById(targetId);
+
+      if (!target) {
+        showToast("Bu bölüm HTML içinde bulunamadı.");
+        return;
+      }
+
+      $$(".page").forEach(page => page.classList.add("hidden"));
+      target.classList.remove("hidden");
+
+      $$("[data-page]").forEach(navButton => {
+        navButton.setAttribute(
+          "aria-current",
+          navButton === button ? "page" : "false"
+        );
+      });
+    });
+  });
+
+  $$("[data-plan]").forEach(button => {
+    button.addEventListener("click", () => {
+      const plan = button.dataset.plan;
+
+      if (plan === "free") {
+        showToast("Free plan seçili.");
+        return;
+      }
+
+      showToast(
+        plan.toUpperCase() +
+        " planı için sunucudaki abonelik sistemi gereklidir."
+      );
+    });
+  });
+
+  const settingsKey = "turkai_settings_v1";
+
+  function loadSettings() {
+    let settings = {};
+
+    try {
+      settings = JSON.parse(
+        localStorage.getItem(settingsKey) || "{}"
+      );
+    } catch {
+      settings = {};
+    }
+
+    if ($("#displayName")) {
+      $("#displayName").value = settings.displayName || "";
+    }
+
+    if ($("#themeSelect")) {
+      $("#themeSelect").value = settings.theme || "dark";
+    }
+
+    if ($("#modelSelect")) {
+      $("#modelSelect").value = settings.model || "auto";
+    }
+
+    if ($("#memoryEnabled")) {
+      $("#memoryEnabled").checked = settings.memoryEnabled !== false;
+    }
+
+    if ($("#soundEnabled")) {
+      $("#soundEnabled").checked = settings.soundEnabled === true;
+    }
+
+    applyTheme(settings.theme || "dark");
+  }
+
+  function applyTheme(theme) {
+    if (theme === "system") {
+      document.documentElement.removeAttribute("data-theme");
+      return;
+    }
+
+    document.documentElement.dataset.theme =
+      theme === "light" ? "light" : "dark";
+  }
+
+  $("#themeSelect")?.addEventListener("change", event => {
+    applyTheme(event.target.value);
+  });
+
+  $("#saveSettingsBtn")?.addEventListener("click", () => {
+    const settings = {
+      displayName: $("#displayName")?.value.trim() || "",
+      theme: $("#themeSelect")?.value || "dark",
+      model: $("#modelSelect")?.value || "auto",
+      memoryEnabled: $("#memoryEnabled")?.checked !== false,
+      soundEnabled: $("#soundEnabled")?.checked === true
+    };
+
+    try {
+      localStorage.setItem(settingsKey, JSON.stringify(settings));
+      applyTheme(settings.theme);
+      showToast("Ayarlar bu tarayıcıya kaydedildi.");
+    } catch {
+      showToast("Ayarlar kaydedilemedi.");
+    }
+  });
+
+  $("#clearLocalDataBtn")?.addEventListener("click", () => {
+    const approved = window.confirm(
+      "TürkAI'nin bu tarayıcıdaki yerel verileri silinsin mi? " +
+      "Bu işlem geri alınamayabilir."
+    );
+
+    if (!approved) return;
+
+    try {
+      localStorage.removeItem(settingsKey);
+      localStorage.removeItem("turkai_memory_v1");
+      loadSettings();
+      showToast("TürkAI yerel ayarları temizlendi.");
+    } catch {
+      showToast("Yerel veriler temizlenemedi.");
+    }
+  });
+
+  $("#checkServerBtn")?.addEventListener("click", async () => {
+    const status = $("#serverStatus");
+    if (status) status.textContent = "Kontrol ediliyor...";
+
+    try {
+      const response = await fetch("/health", {
+        method: "GET",
+        headers: { "Accept": "application/json" }
+      });
+
+      if (!response.ok) {
+        throw new Error("Sunucu yanıt vermedi.");
+      }
+
+      if (status) status.textContent = "Bağlantı başarılı";
+      showToast("Sunucu yanıt verdi.");
+    } catch {
+      if (status) status.textContent = "Bağlantı kurulamadı";
+      showToast("Sunucu adresini ve bağlantıyı kontrol et.");
+    }
+  });
+
+  $("#accountContinueBtn")?.addEventListener("click", () => {
+    const email = $("#accountEmail")?.value.trim();
+    const message = $("#accountMessage");
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (message) message.textContent = "Geçerli bir e-posta gir.";
+      return;
+    }
+
+    if (message) {
+      message.textContent =
+        "Giriş işlemi için sunucu tarafında kimlik doğrulama gerekir.";
+    }
+  });
+
+  $("#generateImageBtn")?.addEventListener("click", () => {
+    const prompt = $("#imagePrompt")?.value.trim();
+    const result = $("#imageResult");
+
+    if (!prompt) {
+      showToast("Önce görseli tarif et.");
+      return;
+    }
+
+    if (result) {
+      result.textContent =
+        "İstek hazır. Görsel oluşturma API bağlantısı gereklidir.";
+    }
+  });
+
+  $("#generateVideoBtn")?.addEventListener("click", () => {
+    const prompt = $("#videoPrompt")?.value.trim();
+    const result = $("#videoResult");
+
+    if (!prompt) {
+      showToast("Önce video fikrini yaz.");
+      return;
+    }
+
+    if (result) {
+      result.textContent =
+        "İstek hazır. Video oluşturma servisi bağlantısı gereklidir.";
+    }
+  });
+
+  $("#clearNotificationsBtn")?.addEventListener("click", () => {
+    const list = $("#notificationList");
+    if (list) {
+      list.replaceChildren();
+
+      const message = document.createElement("p");
+      message.className = "muted";
+      message.textContent = "Henüz bildirim yok.";
+      list.appendChild(message);
+    }
+  });
+
+  loadSettings();
+
+  const uiStatus = $("#uiStatus");
+  if (uiStatus) uiStatus.textContent = "Hazır";
+
+  window.TurkAIUI = {
+    showToast,
+    openDialog,
+    closeDialog
+  };
+})();
+</script>
+
+</body>
+</html>
